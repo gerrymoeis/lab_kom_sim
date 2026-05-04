@@ -10,7 +10,7 @@ Write-Host ""
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdmin) {
-    Write-Host "❌ ERROR: Script ini harus dijalankan sebagai Administrator!" -ForegroundColor Red
+    Write-Host "ERROR: Script ini harus dijalankan sebagai Administrator!" -ForegroundColor Red
     Write-Host ""
     Write-Host "Cara menjalankan:" -ForegroundColor Yellow
     Write-Host "1. Klik kanan pada PowerShell" -ForegroundColor Yellow
@@ -21,31 +21,31 @@ if (-not $isAdmin) {
     exit 1
 }
 
-Write-Host "✅ Running as Administrator" -ForegroundColor Green
+Write-Host "Running as Administrator" -ForegroundColor Green
 Write-Host ""
 
 # Check if rule already exists
 $existingRule = Get-NetFirewallRule -DisplayName "Inventaris Lab - Port 8080" -ErrorAction SilentlyContinue
 
 if ($existingRule) {
-    Write-Host "⚠️  Firewall rule sudah ada!" -ForegroundColor Yellow
+    Write-Host "Firewall rule sudah ada!" -ForegroundColor Yellow
     Write-Host ""
     $response = Read-Host "Hapus dan buat ulang? (y/n)"
     
     if ($response -eq "y" -or $response -eq "Y") {
-        Write-Host "🗑️  Menghapus rule lama..." -ForegroundColor Yellow
+        Write-Host "Menghapus rule lama..." -ForegroundColor Yellow
         Remove-NetFirewallRule -DisplayName "Inventaris Lab - Port 8080"
-        Write-Host "✅ Rule lama dihapus" -ForegroundColor Green
+        Write-Host "Rule lama dihapus" -ForegroundColor Green
         Write-Host ""
     } else {
-        Write-Host "❌ Dibatalkan" -ForegroundColor Red
+        Write-Host "Dibatalkan" -ForegroundColor Red
         Read-Host "Tekan Enter untuk keluar"
         exit 0
     }
 }
 
 # Create new firewall rule
-Write-Host "🔧 Membuat firewall rule baru..." -ForegroundColor Cyan
+Write-Host "Membuat firewall rule baru..." -ForegroundColor Cyan
 
 try {
     New-NetFirewallRule `
@@ -57,10 +57,10 @@ try {
         -Profile Any `
         -Description "Allow inbound connections to Inventaris Lab Komputer on port 8080" | Out-Null
     
-    Write-Host "✅ Firewall rule berhasil dibuat!" -ForegroundColor Green
+    Write-Host "Firewall rule berhasil dibuat!" -ForegroundColor Green
     Write-Host ""
 } catch {
-    Write-Host "❌ ERROR: Gagal membuat firewall rule" -ForegroundColor Red
+    Write-Host "ERROR: Gagal membuat firewall rule" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     Write-Host ""
     Read-Host "Tekan Enter untuk keluar"
@@ -68,7 +68,7 @@ try {
 }
 
 # Get IP Address
-Write-Host "📡 Mencari IP Address..." -ForegroundColor Cyan
+Write-Host "Mencari IP Address..." -ForegroundColor Cyan
 Write-Host ""
 
 $ipAddresses = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { 
@@ -77,7 +77,7 @@ $ipAddresses = Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
 }
 
 if ($ipAddresses) {
-    Write-Host "🌐 IP Address yang tersedia:" -ForegroundColor Green
+    Write-Host "IP Address yang tersedia:" -ForegroundColor Green
     Write-Host ""
     
     foreach ($ip in $ipAddresses) {
@@ -96,7 +96,7 @@ if ($ipAddresses) {
     
     if ($activeIP) {
         Write-Host "========================================" -ForegroundColor Green
-        Write-Host "  ✅ SETUP SELESAI!" -ForegroundColor Green
+        Write-Host "  SETUP SELESAI!" -ForegroundColor Green
         Write-Host "========================================" -ForegroundColor Green
         Write-Host ""
         Write-Host "Untuk akses dari HP/device lain:" -ForegroundColor Yellow
@@ -110,19 +110,19 @@ if ($ipAddresses) {
         Write-Host ""
     }
 } else {
-    Write-Host "⚠️  Tidak ada IP address yang ditemukan" -ForegroundColor Yellow
+    Write-Host "Tidak ada IP address yang ditemukan" -ForegroundColor Yellow
     Write-Host "Jalankan 'ipconfig' untuk cek IP address manual" -ForegroundColor Yellow
     Write-Host ""
 }
 
 # Test if port is listening
-Write-Host "🔍 Mengecek apakah server sudah berjalan..." -ForegroundColor Cyan
+Write-Host "Mengecek apakah server sudah berjalan..." -ForegroundColor Cyan
 $portTest = Test-NetConnection -ComputerName localhost -Port 8080 -WarningAction SilentlyContinue
 
 if ($portTest.TcpTestSucceeded) {
-    Write-Host "✅ Server sudah berjalan di port 8080" -ForegroundColor Green
+    Write-Host "Server sudah berjalan di port 8080" -ForegroundColor Green
 } else {
-    Write-Host "⚠️  Server belum berjalan" -ForegroundColor Yellow
+    Write-Host "Server belum berjalan" -ForegroundColor Yellow
     Write-Host "Jalankan: go run cmd/server/main.go" -ForegroundColor Yellow
 }
 
