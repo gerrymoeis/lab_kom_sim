@@ -1,0 +1,72 @@
+{{ define "content" }}
+{{ template "navbar" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-hdd-rack"></i> Daftar Perangkat</h2>
+            <p class="text-muted">Manajemen perangkat lain di laboratorium</p>
+        </div>
+        <div class="col-md-6 text-end">
+            {{ if eq .role "admin" }}
+            <a href="/devices/create" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Tambah Perangkat
+            </a>
+            {{ end }}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nama</th>
+                            <th>Kategori</th>
+                            <th>Merk</th>
+                            <th>Kondisi</th>
+                            <th>Lokasi</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range .devices }}
+                        <tr>
+                            <td><strong>{{ .Name }}</strong></td>
+                            <td>
+                                <span class="badge bg-secondary">{{ .Category }}</span>
+                            </td>
+                            <td>{{ if .Brand }}{{ .Brand }}{{ else }}-{{ end }}</td>
+                            <td>
+                                <span class="badge bg-{{ if eq .Condition "baik" }}success{{ else if eq .Condition "maintenance" }}warning{{ else }}danger{{ end }}">
+                                    {{ .Condition }}
+                                </span>
+                            </td>
+                            <td>{{ if .Location }}{{ .Location }}{{ else }}-{{ end }}</td>
+                            <td>
+                                {{ if eq $.role "admin" }}
+                                <a href="/devices/{{ .ID }}/edit" class="btn btn-sm btn-warning">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="POST" action="/devices/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirmDelete()">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {{ end }}
+                            </td>
+                        </tr>
+                        {{ else }}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">Belum ada data perangkat</td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ end }}

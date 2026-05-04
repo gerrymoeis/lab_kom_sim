@@ -1,0 +1,88 @@
+{{ define "content" }}
+{{ template "navbar" . }}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Tambah PC Baru</h5>
+                </div>
+                <div class="card-body">
+                    {{ if .error }}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> {{ .error }}
+                    </div>
+                    {{ end }}
+
+                    <form method="POST" action="/pc/create">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="pc_number" class="form-label">Nomor PC *</label>
+                                <input type="number" class="form-control" id="pc_number" name="pc_number" min="1" max="40" required>
+                                <small class="text-muted">1-40</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="row" class="form-label">Baris *</label>
+                                <input type="number" class="form-control" id="row" name="row" min="1" max="5" required>
+                                <small class="text-muted">1-5</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="column" class="form-label">Kolom *</label>
+                                <input type="number" class="form-control" id="column" name="column" min="1" max="8" required>
+                                <small class="text-muted">1-8</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status *</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="normal">Normal</option>
+                                <option value="warning">Warning</option>
+                                <option value="broken">Rusak</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="processor" class="form-label">Processor</label>
+                            <input type="text" class="form-control" id="processor" name="processor" placeholder="Contoh: Intel Core i5-10400">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="ram" class="form-label">RAM</label>
+                                <input type="text" class="form-control" id="ram" name="ram" placeholder="Contoh: 8GB DDR4">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="storage" class="form-label">Storage</label>
+                                <input type="text" class="form-control" id="storage" name="storage" placeholder="Contoh: 256GB SSD">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
+                            <input type="date" class="form-control" id="purchase_date" name="purchase_date">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Catatan</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Catatan tambahan..."></textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Simpan
+                            </button>
+                            <a href="/pc" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Batal
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ end }}

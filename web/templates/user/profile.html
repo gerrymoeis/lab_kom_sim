@@ -1,0 +1,86 @@
+{{ define "content" }}
+{{ template "navbar" . }}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-person-circle"></i> Profil Saya</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Username</th>
+                            <td>{{ .user.Username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Nama Lengkap</th>
+                            <td>{{ .user.FullName }}</td>
+                        </tr>
+                        <tr>
+                            <th>Role</th>
+                            <td>
+                                <span class="badge bg-{{ if eq .user.Role "admin" }}danger{{ else }}info{{ end }}">
+                                    {{ .user.Role }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Akun Dibuat</th>
+                            <td>{{ .user.CreatedAt }}</td>
+                        </tr>
+                    </table>
+
+                    <hr>
+
+                    <h6>Ganti Password</h6>
+                    <form id="changePasswordForm" method="POST" action="/profile/password">
+                        <div class="mb-3">
+                            <label for="old_password" class="form-label">Password Lama</label>
+                            <input type="password" class="form-control" id="old_password" name="old_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">Password Baru</label>
+                            <input type="password" class="form-control" id="new_password" name="new_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Konfirmasi Password Baru</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-key"></i> Ganti Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('changePasswordForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/profile/password', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Password berhasil diubah!');
+            this.reset();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Terjadi kesalahan: ' + error);
+    });
+});
+</script>
+
+{{ end }}

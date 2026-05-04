@@ -1,0 +1,107 @@
+package handlers
+
+import (
+	"database/sql"
+	"net/http"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// LoginPage renders login page
+func (h *Handler) LoginPage(c *gin.Context) {
+	// Check if already logged in
+	session := sessions.Default(c)
+	if userID := session.Get("user_id"); userID != nil {
+		c.Redirect(http.StatusFound, "/dashboard")
+		return
+	}
+
+	c.HTML(http.StatusOK, "login.html", gin.H{
+		"title": "Login - Sistem Inventaris Lab",
+	})
+}
+
+// Login handles login form submission
+func (h *Handler) Login(c *gin.Context) {
+	username := c.PostForm("username")
+	password := c.PostForm("password")
+
+	// Validate input
+	if username == "" || password == "" {
+		c.HTML(http.StatusBadRequest, "login.html", gin.H{
+			"title": "Login - Sistem Inventaris Lab",
+			"error": "Username dan password harus diisi",
+		})
+		return
+	}
+
+	// Query user from database
+	var userID int
+	var hashedPassword, fullName, role string
+	err := h.db.QueryRow(`
+		SELECT id, password, full_name, role 
+		FROM users 
+		WHERE username = ?
+	`, username).Scan(&userID, &hashedPassword, &fullName, &role)
+
+	if err == sql.ErrNoRows {
+		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
+			"title": "Login - Sistem Inventaris Lab",
+			"error": "Username atau password salah",
+		})
+		return
+	}
+
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
+			"title": "Login - Sistem Inventaris Lab",
+			"error": "Terjadi kesalahan sistem",
+		})
+		return
+	}
+
+	// Verify password
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
+			"title": "Login - Sistem Inventaris Lab",
+			"error": "Username atau password salah",
+		})
+		return
+	}
+
+	// Set session
+	session := sessions.Default(c)
+	session.Set("user_id", userID)
+	session.Set("username", username)
+	session.Set("full_name", fullName)
+	session.Set("role", role)
+	if err := session.Save(); err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
+			"title": "Login - Sistem Inventaris Lab",
+			"error": "Gagal menyimpan session",
+		})
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/dashboard")
+}
+
+// Logout handles logout
+func (h *Handler) Logout(c *gin.Context) {
+	session := sessions.Default(c)
+	session.Clear()
+	session.Save()
+	c.Redirect(http.StatusFound, "/login")
+}
+
+// Home redirects to dashboard or login
+func (h *Handler) Home(c *gin.Context) {
+	session := sessions.Default(c)
+	if userID := session.Get("user_id"); userID != nil {
+		c.Redirect(http.StatusFound, "/dashboard")
+		return
+	}
+	c.Redirect(http.StatusFound, "/login")
+}

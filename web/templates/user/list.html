@@ -1,0 +1,61 @@
+{{ define "content" }}
+{{ template "navbar" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-people"></i> Manajemen User</h2>
+            <p class="text-muted">Kelola akun admin dan dosen</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="/admin/users/create" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Tambah User
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Username</th>
+                            <th>Nama Lengkap</th>
+                            <th>Role</th>
+                            <th>Dibuat</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range .users }}
+                        <tr>
+                            <td><strong>{{ .Username }}</strong></td>
+                            <td>{{ .FullName }}</td>
+                            <td>
+                                <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">
+                                    {{ .Role }}
+                                </span>
+                            </td>
+                            <td>{{ .CreatedAt }}</td>
+                            <td>
+                                <form method="POST" action="/admin/users/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirmDelete('Hapus user ini?')">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash"></i> Hapus
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {{ else }}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">Belum ada user</td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ end }}

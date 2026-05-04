@@ -1,0 +1,93 @@
+{{ define "content" }}
+{{ template "navbar" . }}
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-pc-display"></i> Detail PC-{{ printf "%02d" .pc.PCNumber }}</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Nomor PC</th>
+                            <td><strong>PC-{{ printf "%02d" .pc.PCNumber }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Posisi</th>
+                            <td>Baris {{ .pc.Row }}, Kolom {{ .pc.Column }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status</th>
+                            <td>
+                                <span class="badge bg-{{ if eq .pc.Status "normal" }}success{{ else if eq .pc.Status "warning" }}warning{{ else if eq .pc.Status "broken" }}danger{{ else }}secondary{{ end }}">
+                                    {{ .pc.Status }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Processor</th>
+                            <td>{{ if .pc.Processor }}{{ .pc.Processor }}{{ else }}-{{ end }}</td>
+                        </tr>
+                        <tr>
+                            <th>RAM</th>
+                            <td>{{ if .pc.RAM }}{{ .pc.RAM }}{{ else }}-{{ end }}</td>
+                        </tr>
+                        <tr>
+                            <th>Storage</th>
+                            <td>{{ if .pc.Storage }}{{ .pc.Storage }}{{ else }}-{{ end }}</td>
+                        </tr>
+                        <tr>
+                            <th>Tanggal Pembelian</th>
+                            <td>{{ if .pc.PurchaseDate }}{{ .pc.PurchaseDate }}{{ else }}-{{ end }}</td>
+                        </tr>
+                        <tr>
+                            <th>Terakhir Dicek</th>
+                            <td>{{ if .pc.LastChecked }}{{ .pc.LastChecked }}{{ else }}-{{ end }}</td>
+                        </tr>
+                        <tr>
+                            <th>Catatan</th>
+                            <td>{{ if .pc.Notes }}{{ .pc.Notes }}{{ else }}-{{ end }}</td>
+                        </tr>
+                    </table>
+
+                    <div class="d-flex gap-2">
+                        {{ if eq .role "admin" }}
+                        <a href="/pc/{{ .pc.ID }}/edit" class="btn btn-warning">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        {{ end }}
+                        <a href="/pc" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Kembali
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="bi bi-app-indicator"></i> Software Terinstall</h6>
+                </div>
+                <div class="card-body">
+                    {{ if .software }}
+                    <ul class="list-group list-group-flush">
+                        {{ range .software }}
+                        <li class="list-group-item">
+                            <strong>{{ .Name }}</strong>
+                            {{ if .Version }}<br><small class="text-muted">v{{ .Version }}</small>{{ end }}
+                        </li>
+                        {{ end }}
+                    </ul>
+                    {{ else }}
+                    <p class="text-muted text-center">Belum ada software yang tercatat</p>
+                    {{ end }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ end }}

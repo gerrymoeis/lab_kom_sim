@@ -1,0 +1,61 @@
+{{ define "layout/navbar.html" }}
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/dashboard">
+            <i class="bi bi-pc-display-horizontal" aria-hidden="true"></i>
+            Inventaris Lab Kom
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/dashboard">
+                        <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/pc">
+                        <i class="bi bi-pc-display" aria-hidden="true"></i> PC
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/devices">
+                        <i class="bi bi-hdd-rack" aria-hidden="true"></i> Perangkat
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/software">
+                        <i class="bi bi-app-indicator" aria-hidden="true"></i> Software
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/logbook">
+                        <i class="bi bi-journal-text" aria-hidden="true"></i> Logbook
+                    </a>
+                </li>
+                {{ if eq .role "admin" }}
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin/users">
+                        <i class="bi bi-people" aria-hidden="true"></i> Users
+                    </a>
+                </li>
+                {{ end }}
+            </ul>
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Menu pengguna {{ .username }}">
+                        <i class="bi bi-person-circle" aria-hidden="true"></i> {{ .username }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item" href="/profile"><i class="bi bi-person" aria-hidden="true"></i> Profil</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+{{ end }}

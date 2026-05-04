@@ -1,0 +1,104 @@
+{{ define "content" }}
+{{ template "navbar" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-app-indicator"></i> Tracking Software</h2>
+            <p class="text-muted">Daftar software yang terinstall di PC</p>
+        </div>
+        <div class="col-md-6 text-end">
+            {{ if eq .role "admin" }}
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSoftwareModal">
+                <i class="bi bi-plus-circle"></i> Tambah Software
+            </button>
+            {{ end }}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>PC</th>
+                            <th>Nama Software</th>
+                            <th>Versi</th>
+                            <th>Lisensi</th>
+                            <th>Tanggal Install</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range .software }}
+                        <tr>
+                            <td><strong>PC-{{ printf "%02d" .PCNumber }}</strong></td>
+                            <td>{{ .Name }}</td>
+                            <td>{{ if .Version }}{{ .Version }}{{ else }}-{{ end }}</td>
+                            <td>{{ if .License }}{{ .License }}{{ else }}-{{ end }}</td>
+                            <td>{{ if .InstallDate }}{{ .InstallDate }}{{ else }}-{{ end }}</td>
+                            <td>{{ if .Notes }}{{ .Notes }}{{ else }}-{{ end }}</td>
+                        </tr>
+                        {{ else }}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">Belum ada data software</td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Software Modal -->
+<div class="modal fade" id="addSoftwareModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tambah Software</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="/software/create">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="pc_id" class="form-label">PC *</label>
+                        <select class="form-select" id="pc_id" name="pc_id" required>
+                            <option value="">Pilih PC...</option>
+                            {{ range .pcs }}
+                            <option value="{{ .ID }}">PC-{{ printf "%02d" .PCNumber }}</option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nama Software *</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="version" class="form-label">Versi</label>
+                        <input type="text" class="form-control" id="version" name="version">
+                    </div>
+                    <div class="mb-3">
+                        <label for="license" class="form-label">Lisensi</label>
+                        <input type="text" class="form-control" id="license" name="license">
+                    </div>
+                    <div class="mb-3">
+                        <label for="install_date" class="form-label">Tanggal Install</label>
+                        <input type="date" class="form-control" id="install_date" name="install_date">
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Catatan</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{ end }}

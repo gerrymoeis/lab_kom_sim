@@ -1,0 +1,76 @@
+{{ define "content" }}
+{{ template "navbar" . }}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Perangkat</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/devices/{{ .device.ID }}/edit">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nama Perangkat *</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ .device.Name }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Kategori *</label>
+                            <select class="form-select" id="category" name="category" required>
+                                <option value="printer" {{ if eq .device.Category "printer" }}selected{{ end }}>Printer</option>
+                                <option value="router" {{ if eq .device.Category "router" }}selected{{ end }}>Router</option>
+                                <option value="speaker" {{ if eq .device.Category "speaker" }}selected{{ end }}>Speaker</option>
+                                <option value="pc_cadangan" {{ if eq .device.Category "pc_cadangan" }}selected{{ end }}>PC Cadangan</option>
+                                <option value="komputer_labor" {{ if eq .device.Category "komputer_labor" }}selected{{ end }}>Komputer Labor</option>
+                                <option value="komputer_dosen" {{ if eq .device.Category "komputer_dosen" }}selected{{ end }}>Komputer Dosen</option>
+                                <option value="lainnya" {{ if eq .device.Category "lainnya" }}selected{{ end }}>Lainnya</option>
+                            </select>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="brand" class="form-label">Merk</label>
+                                <input type="text" class="form-control" id="brand" name="brand" value="{{ .device.Brand }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="condition" class="form-label">Kondisi *</label>
+                                <select class="form-select" id="condition" name="condition" required>
+                                    <option value="baik" {{ if eq .device.Condition "baik" }}selected{{ end }}>Baik</option>
+                                    <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
+                                    <option value="maintenance" {{ if eq .device.Condition "maintenance" }}selected{{ end }}>Maintenance</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="location" class="form-label">Lokasi</label>
+                            <input type="text" class="form-control" id="location" name="location" value="{{ .device.Location }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
+                            <input type="date" class="form-control" id="purchase_date" name="purchase_date" value="{{ .purchaseDate }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Catatan</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ .device.Notes }}</textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-save"></i> Update
+                            </button>
+                            <a href="/devices" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Batal
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ end }}
