@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -114,7 +115,20 @@ Rules:
 1. Extract ALL rows from the table
 2. If a field is empty or unclear, use empty string ""
 3. For date, try to parse to YYYY-MM-DD format
-4. For time, use HH:MM format (24-hour)
+
+4. IMPORTANT - For time fields:
+   - If you see a COMBINED time range like "13.00 - 14.40" or "13:00 - 14:40":
+     * SPLIT it into two separate times
+     * Put the START time in "time_in" field
+     * Put the END time in "time_out" field
+   - If you see dots (.) in time format, CONVERT them to colons (:)
+   - Examples:
+     * Input: "13.00 - 14.40" → Output: time_in="13:00", time_out="14:40"
+     * Input: "09.00 - 10.20" → Output: time_in="09:00", time_out="10:20"
+     * Input: "14:00 - 16:00" → Output: time_in="14:00", time_out="16:00"
+   - If only ONE time is visible, put it in "time_in" and leave "time_out" empty
+   - Always use HH:MM format (24-hour)
+
 5. Return ONLY valid JSON, no additional text
 6. If you cannot read the handwriting clearly, make your best guess
 
@@ -241,9 +255,80 @@ Please extract the data now:`
 		}, nil
 	}
 
+	// Normalize time format for all entries (post-processing fallback)
+	for i := range result.Entries {
+		normalizeTimeEntry(&result.Entries[i])
+	}
+
 	return &OCRResult{
 		Success: true,
 		Entries: result.Entries,
 		RawText: responseText,
 	}, nil
+}
+
+// normalizeTimeEntry normalizes time format in logbook entry
+// Handles combined time ranges and dot-to-colon conversion
+func normalizeTimeEntry(entry *LogbookEntry) {
+	// Handle combined time range in time_in field
+	// Pattern: "HH.MM - HH.MM" or "HH:MM - HH:MM"
+	if strings.Contains(entry.TimeIn, "-") {
+		parts := strings.Split(entry.TimeIn, "-")
+		if len(parts) == 2 {
+			entry.TimeIn = strings.TrimSpace(parts[0])
+			// Only set time_out if it's empty
+			if entry.TimeOut == "" {
+				entry.TimeOut = strings.TrimSpace(parts[1])
+			}
+		}
+	}
+	
+	// Convert dots to colons in both fields
+	entry.TimeIn = strings.ReplaceAll(entry.TimeIn, ".", ":")
+	entry.TimeOut = strings.ReplaceAll(entry.TimeOut, ".", ":")
+	
+	// Validate and pad time format (ensure HH:MM)
+	entry.TimeIn = normalizeTimeFormat(entry.TimeIn)
+	entry.TimeOut = normalizeTimeFormat(entry.TimeOut)
+}
+
+// normalizeTimeFormat ensures time is in HH:MM format
+func normalizeTimeFormat(timeStr string) string {
+	if timeStr == "" {
+		return ""
+	}
+	
+	// Remove any extra spaces
+	timeStr = strings.TrimSpace(timeStr)
+	
+	// If already in HH:MM format, return as is
+	if matched, _ := regexp.MatchString(`^\d{2}:\d{2}$`, timeStr); matched {
+		return timeStr
+	}
+	
+	// Try to parse and reformat
+	// Handle formats like "9:00" → "09:00"
+	parts := strings.Split(timeStr, ":")
+	if len(parts) == 2 {
+		hour := strings.TrimSpace(parts[0])
+		minute := strings.TrimSpace(parts[1])
+		
+		// Pad with zero if needed
+		if len(hour) == 1 {
+			hour = "0" + hour
+		}
+		if len(minute) == 1 {
+			minute = "0" + minute
+		}
+		
+		// Validate hour and minute are numeric
+		if matched, _ := regexp.MatchString(`^\d+$`, hour); matched {
+			if matched, _ := regexp.MatchString(`^\d+$`, minute); matched {
+				return hour + ":" + minute
+			}
+		}
+	}
+	
+	// If cannot parse, return as is
+	return timeStr
 }
