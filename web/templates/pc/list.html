@@ -40,10 +40,11 @@
                     <thead class="table-light">
                         <tr>
                             <th>No. PC</th>
+                            <th>S/N</th>
+                            <th>Merek & Model</th>
                             <th>Posisi</th>
                             <th>Status</th>
                             <th>Spesifikasi</th>
-                            <th>Catatan</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -51,6 +52,8 @@
                         {{ range .pcs }}
                         <tr>
                             <td><strong>PC-{{ printf "%02d" .PCNumber }}</strong></td>
+                            <td>{{ if .SerialNumber }}<small><code>{{ .SerialNumber }}</code></small>{{ else }}-{{ end }}</td>
+                            <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else if .Brand }}{{ .Brand }}{{ if .Model }} {{ .Model }}{{ end }}{{ else }}-{{ end }}</td>
                             <td>Baris {{ .Row }}, Kolom {{ .Column }}</td>
                             <td>
                                 <span class="badge bg-{{ if eq .Status "normal" }}success{{ else if eq .Status "warning" }}warning{{ else if eq .Status "broken" }}danger{{ else }}secondary{{ end }}">
@@ -58,9 +61,10 @@
                                 </span>
                             </td>
                             <td>
-                                {{ if .Processor }}{{ .Processor }}{{ else }}-{{ end }}{{ if .RAM }} | {{ .RAM }}{{ end }}{{ if .Storage }} | {{ .Storage }}{{ end }}{{ if .OperatingSystem }} | {{ .OperatingSystem }}{{ end }}
+                                <small>
+                                {{ if .Processor }}{{ .Processor }}{{ else }}-{{ end }}{{ if .RAM }} | {{ .RAM }}{{ end }}{{ if .Storage }} | {{ .Storage }}{{ end }}{{ if .OperatingSystem }}<br>{{ .OperatingSystem }}{{ end }}
+                                </small>
                             </td>
-                            <td>{{ if .Notes }}{{ .Notes }}{{ else }}-{{ end }}</td>
                             <td>
                                 <a href="/pc/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
                                     <i class="bi bi-eye"></i>
@@ -79,7 +83,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="6" class="text-center text-muted">Belum ada data PC</td>
+                            <td colspan="7" class="text-center text-muted">Belum ada data PC</td>
                         </tr>
                         {{ end }}
                     </tbody>

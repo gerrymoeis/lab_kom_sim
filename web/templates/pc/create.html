@@ -26,7 +26,7 @@
                     </div>
                     {{ end }}
 
-                    <form method="POST" action="/pc/create">
+                    <form method="POST" action="/pc/create" enctype="multipart/form-data">
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="pc_number" class="form-label">Nomor PC *</label>
@@ -55,27 +55,72 @@
                             </select>
                         </div>
 
+                        <hr class="my-4">
+                        <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Informasi Perangkat</h6>
+
                         <div class="mb-3">
-                            <label for="processor" class="form-label">Processor</label>
-                            <input type="text" class="form-control" id="processor" name="processor" placeholder="Contoh: Intel Core i5-10400">
+                            <label for="device_type" class="form-label">Jenis Data *</label>
+                            <input type="text" class="form-control" id="device_type" name="device_type" value="PC All-in-one" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="serial_number" class="form-label">Serial Number (S/N) *</label>
+                            <input type="text" class="form-control" id="serial_number" name="serial_number" placeholder="Contoh: 0A23460005250060214" required>
+                            <small class="text-muted">Nomor seri unik perangkat</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="brand_model" class="form-label">Merek dan Model *</label>
+                            <input type="text" class="form-control" id="brand_model" name="brand_model" value="Axioo Mypc One Pro K7-24 (16N9)" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="accessories" class="form-label">Perangkat Tambahan *</label>
+                            <input type="text" class="form-control" id="accessories" name="accessories" value="Keyboard & Mouse Axioo (Wired Set)" required>
+                        </div>
+
+                        <hr class="my-4">
+                        <h6 class="text-primary mb-3"><i class="bi bi-cpu"></i> Spesifikasi</h6>
+
+                        <div class="mb-3">
+                            <label for="processor" class="form-label">Processor *</label>
+                            <input type="text" class="form-control" id="processor" name="processor" value="Intel Core i7" required>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="ram" class="form-label">RAM</label>
-                                <input type="text" class="form-control" id="ram" name="ram" placeholder="Contoh: 8GB DDR4">
+                                <label for="ram" class="form-label">Memory (RAM) *</label>
+                                <input type="text" class="form-control" id="ram" name="ram" value="16GB DDR4" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="storage" class="form-label">Storage</label>
-                                <input type="text" class="form-control" id="storage" name="storage" placeholder="Contoh: 256GB SSD">
+                                <label for="storage" class="form-label">Storage *</label>
+                                <input type="text" class="form-control" id="storage" name="storage" value="1TB NVMe" required>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="operating_system" class="form-label">Sistem Operasi</label>
-                            <input type="text" class="form-control" id="operating_system" name="operating_system" placeholder="Contoh: Windows 11 Pro 25H2">
+                            <label for="operating_system" class="form-label">Sistem Operasi *</label>
+                            <input type="text" class="form-control" id="operating_system" name="operating_system" placeholder="Contoh: Windows 11 Pro 25H2" required>
                             <small class="text-muted">Contoh: Windows 11 Pro 25H2, Windows 10 Pro 23H2, Ubuntu 22.04 LTS</small>
                         </div>
+
+                        <hr class="my-4">
+                        <h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Dokumentasi Foto (Optional)</h6>
+
+                        <div class="mb-3">
+                            <label for="photo_serial" class="form-label">Foto Serial Number + Barcode</label>
+                            <input type="file" class="form-control" id="photo_serial" name="photo_serial" accept="image/jpeg,image/png">
+                            <small class="text-muted">Close-up foto S/N dan barcode (biasanya di belakang monitor). Max 5MB, format JPEG/PNG</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="photo_front" class="form-label">Foto Tampilan Depan</label>
+                            <input type="file" class="form-control" id="photo_front" name="photo_front" accept="image/jpeg,image/png">
+                            <small class="text-muted">Full view PC menyala dengan monitor, keyboard, dan mouse terlihat. Max 5MB, format JPEG/PNG</small>
+                        </div>
+
+                        <hr class="my-4">
+                        <h6 class="text-primary mb-3"><i class="bi bi-clipboard-data"></i> Informasi Tambahan</h6>
 
                         <div class="mb-3">
                             <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
@@ -85,6 +130,12 @@
                         <div class="mb-3">
                             <label for="notes" class="form-label">Catatan</label>
                             <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Catatan tambahan..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="action_notes" class="form-label">Catatan Tindakan</label>
+                            <textarea class="form-control" id="action_notes" name="action_notes" rows="2" placeholder="Catatan tindakan perbaikan atau maintenance (jika ada)"></textarea>
+                            <small class="text-muted">Optional: Catat tindakan perbaikan, upgrade, atau maintenance yang dilakukan</small>
                         </div>
 
                         <div class="d-flex gap-2">

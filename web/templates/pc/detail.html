@@ -35,18 +35,6 @@
                             <th>Posisi</th>
                             <td>Baris {{ .pc.Row }}, Kolom {{ .pc.Column }}</td>
                         </tr>
-                        {{ if .pc.Brand }}
-                        <tr>
-                            <th>Merek & Model</th>
-                            <td>{{ .pc.Brand }}{{ if .pc.Model }} - {{ .pc.Model }}{{ end }}</td>
-                        </tr>
-                        {{ end }}
-                        {{ if .pc.SerialNumber }}
-                        <tr>
-                            <th>Serial Number</th>
-                            <td><code>{{ .pc.SerialNumber }}</code></td>
-                        </tr>
-                        {{ end }}
                         <tr>
                             <th>Status</th>
                             <td>
@@ -55,22 +43,51 @@
                                 </span>
                             </td>
                         </tr>
-                        {{ if .pc.PhysicalCondition }}
+                    </table>
+
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Informasi Perangkat</h6>
+                    <table class="table table-bordered">
+                        {{ if .pc.DeviceType }}
                         <tr>
-                            <th>Kondisi Fisik</th>
-                            <td>
-                                <span class="badge bg-{{ if eq .pc.PhysicalCondition "baik" }}success{{ else if eq .pc.PhysicalCondition "cukup" }}warning{{ else }}danger{{ end }}">
-                                    {{ .pc.PhysicalCondition }}
-                                </span>
-                            </td>
+                            <th width="30%">Jenis Data</th>
+                            <td>{{ .pc.DeviceType }}</td>
                         </tr>
                         {{ end }}
+                        {{ if .pc.SerialNumber }}
                         <tr>
-                            <th>Processor</th>
+                            <th>Serial Number</th>
+                            <td><code>{{ .pc.SerialNumber }}</code></td>
+                        </tr>
+                        {{ end }}
+                        {{ if .pc.BrandModel }}
+                        <tr>
+                            <th>Merek & Model</th>
+                            <td>{{ .pc.BrandModel }}</td>
+                        </tr>
+                        {{ else if .pc.Brand }}
+                        <tr>
+                            <th>Merek & Model</th>
+                            <td>{{ .pc.Brand }}{{ if .pc.Model }} - {{ .pc.Model }}{{ end }}</td>
+                        </tr>
+                        {{ end }}
+                        {{ if .pc.Accessories }}
+                        <tr>
+                            <th>Perangkat Tambahan</th>
+                            <td>{{ .pc.Accessories }}</td>
+                        </tr>
+                        {{ end }}
+                    </table>
+
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="bi bi-cpu"></i> Spesifikasi</h6>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Processor</th>
                             <td>{{ if .pc.Processor }}{{ .pc.Processor }}{{ else }}-{{ end }}</td>
                         </tr>
                         <tr>
-                            <th>RAM</th>
+                            <th>Memory (RAM)</th>
                             <td>{{ if .pc.RAM }}{{ .pc.RAM }}{{ else }}-{{ end }}</td>
                         </tr>
                         <tr>
@@ -83,27 +100,74 @@
                             <td>{{ .pc.OperatingSystem }}</td>
                         </tr>
                         {{ end }}
+                        {{ if .pc.PhysicalCondition }}
                         <tr>
-                            <th>Tanggal Pembelian</th>
+                            <th>Kondisi Fisik</th>
+                            <td>
+                                <span class="badge bg-{{ if eq .pc.PhysicalCondition "baik" }}success{{ else if eq .pc.PhysicalCondition "cukup" }}warning{{ else }}danger{{ end }}">
+                                    {{ .pc.PhysicalCondition }}
+                                </span>
+                            </td>
+                        </tr>
+                        {{ end }}
+                    </table>
+
+                    {{ if or .pc.PhotoSerial .pc.PhotoFront }}
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Dokumentasi Foto</h6>
+                    <div class="row">
+                        {{ if .pc.PhotoSerial }}
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <img src="/uploads/pc/{{ .pc.PhotoSerial }}" class="card-img-top" alt="Foto Serial Number">
+                                <div class="card-body">
+                                    <p class="card-text small text-muted mb-0">Foto Serial Number + Barcode</p>
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+                        {{ if .pc.PhotoFront }}
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <img src="/uploads/pc/{{ .pc.PhotoFront }}" class="card-img-top" alt="Foto Tampilan Depan">
+                                <div class="card-body">
+                                    <p class="card-text small text-muted mb-0">Foto Tampilan Depan</p>
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+                    </div>
+                    {{ end }}
+
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="bi bi-clipboard-data"></i> Informasi Tambahan</h6>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="30%">Tanggal Pembelian</th>
                             <td>{{ if .pc.PurchaseDate }}{{ .pc.PurchaseDate }}{{ else }}-{{ end }}</td>
                         </tr>
                         <tr>
                             <th>Terakhir Dicek</th>
                             <td>{{ if .pc.LastChecked }}{{ .pc.LastChecked }}{{ else }}-{{ end }}</td>
                         </tr>
+                        {{ if .pc.Notes }}
                         <tr>
                             <th>Catatan</th>
-                            <td>{{ if .pc.Notes }}{{ .pc.Notes }}{{ else }}-{{ end }}</td>
+                            <td>{{ .pc.Notes }}</td>
                         </tr>
+                        {{ end }}
+                        {{ if .pc.ActionNotes }}
+                        <tr>
+                            <th>Catatan Tindakan</th>
+                            <td>{{ .pc.ActionNotes }}</td>
+                        </tr>
+                        {{ end }}
                     </table>
 
                     <div class="d-flex gap-2">
                         {{ if eq .role "admin" }}
                         <a href="/pc/{{ .pc.ID }}/edit" class="btn btn-warning">
                             <i class="bi bi-pencil"></i> Edit
-                        </a>
-                        <a href="/pc/{{ .pc.ID }}/asset-info" class="btn btn-primary">
-                            <i class="bi bi-clipboard-data"></i> Input Aset Lengkap
                         </a>
                         {{ end }}
                         <a href="/pc" class="btn btn-secondary">

@@ -2,12 +2,16 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,6 +28,7 @@ func (h *Handler) PCList(c *gin.Context) {
 		SELECT id, pc_number, row, column, status, processor, ram, storage, 
 		       purchase_date, notes, last_checked, 
 		       asset_id, serial_number, brand, model, operating_system, physical_condition,
+		       device_type, brand_model, accessories, action_notes, photo_serial, photo_front,
 		       created_at, updated_at
 		FROM pcs
 		ORDER BY pc_number
@@ -42,12 +47,14 @@ func (h *Handler) PCList(c *gin.Context) {
 		var pc models.PC
 		var processor, ram, storage, notes sql.NullString
 		var assetID, serialNumber, brand, model, operatingSystem, physicalCondition sql.NullString
+		var deviceType, brandModel, accessories, actionNotes, photoSerial, photoFront sql.NullString
 		var purchaseDate, lastChecked sql.NullTime
 		
 		err := rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
 			&processor, &ram, &storage, &purchaseDate, &notes,
 			&lastChecked, 
 			&assetID, &serialNumber, &brand, &model, &operatingSystem, &physicalCondition,
+			&deviceType, &brandModel, &accessories, &actionNotes, &photoSerial, &photoFront,
 			&pc.CreatedAt, &pc.UpdatedAt)
 		if err != nil {
 			continue
@@ -84,6 +91,24 @@ func (h *Handler) PCList(c *gin.Context) {
 		if physicalCondition.Valid {
 			pc.PhysicalCondition = physicalCondition.String
 		}
+		if deviceType.Valid {
+			pc.DeviceType = deviceType.String
+		}
+		if brandModel.Valid {
+			pc.BrandModel = brandModel.String
+		}
+		if accessories.Valid {
+			pc.Accessories = accessories.String
+		}
+		if actionNotes.Valid {
+			pc.ActionNotes = actionNotes.String
+		}
+		if photoSerial.Valid {
+			pc.PhotoSerial = photoSerial.String
+		}
+		if photoFront.Valid {
+			pc.PhotoFront = photoFront.String
+		}
 		if purchaseDate.Valid {
 			pc.PurchaseDate = &purchaseDate.Time
 		}
@@ -116,18 +141,21 @@ func (h *Handler) PCDetail(c *gin.Context) {
 	
 	// Use sql.NullString for nullable fields
 	var processor, ram, storage, assetID, serialNumber, brand, model, operatingSystem, physicalCondition, notes sql.NullString
+	var deviceType, brandModel, accessories, actionNotes, photoSerial, photoFront sql.NullString
 	var purchaseDate, lastChecked sql.NullTime
 	
 	err := h.db.QueryRow(`
 		SELECT id, pc_number, row, column, status, processor, ram, storage,
 		       purchase_date, notes, last_checked,
 		       asset_id, serial_number, brand, model, operating_system, physical_condition,
+		       device_type, brand_model, accessories, action_notes, photo_serial, photo_front,
 		       created_at, updated_at
 		FROM pcs WHERE id = ?
 	`, id).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
 		&processor, &ram, &storage, &purchaseDate, &notes,
 		&lastChecked,
 		&assetID, &serialNumber, &brand, &model, &operatingSystem, &physicalCondition,
+		&deviceType, &brandModel, &accessories, &actionNotes, &photoSerial, &photoFront,
 		&pc.CreatedAt, &pc.UpdatedAt)
 
 	if err == sql.ErrNoRows {
@@ -176,6 +204,24 @@ func (h *Handler) PCDetail(c *gin.Context) {
 	}
 	if notes.Valid {
 		pc.Notes = notes.String
+	}
+	if deviceType.Valid {
+		pc.DeviceType = deviceType.String
+	}
+	if brandModel.Valid {
+		pc.BrandModel = brandModel.String
+	}
+	if accessories.Valid {
+		pc.Accessories = accessories.String
+	}
+	if actionNotes.Valid {
+		pc.ActionNotes = actionNotes.String
+	}
+	if photoSerial.Valid {
+		pc.PhotoSerial = photoSerial.String
+	}
+	if photoFront.Valid {
+		pc.PhotoFront = photoFront.String
 	}
 	if purchaseDate.Valid {
 		pc.PurchaseDate = &purchaseDate.Time
@@ -237,16 +283,28 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		return
 	}
 
+	// Parse form data
 	pcNumber, _ := strconv.Atoi(c.PostForm("pc_number"))
 	row, _ := strconv.Atoi(c.PostForm("row"))
 	column, _ := strconv.Atoi(c.PostForm("column"))
 	status := c.PostForm("status")
+	
+	// New fields
+	deviceType := c.PostForm("device_type")
+	serialNumber := c.PostForm("serial_number")
+	brandModel := c.PostForm("brand_model")
+	accessories := c.PostForm("accessories")
+	
+	// Specs
 	processor := c.PostForm("processor")
 	ram := c.PostForm("ram")
 	storage := c.PostForm("storage")
 	operatingSystem := c.PostForm("operating_system")
+	
+	// Additional info
 	purchaseDate := c.PostForm("purchase_date")
 	notes := c.PostForm("notes")
+	actionNotes := c.PostForm("action_notes")
 
 	// Validate
 	if pcNumber < 1 || pcNumber > 40 {
@@ -271,17 +329,174 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		return
 	}
 
+	// Validate required fields
+	if serialNumber == "" {
+		c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
+			"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+			"username":    username,
+			"role":        role,
+			"currentPage": "pc",
+			"error":       "Serial Number wajib diisi",
+		})
+		return
+	}
+
+	if operatingSystem == "" {
+		c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
+			"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+			"username":    username,
+			"role":        role,
+			"currentPage": "pc",
+			"error":       "Sistem Operasi wajib diisi",
+		})
+		return
+	}
+
 	var purchaseDatePtr *string
 	if purchaseDate != "" {
 		purchaseDatePtr = &purchaseDate
 	}
 
-	_, err := h.db.Exec(`
-		INSERT INTO pcs (pc_number, row, column, status, processor, ram, storage, operating_system, purchase_date, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, pcNumber, row, column, status, processor, ram, storage, operatingSystem, purchaseDatePtr, notes)
+	// Handle file uploads (optional)
+	var photoSerialFilename, photoFrontFilename string
+	imageService := services.NewImageService()
+
+	// Process photo_serial
+	photoSerial, err := c.FormFile("photo_serial")
+	if err == nil && photoSerial != nil {
+		// Validate file size (max 5MB)
+		if photoSerial.Size > 5*1024*1024 {
+			c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
+				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+				"username":    username,
+				"role":        role,
+				"currentPage": "pc",
+				"error":       "Ukuran foto serial number terlalu besar (max 5MB)",
+			})
+			return
+		}
+
+		// Generate unique filename
+		ext := filepath.Ext(photoSerial.Filename)
+		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%d%s", pcNumber, time.Now().Unix(), ext)
+		tempPath := filepath.Join("uploads", "temp", photoSerialFilename)
+		finalPath := filepath.Join("uploads", "pc", photoSerialFilename)
+
+		// Save temporary file
+		if err := c.SaveUploadedFile(photoSerial, tempPath); err != nil {
+			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
+				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+				"username":    username,
+				"role":        role,
+				"currentPage": "pc",
+				"error":       "Gagal menyimpan foto serial number",
+			})
+			return
+		}
+
+		// Compress and save
+		if err := imageService.CompressAndSave(tempPath, finalPath, 1280); err != nil {
+			os.Remove(tempPath)
+			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
+				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+				"username":    username,
+				"role":        role,
+				"currentPage": "pc",
+				"error":       "Gagal mengkompresi foto serial number",
+			})
+			return
+		}
+
+		// Delete temp file
+		os.Remove(tempPath)
+	}
+
+	// Process photo_front
+	photoFront, err := c.FormFile("photo_front")
+	if err == nil && photoFront != nil {
+		// Validate file size (max 5MB)
+		if photoFront.Size > 5*1024*1024 {
+			// Cleanup photo_serial if already uploaded
+			if photoSerialFilename != "" {
+				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
+			}
+			c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
+				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+				"username":    username,
+				"role":        role,
+				"currentPage": "pc",
+				"error":       "Ukuran foto tampilan depan terlalu besar (max 5MB)",
+			})
+			return
+		}
+
+		// Generate unique filename
+		ext := filepath.Ext(photoFront.Filename)
+		photoFrontFilename = fmt.Sprintf("pc_%d_front_%d%s", pcNumber, time.Now().Unix(), ext)
+		tempPath := filepath.Join("uploads", "temp", photoFrontFilename)
+		finalPath := filepath.Join("uploads", "pc", photoFrontFilename)
+
+		// Save temporary file
+		if err := c.SaveUploadedFile(photoFront, tempPath); err != nil {
+			// Cleanup photo_serial if already uploaded
+			if photoSerialFilename != "" {
+				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
+			}
+			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
+				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+				"username":    username,
+				"role":        role,
+				"currentPage": "pc",
+				"error":       "Gagal menyimpan foto tampilan depan",
+			})
+			return
+		}
+
+		// Compress and save
+		if err := imageService.CompressAndSave(tempPath, finalPath, 1920); err != nil {
+			os.Remove(tempPath)
+			// Cleanup photo_serial if already uploaded
+			if photoSerialFilename != "" {
+				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
+			}
+			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
+				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+				"username":    username,
+				"role":        role,
+				"currentPage": "pc",
+				"error":       "Gagal mengkompresi foto tampilan depan",
+			})
+			return
+		}
+
+		// Delete temp file
+		os.Remove(tempPath)
+	}
+
+	// Insert to database
+	_, err = h.db.Exec(`
+		INSERT INTO pcs (
+			pc_number, row, column, status, 
+			device_type, serial_number, brand_model, accessories,
+			processor, ram, storage, operating_system, 
+			purchase_date, notes, action_notes,
+			photo_serial, photo_front
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, pcNumber, row, column, status,
+		deviceType, serialNumber, brandModel, accessories,
+		processor, ram, storage, operatingSystem,
+		purchaseDatePtr, notes, actionNotes,
+		photoSerialFilename, photoFrontFilename)
 
 	if err != nil {
+		// Cleanup uploaded photos on database error
+		if photoSerialFilename != "" {
+			os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
+		}
+		if photoFrontFilename != "" {
+			os.Remove(filepath.Join("uploads", "pc", photoFrontFilename))
+		}
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
 			"title":       "Tambah PC Baru - Sistem Inventaris Lab",
 			"username":    username,
@@ -307,13 +522,18 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 	var pc models.PC
 	var purchaseDateStr sql.NullString
 	var processor, ram, storage, operatingSystem, notes sql.NullString
+	var deviceType, serialNumber, brandModel, accessories, actionNotes, photoSerial, photoFront sql.NullString
 
 	err := h.db.QueryRow(`
 		SELECT id, pc_number, row, column, status, processor, ram, storage,
-		       purchase_date, operating_system, notes
+		       purchase_date, operating_system, notes,
+		       device_type, serial_number, brand_model, accessories, action_notes,
+		       photo_serial, photo_front
 		FROM pcs WHERE id = ?
 	`, id).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
-		&processor, &ram, &storage, &purchaseDateStr, &operatingSystem, &notes)
+		&processor, &ram, &storage, &purchaseDateStr, &operatingSystem, &notes,
+		&deviceType, &serialNumber, &brandModel, &accessories, &actionNotes,
+		&photoSerial, &photoFront)
 
 	if err == sql.ErrNoRows {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
@@ -347,6 +567,27 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 	if notes.Valid {
 		pc.Notes = notes.String
 	}
+	if deviceType.Valid {
+		pc.DeviceType = deviceType.String
+	}
+	if serialNumber.Valid {
+		pc.SerialNumber = serialNumber.String
+	}
+	if brandModel.Valid {
+		pc.BrandModel = brandModel.String
+	}
+	if accessories.Valid {
+		pc.Accessories = accessories.String
+	}
+	if actionNotes.Valid {
+		pc.ActionNotes = actionNotes.String
+	}
+	if photoSerial.Valid {
+		pc.PhotoSerial = photoSerial.String
+	}
+	if photoFront.Valid {
+		pc.PhotoFront = photoFront.String
+	}
 
 	var purchaseDateFormatted string
 	if purchaseDateStr.Valid {
@@ -369,24 +610,174 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 func (h *Handler) PCEdit(c *gin.Context) {
 	id := c.Param("id")
 	status := c.PostForm("status")
+	
+	// New fields
+	deviceType := c.PostForm("device_type")
+	serialNumber := c.PostForm("serial_number")
+	brandModel := c.PostForm("brand_model")
+	accessories := c.PostForm("accessories")
+	
+	// Specs
 	processor := c.PostForm("processor")
 	ram := c.PostForm("ram")
 	storage := c.PostForm("storage")
 	operatingSystem := c.PostForm("operating_system")
+	
+	// Additional info
 	purchaseDate := c.PostForm("purchase_date")
 	notes := c.PostForm("notes")
+	actionNotes := c.PostForm("action_notes")
+
+	// Validate required fields
+	if serialNumber == "" || operatingSystem == "" {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Serial Number dan Sistem Operasi wajib diisi",
+		})
+		return
+	}
 
 	var purchaseDatePtr *string
 	if purchaseDate != "" {
 		purchaseDatePtr = &purchaseDate
 	}
 
-	_, err := h.db.Exec(`
+	// Get current PC data to retrieve existing photos
+	var currentPhotoSerial, currentPhotoFront sql.NullString
+	var pcNumber int
+	err := h.db.QueryRow("SELECT pc_number, photo_serial, photo_front FROM pcs WHERE id = ?", id).
+		Scan(&pcNumber, &currentPhotoSerial, &currentPhotoFront)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal mengambil data PC",
+		})
+		return
+	}
+
+	// Handle file uploads (optional - keep existing if not uploaded)
+	photoSerialFilename := ""
+	if currentPhotoSerial.Valid {
+		photoSerialFilename = currentPhotoSerial.String
+	}
+	
+	photoFrontFilename := ""
+	if currentPhotoFront.Valid {
+		photoFrontFilename = currentPhotoFront.String
+	}
+
+	imageService := services.NewImageService()
+
+	// Process photo_serial (if uploaded)
+	photoSerial, err := c.FormFile("photo_serial")
+	if err == nil && photoSerial != nil {
+		// Validate file size (max 5MB)
+		if photoSerial.Size > 5*1024*1024 {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Ukuran foto serial number terlalu besar (max 5MB)",
+			})
+			return
+		}
+
+		// Delete old photo if exists
+		if photoSerialFilename != "" {
+			oldPath := filepath.Join("uploads", "pc", photoSerialFilename)
+			imageService.DeleteImage(oldPath)
+		}
+
+		// Generate unique filename
+		ext := filepath.Ext(photoSerial.Filename)
+		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%d%s", pcNumber, time.Now().Unix(), ext)
+		tempPath := filepath.Join("uploads", "temp", photoSerialFilename)
+		finalPath := filepath.Join("uploads", "pc", photoSerialFilename)
+
+		// Save temporary file
+		if err := c.SaveUploadedFile(photoSerial, tempPath); err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal menyimpan foto serial number",
+			})
+			return
+		}
+
+		// Compress and save
+		if err := imageService.CompressAndSave(tempPath, finalPath, 1280); err != nil {
+			os.Remove(tempPath)
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal mengkompresi foto serial number",
+			})
+			return
+		}
+
+		// Delete temp file
+		os.Remove(tempPath)
+	}
+
+	// Process photo_front (if uploaded)
+	photoFront, err := c.FormFile("photo_front")
+	if err == nil && photoFront != nil {
+		// Validate file size (max 5MB)
+		if photoFront.Size > 5*1024*1024 {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Ukuran foto tampilan depan terlalu besar (max 5MB)",
+			})
+			return
+		}
+
+		// Delete old photo if exists
+		if photoFrontFilename != "" {
+			oldPath := filepath.Join("uploads", "pc", photoFrontFilename)
+			imageService.DeleteImage(oldPath)
+		}
+
+		// Generate unique filename
+		ext := filepath.Ext(photoFront.Filename)
+		photoFrontFilename = fmt.Sprintf("pc_%d_front_%d%s", pcNumber, time.Now().Unix(), ext)
+		tempPath := filepath.Join("uploads", "temp", photoFrontFilename)
+		finalPath := filepath.Join("uploads", "pc", photoFrontFilename)
+
+		// Save temporary file
+		if err := c.SaveUploadedFile(photoFront, tempPath); err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal menyimpan foto tampilan depan",
+			})
+			return
+		}
+
+		// Compress and save
+		if err := imageService.CompressAndSave(tempPath, finalPath, 1920); err != nil {
+			os.Remove(tempPath)
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal mengkompresi foto tampilan depan",
+			})
+			return
+		}
+
+		// Delete temp file
+		os.Remove(tempPath)
+	}
+
+	// Update database
+	_, err = h.db.Exec(`
 		UPDATE pcs 
-		SET status = ?, processor = ?, ram = ?, storage = ?, operating_system = ?,
-		    purchase_date = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+		SET status = ?, 
+		    device_type = ?, serial_number = ?, brand_model = ?, accessories = ?,
+		    processor = ?, ram = ?, storage = ?, operating_system = ?,
+		    purchase_date = ?, notes = ?, action_notes = ?,
+		    photo_serial = ?, photo_front = ?,
+		    updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, status, processor, ram, storage, operatingSystem, purchaseDatePtr, notes, id)
+	`, status,
+		deviceType, serialNumber, brandModel, accessories,
+		processor, ram, storage, operatingSystem,
+		purchaseDatePtr, notes, actionNotes,
+		photoSerialFilename, photoFrontFilename,
+		id)
 
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -403,12 +794,36 @@ func (h *Handler) PCEdit(c *gin.Context) {
 func (h *Handler) PCDelete(c *gin.Context) {
 	id := c.Param("id")
 
-	_, err := h.db.Exec("DELETE FROM pcs WHERE id = ?", id)
+	// Get photo filenames before deleting
+	var photoSerial, photoFront sql.NullString
+	err := h.db.QueryRow("SELECT photo_serial, photo_front FROM pcs WHERE id = ?", id).
+		Scan(&photoSerial, &photoFront)
+	
+	if err != nil && err != sql.ErrNoRows {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal mengambil data PC",
+		})
+		return
+	}
+
+	// Delete PC from database
+	_, err = h.db.Exec("DELETE FROM pcs WHERE id = ?", id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Gagal menghapus PC",
 		})
 		return
+	}
+
+	// Delete photos if exist
+	imageService := services.NewImageService()
+	if photoSerial.Valid && photoSerial.String != "" {
+		photoPath := filepath.Join("uploads", "pc", photoSerial.String)
+		imageService.DeleteImage(photoPath)
+	}
+	if photoFront.Valid && photoFront.String != "" {
+		photoPath := filepath.Join("uploads", "pc", photoFront.String)
+		imageService.DeleteImage(photoPath)
 	}
 
 	c.Redirect(http.StatusFound, "/pc")
