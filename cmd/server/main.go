@@ -122,6 +122,8 @@ func main() {
 		protected.GET("/pc/:id", h.PCDetail)
 		protected.GET("/pc/:id/edit", h.PCEditPage)
 		protected.POST("/pc/:id/edit", h.PCEdit)
+		protected.GET("/pc/:id/asset-info", h.PCAssetInfoPage)
+		protected.POST("/pc/:id/asset-info", h.PCAssetInfoUpdate)
 		protected.POST("/pc/:id/delete", h.PCDelete)
 
 		// Device Management

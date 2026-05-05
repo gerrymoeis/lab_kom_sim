@@ -58,6 +58,14 @@ func RunMigrations(db *sql.DB) error {
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 
+		// Add new columns for asset management (if not exists)
+		`ALTER TABLE pcs ADD COLUMN asset_id TEXT`,
+		`ALTER TABLE pcs ADD COLUMN serial_number TEXT`,
+		`ALTER TABLE pcs ADD COLUMN brand TEXT`,
+		`ALTER TABLE pcs ADD COLUMN model TEXT`,
+		`ALTER TABLE pcs ADD COLUMN operating_system TEXT`,
+		`ALTER TABLE pcs ADD COLUMN physical_condition TEXT DEFAULT 'baik' CHECK(physical_condition IN ('baik', 'cukup', 'rusak'))`,
+
 		// Devices table
 		`CREATE TABLE IF NOT EXISTS devices (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -116,6 +124,7 @@ func RunMigrations(db *sql.DB) error {
 		// Create indexes for better performance
 		`CREATE INDEX IF NOT EXISTS idx_pcs_status ON pcs(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_number ON pcs(pc_number)`,
+		`CREATE INDEX IF NOT EXISTS idx_pcs_asset_id ON pcs(asset_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_software_pc_id ON software(pc_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_date ON logbook_entries(date)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,

@@ -15,19 +15,26 @@ type User struct {
 
 // PC represents a computer in the lab
 type PC struct {
-	ID            int       `json:"id"`
-	PCNumber      int       `json:"pc_number"`      // 1-40
-	Row           int       `json:"row"`            // 1-5
-	Column        int       `json:"column"`         // 1-8
-	Status        string    `json:"status"`         // "normal", "warning", "broken", "inactive"
-	Processor     string    `json:"processor"`
-	RAM           string    `json:"ram"`
-	Storage       string    `json:"storage"`
-	PurchaseDate  *time.Time `json:"purchase_date"`
-	Notes         string    `json:"notes"`
-	LastChecked   *time.Time `json:"last_checked"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID                int        `json:"id"`
+	PCNumber          int        `json:"pc_number"`      // 1-40
+	Row               int        `json:"row"`            // 1-5
+	Column            int        `json:"column"`         // 1-8
+	Status            string     `json:"status"`         // "normal", "warning", "broken", "inactive"
+	Processor         string     `json:"processor"`
+	RAM               string     `json:"ram"`
+	Storage           string     `json:"storage"`
+	PurchaseDate      *time.Time `json:"purchase_date"`
+	Notes             string     `json:"notes"`
+	LastChecked       *time.Time `json:"last_checked"`
+	// Asset management fields
+	AssetID           string     `json:"asset_id"`
+	SerialNumber      string     `json:"serial_number"`
+	Brand             string     `json:"brand"`
+	Model             string     `json:"model"`
+	OperatingSystem   string     `json:"operating_system"`
+	PhysicalCondition string     `json:"physical_condition"` // "baik", "cukup", "rusak"
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // Device represents other devices in the lab

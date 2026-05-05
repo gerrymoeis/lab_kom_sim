@@ -1,0 +1,160 @@
+{{template "layout/base.html" .}}
+
+{{define "content"}}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clipboard-data me-2"></i>
+                        Input Aset Lengkap - PC {{.pc.PCNumber}}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="/pc/{{.pc.ID}}/asset-info">
+                        <!-- Section 1: Identifikasi Aset -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-tag me-2"></i>Identifikasi Aset
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="asset_id" class="form-label">No. Identifikasi Aset</label>
+                                    <input type="text" class="form-control" id="asset_id" name="asset_id" 
+                                           value="{{.pc.AssetID}}" placeholder="Contoh: LAB-PC-001">
+                                    <small class="text-muted">Kosongkan untuk auto-generate (LAB-PC-XXX)</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="serial_number" class="form-label">Nomor Seri (S/N)</label>
+                                    <input type="text" class="form-control" id="serial_number" name="serial_number" 
+                                           value="{{.pc.SerialNumber}}" placeholder="Serial number dari vendor">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Informasi Perangkat -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-info-circle me-2"></i>Informasi Perangkat
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="brand" class="form-label">Merek</label>
+                                    <input type="text" class="form-control" id="brand" name="brand" 
+                                           value="{{.pc.Brand}}" placeholder="Contoh: ASUS, HP, Dell, Lenovo">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="model" class="form-label">Model</label>
+                                    <input type="text" class="form-control" id="model" name="model" 
+                                           value="{{.pc.Model}}" placeholder="Contoh: ROG Strix, Pavilion, ThinkCentre">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Spesifikasi -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-cpu me-2"></i>Spesifikasi
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="processor" class="form-label">Processor</label>
+                                    <input type="text" class="form-control" id="processor" name="processor" 
+                                           value="{{.pc.Processor}}" placeholder="Contoh: Intel Core i5-10400">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="ram" class="form-label">RAM</label>
+                                    <input type="text" class="form-control" id="ram" name="ram" 
+                                           value="{{.pc.RAM}}" placeholder="Contoh: 16GB DDR4">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="storage" class="form-label">Storage</label>
+                                    <input type="text" class="form-control" id="storage" name="storage" 
+                                           value="{{.pc.Storage}}" placeholder="Contoh: 512GB SSD + 1TB HDD">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 4: Sistem & Kondisi -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-gear me-2"></i>Sistem & Kondisi
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="operating_system" class="form-label">Sistem Operasi</label>
+                                    <select class="form-select" id="operating_system" name="operating_system">
+                                        <option value="">-- Pilih OS --</option>
+                                        <option value="Windows 11 Pro" {{if eq .pc.OperatingSystem "Windows 11 Pro"}}selected{{end}}>Windows 11 Pro</option>
+                                        <option value="Windows 11 Home" {{if eq .pc.OperatingSystem "Windows 11 Home"}}selected{{end}}>Windows 11 Home</option>
+                                        <option value="Windows 10 Pro" {{if eq .pc.OperatingSystem "Windows 10 Pro"}}selected{{end}}>Windows 10 Pro</option>
+                                        <option value="Windows 10 Home" {{if eq .pc.OperatingSystem "Windows 10 Home"}}selected{{end}}>Windows 10 Home</option>
+                                        <option value="Ubuntu 22.04" {{if eq .pc.OperatingSystem "Ubuntu 22.04"}}selected{{end}}>Ubuntu 22.04</option>
+                                        <option value="Ubuntu 20.04" {{if eq .pc.OperatingSystem "Ubuntu 20.04"}}selected{{end}}>Ubuntu 20.04</option>
+                                        <option value="Lainnya" {{if eq .pc.OperatingSystem "Lainnya"}}selected{{end}}>Lainnya</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="physical_condition" class="form-label">Kondisi Fisik <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="physical_condition" name="physical_condition" required>
+                                        <option value="baik" {{if eq .pc.PhysicalCondition "baik"}}selected{{end}}>Baik</option>
+                                        <option value="cukup" {{if eq .pc.PhysicalCondition "cukup"}}selected{{end}}>Cukup</option>
+                                        <option value="rusak" {{if eq .pc.PhysicalCondition "rusak"}}selected{{end}}>Rusak</option>
+                                    </select>
+                                    <small class="text-muted">Kondisi fisik perangkat</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="status" class="form-label">Status Operasional <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="status" name="status" required>
+                                        <option value="normal" {{if eq .pc.Status "normal"}}selected{{end}}>Normal</option>
+                                        <option value="warning" {{if eq .pc.Status "warning"}}selected{{end}}>Warning</option>
+                                        <option value="broken" {{if eq .pc.Status "broken"}}selected{{end}}>Broken</option>
+                                        <option value="inactive" {{if eq .pc.Status "inactive"}}selected{{end}}>Inactive</option>
+                                    </select>
+                                    <small class="text-muted">Status operasional PC</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 5: Informasi Tambahan -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-calendar me-2"></i>Informasi Tambahan
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
+                                    <input type="date" class="form-control" id="purchase_date" name="purchase_date" 
+                                           value="{{.purchaseDate}}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="notes" class="form-label">Catatan</label>
+                                    <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                              placeholder="Catatan tambahan tentang PC ini">{{.pc.Notes}}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Info Box -->
+                        <div class="alert alert-info mb-4">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Catatan:</strong> Untuk manajemen software, gunakan menu "Software" di halaman detail PC.
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="/pc/{{.pc.ID}}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-2"></i>Kembali
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save me-2"></i>Simpan Data Aset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
