@@ -150,18 +150,14 @@
                             <th>Terakhir Dicek</th>
                             <td>{{ if .pc.LastChecked }}{{ .pc.LastChecked }}{{ else }}-{{ end }}</td>
                         </tr>
-                        {{ if .pc.Notes }}
                         <tr>
                             <th>Catatan</th>
-                            <td>{{ .pc.Notes }}</td>
+                            <td>{{ if .pc.Notes }}{{ .pc.Notes }}{{ else }}-{{ end }}</td>
                         </tr>
-                        {{ end }}
-                        {{ if .pc.ActionNotes }}
                         <tr>
                             <th>Catatan Tindakan</th>
-                            <td>{{ .pc.ActionNotes }}</td>
+                            <td>{{ if .pc.ActionNotes }}{{ .pc.ActionNotes }}{{ else }}-{{ end }}</td>
                         </tr>
-                        {{ end }}
                     </table>
 
                     <div class="d-flex gap-2">

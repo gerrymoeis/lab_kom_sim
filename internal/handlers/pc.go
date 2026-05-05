@@ -303,6 +303,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	
 	// Additional info
 	purchaseDate := c.PostForm("purchase_date")
+	lastChecked := c.PostForm("last_checked")
 	notes := c.PostForm("notes")
 	actionNotes := c.PostForm("action_notes")
 
@@ -355,6 +356,11 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	var purchaseDatePtr *string
 	if purchaseDate != "" {
 		purchaseDatePtr = &purchaseDate
+	}
+
+	var lastCheckedPtr *string
+	if lastChecked != "" {
+		lastCheckedPtr = &lastChecked
 	}
 
 	// Handle file uploads (optional)
@@ -479,14 +485,14 @@ func (h *Handler) PCCreate(c *gin.Context) {
 			pc_number, row, column, status, 
 			device_type, serial_number, brand_model, accessories,
 			processor, ram, storage, operating_system, 
-			purchase_date, notes, action_notes,
+			purchase_date, last_checked, notes, action_notes,
 			photo_serial, photo_front
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, pcNumber, row, column, status,
 		deviceType, serialNumber, brandModel, accessories,
 		processor, ram, storage, operatingSystem,
-		purchaseDatePtr, notes, actionNotes,
+		purchaseDatePtr, lastCheckedPtr, notes, actionNotes,
 		photoSerialFilename, photoFrontFilename)
 
 	if err != nil {
@@ -520,18 +526,18 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 
 	id := c.Param("id")
 	var pc models.PC
-	var purchaseDateStr sql.NullString
+	var purchaseDateStr, lastCheckedStr sql.NullString
 	var processor, ram, storage, operatingSystem, notes sql.NullString
 	var deviceType, serialNumber, brandModel, accessories, actionNotes, photoSerial, photoFront sql.NullString
 
 	err := h.db.QueryRow(`
 		SELECT id, pc_number, row, column, status, processor, ram, storage,
-		       purchase_date, operating_system, notes,
+		       purchase_date, last_checked, operating_system, notes,
 		       device_type, serial_number, brand_model, accessories, action_notes,
 		       photo_serial, photo_front
 		FROM pcs WHERE id = ?
 	`, id).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
-		&processor, &ram, &storage, &purchaseDateStr, &operatingSystem, &notes,
+		&processor, &ram, &storage, &purchaseDateStr, &lastCheckedStr, &operatingSystem, &notes,
 		&deviceType, &serialNumber, &brandModel, &accessories, &actionNotes,
 		&photoSerial, &photoFront)
 
@@ -596,6 +602,13 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		}
 	}
 
+	var lastCheckedFormatted string
+	if lastCheckedStr.Valid {
+		if t, err := time.Parse("2006-01-02", lastCheckedStr.String); err == nil {
+			lastCheckedFormatted = t.Format("2006-01-02")
+		}
+	}
+
 	c.HTML(http.StatusOK, "pc/edit.html", gin.H{
 		"title":        "Edit PC - Sistem Inventaris Lab",
 		"username":     username,
@@ -603,6 +616,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		"currentPage":  "pc",
 		"pc":           pc,
 		"purchaseDate": purchaseDateFormatted,
+		"lastChecked":  lastCheckedFormatted,
 	})
 }
 
@@ -625,6 +639,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	
 	// Additional info
 	purchaseDate := c.PostForm("purchase_date")
+	lastChecked := c.PostForm("last_checked")
 	notes := c.PostForm("notes")
 	actionNotes := c.PostForm("action_notes")
 
@@ -640,6 +655,11 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	var purchaseDatePtr *string
 	if purchaseDate != "" {
 		purchaseDatePtr = &purchaseDate
+	}
+
+	var lastCheckedPtr *string
+	if lastChecked != "" {
+		lastCheckedPtr = &lastChecked
 	}
 
 	// Get current PC data to retrieve existing photos
@@ -768,14 +788,14 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		SET status = ?, 
 		    device_type = ?, serial_number = ?, brand_model = ?, accessories = ?,
 		    processor = ?, ram = ?, storage = ?, operating_system = ?,
-		    purchase_date = ?, notes = ?, action_notes = ?,
+		    purchase_date = ?, last_checked = ?, notes = ?, action_notes = ?,
 		    photo_serial = ?, photo_front = ?,
 		    updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`, status,
 		deviceType, serialNumber, brandModel, accessories,
 		processor, ram, storage, operatingSystem,
-		purchaseDatePtr, notes, actionNotes,
+		purchaseDatePtr, lastCheckedPtr, notes, actionNotes,
 		photoSerialFilename, photoFrontFilename,
 		id)
 

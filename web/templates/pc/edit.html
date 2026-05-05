@@ -128,9 +128,16 @@
                         <hr class="my-4">
                         <h6 class="text-primary mb-3"><i class="bi bi-clipboard-data"></i> Informasi Tambahan</h6>
 
-                        <div class="mb-3">
-                            <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
-                            <input type="date" class="form-control" id="purchase_date" name="purchase_date" value="{{ .purchaseDate }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
+                                <input type="date" class="form-control" id="purchase_date" name="purchase_date" value="{{ .purchaseDate }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_checked" class="form-label">Tanggal Terakhir Dicek</label>
+                                <input type="date" class="form-control" id="last_checked" name="last_checked" value="{{ .lastChecked }}">
+                                <small class="text-muted">Tanggal terakhir pengecekan kondisi PC</small>
+                            </div>
                         </div>
 
                         <div class="mb-3">
