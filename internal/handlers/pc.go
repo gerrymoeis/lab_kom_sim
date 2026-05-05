@@ -382,9 +382,10 @@ func (h *Handler) PCCreate(c *gin.Context) {
 			return
 		}
 
-		// Generate unique filename
+		// Generate unique filename with format: pc_{number}_{type}_{HHMM}_{DDMMYYYY}.jpeg
 		ext := filepath.Ext(photoSerial.Filename)
-		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%d%s", pcNumber, time.Now().Unix(), ext)
+		now := time.Now()
+		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%s%s", pcNumber, now.Format("1504_02012006"), ext)
 		tempPath := filepath.Join("uploads", "temp", photoSerialFilename)
 		finalPath := filepath.Join("uploads", "pc", photoSerialFilename)
 
@@ -436,9 +437,10 @@ func (h *Handler) PCCreate(c *gin.Context) {
 			return
 		}
 
-		// Generate unique filename
+		// Generate unique filename with format: pc_{number}_{type}_{HHMM}_{DDMMYYYY}.jpeg
 		ext := filepath.Ext(photoFront.Filename)
-		photoFrontFilename = fmt.Sprintf("pc_%d_front_%d%s", pcNumber, time.Now().Unix(), ext)
+		now := time.Now()
+		photoFrontFilename = fmt.Sprintf("pc_%d_front_%s%s", pcNumber, now.Format("1504_02012006"), ext)
 		tempPath := filepath.Join("uploads", "temp", photoFrontFilename)
 		finalPath := filepath.Join("uploads", "pc", photoFrontFilename)
 
@@ -706,9 +708,10 @@ func (h *Handler) PCEdit(c *gin.Context) {
 			imageService.DeleteImage(oldPath)
 		}
 
-		// Generate unique filename
+		// Generate unique filename with format: pc_{number}_{type}_{HHMM}_{DDMMYYYY}.jpeg
 		ext := filepath.Ext(photoSerial.Filename)
-		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%d%s", currentPCNumber, time.Now().Unix(), ext)
+		now := time.Now()
+		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%s%s", currentPCNumber, now.Format("1504_02012006"), ext)
 		tempPath := filepath.Join("uploads", "temp", photoSerialFilename)
 		finalPath := filepath.Join("uploads", "pc", photoSerialFilename)
 
@@ -753,9 +756,10 @@ func (h *Handler) PCEdit(c *gin.Context) {
 			imageService.DeleteImage(oldPath)
 		}
 
-		// Generate unique filename
+		// Generate unique filename with format: pc_{number}_{type}_{HHMM}_{DDMMYYYY}.jpeg
 		ext := filepath.Ext(photoFront.Filename)
-		photoFrontFilename = fmt.Sprintf("pc_%d_front_%d%s", currentPCNumber, time.Now().Unix(), ext)
+		now := time.Now()
+		photoFrontFilename = fmt.Sprintf("pc_%d_front_%s%s", currentPCNumber, now.Format("1504_02012006"), ext)
 		tempPath := filepath.Join("uploads", "temp", photoFrontFilename)
 		finalPath := filepath.Join("uploads", "pc", photoFrontFilename)
 
