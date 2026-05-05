@@ -29,6 +29,34 @@ func InitDB(dbPath string) (*sql.DB, error) {
 
 // RunMigrations runs database migrations
 func RunMigrations(db *sql.DB) error {
+	// Helper function to check if column exists
+	columnExists := func(tableName, columnName string) (bool, error) {
+		query := fmt.Sprintf("PRAGMA table_info(%s)", tableName)
+		rows, err := db.Query(query)
+		if err != nil {
+			return false, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var cid int
+			var name string
+			var dataType string
+			var notNull int
+			var defaultValue sql.NullString
+			var pk int
+
+			if err := rows.Scan(&cid, &name, &dataType, &notNull, &defaultValue, &pk); err != nil {
+				return false, err
+			}
+
+			if name == columnName {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
 	migrations := []string{
 		// Users table
 		`CREATE TABLE IF NOT EXISTS users (
@@ -57,14 +85,6 @@ func RunMigrations(db *sql.DB) error {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
-
-		// Add new columns for asset management (if not exists)
-		`ALTER TABLE pcs ADD COLUMN asset_id TEXT`,
-		`ALTER TABLE pcs ADD COLUMN serial_number TEXT`,
-		`ALTER TABLE pcs ADD COLUMN brand TEXT`,
-		`ALTER TABLE pcs ADD COLUMN model TEXT`,
-		`ALTER TABLE pcs ADD COLUMN operating_system TEXT`,
-		`ALTER TABLE pcs ADD COLUMN physical_condition TEXT DEFAULT 'baik' CHECK(physical_condition IN ('baik', 'cukup', 'rusak'))`,
 
 		// Devices table
 		`CREATE TABLE IF NOT EXISTS devices (
@@ -124,7 +144,6 @@ func RunMigrations(db *sql.DB) error {
 		// Create indexes for better performance
 		`CREATE INDEX IF NOT EXISTS idx_pcs_status ON pcs(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_number ON pcs(pc_number)`,
-		`CREATE INDEX IF NOT EXISTS idx_pcs_asset_id ON pcs(asset_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_software_pc_id ON software(pc_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_date ON logbook_entries(date)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,
@@ -132,10 +151,40 @@ func RunMigrations(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_maintenance_date ON maintenance_logs(date)`,
 	}
 
+	// Run basic migrations
 	for _, migration := range migrations {
 		if _, err := db.Exec(migration); err != nil {
 			return fmt.Errorf("migration failed: %w", err)
 		}
+	}
+
+	// Add new columns for asset management (check if exists first)
+	assetColumns := map[string]string{
+		"asset_id":           "TEXT",
+		"serial_number":      "TEXT",
+		"brand":              "TEXT",
+		"model":              "TEXT",
+		"operating_system":   "TEXT",
+		"physical_condition": "TEXT DEFAULT 'baik' CHECK(physical_condition IN ('baik', 'cukup', 'rusak'))",
+	}
+
+	for columnName, columnDef := range assetColumns {
+		exists, err := columnExists("pcs", columnName)
+		if err != nil {
+			return fmt.Errorf("failed to check column %s: %w", columnName, err)
+		}
+
+		if !exists {
+			alterSQL := fmt.Sprintf("ALTER TABLE pcs ADD COLUMN %s %s", columnName, columnDef)
+			if _, err := db.Exec(alterSQL); err != nil {
+				return fmt.Errorf("failed to add column %s: %w", columnName, err)
+			}
+		}
+	}
+
+	// Create index for asset_id if not exists
+	if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_pcs_asset_id ON pcs(asset_id)`); err != nil {
+		return fmt.Errorf("failed to create index: %w", err)
 	}
 
 	return nil

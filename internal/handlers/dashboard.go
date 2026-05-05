@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 
 	"inventaris-lab-kom/internal/middleware"
@@ -19,7 +20,7 @@ func (h *Handler) Dashboard(c *gin.Context) {
 
 	// Get all PCs ordered by row and column
 	rows, err := h.db.Query(`
-		SELECT id, pc_number, row, column, status, processor, ram, storage, notes, last_checked
+		SELECT id, pc_number, row, column, status, processor, ram, storage, operating_system, notes, last_checked
 		FROM pcs
 		ORDER BY row, column
 	`)
@@ -35,11 +36,35 @@ func (h *Handler) Dashboard(c *gin.Context) {
 	var pcs []models.PC
 	for rows.Next() {
 		var pc models.PC
+		var processor, ram, storage, operatingSystem, notes sql.NullString
+		var lastChecked sql.NullTime
+		
 		err := rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, 
-			&pc.Processor, &pc.RAM, &pc.Storage, &pc.Notes, &pc.LastChecked)
+			&processor, &ram, &storage, &operatingSystem, &notes, &lastChecked)
 		if err != nil {
 			continue
 		}
+		
+		// Convert NullString to string
+		if processor.Valid {
+			pc.Processor = processor.String
+		}
+		if ram.Valid {
+			pc.RAM = ram.String
+		}
+		if storage.Valid {
+			pc.Storage = storage.String
+		}
+		if operatingSystem.Valid {
+			pc.OperatingSystem = operatingSystem.String
+		}
+		if notes.Valid {
+			pc.Notes = notes.String
+		}
+		if lastChecked.Valid {
+			pc.LastChecked = &lastChecked.Time
+		}
+		
 		pcs = append(pcs, pc)
 	}
 
@@ -86,6 +111,7 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		"user_id":       userID,
 		"username":      username,
 		"role":          role,
+		"currentPage":   "dashboard",
 		"grid":          grid,
 		"pcs":           pcs,
 		"statusCounts":  statusCounts,

@@ -41,22 +41,66 @@ func (h *Handler) PCList(c *gin.Context) {
 	var pcs []models.PC
 	for rows.Next() {
 		var pc models.PC
+		var processor, ram, storage, notes sql.NullString
+		var assetID, serialNumber, brand, model, operatingSystem, physicalCondition sql.NullString
+		var purchaseDate, lastChecked sql.NullTime
+		
 		err := rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
-			&pc.Processor, &pc.RAM, &pc.Storage, &pc.PurchaseDate, &pc.Notes,
-			&pc.LastChecked, 
-			&pc.AssetID, &pc.SerialNumber, &pc.Brand, &pc.Model, &pc.OperatingSystem, &pc.PhysicalCondition,
+			&processor, &ram, &storage, &purchaseDate, &notes,
+			&lastChecked, 
+			&assetID, &serialNumber, &brand, &model, &operatingSystem, &physicalCondition,
 			&pc.CreatedAt, &pc.UpdatedAt)
 		if err != nil {
 			continue
 		}
+		
+		// Convert NullString to string
+		if processor.Valid {
+			pc.Processor = processor.String
+		}
+		if ram.Valid {
+			pc.RAM = ram.String
+		}
+		if storage.Valid {
+			pc.Storage = storage.String
+		}
+		if notes.Valid {
+			pc.Notes = notes.String
+		}
+		if assetID.Valid {
+			pc.AssetID = assetID.String
+		}
+		if serialNumber.Valid {
+			pc.SerialNumber = serialNumber.String
+		}
+		if brand.Valid {
+			pc.Brand = brand.String
+		}
+		if model.Valid {
+			pc.Model = model.String
+		}
+		if operatingSystem.Valid {
+			pc.OperatingSystem = operatingSystem.String
+		}
+		if physicalCondition.Valid {
+			pc.PhysicalCondition = physicalCondition.String
+		}
+		if purchaseDate.Valid {
+			pc.PurchaseDate = &purchaseDate.Time
+		}
+		if lastChecked.Valid {
+			pc.LastChecked = &lastChecked.Time
+		}
+		
 		pcs = append(pcs, pc)
 	}
 
 	c.HTML(http.StatusOK, "pc/list.html", gin.H{
-		"title":    "Daftar PC - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
-		"pcs":      pcs,
+		"title":       "Daftar PC - Sistem Inventaris Lab",
+		"username":    username,
+		"role":        role,
+		"currentPage": "pc",
+		"pcs":         pcs,
 	})
 }
 
@@ -70,6 +114,11 @@ func (h *Handler) PCDetail(c *gin.Context) {
 
 	id := c.Param("id")
 	var pc models.PC
+	
+	// Use sql.NullString for nullable fields
+	var processor, ram, storage, assetID, serialNumber, brand, model, operatingSystem, physicalCondition, notes sql.NullString
+	var purchaseDate, lastChecked sql.NullTime
+	
 	err := h.db.QueryRow(`
 		SELECT id, pc_number, row, column, status, processor, ram, storage,
 		       purchase_date, notes, last_checked,
@@ -77,9 +126,9 @@ func (h *Handler) PCDetail(c *gin.Context) {
 		       created_at, updated_at
 		FROM pcs WHERE id = ?
 	`, id).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
-		&pc.Processor, &pc.RAM, &pc.Storage, &pc.PurchaseDate, &pc.Notes,
-		&pc.LastChecked,
-		&pc.AssetID, &pc.SerialNumber, &pc.Brand, &pc.Model, &pc.OperatingSystem, &pc.PhysicalCondition,
+		&processor, &ram, &storage, &purchaseDate, &notes,
+		&lastChecked,
+		&assetID, &serialNumber, &brand, &model, &operatingSystem, &physicalCondition,
 		&pc.CreatedAt, &pc.UpdatedAt)
 
 	if err == sql.ErrNoRows {
@@ -93,9 +142,47 @@ func (h *Handler) PCDetail(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
-			"message": "Gagal mengambil data PC",
+			"message": "Gagal mengambil data PC: " + err.Error(),
 		})
 		return
+	}
+	
+	// Convert NullString to string
+	if processor.Valid {
+		pc.Processor = processor.String
+	}
+	if ram.Valid {
+		pc.RAM = ram.String
+	}
+	if storage.Valid {
+		pc.Storage = storage.String
+	}
+	if assetID.Valid {
+		pc.AssetID = assetID.String
+	}
+	if serialNumber.Valid {
+		pc.SerialNumber = serialNumber.String
+	}
+	if brand.Valid {
+		pc.Brand = brand.String
+	}
+	if model.Valid {
+		pc.Model = model.String
+	}
+	if operatingSystem.Valid {
+		pc.OperatingSystem = operatingSystem.String
+	}
+	if physicalCondition.Valid {
+		pc.PhysicalCondition = physicalCondition.String
+	}
+	if notes.Valid {
+		pc.Notes = notes.String
+	}
+	if purchaseDate.Valid {
+		pc.PurchaseDate = &purchaseDate.Time
+	}
+	if lastChecked.Valid {
+		pc.LastChecked = &lastChecked.Time
 	}
 
 	// Get software installed on this PC
@@ -118,11 +205,12 @@ func (h *Handler) PCDetail(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "pc/detail.html", gin.H{
-		"title":    "Detail PC - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
-		"pc":       pc,
-		"software": software,
+		"title":       "Detail PC - Sistem Inventaris Lab",
+		"username":    username,
+		"role":        role,
+		"currentPage": "pc",
+		"pc":          pc,
+		"software":    software,
 	})
 }
 
@@ -135,14 +223,21 @@ func (h *Handler) PCCreatePage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "pc/create.html", gin.H{
-		"title":    "Tambah PC Baru - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
+		"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+		"username":    username,
+		"role":        role,
+		"currentPage": "pc",
 	})
 }
 
 // PCCreate handles PC creation
 func (h *Handler) PCCreate(c *gin.Context) {
+	_, username, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
 	pcNumber, _ := strconv.Atoi(c.PostForm("pc_number"))
 	row, _ := strconv.Atoi(c.PostForm("row"))
 	column, _ := strconv.Atoi(c.PostForm("column"))
@@ -150,22 +245,29 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	processor := c.PostForm("processor")
 	ram := c.PostForm("ram")
 	storage := c.PostForm("storage")
+	operatingSystem := c.PostForm("operating_system")
 	purchaseDate := c.PostForm("purchase_date")
 	notes := c.PostForm("notes")
 
 	// Validate
 	if pcNumber < 1 || pcNumber > 40 {
 		c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
-			"title": "Tambah PC Baru",
-			"error": "Nomor PC harus antara 1-40",
+			"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+			"username":    username,
+			"role":        role,
+			"currentPage": "pc",
+			"error":       "Nomor PC harus antara 1-40",
 		})
 		return
 	}
 
 	if row < 1 || row > 5 || column < 1 || column > 8 {
 		c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
-			"title": "Tambah PC Baru",
-			"error": "Posisi baris (1-5) dan kolom (1-8) tidak valid",
+			"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+			"username":    username,
+			"role":        role,
+			"currentPage": "pc",
+			"error":       "Posisi baris (1-5) dan kolom (1-8) tidak valid",
 		})
 		return
 	}
@@ -176,14 +278,17 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	}
 
 	_, err := h.db.Exec(`
-		INSERT INTO pcs (pc_number, row, column, status, processor, ram, storage, purchase_date, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, pcNumber, row, column, status, processor, ram, storage, purchaseDatePtr, notes)
+		INSERT INTO pcs (pc_number, row, column, status, processor, ram, storage, operating_system, purchase_date, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, pcNumber, row, column, status, processor, ram, storage, operatingSystem, purchaseDatePtr, notes)
 
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
-			"title": "Tambah PC Baru",
-			"error": "Gagal menyimpan data PC. Mungkin nomor PC sudah digunakan.",
+			"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+			"username":    username,
+			"role":        role,
+			"currentPage": "pc",
+			"error":       "Gagal menyimpan data PC. Mungkin nomor PC sudah digunakan.",
 		})
 		return
 	}
@@ -202,13 +307,14 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 	id := c.Param("id")
 	var pc models.PC
 	var purchaseDateStr sql.NullString
+	var processor, ram, storage, operatingSystem, notes sql.NullString
 
 	err := h.db.QueryRow(`
 		SELECT id, pc_number, row, column, status, processor, ram, storage,
-		       purchase_date, notes
+		       purchase_date, operating_system, notes
 		FROM pcs WHERE id = ?
 	`, id).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
-		&pc.Processor, &pc.RAM, &pc.Storage, &purchaseDateStr, &pc.Notes)
+		&processor, &ram, &storage, &purchaseDateStr, &operatingSystem, &notes)
 
 	if err == sql.ErrNoRows {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
@@ -225,6 +331,23 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		})
 		return
 	}
+	
+	// Convert NullString to string
+	if processor.Valid {
+		pc.Processor = processor.String
+	}
+	if ram.Valid {
+		pc.RAM = ram.String
+	}
+	if storage.Valid {
+		pc.Storage = storage.String
+	}
+	if operatingSystem.Valid {
+		pc.OperatingSystem = operatingSystem.String
+	}
+	if notes.Valid {
+		pc.Notes = notes.String
+	}
 
 	var purchaseDateFormatted string
 	if purchaseDateStr.Valid {
@@ -237,6 +360,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		"title":        "Edit PC - Sistem Inventaris Lab",
 		"username":     username,
 		"role":         role,
+		"currentPage":  "pc",
 		"pc":           pc,
 		"purchaseDate": purchaseDateFormatted,
 	})
@@ -249,6 +373,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	processor := c.PostForm("processor")
 	ram := c.PostForm("ram")
 	storage := c.PostForm("storage")
+	operatingSystem := c.PostForm("operating_system")
 	purchaseDate := c.PostForm("purchase_date")
 	notes := c.PostForm("notes")
 
@@ -259,10 +384,10 @@ func (h *Handler) PCEdit(c *gin.Context) {
 
 	_, err := h.db.Exec(`
 		UPDATE pcs 
-		SET status = ?, processor = ?, ram = ?, storage = ?, 
+		SET status = ?, processor = ?, ram = ?, storage = ?, operating_system = ?,
 		    purchase_date = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, status, processor, ram, storage, purchaseDatePtr, notes, id)
+	`, status, processor, ram, storage, operatingSystem, purchaseDatePtr, notes, id)
 
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{

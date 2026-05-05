@@ -11,33 +11,33 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="/dashboard">
+                    <a class="nav-link {{ if eq .currentPage "dashboard" }}active{{ end }}" href="/dashboard">
                         <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/pc">
+                    <a class="nav-link {{ if eq .currentPage "pc" }}active{{ end }}" href="/pc">
                         <i class="bi bi-pc-display" aria-hidden="true"></i> PC
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/devices">
+                    <a class="nav-link {{ if eq .currentPage "devices" }}active{{ end }}" href="/devices">
                         <i class="bi bi-hdd-rack" aria-hidden="true"></i> Perangkat
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/software">
+                    <a class="nav-link {{ if eq .currentPage "software" }}active{{ end }}" href="/software">
                         <i class="bi bi-app-indicator" aria-hidden="true"></i> Software
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/logbook">
+                    <a class="nav-link {{ if eq .currentPage "logbook" }}active{{ end }}" href="/logbook">
                         <i class="bi bi-journal-text" aria-hidden="true"></i> Logbook
                     </a>
                 </li>
                 {{ if eq .role "admin" }}
                 <li class="nav-item">
-                    <a class="nav-link" href="/admin/users">
+                    <a class="nav-link {{ if eq .currentPage "users" }}active{{ end }}" href="/admin/users">
                         <i class="bi bi-people" aria-hidden="true"></i> Users
                     </a>
                 </li>
