@@ -66,14 +66,14 @@
                                 </small>
                             </td>
                             <td>
-                                <a href="/pc/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
+                                <a href="/pc/{{ .PCNumber }}" class="btn btn-sm btn-info" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {{ if eq $.role "admin" }}
-                                <a href="/pc/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/pc/{{ .PCNumber }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/pc/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirmDelete()">
+                                <form method="POST" action="/pc/{{ .PCNumber }}/delete" style="display: inline;" onsubmit="return confirmDelete()">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>

@@ -136,7 +136,7 @@ func (h *Handler) PCDetail(c *gin.Context) {
 		return
 	}
 
-	id := c.Param("id")
+	pcNumber := c.Param("pc_number")
 	var pc models.PC
 	
 	// Use sql.NullString for nullable fields
@@ -150,8 +150,8 @@ func (h *Handler) PCDetail(c *gin.Context) {
 		       asset_id, serial_number, brand, model, operating_system, physical_condition,
 		       device_type, brand_model, accessories, action_notes, photo_serial, photo_front,
 		       created_at, updated_at
-		FROM pcs WHERE id = ?
-	`, id).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
+		FROM pcs WHERE pc_number = ?
+	`, pcNumber).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
 		&processor, &ram, &storage, &purchaseDate, &notes,
 		&lastChecked,
 		&assetID, &serialNumber, &brand, &model, &operatingSystem, &physicalCondition,
@@ -235,7 +235,7 @@ func (h *Handler) PCDetail(c *gin.Context) {
 		SELECT id, name, version, license, install_date, notes
 		FROM software WHERE pc_id = ?
 		ORDER BY name
-	`, id)
+	`, pc.ID)
 
 	var software []models.Software
 	if err == nil {
@@ -524,7 +524,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		return
 	}
 
-	id := c.Param("id")
+	pcNumber := c.Param("pc_number")
 	var pc models.PC
 	var purchaseDateStr, lastCheckedStr sql.NullString
 	var processor, ram, storage, operatingSystem, notes sql.NullString
@@ -535,8 +535,8 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		       purchase_date, last_checked, operating_system, notes,
 		       device_type, serial_number, brand_model, accessories, action_notes,
 		       photo_serial, photo_front
-		FROM pcs WHERE id = ?
-	`, id).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
+		FROM pcs WHERE pc_number = ?
+	`, pcNumber).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
 		&processor, &ram, &storage, &purchaseDateStr, &lastCheckedStr, &operatingSystem, &notes,
 		&deviceType, &serialNumber, &brandModel, &accessories, &actionNotes,
 		&photoSerial, &photoFront)
@@ -622,7 +622,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 
 // PCEdit handles PC update
 func (h *Handler) PCEdit(c *gin.Context) {
-	id := c.Param("id")
+	pcNumber := c.Param("pc_number")
 	status := c.PostForm("status")
 	
 	// New fields
@@ -664,9 +664,9 @@ func (h *Handler) PCEdit(c *gin.Context) {
 
 	// Get current PC data to retrieve existing photos
 	var currentPhotoSerial, currentPhotoFront sql.NullString
-	var pcNumber int
-	err := h.db.QueryRow("SELECT pc_number, photo_serial, photo_front FROM pcs WHERE id = ?", id).
-		Scan(&pcNumber, &currentPhotoSerial, &currentPhotoFront)
+	var currentPCNumber int
+	err := h.db.QueryRow("SELECT pc_number, photo_serial, photo_front FROM pcs WHERE pc_number = ?", pcNumber).
+		Scan(&currentPCNumber, &currentPhotoSerial, &currentPhotoFront)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
@@ -708,7 +708,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 
 		// Generate unique filename
 		ext := filepath.Ext(photoSerial.Filename)
-		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%d%s", pcNumber, time.Now().Unix(), ext)
+		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%d%s", currentPCNumber, time.Now().Unix(), ext)
 		tempPath := filepath.Join("uploads", "temp", photoSerialFilename)
 		finalPath := filepath.Join("uploads", "pc", photoSerialFilename)
 
@@ -755,7 +755,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 
 		// Generate unique filename
 		ext := filepath.Ext(photoFront.Filename)
-		photoFrontFilename = fmt.Sprintf("pc_%d_front_%d%s", pcNumber, time.Now().Unix(), ext)
+		photoFrontFilename = fmt.Sprintf("pc_%d_front_%d%s", currentPCNumber, time.Now().Unix(), ext)
 		tempPath := filepath.Join("uploads", "temp", photoFrontFilename)
 		finalPath := filepath.Join("uploads", "pc", photoFrontFilename)
 
@@ -791,13 +791,13 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		    purchase_date = ?, last_checked = ?, notes = ?, action_notes = ?,
 		    photo_serial = ?, photo_front = ?,
 		    updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?
+		WHERE pc_number = ?
 	`, status,
 		deviceType, serialNumber, brandModel, accessories,
 		processor, ram, storage, operatingSystem,
 		purchaseDatePtr, lastCheckedPtr, notes, actionNotes,
 		photoSerialFilename, photoFrontFilename,
-		id)
+		pcNumber)
 
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -807,16 +807,16 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/pc/"+id)
+	c.Redirect(http.StatusFound, "/pc/"+pcNumber)
 }
 
 // PCDelete handles PC deletion
 func (h *Handler) PCDelete(c *gin.Context) {
-	id := c.Param("id")
+	pcNumber := c.Param("pc_number")
 
 	// Get photo filenames before deleting
 	var photoSerial, photoFront sql.NullString
-	err := h.db.QueryRow("SELECT photo_serial, photo_front FROM pcs WHERE id = ?", id).
+	err := h.db.QueryRow("SELECT photo_serial, photo_front FROM pcs WHERE pc_number = ?", pcNumber).
 		Scan(&photoSerial, &photoFront)
 	
 	if err != nil && err != sql.ErrNoRows {
@@ -827,7 +827,7 @@ func (h *Handler) PCDelete(c *gin.Context) {
 	}
 
 	// Delete PC from database
-	_, err = h.db.Exec("DELETE FROM pcs WHERE id = ?", id)
+	_, err = h.db.Exec("DELETE FROM pcs WHERE pc_number = ?", pcNumber)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Gagal menghapus PC",

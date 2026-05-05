@@ -20,7 +20,7 @@
                     <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit PC-{{ printf "%02d" .pc.PCNumber }}</h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="/pc/{{ .pc.ID }}/edit" enctype="multipart/form-data">
+                    <form method="POST" action="/pc/{{ .pc.PCNumber }}/edit" enctype="multipart/form-data">
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle"></i> Nomor PC dan posisi tidak dapat diubah. Untuk mengubahnya, hapus dan buat PC baru.
                         </div>
@@ -155,7 +155,7 @@
                             <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
-                            <a href="/pc/{{ .pc.ID }}" class="btn btn-secondary">
+                            <a href="/pc/{{ .pc.PCNumber }}" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>

@@ -119,10 +119,10 @@ func main() {
 		protected.GET("/pc", h.PCList)
 		protected.GET("/pc/create", h.PCCreatePage)
 		protected.POST("/pc/create", h.PCCreate)
-		protected.GET("/pc/:id", h.PCDetail)
-		protected.GET("/pc/:id/edit", h.PCEditPage)
-		protected.POST("/pc/:id/edit", h.PCEdit)
-		protected.POST("/pc/:id/delete", h.PCDelete)
+		protected.GET("/pc/:pc_number", h.PCDetail)
+		protected.GET("/pc/:pc_number/edit", h.PCEditPage)
+		protected.POST("/pc/:pc_number/edit", h.PCEdit)
+		protected.POST("/pc/:pc_number/delete", h.PCDelete)
 
 		// Device Management
 		protected.GET("/devices", h.DeviceList)
