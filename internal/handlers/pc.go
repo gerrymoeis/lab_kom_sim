@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -413,121 +412,6 @@ func (h *Handler) PCDelete(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusFound, "/pc")
-}
-
-// PCAssetInfoPage renders asset information form
-func (h *Handler) PCAssetInfoPage(c *gin.Context) {
-	_, username, role, ok := middleware.GetCurrentUser(c)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
-
-	id := c.Param("id")
-	var pc models.PC
-	var purchaseDateStr sql.NullString
-
-	err := h.db.QueryRow(`
-		SELECT id, pc_number, row, column, status, processor, ram, storage,
-		       purchase_date, notes,
-		       asset_id, serial_number, brand, model, operating_system, physical_condition
-		FROM pcs WHERE id = ?
-	`, id).Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
-		&pc.Processor, &pc.RAM, &pc.Storage, &purchaseDateStr, &pc.Notes,
-		&pc.AssetID, &pc.SerialNumber, &pc.Brand, &pc.Model, &pc.OperatingSystem, &pc.PhysicalCondition)
-
-	if err == sql.ErrNoRows {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"title":   "PC Tidak Ditemukan",
-			"message": "PC yang Anda cari tidak ditemukan",
-		})
-		return
-	}
-
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengambil data PC",
-		})
-		return
-	}
-
-	var purchaseDateFormatted string
-	if purchaseDateStr.Valid {
-		if t, err := time.Parse("2006-01-02", purchaseDateStr.String); err == nil {
-			purchaseDateFormatted = t.Format("2006-01-02")
-		}
-	}
-
-	c.HTML(http.StatusOK, "pc/asset-info.html", gin.H{
-		"title":        "Input Aset Lengkap - Sistem Inventaris Lab",
-		"username":     username,
-		"role":         role,
-		"pc":           pc,
-		"purchaseDate": purchaseDateFormatted,
-	})
-}
-
-// PCAssetInfoUpdate handles asset information update
-func (h *Handler) PCAssetInfoUpdate(c *gin.Context) {
-	id := c.Param("id")
-	
-	// Get form data
-	assetID := c.PostForm("asset_id")
-	serialNumber := c.PostForm("serial_number")
-	brand := c.PostForm("brand")
-	model := c.PostForm("model")
-	processor := c.PostForm("processor")
-	ram := c.PostForm("ram")
-	storage := c.PostForm("storage")
-	operatingSystem := c.PostForm("operating_system")
-	physicalCondition := c.PostForm("physical_condition")
-	status := c.PostForm("status")
-	purchaseDate := c.PostForm("purchase_date")
-	notes := c.PostForm("notes")
-
-	// Auto-generate asset_id if empty
-	if assetID == "" {
-		var pcNumber int
-		err := h.db.QueryRow("SELECT pc_number FROM pcs WHERE id = ?", id).Scan(&pcNumber)
-		if err == nil {
-			assetID = fmt.Sprintf("LAB-PC-%03d", pcNumber)
-		}
-	}
-
-	// Set default physical_condition if empty
-	if physicalCondition == "" {
-		physicalCondition = "baik"
-	}
-
-	var purchaseDatePtr *string
-	if purchaseDate != "" {
-		purchaseDatePtr = &purchaseDate
-	}
-
-	// Update database
-	_, err := h.db.Exec(`
-		UPDATE pcs 
-		SET asset_id = ?, serial_number = ?, brand = ?, model = ?,
-		    processor = ?, ram = ?, storage = ?,
-		    operating_system = ?, physical_condition = ?, status = ?,
-		    purchase_date = ?, notes = ?,
-		    updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?
-	`, assetID, serialNumber, brand, model,
-		processor, ram, storage,
-		operatingSystem, physicalCondition, status,
-		purchaseDatePtr, notes, id)
-
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengupdate data aset: " + err.Error(),
-		})
-		return
-	}
-
-	c.Redirect(http.StatusFound, "/pc/"+id)
 }
 
 // PCStatusAPI returns PC status for API calls

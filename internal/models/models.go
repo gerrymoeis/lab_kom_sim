@@ -29,10 +29,17 @@ type PC struct {
 	// Asset management fields
 	AssetID           string     `json:"asset_id"`
 	SerialNumber      string     `json:"serial_number"`
-	Brand             string     `json:"brand"`
-	Model             string     `json:"model"`
+	Brand             string     `json:"brand"`             // Deprecated, use BrandModel
+	Model             string     `json:"model"`             // Deprecated, use BrandModel
 	OperatingSystem   string     `json:"operating_system"`
 	PhysicalCondition string     `json:"physical_condition"` // "baik", "cukup", "rusak"
+	// New fields for PC refinement
+	DeviceType        string     `json:"device_type"`       // "PC All-in-one", etc
+	BrandModel        string     `json:"brand_model"`       // Combined brand + model
+	Accessories       string     `json:"accessories"`       // "Keyboard & Mouse Axioo (Wired Set)"
+	ActionNotes       string     `json:"action_notes"`      // Catatan tindakan perbaikan
+	PhotoSerial       string     `json:"photo_serial"`      // Filename foto S/N + barcode
+	PhotoFront        string     `json:"photo_front"`       // Filename foto tampilan depan
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 }

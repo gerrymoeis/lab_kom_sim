@@ -166,6 +166,13 @@ func RunMigrations(db *sql.DB) error {
 		"model":              "TEXT",
 		"operating_system":   "TEXT",
 		"physical_condition": "TEXT DEFAULT 'baik' CHECK(physical_condition IN ('baik', 'cukup', 'rusak'))",
+		// New columns for PC refinement
+		"device_type":        "TEXT NOT NULL DEFAULT 'PC All-in-one'",
+		"brand_model":        "TEXT NOT NULL DEFAULT 'Axioo Mypc One Pro K7-24 (16N9)'",
+		"accessories":        "TEXT NOT NULL DEFAULT 'Keyboard & Mouse Axioo (Wired Set)'",
+		"action_notes":       "TEXT",
+		"photo_serial":       "TEXT",
+		"photo_front":        "TEXT",
 	}
 
 	for columnName, columnDef := range assetColumns {
@@ -182,9 +189,18 @@ func RunMigrations(db *sql.DB) error {
 		}
 	}
 
-	// Create index for asset_id if not exists
-	if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_pcs_asset_id ON pcs(asset_id)`); err != nil {
-		return fmt.Errorf("failed to create index: %w", err)
+	// Create indexes if not exists
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_pcs_asset_id ON pcs(asset_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_pcs_device_type ON pcs(device_type)`,
+		`CREATE INDEX IF NOT EXISTS idx_pcs_brand_model ON pcs(brand_model)`,
+		`CREATE INDEX IF NOT EXISTS idx_pcs_serial_number ON pcs(serial_number)`,
+	}
+
+	for _, indexSQL := range indexes {
+		if _, err := db.Exec(indexSQL); err != nil {
+			return fmt.Errorf("failed to create index: %w", err)
+		}
 	}
 
 	return nil
