@@ -141,6 +141,26 @@ func RunMigrations(db *sql.DB) error {
 			FOREIGN KEY (pc_id) REFERENCES pcs(id) ON DELETE CASCADE
 		)`,
 
+		// Activity logs table (audit trail)
+		`CREATE TABLE IF NOT EXISTS activity_logs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			username TEXT NOT NULL,
+			user_role TEXT NOT NULL,
+			action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
+			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth')),
+			entity_id INTEGER,
+			description TEXT NOT NULL,
+			old_values TEXT,
+			new_values TEXT,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			ip_address TEXT,
+			user_agent TEXT,
+			status TEXT DEFAULT 'success' CHECK(status IN ('success', 'failed', 'error')),
+			error_message TEXT,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+		)`,
+
 		// Create indexes for better performance
 		`CREATE INDEX IF NOT EXISTS idx_pcs_status ON pcs(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_number ON pcs(pc_number)`,
@@ -149,6 +169,11 @@ func RunMigrations(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,
 		`CREATE INDEX IF NOT EXISTS idx_maintenance_pc_id ON maintenance_logs(pc_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_maintenance_date ON maintenance_logs(date)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_username ON activity_logs(username)`,
 	}
 
 	// Run basic migrations

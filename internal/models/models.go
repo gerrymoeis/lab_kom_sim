@@ -102,3 +102,22 @@ type StatusCount struct {
 	Status string `json:"status"`
 	Count  int    `json:"count"`
 }
+
+// ActivityLog represents an audit trail entry
+type ActivityLog struct {
+	ID           int       `json:"id"`
+	UserID       int       `json:"user_id"`
+	Username     string    `json:"username"`
+	UserRole     string    `json:"user_role"`
+	Action       string    `json:"action"`        // "create", "update", "delete", "upload", "login", "logout"
+	EntityType   string    `json:"entity_type"`   // "pc", "device", "software", "logbook", "user", "auth"
+	EntityID     *int      `json:"entity_id"`     // Nullable for bulk operations or auth events
+	Description  string    `json:"description"`   // Human-readable description
+	OldValues    string    `json:"old_values"`    // JSON string of old values (for update/delete)
+	NewValues    string    `json:"new_values"`    // JSON string of new values (for create/update)
+	CreatedAt    time.Time `json:"created_at"`
+	IPAddress    string    `json:"ip_address"`
+	UserAgent    string    `json:"user_agent"`
+	Status       string    `json:"status"`        // "success", "failed", "error"
+	ErrorMessage string    `json:"error_message"` // If status = "failed"
+}
