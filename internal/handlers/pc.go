@@ -740,8 +740,8 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	operatingSystem := c.PostForm("operating_system")
 	
 	// Additional info
-	purchaseDate := c.PostForm("purchase_date")
-	lastChecked := c.PostForm("last_checked")
+	purchaseDateForm := c.PostForm("purchase_date")
+	lastCheckedForm := c.PostForm("last_checked")
 	notes := c.PostForm("notes")
 	actionNotes := c.PostForm("action_notes")
 
@@ -754,24 +754,17 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	var purchaseDatePtr *string
-	if purchaseDate != "" {
-		purchaseDatePtr = &purchaseDate
-	}
-
-	var lastCheckedPtr *string
-	if lastChecked != "" {
-		lastCheckedPtr = &lastChecked
-	}
-
-	// Get current PC data to retrieve existing photos AND old values for logging
+	// Get current PC data to retrieve existing photos, date values, AND old values for logging
 	var currentPhotoSerial, currentPhotoFront sql.NullString
+	var currentPurchaseDate, currentLastChecked sql.NullString
 	var currentPCNumber, pcID int
 	var oldStatus, oldDeviceType, oldSerialNumber, oldBrandModel sql.NullString
 	err := h.db.QueryRow(`
-		SELECT id, pc_number, status, device_type, serial_number, brand_model, photo_serial, photo_front 
+		SELECT id, pc_number, status, device_type, serial_number, brand_model, 
+		       photo_serial, photo_front, purchase_date, last_checked
 		FROM pcs WHERE pc_number = ?
-	`, pcNumber).Scan(&pcID, &currentPCNumber, &oldStatus, &oldDeviceType, &oldSerialNumber, &oldBrandModel, &currentPhotoSerial, &currentPhotoFront)
+	`, pcNumber).Scan(&pcID, &currentPCNumber, &oldStatus, &oldDeviceType, &oldSerialNumber, &oldBrandModel, 
+		&currentPhotoSerial, &currentPhotoFront, &currentPurchaseDate, &currentLastChecked)
 	if err != nil {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
@@ -787,6 +780,27 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		})
 		return
 	}
+
+	// Preserve existing date values if form fields are empty
+	var purchaseDatePtr *string
+	if purchaseDateForm != "" {
+		// User provided new value
+		purchaseDatePtr = &purchaseDateForm
+	} else if currentPurchaseDate.Valid {
+		// Preserve existing value
+		purchaseDatePtr = &currentPurchaseDate.String
+	}
+	// If both empty, purchaseDatePtr = nil (set to NULL)
+
+	var lastCheckedPtr *string
+	if lastCheckedForm != "" {
+		// User provided new value
+		lastCheckedPtr = &lastCheckedForm
+	} else if currentLastChecked.Valid {
+		// Preserve existing value
+		lastCheckedPtr = &currentLastChecked.String
+	}
+	// If both empty, lastCheckedPtr = nil (set to NULL)
 
 	// Handle file uploads (optional - keep existing if not uploaded)
 	photoSerialFilename := ""

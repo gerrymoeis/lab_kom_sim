@@ -194,20 +194,16 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 	brand := c.PostForm("brand")
 	condition := c.PostForm("condition")
 	location := c.PostForm("location")
-	purchaseDate := c.PostForm("purchase_date")
+	purchaseDateForm := c.PostForm("purchase_date")
 	notes := c.PostForm("notes")
 
-	var purchaseDatePtr *string
-	if purchaseDate != "" {
-		purchaseDatePtr = &purchaseDate
-	}
-
-	// Get old values before update
+	// Get current device data including purchase_date and old values for logging
+	var currentPurchaseDate sql.NullString
 	var oldName, oldCategory, oldCondition string
 	err := h.db.QueryRow(`
-		SELECT name, category, condition 
+		SELECT name, category, condition, purchase_date
 		FROM devices WHERE id = ?
-	`, id).Scan(&oldName, &oldCategory, &oldCondition)
+	`, id).Scan(&oldName, &oldCategory, &oldCondition, &currentPurchaseDate)
 	
 	if err != nil {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
@@ -224,6 +220,17 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 		})
 		return
 	}
+
+	// Preserve existing purchase_date if form field is empty
+	var purchaseDatePtr *string
+	if purchaseDateForm != "" {
+		// User provided new value
+		purchaseDatePtr = &purchaseDateForm
+	} else if currentPurchaseDate.Valid {
+		// Preserve existing value
+		purchaseDatePtr = &currentPurchaseDate.String
+	}
+	// If both empty, purchaseDatePtr = nil (set to NULL)
 
 	_, err = h.db.Exec(`
 		UPDATE devices 
