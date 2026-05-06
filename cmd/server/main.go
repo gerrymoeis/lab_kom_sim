@@ -22,6 +22,16 @@ func loadTemplates(templatesDir string) (*template.Template, error) {
 		"add": func(a, b int) int {
 			return a + b
 		},
+		"sub": func(a, b int) int {
+			return a - b
+		},
+		"iterate": func(count int) []int {
+			result := make([]int, count)
+			for i := 0; i < count; i++ {
+				result[i] = i
+			}
+			return result
+		},
 	})
 	
 	err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
@@ -156,6 +166,9 @@ func main() {
 			admin.GET("/users/create", h.UserCreatePage)
 			admin.POST("/users/create", h.UserCreate)
 			admin.POST("/users/:id/delete", h.UserDelete)
+			
+			// Activity Logs (Admin only)
+			admin.GET("/activity-logs", h.ActivityLogList)
 		}
 
 		// Profile

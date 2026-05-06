@@ -1,0 +1,159 @@
+package handlers
+
+import (
+	"net/http"
+	"strconv"
+	"time"
+
+	"inventaris-lab-kom/internal/services"
+
+	"github.com/gin-gonic/gin"
+)
+
+// ActivityLogList displays the activity log list page with filters
+func (h *Handler) ActivityLogList(c *gin.Context) {
+	// Parse filters from query params
+	filters := services.ActivityLogFilters{
+		Limit:  50, // Default 50 entries per page
+		Offset: 0,
+	}
+
+	// Parse page number
+	page := 1
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+	filters.Offset = (page - 1) * filters.Limit
+
+	// Parse date filters
+	if dateFrom := c.Query("date_from"); dateFrom != "" {
+		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
+			filters.DateFrom = &t
+		}
+	}
+
+	if dateTo := c.Query("date_to"); dateTo != "" {
+		if t, err := time.Parse("2006-01-02", dateTo); err == nil {
+			// Set to end of day
+			endOfDay := t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+			filters.DateTo = &endOfDay
+		}
+	}
+
+	// Parse action filter
+	if action := c.Query("action"); action != "" {
+		filters.Action = action
+	}
+
+	// Parse entity type filter
+	if entityType := c.Query("entity_type"); entityType != "" {
+		filters.EntityType = entityType
+	}
+
+	// Parse username filter
+	if username := c.Query("username"); username != "" {
+		filters.Username = username
+	}
+
+	// Parse status filter
+	if status := c.Query("status"); status != "" {
+		filters.Status = status
+	}
+
+	// Parse search keyword
+	keyword := c.Query("search")
+
+	var logs []interface{}
+	var totalCount int
+	var err error
+
+	// Use search if keyword provided, otherwise use filters
+	if keyword != "" {
+		logsResult, count, searchErr := h.activityLogService.SearchLogs(keyword, filters.Limit, filters.Offset)
+		if searchErr != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal mencari activity logs: " + searchErr.Error(),
+			})
+			return
+		}
+		// Convert to []interface{} for template
+		logs = make([]interface{}, len(logsResult))
+		for i, log := range logsResult {
+			logs[i] = log
+		}
+		totalCount = count
+	} else {
+		logsResult, count, filterErr := h.activityLogService.GetLogs(filters)
+		if filterErr != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal mengambil activity logs: " + filterErr.Error(),
+			})
+			return
+		}
+		// Convert to []interface{} for template
+		logs = make([]interface{}, len(logsResult))
+		for i, log := range logsResult {
+			logs[i] = log
+		}
+		totalCount = count
+	}
+
+	// Calculate pagination
+	totalPages := (totalCount + filters.Limit - 1) / filters.Limit
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
+	// Get unique usernames for filter dropdown
+	usernames, err := h.getUniqueUsernames()
+	if err != nil {
+		// Log error but continue
+		usernames = []string{}
+	}
+
+	c.HTML(http.StatusOK, "activity_log/list.html", gin.H{
+		"title":        "Activity Logs",
+		"currentPage":  "activity_logs",
+		"username":     c.GetString("username"),
+		"role":         c.GetString("role"),
+		"logs":         logs,
+		"totalCount":   totalCount,
+		"page":         page,
+		"totalPages":   totalPages,
+		"filters": gin.H{
+			"date_from":   c.Query("date_from"),
+			"date_to":     c.Query("date_to"),
+			"action":      c.Query("action"),
+			"entity_type": c.Query("entity_type"),
+			"username":    c.Query("username"),
+			"status":      c.Query("status"),
+			"search":      keyword,
+		},
+		"usernames": usernames,
+	})
+}
+
+// getUniqueUsernames retrieves unique usernames from activity logs
+func (h *Handler) getUniqueUsernames() ([]string, error) {
+	query := "SELECT DISTINCT username FROM activity_logs ORDER BY username"
+	rows, err := h.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	usernames := []string{}
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err != nil {
+			return nil, err
+		}
+		usernames = append(usernames, username)
+	}
+
+	return usernames, nil
+}
