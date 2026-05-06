@@ -129,6 +129,7 @@ func main() {
 		protected.GET("/pc", h.PCList)
 		protected.GET("/pc/create", h.PCCreatePage)
 		protected.POST("/pc/create", h.PCCreate)
+		protected.GET("/pc/export", h.PCExport)
 		protected.GET("/pc/:pc_number", h.PCDetail)
 		protected.GET("/pc/:pc_number/edit", h.PCEditPage)
 		protected.POST("/pc/:pc_number/edit", h.PCEdit)

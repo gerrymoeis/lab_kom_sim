@@ -1231,3 +1231,224 @@ func (h *Handler) UpdatePCStatusAPI(c *gin.Context) {
 		"message": "Status berhasil diupdate",
 	})
 }
+
+// PCExport exports PC list to Excel
+func (h *Handler) PCExport(c *gin.Context) {
+	_, _, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	if role != "admin" {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title":   "Akses Ditolak",
+			"message": "Hanya admin yang dapat export data PC",
+		})
+		return
+	}
+
+	// Query all PCs
+	rows, err := h.db.Query(`
+		SELECT pc_number, row, column, status, device_type, serial_number, brand_model,
+		       processor, ram, storage, operating_system, accessories,
+		       purchase_date, last_checked, notes, action_notes
+		FROM pcs
+		ORDER BY pc_number
+	`)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal mengambil data PC",
+		})
+		return
+	}
+	defer rows.Close()
+
+	// Collect data
+	type PCExportData struct {
+		PCNumber        int
+		Row             int
+		Column          int
+		Status          string
+		DeviceType      sql.NullString
+		SerialNumber    sql.NullString
+		BrandModel      sql.NullString
+		Processor       sql.NullString
+		RAM             sql.NullString
+		Storage         sql.NullString
+		OperatingSystem sql.NullString
+		Accessories     sql.NullString
+		PurchaseDate    sql.NullString
+		LastChecked     sql.NullString
+		Notes           sql.NullString
+		ActionNotes     sql.NullString
+	}
+
+	var pcs []PCExportData
+	for rows.Next() {
+		var pc PCExportData
+		err := rows.Scan(&pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
+			&pc.DeviceType, &pc.SerialNumber, &pc.BrandModel,
+			&pc.Processor, &pc.RAM, &pc.Storage, &pc.OperatingSystem, &pc.Accessories,
+			&pc.PurchaseDate, &pc.LastChecked, &pc.Notes, &pc.ActionNotes)
+		if err != nil {
+			continue
+		}
+		pcs = append(pcs, pc)
+	}
+
+	// Transform data to [][]interface{}
+	data := [][]interface{}{}
+	for i, pc := range pcs {
+		// Format position as "Baris X - Kolom Y"
+		position := fmt.Sprintf("Baris %d - Kolom %d", pc.Row, pc.Column)
+
+		// Format purchase date
+		purchaseDate := "-"
+		if pc.PurchaseDate.Valid && pc.PurchaseDate.String != "" {
+			if t, err := time.Parse("2006-01-02", pc.PurchaseDate.String); err == nil {
+				purchaseDate = t.Format("02/01/2006")
+			} else {
+				purchaseDate = pc.PurchaseDate.String
+			}
+		}
+
+		// Format last checked datetime
+		lastChecked := "-"
+		if pc.LastChecked.Valid && pc.LastChecked.String != "" {
+			formats := []string{"2006-01-02T15:04:05Z", time.RFC3339, "2006-01-02 15:04:05", "2006-01-02T15:04"}
+			for _, format := range formats {
+				if t, err := time.Parse(format, pc.LastChecked.String); err == nil {
+					lastChecked = t.Format("02/01/2006 15:04")
+					break
+				}
+			}
+			if lastChecked == "-" {
+				lastChecked = pc.LastChecked.String
+			}
+		}
+
+		// Helper function to get string value or "-"
+		getValue := func(ns sql.NullString) string {
+			if ns.Valid && ns.String != "" {
+				return ns.String
+			}
+			return "-"
+		}
+
+		row := []interface{}{
+			i + 1,                           // No
+			fmt.Sprintf("PC-%02d", pc.PCNumber), // PC Number
+			position,                        // Posisi
+			pc.Status,                       // Status
+			getValue(pc.DeviceType),         // Device Type
+			getValue(pc.SerialNumber),       // Serial Number
+			getValue(pc.BrandModel),         // Brand & Model
+			getValue(pc.Processor),          // Processor
+			getValue(pc.RAM),                // RAM
+			getValue(pc.Storage),            // Storage
+			getValue(pc.OperatingSystem),    // OS
+			getValue(pc.Accessories),        // Accessories
+			purchaseDate,                    // Purchase Date
+			lastChecked,                     // Last Checked
+			getValue(pc.Notes),              // Notes
+			getValue(pc.ActionNotes),        // Action Notes
+		}
+		data = append(data, row)
+	}
+
+	// Prepare conditional formatting for status column (column D, index 3)
+	conditionalFormats := []services.ConditionalFormat{}
+	if len(data) > 0 {
+		conditionalFormats = []services.ConditionalFormat{
+			{
+				Column:    "D",
+				RowStart:  2,
+				RowEnd:    len(data) + 1,
+				Condition: "normal",
+				Color:     "#92D050", // Green
+			},
+			{
+				Column:    "D",
+				RowStart:  2,
+				RowEnd:    len(data) + 1,
+				Condition: "warning",
+				Color:     "#FFEB9C", // Yellow
+			},
+			{
+				Column:    "D",
+				RowStart:  2,
+				RowEnd:    len(data) + 1,
+				Condition: "broken",
+				Color:     "#FFC7CE", // Red
+			},
+			{
+				Column:    "D",
+				RowStart:  2,
+				RowEnd:    len(data) + 1,
+				Condition: "inactive",
+				Color:     "#D9D9D9", // Gray
+			},
+		}
+	}
+
+	// Configure Excel export
+	excelService := services.NewExcelService()
+	config := services.ExcelExportConfig{
+		SheetName: "Daftar PC",
+		Headers: []string{
+			"No", "PC Number", "Posisi", "Status", "Device Type", "Serial Number",
+			"Brand & Model", "Processor", "RAM", "Storage", "OS", "Accessories",
+			"Purchase Date", "Last Checked", "Notes", "Action Notes",
+		},
+		Data: data,
+		ColumnWidths: map[string]float64{
+			"A": 5,   // No
+			"B": 10,  // PC Number
+			"C": 15,  // Posisi
+			"D": 10,  // Status
+			"E": 22,  // Device Type
+			"F": 18,  // Serial Number
+			"G": 28,  // Brand & Model
+			"H": 22,  // Processor
+			"I": 12,  // RAM
+			"J": 12,  // Storage
+			"K": 22,  // OS
+			"L": 28,  // Accessories
+			"M": 14,  // Purchase Date
+			"N": 18,  // Last Checked
+			"O": 30,  // Notes
+			"P": 30,  // Action Notes
+		},
+		ConditionalFormats: conditionalFormats,
+	}
+
+	// Generate Excel file
+	f, err := excelService.GenerateExcel(config)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal generate file Excel: " + err.Error(),
+		})
+		return
+	}
+	defer f.Close()
+
+	// Generate filename: pc_export_HHMM_DDMMYYYY.xlsx
+	filename := excelService.GenerateFilename("pc_export")
+
+	// Set headers for download
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Header("Content-Transfer-Encoding", "binary")
+
+	// Write to response
+	if err := f.Write(c.Writer); err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal generate file Excel",
+		})
+		return
+	}
+}
