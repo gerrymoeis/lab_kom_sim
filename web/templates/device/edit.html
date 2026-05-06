@@ -61,6 +61,9 @@
 
                         <div class="mb-3">
                             <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
+                            {{ if .purchaseDate }}
+                            <div class="text-muted small mb-1">Tanggal saat ini: {{ .purchaseDate }}</div>
+                            {{ end }}
                             <input type="date" class="form-control" id="purchase_date" name="purchase_date" value="{{ .purchaseDate }}">
                         </div>
 
