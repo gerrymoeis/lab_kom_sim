@@ -171,6 +171,7 @@ func main() {
 			
 			// Activity Logs (Admin only)
 			admin.GET("/activity-logs", h.ActivityLogList)
+			admin.GET("/activity-logs/export", h.ActivityLogExport)
 		}
 
 		// Profile
