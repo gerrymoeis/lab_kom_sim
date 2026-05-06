@@ -137,12 +137,12 @@
                                 <input type="date" class="form-control" id="purchase_date" name="purchase_date" value="{{ .purchaseDate }}">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="last_checked" class="form-label">Tanggal Terakhir Dicek</label>
+                                <label for="last_checked" class="form-label">Waktu Terakhir Dicek</label>
                                 {{ if .lastChecked }}
-                                <div class="text-muted small mb-1">Tanggal saat ini: {{ .lastChecked }}</div>
+                                <div class="text-muted small mb-1">Waktu saat ini: {{ .lastCheckedDisplay }}</div>
                                 {{ end }}
-                                <input type="date" class="form-control" id="last_checked" name="last_checked" value="{{ .lastChecked }}">
-                                <small class="text-muted">Tanggal terakhir pengecekan kondisi PC</small>
+                                <input type="datetime-local" class="form-control" id="last_checked" name="last_checked" value="{{ .lastChecked }}">
+                                <small class="text-muted">Tanggal dan waktu terakhir pengecekan kondisi PC</small>
                             </div>
                         </div>
 

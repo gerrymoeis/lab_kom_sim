@@ -250,13 +250,20 @@ func (h *Handler) PCDetail(c *gin.Context) {
 		}
 	}
 
+	// Format lastChecked for display
+	var lastCheckedFormatted string
+	if pc.LastChecked != nil {
+		lastCheckedFormatted = pc.LastChecked.Format("02/01/2006 15:04")
+	}
+
 	c.HTML(http.StatusOK, "pc/detail.html", gin.H{
-		"title":       "Detail PC - Sistem Inventaris Lab",
-		"username":    username,
-		"role":        role,
-		"currentPage": "pc",
-		"pc":          pc,
-		"software":    software,
+		"title":                 "Detail PC - Sistem Inventaris Lab",
+		"username":              username,
+		"role":                  role,
+		"currentPage":           "pc",
+		"pc":                    pc,
+		"software":              software,
+		"lastCheckedFormatted":  lastCheckedFormatted,
 	})
 }
 
@@ -361,7 +368,14 @@ func (h *Handler) PCCreate(c *gin.Context) {
 
 	var lastCheckedPtr *string
 	if lastChecked != "" {
-		lastCheckedPtr = &lastChecked
+		// Convert datetime-local format (2006-01-02T15:04) to ISO 8601 for database
+		if t, err := time.Parse("2006-01-02T15:04", lastChecked); err == nil {
+			formatted := t.Format(time.RFC3339)
+			lastCheckedPtr = &formatted
+		} else {
+			// Fallback: use as-is if parsing fails
+			lastCheckedPtr = &lastChecked
+		}
 	}
 
 	// Handle file uploads (optional)
@@ -710,25 +724,36 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 	}
 
 	var lastCheckedFormatted string
+	var lastCheckedDisplay string
 	if lastCheckedStr.Valid {
-		// Try multiple date formats
-		formats := []string{"2006-01-02", "2006-01-02T15:04:05Z", time.RFC3339}
+		// Try multiple datetime formats
+		formats := []string{"2006-01-02T15:04:05Z", time.RFC3339, "2006-01-02 15:04:05", "2006-01-02T15:04"}
+		var parsedTime time.Time
+		var parseSuccess bool
 		for _, format := range formats {
 			if t, err := time.Parse(format, lastCheckedStr.String); err == nil {
-				lastCheckedFormatted = t.Format("2006-01-02")
+				parsedTime = t
+				parseSuccess = true
 				break
 			}
+		}
+		if parseSuccess {
+			// Format for datetime-local input (YYYY-MM-DDTHH:MM)
+			lastCheckedFormatted = parsedTime.Format("2006-01-02T15:04")
+			// Format for display (DD/MM/YYYY HH:MM)
+			lastCheckedDisplay = parsedTime.Format("02/01/2006 15:04")
 		}
 	}
 
 	c.HTML(http.StatusOK, "pc/edit.html", gin.H{
-		"title":        "Edit PC - Sistem Inventaris Lab",
-		"username":     username,
-		"role":         role,
-		"currentPage":  "pc",
-		"pc":           pc,
-		"purchaseDate": purchaseDateFormatted,
-		"lastChecked":  lastCheckedFormatted,
+		"title":              "Edit PC - Sistem Inventaris Lab",
+		"username":           username,
+		"role":               role,
+		"currentPage":        "pc",
+		"pc":                 pc,
+		"purchaseDate":       purchaseDateFormatted,
+		"lastChecked":        lastCheckedFormatted,
+		"lastCheckedDisplay": lastCheckedDisplay,
 	})
 }
 
@@ -804,8 +829,15 @@ func (h *Handler) PCEdit(c *gin.Context) {
 
 	var lastCheckedPtr *string
 	if lastCheckedForm != "" {
-		// User provided new value
-		lastCheckedPtr = &lastCheckedForm
+		// User provided new value from datetime-local input (format: 2006-01-02T15:04)
+		// Convert to ISO 8601 format for database
+		if t, err := time.Parse("2006-01-02T15:04", lastCheckedForm); err == nil {
+			formatted := t.Format(time.RFC3339)
+			lastCheckedPtr = &formatted
+		} else {
+			// Fallback: use as-is if parsing fails
+			lastCheckedPtr = &lastCheckedForm
+		}
 	} else if currentLastChecked.Valid {
 		// Preserve existing value
 		lastCheckedPtr = &currentLastChecked.String

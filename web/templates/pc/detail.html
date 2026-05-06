@@ -147,8 +147,8 @@
                             <td>{{ if .pc.PurchaseDate }}{{ .pc.PurchaseDate }}{{ else }}-{{ end }}</td>
                         </tr>
                         <tr>
-                            <th>Terakhir Dicek</th>
-                            <td>{{ if .pc.LastChecked }}{{ .pc.LastChecked }}{{ else }}-{{ end }}</td>
+                            <th>Waktu Terakhir Dicek</th>
+                            <td>{{ if .pc.LastChecked }}{{ .lastCheckedFormatted }}{{ else }}-{{ end }}</td>
                         </tr>
                         <tr>
                             <th>Catatan</th>
