@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"inventaris-lab-kom/internal/middleware"
@@ -382,15 +383,36 @@ func (h *Handler) PCCreate(c *gin.Context) {
 			return
 		}
 
-		// Generate unique filename with format: pc_{number}_{type}_{HHMM}_{DDMMYYYY}.jpeg
-		ext := filepath.Ext(photoSerial.Filename)
+		// Validate file extension
+		ext := strings.ToLower(filepath.Ext(photoSerial.Filename))
+		allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
+		isAllowed := false
+		for _, allowed := range allowedExts {
+			if ext == allowed {
+				isAllowed = true
+				break
+			}
+		}
+		if !isAllowed {
+			c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
+				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+				"username":    username,
+				"role":        role,
+				"currentPage": "pc",
+				"error":       "Format foto serial number tidak didukung. Gunakan JPEG, PNG, atau HEIC",
+			})
+			return
+		}
+
+		// Generate unique filename - always use .jpeg extension (output is always JPEG)
 		now := time.Now()
-		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%s%s", pcNumber, now.Format("1504_02012006"), ext)
+		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%s.jpeg", pcNumber, now.Format("1504_02012006"))
 		tempPath := filepath.Join("uploads", "temp", photoSerialFilename)
 		finalPath := filepath.Join("uploads", "pc", photoSerialFilename)
 
-		// Save temporary file
-		if err := c.SaveUploadedFile(photoSerial, tempPath); err != nil {
+		// Save temporary file with original extension for processing
+		tempOriginal := tempPath + ext
+		if err := c.SaveUploadedFile(photoSerial, tempOriginal); err != nil {
 			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
 				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
 				"username":    username,
@@ -401,21 +423,21 @@ func (h *Handler) PCCreate(c *gin.Context) {
 			return
 		}
 
-		// Compress and save
-		if err := imageService.CompressAndSave(tempPath, finalPath, 1280); err != nil {
-			os.Remove(tempPath)
+		// Compress and save (converts to JPEG)
+		if err := imageService.CompressAndSave(tempOriginal, finalPath, 1280); err != nil {
+			os.Remove(tempOriginal)
 			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
 				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
 				"username":    username,
 				"role":        role,
 				"currentPage": "pc",
-				"error":       "Gagal mengkompresi foto serial number",
+				"error":       "Gagal mengkompresi foto serial number: " + err.Error(),
 			})
 			return
 		}
 
 		// Delete temp file
-		os.Remove(tempPath)
+		os.Remove(tempOriginal)
 	}
 
 	// Process photo_front
@@ -437,15 +459,40 @@ func (h *Handler) PCCreate(c *gin.Context) {
 			return
 		}
 
-		// Generate unique filename with format: pc_{number}_{type}_{HHMM}_{DDMMYYYY}.jpeg
-		ext := filepath.Ext(photoFront.Filename)
+		// Validate file extension
+		ext := strings.ToLower(filepath.Ext(photoFront.Filename))
+		allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
+		isAllowed := false
+		for _, allowed := range allowedExts {
+			if ext == allowed {
+				isAllowed = true
+				break
+			}
+		}
+		if !isAllowed {
+			// Cleanup photo_serial if already uploaded
+			if photoSerialFilename != "" {
+				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
+			}
+			c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
+				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
+				"username":    username,
+				"role":        role,
+				"currentPage": "pc",
+				"error":       "Format foto tampilan depan tidak didukung. Gunakan JPEG, PNG, atau HEIC",
+			})
+			return
+		}
+
+		// Generate unique filename - always use .jpeg extension (output is always JPEG)
 		now := time.Now()
-		photoFrontFilename = fmt.Sprintf("pc_%d_front_%s%s", pcNumber, now.Format("1504_02012006"), ext)
+		photoFrontFilename = fmt.Sprintf("pc_%d_front_%s.jpeg", pcNumber, now.Format("1504_02012006"))
 		tempPath := filepath.Join("uploads", "temp", photoFrontFilename)
 		finalPath := filepath.Join("uploads", "pc", photoFrontFilename)
 
-		// Save temporary file
-		if err := c.SaveUploadedFile(photoFront, tempPath); err != nil {
+		// Save temporary file with original extension for processing
+		tempOriginal := tempPath + ext
+		if err := c.SaveUploadedFile(photoFront, tempOriginal); err != nil {
 			// Cleanup photo_serial if already uploaded
 			if photoSerialFilename != "" {
 				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
@@ -460,9 +507,9 @@ func (h *Handler) PCCreate(c *gin.Context) {
 			return
 		}
 
-		// Compress and save
-		if err := imageService.CompressAndSave(tempPath, finalPath, 1920); err != nil {
-			os.Remove(tempPath)
+		// Compress and save (converts to JPEG)
+		if err := imageService.CompressAndSave(tempOriginal, finalPath, 1920); err != nil {
+			os.Remove(tempOriginal)
 			// Cleanup photo_serial if already uploaded
 			if photoSerialFilename != "" {
 				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
@@ -472,13 +519,13 @@ func (h *Handler) PCCreate(c *gin.Context) {
 				"username":    username,
 				"role":        role,
 				"currentPage": "pc",
-				"error":       "Gagal mengkompresi foto tampilan depan",
+				"error":       "Gagal mengkompresi foto tampilan depan: " + err.Error(),
 			})
 			return
 		}
 
 		// Delete temp file
-		os.Remove(tempPath)
+		os.Remove(tempOriginal)
 	}
 
 	// Insert to database
@@ -766,21 +813,39 @@ func (h *Handler) PCEdit(c *gin.Context) {
 			return
 		}
 
+		// Validate file extension
+		ext := strings.ToLower(filepath.Ext(photoSerial.Filename))
+		allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
+		isAllowed := false
+		for _, allowed := range allowedExts {
+			if ext == allowed {
+				isAllowed = true
+				break
+			}
+		}
+		if !isAllowed {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Format foto serial number tidak didukung. Gunakan JPEG, PNG, atau HEIC",
+			})
+			return
+		}
+
 		// Delete old photo if exists
 		if photoSerialFilename != "" {
 			oldPath := filepath.Join("uploads", "pc", photoSerialFilename)
 			imageService.DeleteImage(oldPath)
 		}
 
-		// Generate unique filename with format: pc_{number}_{type}_{HHMM}_{DDMMYYYY}.jpeg
-		ext := filepath.Ext(photoSerial.Filename)
+		// Generate unique filename - always use .jpeg extension (output is always JPEG)
 		now := time.Now()
-		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%s%s", currentPCNumber, now.Format("1504_02012006"), ext)
+		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%s.jpeg", currentPCNumber, now.Format("1504_02012006"))
 		tempPath := filepath.Join("uploads", "temp", photoSerialFilename)
 		finalPath := filepath.Join("uploads", "pc", photoSerialFilename)
 
-		// Save temporary file
-		if err := c.SaveUploadedFile(photoSerial, tempPath); err != nil {
+		// Save temporary file with original extension for processing
+		tempOriginal := tempPath + ext
+		if err := c.SaveUploadedFile(photoSerial, tempOriginal); err != nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"title":   "Error",
 				"message": "Gagal menyimpan foto serial number",
@@ -788,18 +853,18 @@ func (h *Handler) PCEdit(c *gin.Context) {
 			return
 		}
 
-		// Compress and save
-		if err := imageService.CompressAndSave(tempPath, finalPath, 1280); err != nil {
-			os.Remove(tempPath)
+		// Compress and save (converts to JPEG)
+		if err := imageService.CompressAndSave(tempOriginal, finalPath, 1280); err != nil {
+			os.Remove(tempOriginal)
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"title":   "Error",
-				"message": "Gagal mengkompresi foto serial number",
+				"message": "Gagal mengkompresi foto serial number: " + err.Error(),
 			})
 			return
 		}
 
 		// Delete temp file
-		os.Remove(tempPath)
+		os.Remove(tempOriginal)
 	}
 
 	// Process photo_front (if uploaded)
@@ -814,21 +879,39 @@ func (h *Handler) PCEdit(c *gin.Context) {
 			return
 		}
 
+		// Validate file extension
+		ext := strings.ToLower(filepath.Ext(photoFront.Filename))
+		allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
+		isAllowed := false
+		for _, allowed := range allowedExts {
+			if ext == allowed {
+				isAllowed = true
+				break
+			}
+		}
+		if !isAllowed {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Format foto tampilan depan tidak didukung. Gunakan JPEG, PNG, atau HEIC",
+			})
+			return
+		}
+
 		// Delete old photo if exists
 		if photoFrontFilename != "" {
 			oldPath := filepath.Join("uploads", "pc", photoFrontFilename)
 			imageService.DeleteImage(oldPath)
 		}
 
-		// Generate unique filename with format: pc_{number}_{type}_{HHMM}_{DDMMYYYY}.jpeg
-		ext := filepath.Ext(photoFront.Filename)
+		// Generate unique filename - always use .jpeg extension (output is always JPEG)
 		now := time.Now()
-		photoFrontFilename = fmt.Sprintf("pc_%d_front_%s%s", currentPCNumber, now.Format("1504_02012006"), ext)
+		photoFrontFilename = fmt.Sprintf("pc_%d_front_%s.jpeg", currentPCNumber, now.Format("1504_02012006"))
 		tempPath := filepath.Join("uploads", "temp", photoFrontFilename)
 		finalPath := filepath.Join("uploads", "pc", photoFrontFilename)
 
-		// Save temporary file
-		if err := c.SaveUploadedFile(photoFront, tempPath); err != nil {
+		// Save temporary file with original extension for processing
+		tempOriginal := tempPath + ext
+		if err := c.SaveUploadedFile(photoFront, tempOriginal); err != nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"title":   "Error",
 				"message": "Gagal menyimpan foto tampilan depan",
@@ -836,18 +919,18 @@ func (h *Handler) PCEdit(c *gin.Context) {
 			return
 		}
 
-		// Compress and save
-		if err := imageService.CompressAndSave(tempPath, finalPath, 1920); err != nil {
-			os.Remove(tempPath)
+		// Compress and save (converts to JPEG)
+		if err := imageService.CompressAndSave(tempOriginal, finalPath, 1920); err != nil {
+			os.Remove(tempOriginal)
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"title":   "Error",
-				"message": "Gagal mengkompresi foto tampilan depan",
+				"message": "Gagal mengkompresi foto tampilan depan: " + err.Error(),
 			})
 			return
 		}
 
 		// Delete temp file
-		os.Remove(tempPath)
+		os.Remove(tempOriginal)
 	}
 
 	// Update database
