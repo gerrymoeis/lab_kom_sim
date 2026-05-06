@@ -139,6 +139,7 @@ func main() {
 		protected.GET("/devices", h.DeviceList)
 		protected.GET("/devices/create", h.DeviceCreatePage)
 		protected.POST("/devices/create", h.DeviceCreate)
+		protected.GET("/devices/export", h.DeviceExport)
 		protected.GET("/devices/:id/edit", h.DeviceEditPage)
 		protected.POST("/devices/:id/edit", h.DeviceEdit)
 		protected.POST("/devices/:id/delete", h.DeviceDelete)
