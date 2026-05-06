@@ -77,46 +77,56 @@
                     <div class="pc-row mb-3">
                         {{ range $colIndex, $pc := $row }}
                         {{ if $pc.ID }}
-                        <div class="pc-card status-{{ $pc.Status }} pc-card-clickable" 
-                             role="button"
-                             tabindex="0"
-                             aria-label="PC {{ printf "%02d" $pc.PCNumber }}, Status {{ $pc.Status }}, Baris {{ $pc.Row }}, Kolom {{ $pc.Column }}"
-                             data-pc-id="{{ $pc.ID }}"
-                             data-pc-number="{{ printf "%02d" $pc.PCNumber }}"
-                             data-pc-row="{{ $pc.Row }}"
-                             data-pc-column="{{ $pc.Column }}"
-                             data-pc-status="{{ $pc.Status }}"
-                             data-pc-processor="{{ $pc.Processor }}"
-                             data-pc-ram="{{ $pc.RAM }}"
-                             data-pc-storage="{{ $pc.Storage }}"
-                             data-pc-os="{{ $pc.OperatingSystem }}"
-                             data-pc-notes="{{ $pc.Notes }}"
-                             style="cursor: pointer;">
-                            <div class="pc-number">PC-{{ printf "%02d" $pc.PCNumber }}</div>
-                            <div class="pc-icon">
-                                <i class="bi bi-pc-display" aria-hidden="true"></i>
+                        <div class="pc-card-wrapper">
+                            <div class="pc-card status-{{ $pc.Status }} pc-card-clickable" 
+                                 role="button"
+                                 tabindex="0"
+                                 aria-label="PC {{ printf "%02d" $pc.PCNumber }}, Status {{ $pc.Status }}, Baris {{ $pc.Row }}, Kolom {{ $pc.Column }}"
+                                 data-pc-id="{{ $pc.ID }}"
+                                 data-pc-number="{{ printf "%02d" $pc.PCNumber }}"
+                                 data-pc-row="{{ $pc.Row }}"
+                                 data-pc-column="{{ $pc.Column }}"
+                                 data-pc-status="{{ $pc.Status }}"
+                                 data-pc-processor="{{ $pc.Processor }}"
+                                 data-pc-ram="{{ $pc.RAM }}"
+                                 data-pc-storage="{{ $pc.Storage }}"
+                                 data-pc-os="{{ $pc.OperatingSystem }}"
+                                 data-pc-notes="{{ $pc.Notes }}"
+                                 style="cursor: pointer;">
+                                <div class="pc-number">PC-{{ printf "%02d" $pc.PCNumber }}</div>
+                                <div class="pc-icon">
+                                    <i class="bi bi-pc-display" aria-hidden="true"></i>
+                                </div>
+                                <div class="pc-status-badge">
+                                    {{ if eq $pc.Status "normal" }}
+                                        <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
+                                        <span class="visually-hidden">Status Normal</span>
+                                    {{ else if eq $pc.Status "warning" }}
+                                        <i class="bi bi-exclamation-triangle-fill text-warning" aria-hidden="true"></i>
+                                        <span class="visually-hidden">Status Warning</span>
+                                    {{ else if eq $pc.Status "broken" }}
+                                        <i class="bi bi-x-circle-fill text-danger" aria-hidden="true"></i>
+                                        <span class="visually-hidden">Status Rusak</span>
+                                    {{ else }}
+                                        <i class="bi bi-dash-circle-fill text-secondary" aria-hidden="true"></i>
+                                        <span class="visually-hidden">Status Inactive</span>
+                                    {{ end }}
+                                </div>
+                                <!-- Windows Version Badge -->
+                                <div class="pc-windows-badge" id="win-badge-{{ $pc.PCNumber }}">
+                                    <span class="visually-hidden">Windows Version</span>
+                                </div>
                             </div>
-                            <div class="pc-status-badge">
-                                {{ if eq $pc.Status "normal" }}
-                                    <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
-                                    <span class="visually-hidden">Status Normal</span>
-                                {{ else if eq $pc.Status "warning" }}
-                                    <i class="bi bi-exclamation-triangle-fill text-warning" aria-hidden="true"></i>
-                                    <span class="visually-hidden">Status Warning</span>
-                                {{ else if eq $pc.Status "broken" }}
-                                    <i class="bi bi-x-circle-fill text-danger" aria-hidden="true"></i>
-                                    <span class="visually-hidden">Status Rusak</span>
-                                {{ else }}
-                                    <i class="bi bi-dash-circle-fill text-secondary" aria-hidden="true"></i>
-                                    <span class="visually-hidden">Status Inactive</span>
-                                {{ end }}
-                            </div>
+                            <!-- Windows Version Text -->
+                            <div class="pc-windows-text" id="win-text-{{ $pc.PCNumber }}"></div>
                         </div>
                         {{ else }}
-                        <div class="pc-card pc-empty">
-                            <div class="pc-number">-</div>
-                            <div class="pc-icon text-muted">
-                                <i class="bi bi-dash"></i>
+                        <div class="pc-card-wrapper">
+                            <div class="pc-card pc-empty">
+                                <div class="pc-number">-</div>
+                                <div class="pc-icon text-muted">
+                                    <i class="bi bi-dash"></i>
+                                </div>
                             </div>
                         </div>
                         {{ end }}
@@ -225,6 +235,94 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js"></script>
     <script>
+    // Parse Windows Version and return badge class + short text
+    function parseWindowsVersion(osString) {
+        if (!osString || osString === '-') {
+            return { badgeClass: 'windows-other', shortText: '-', fullText: osString };
+        }
+        
+        const os = osString.toLowerCase();
+        
+        // Windows 11 Pro 25H2
+        if (os.includes('windows 11') && os.includes('25h2')) {
+            return { 
+                badgeClass: 'windows-11-25h2', 
+                shortText: 'W11', 
+                fullText: 'Win 11 Pro 25H2' 
+            };
+        }
+        
+        // Windows 11 Pro 23H2
+        if (os.includes('windows 11') && os.includes('23h2')) {
+            return { 
+                badgeClass: 'windows-11-23h2', 
+                shortText: 'W11', 
+                fullText: 'Win 11 Pro 23H2' 
+            };
+        }
+        
+        // Windows 10 Pro 22H2
+        if (os.includes('windows 10') && os.includes('22h2')) {
+            return { 
+                badgeClass: 'windows-10-22h2', 
+                shortText: 'W10', 
+                fullText: 'Win 10 Pro 22H2' 
+            };
+        }
+        
+        // Windows 11 (other versions)
+        if (os.includes('windows 11')) {
+            return { 
+                badgeClass: 'windows-other', 
+                shortText: 'W11', 
+                fullText: 'Win 11 Pro' 
+            };
+        }
+        
+        // Windows 10 (other versions)
+        if (os.includes('windows 10')) {
+            return { 
+                badgeClass: 'windows-other', 
+                shortText: 'W10', 
+                fullText: 'Win 10 Pro' 
+            };
+        }
+        
+        // Other OS
+        return { 
+            badgeClass: 'windows-other', 
+            shortText: 'OS', 
+            fullText: osString 
+        };
+    }
+    
+    // Initialize Windows Version Badges
+    document.addEventListener('DOMContentLoaded', function() {
+        const pcCards = document.querySelectorAll('.pc-card-clickable');
+        
+        pcCards.forEach(card => {
+            const pcNumber = card.dataset.pcNumber;
+            const osString = card.dataset.pcOs;
+            
+            const winInfo = parseWindowsVersion(osString);
+            
+            // Update badge
+            const badge = document.getElementById('win-badge-' + parseInt(pcNumber));
+            if (badge && winInfo.shortText !== '-') {
+                badge.textContent = winInfo.shortText;
+                badge.className = 'pc-windows-badge ' + winInfo.badgeClass;
+            } else if (badge) {
+                badge.style.display = 'none';
+            }
+            
+            // Update text
+            const text = document.getElementById('win-text-' + parseInt(pcNumber));
+            if (text && winInfo.fullText !== '-') {
+                text.textContent = winInfo.fullText;
+            }
+        });
+    });
+    
     // Handle PC Card Click - Populate Modal with Dynamic Content
     document.addEventListener('DOMContentLoaded', function() {
         const pcCards = document.querySelectorAll('.pc-card-clickable');

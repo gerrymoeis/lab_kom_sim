@@ -212,6 +212,15 @@ body {
     .pc-status-badge {
         font-size: 1rem;
     }
+    
+    .pc-windows-badge {
+        font-size: 0.6rem;
+        padding: 2px 5px;
+    }
+    
+    .pc-windows-text {
+        font-size: 0.65rem;
+    }
 }
 
 /* Mobile Landscape & Small Tablet (577px - 768px) */
@@ -245,12 +254,23 @@ body {
         right: 3px;
     }
     
+    .pc-windows-badge {
+        font-size: 0.55rem;
+        padding: 2px 4px;
+        top: 3px;
+        left: 3px;
+    }
+    
+    .pc-windows-text {
+        font-size: 0.6rem;
+    }
+    
     .pc-row {
-        gap: 10px;
+        gap: 12px;
     }
     
     .pc-grid {
-        gap: 10px;
+        gap: 15px;
     }
     
     /* Statistics Cards - Stack on mobile */
@@ -317,13 +337,24 @@ body {
         right: 2px;
     }
     
+    .pc-windows-badge {
+        font-size: 0.5rem;
+        padding: 2px 3px;
+        top: 2px;
+        left: 2px;
+    }
+    
+    .pc-windows-text {
+        font-size: 0.55rem;
+    }
+    
     .pc-row {
-        gap: 8px;
+        gap: 10px;
         flex-wrap: wrap;
     }
     
     .pc-grid {
-        gap: 8px;
+        gap: 12px;
     }
     
     /* Navbar Brand - Smaller text */
@@ -396,12 +427,21 @@ body {
         font-size: 0.7rem;
     }
     
+    .pc-windows-badge {
+        font-size: 0.45rem;
+        padding: 1px 2px;
+    }
+    
+    .pc-windows-text {
+        font-size: 0.5rem;
+    }
+    
     .pc-row {
-        gap: 6px;
+        gap: 8px;
     }
     
     .pc-grid {
-        gap: 6px;
+        gap: 10px;
     }
     
     /* Container - Reduce padding */
@@ -494,13 +534,20 @@ body.modal-open {
 .pc-grid {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 20px; /* Increased from 15px for better spacing with text */
 }
 
 .pc-row {
     display: flex;
-    gap: 15px;
+    gap: 20px; /* Increased from 15px for better spacing */
     justify-content: center;
+}
+
+.pc-card-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px; /* Space between card and text */
 }
 
 .pc-card {
@@ -568,6 +615,49 @@ body.modal-open {
     top: 5px;
     right: 5px;
     font-size: 1.2rem;
+}
+
+/* Windows Version Badge (top-left corner) */
+.pc-windows-badge {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 4px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    line-height: 1;
+}
+
+/* Windows Version Colors */
+.windows-11-25h2 {
+    background-color: #0066CC; /* Biru Tua */
+}
+
+.windows-11-23h2 {
+    background-color: #4DA6FF; /* Biru Muda */
+}
+
+.windows-10-22h2 {
+    background-color: #FF9933; /* Orange */
+}
+
+.windows-other {
+    background-color: #FFD966; /* Kuning Muda */
+    color: #333; /* Dark text for better contrast */
+    text-shadow: none;
+}
+
+/* Windows Version Text (below card) */
+.pc-windows-text {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #495057;
+    text-align: center;
+    line-height: 1.2;
+    padding: 0 4px;
 }
 
 /* Responsive Utilities */
