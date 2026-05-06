@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"inventaris-lab-kom/internal/middleware"
@@ -13,7 +12,6 @@ import (
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/xuri/excelize/v2"
 )
 
 // LogbookList renders list of logbook entries
@@ -387,61 +385,51 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 		entries = append(entries, entry)
 	}
 
-	// Create Excel file
-	f := excelize.NewFile()
-	defer f.Close()
+	// Transform data to [][]interface{}
+	data := [][]interface{}{}
+	for i, entry := range entries {
+		row := []interface{}{
+			i + 1,                            // No
+			entry.Date.Format("2006-01-02"),  // Tanggal
+			entry.StudentName,                // Nama Mahasiswa
+			entry.NIM,                        // NIM
+			entry.Purpose,                    // Keperluan
+			entry.TimeIn,                     // Jam Masuk
+			entry.TimeOut,                    // Jam Keluar
+		}
+		data = append(data, row)
+	}
 
-	sheetName := "Logbook"
-	index, err := f.NewSheet(sheetName)
+	// Configure Excel export
+	excelService := services.NewExcelService()
+	config := services.ExcelExportConfig{
+		SheetName: "Logbook",
+		Headers:   []string{"No", "Tanggal", "Nama Mahasiswa", "NIM", "Keperluan", "Jam Masuk", "Jam Keluar"},
+		Data:      data,
+		ColumnWidths: map[string]float64{
+			"A": 5,   // No
+			"B": 12,  // Tanggal
+			"C": 25,  // Nama Mahasiswa
+			"D": 13,  // NIM
+			"E": 30,  // Keperluan
+			"F": 11,  // Jam Masuk
+			"G": 11,  // Jam Keluar
+		},
+	}
+
+	// Generate Excel file
+	f, err := excelService.GenerateExcel(config)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
-			"message": "Gagal membuat sheet Excel",
+			"message": "Gagal generate file Excel: " + err.Error(),
 		})
 		return
 	}
+	defer f.Close()
 
-	// Set headers - NEW ORDER: Tanggal, Nama Mahasiswa, NIM, Keperluan, Jam Masuk, Jam Keluar
-	headers := []string{"No", "Tanggal", "Nama Mahasiswa", "NIM", "Keperluan", "Jam Masuk", "Jam Keluar"}
-	for i, header := range headers {
-		cell := string(rune('A'+i)) + "1"
-		f.SetCellValue(sheetName, cell, header)
-	}
-
-	// Set header style
-	headerStyle, _ := f.NewStyle(&excelize.Style{
-		Font: &excelize.Font{Bold: true},
-		Fill: excelize.Fill{Type: "pattern", Color: []string{"#4472C4"}, Pattern: 1},
-		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
-	})
-	f.SetCellStyle(sheetName, "A1", "G1", headerStyle)
-
-	// Set data - NEW ORDER: No, Tanggal, Nama, NIM, Keperluan, Jam Masuk, Jam Keluar
-	for i, entry := range entries {
-		row := i + 2
-		f.SetCellValue(sheetName, "A"+strconv.Itoa(row), i+1)
-		f.SetCellValue(sheetName, "B"+strconv.Itoa(row), entry.Date.Format("2006-01-02"))
-		f.SetCellValue(sheetName, "C"+strconv.Itoa(row), entry.StudentName)
-		f.SetCellValue(sheetName, "D"+strconv.Itoa(row), entry.NIM)
-		f.SetCellValue(sheetName, "E"+strconv.Itoa(row), entry.Purpose)
-		f.SetCellValue(sheetName, "F"+strconv.Itoa(row), entry.TimeIn)
-		f.SetCellValue(sheetName, "G"+strconv.Itoa(row), entry.TimeOut)
-	}
-
-	// Auto-fit columns with proper proportions
-	f.SetColWidth(sheetName, "A", "A", 5)   // No
-	f.SetColWidth(sheetName, "B", "B", 12)  // Tanggal (2006-01-02 format)
-	f.SetColWidth(sheetName, "C", "C", 25)  // Nama Mahasiswa
-	f.SetColWidth(sheetName, "D", "D", 13)  // NIM (23091397164 = 11 chars)
-	f.SetColWidth(sheetName, "E", "E", 30)  // Keperluan (flexible)
-	f.SetColWidth(sheetName, "F", "F", 11)  // Jam Masuk (HH:MM format)
-	f.SetColWidth(sheetName, "G", "G", 11)  // Jam Keluar (HH:MM format)
-
-	f.SetActiveSheet(index)
-	f.DeleteSheet("Sheet1")
-
-	// Generate filename
-	filename := fmt.Sprintf("logbook_export_%s.xlsx", time.Now().Format("20060102_150405"))
+	// Generate filename with new format: logbook_export_HHMM_DDMMYYYY.xlsx
+	filename := excelService.GenerateFilename("logbook_export")
 
 	// Set headers for download
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -480,7 +468,7 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 	nims := c.QueryArray("nim[]")
 	timeIns := c.QueryArray("time_in[]")
 	timeOuts := c.QueryArray("time_out[]")
-	purposes := c.QueryArray("purpose[]") // Changed from notes to purpose
+	purposes := c.QueryArray("purpose[]")
 
 	if len(dates) == 0 {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
@@ -490,72 +478,61 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 		return
 	}
 
-	// Create Excel file
-	f := excelize.NewFile()
-	defer f.Close()
-
-	sheetName := "Logbook"
-	index, err := f.NewSheet(sheetName)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal membuat sheet Excel",
-		})
-		return
-	}
-
-	// Set headers - NEW ORDER: Tanggal, Nama Mahasiswa, NIM, Keperluan, Jam Masuk, Jam Keluar
-	headers := []string{"No", "Tanggal", "Nama Mahasiswa", "NIM", "Keperluan", "Jam Masuk", "Jam Keluar"}
-	for i, header := range headers {
-		cell := string(rune('A'+i)) + "1"
-		f.SetCellValue(sheetName, cell, header)
-	}
-
-	// Set header style
-	headerStyle, _ := f.NewStyle(&excelize.Style{
-		Font: &excelize.Font{Bold: true},
-		Fill: excelize.Fill{Type: "pattern", Color: []string{"#4472C4"}, Pattern: 1},
-		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
-	})
-	f.SetCellStyle(sheetName, "A1", "G1", headerStyle)
-
-	// Set data - NEW ORDER: No, Tanggal, Nama, NIM, Keperluan, Jam Masuk, Jam Keluar
+	// Transform data to [][]interface{}
+	data := [][]interface{}{}
 	for i := 0; i < len(dates); i++ {
-		row := i + 2
-		f.SetCellValue(sheetName, "A"+strconv.Itoa(row), i+1)
-		f.SetCellValue(sheetName, "B"+strconv.Itoa(row), dates[i])
-		f.SetCellValue(sheetName, "C"+strconv.Itoa(row), names[i])
-		f.SetCellValue(sheetName, "D"+strconv.Itoa(row), nims[i])
-		
 		purpose := ""
 		if i < len(purposes) {
 			purpose = purposes[i]
 		}
-		f.SetCellValue(sheetName, "E"+strconv.Itoa(row), purpose)
-		
-		f.SetCellValue(sheetName, "F"+strconv.Itoa(row), timeIns[i])
 		
 		timeOut := ""
 		if i < len(timeOuts) {
 			timeOut = timeOuts[i]
 		}
-		f.SetCellValue(sheetName, "G"+strconv.Itoa(row), timeOut)
+		
+		row := []interface{}{
+			i + 1,      // No
+			dates[i],   // Tanggal
+			names[i],   // Nama Mahasiswa
+			nims[i],    // NIM
+			purpose,    // Keperluan
+			timeIns[i], // Jam Masuk
+			timeOut,    // Jam Keluar
+		}
+		data = append(data, row)
 	}
 
-	// Auto-fit columns with proper proportions
-	f.SetColWidth(sheetName, "A", "A", 5)   // No
-	f.SetColWidth(sheetName, "B", "B", 12)  // Tanggal (2006-01-02 format)
-	f.SetColWidth(sheetName, "C", "C", 25)  // Nama Mahasiswa
-	f.SetColWidth(sheetName, "D", "D", 13)  // NIM (23091397164 = 11 chars)
-	f.SetColWidth(sheetName, "E", "E", 30)  // Keperluan (flexible)
-	f.SetColWidth(sheetName, "F", "F", 11)  // Jam Masuk (HH:MM format)
-	f.SetColWidth(sheetName, "G", "G", 11)  // Jam Keluar (HH:MM format)
+	// Configure Excel export
+	excelService := services.NewExcelService()
+	config := services.ExcelExportConfig{
+		SheetName: "Logbook",
+		Headers:   []string{"No", "Tanggal", "Nama Mahasiswa", "NIM", "Keperluan", "Jam Masuk", "Jam Keluar"},
+		Data:      data,
+		ColumnWidths: map[string]float64{
+			"A": 5,   // No
+			"B": 12,  // Tanggal
+			"C": 25,  // Nama Mahasiswa
+			"D": 13,  // NIM
+			"E": 30,  // Keperluan
+			"F": 11,  // Jam Masuk
+			"G": 11,  // Jam Keluar
+		},
+	}
 
-	f.SetActiveSheet(index)
-	f.DeleteSheet("Sheet1")
+	// Generate Excel file
+	f, err := excelService.GenerateExcel(config)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal generate file Excel: " + err.Error(),
+		})
+		return
+	}
+	defer f.Close()
 
-	// Generate filename
-	filename := fmt.Sprintf("logbook_preview_%s.xlsx", time.Now().Format("20060102_150405"))
+	// Generate filename with new format: logbook_preview_HHMM_DDMMYYYY.xlsx
+	filename := excelService.GenerateFilename("logbook_preview")
 
 	// Set headers for download
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
