@@ -63,11 +63,12 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "software/list.html", gin.H{
-		"title":    "Tracking Software - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
-		"software": software,
-		"pcs":      pcs,
+		"title":       "Tracking Software - Sistem Inventaris Lab",
+		"currentPage": "software",
+		"username":    username,
+		"role":        role,
+		"software":    software,
+		"pcs":         pcs,
 	})
 }
 

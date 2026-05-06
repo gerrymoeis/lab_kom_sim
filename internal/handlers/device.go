@@ -46,10 +46,11 @@ func (h *Handler) DeviceList(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
-		"title":    "Daftar Perangkat - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
-		"devices":  devices,
+		"title":       "Daftar Perangkat - Sistem Inventaris Lab",
+		"currentPage": "devices",
+		"username":    username,
+		"role":        role,
+		"devices":     devices,
 	})
 }
 
@@ -62,9 +63,10 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "device/create.html", gin.H{
-		"title":    "Tambah Perangkat Baru - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
+		"title":       "Tambah Perangkat Baru - Sistem Inventaris Lab",
+		"currentPage": "devices",
+		"username":    username,
+		"role":        role,
 	})
 }
 
@@ -176,6 +178,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "device/edit.html", gin.H{
 		"title":        "Edit Perangkat - Sistem Inventaris Lab",
+		"currentPage":  "devices",
 		"username":     username,
 		"role":         role,
 		"device":       device,

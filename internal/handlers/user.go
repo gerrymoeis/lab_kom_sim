@@ -44,10 +44,11 @@ func (h *Handler) UserList(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "user/list.html", gin.H{
-		"title":    "Manajemen User - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
-		"users":    users,
+		"title":       "Manajemen User - Sistem Inventaris Lab",
+		"currentPage": "users",
+		"username":    username,
+		"role":        role,
+		"users":       users,
 	})
 }
 
@@ -60,9 +61,10 @@ func (h *Handler) UserCreatePage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "user/create.html", gin.H{
-		"title":    "Tambah User Baru - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
+		"title":       "Tambah User Baru - Sistem Inventaris Lab",
+		"currentPage": "users",
+		"username":    username,
+		"role":        role,
 	})
 }
 
@@ -155,10 +157,11 @@ func (h *Handler) Profile(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "user/profile.html", gin.H{
-		"title":    "Profil - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
-		"user":     user,
+		"title":       "Profil - Sistem Inventaris Lab",
+		"currentPage": "profile",
+		"username":    username,
+		"role":        role,
+		"user":        user,
 	})
 }
 

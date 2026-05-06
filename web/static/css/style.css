@@ -614,3 +614,81 @@ body.modal-open {
         margin-top: 1rem !important;
     }
 }
+
+/* Activity Log Styles */
+.badge-create { 
+    background-color: #28a745; 
+}
+
+.badge-update { 
+    background-color: #007bff; 
+}
+
+.badge-delete { 
+    background-color: #dc3545; 
+}
+
+.badge-upload { 
+    background-color: #ffc107; 
+    color: #000; 
+}
+
+.badge-login { 
+    background-color: #17a2b8; 
+}
+
+.badge-logout { 
+    background-color: #6c757d; 
+}
+
+.badge-success { 
+    background-color: #28a745; 
+}
+
+.badge-failed { 
+    background-color: #dc3545; 
+}
+
+.activity-log-table {
+    font-size: 0.9rem;
+}
+
+.activity-log-table td {
+    vertical-align: middle;
+}
+
+.description-cell {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.json-viewer {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.diff-view {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.diff-old {
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.diff-new {
+    background-color: #e8f5e9;
+    padding: 10px;
+    border-radius: 4px;
+}
