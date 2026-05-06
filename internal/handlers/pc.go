@@ -699,15 +699,25 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 
 	var purchaseDateFormatted string
 	if purchaseDateStr.Valid {
-		if t, err := time.Parse("2006-01-02", purchaseDateStr.String); err == nil {
-			purchaseDateFormatted = t.Format("2006-01-02")
+		// Try multiple date formats
+		formats := []string{"2006-01-02", "2006-01-02T15:04:05Z", time.RFC3339}
+		for _, format := range formats {
+			if t, err := time.Parse(format, purchaseDateStr.String); err == nil {
+				purchaseDateFormatted = t.Format("2006-01-02")
+				break
+			}
 		}
 	}
 
 	var lastCheckedFormatted string
 	if lastCheckedStr.Valid {
-		if t, err := time.Parse("2006-01-02", lastCheckedStr.String); err == nil {
-			lastCheckedFormatted = t.Format("2006-01-02")
+		// Try multiple date formats
+		formats := []string{"2006-01-02", "2006-01-02T15:04:05Z", time.RFC3339}
+		for _, format := range formats {
+			if t, err := time.Parse(format, lastCheckedStr.String); err == nil {
+				lastCheckedFormatted = t.Format("2006-01-02")
+				break
+			}
 		}
 	}
 

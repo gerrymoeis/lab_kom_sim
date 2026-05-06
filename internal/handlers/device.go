@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/models"
@@ -173,7 +174,18 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 
 	var purchaseDateFormatted string
 	if purchaseDateStr.Valid {
-		purchaseDateFormatted = purchaseDateStr.String
+		// Try multiple date formats
+		formats := []string{"2006-01-02", "2006-01-02T15:04:05Z", time.RFC3339}
+		for _, format := range formats {
+			if t, err := time.Parse(format, purchaseDateStr.String); err == nil {
+				purchaseDateFormatted = t.Format("2006-01-02")
+				break
+			}
+		}
+		// If parsing fails, use the string as-is (fallback)
+		if purchaseDateFormatted == "" {
+			purchaseDateFormatted = purchaseDateStr.String
+		}
 	}
 
 	c.HTML(http.StatusOK, "device/edit.html", gin.H{
