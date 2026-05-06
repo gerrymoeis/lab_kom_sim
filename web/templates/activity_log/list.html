@@ -170,10 +170,23 @@
                                     <small class="text-muted">{{ .IPAddress }}</small>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-primary" 
+                                    <button class="btn btn-sm btn-outline-primary detail-btn" 
                                             data-bs-toggle="modal" 
                                             data-bs-target="#detailModal"
-                                            onclick="showDetail({{ .ID }}, '{{ .CreatedAt.Format "02/01/2006 15:04:05" }}', '{{ .Username }}', '{{ .UserRole }}', '{{ .Action }}', '{{ .EntityType }}', '{{ if .EntityID }}{{ .EntityID }}{{ end }}', '{{ .Description }}', '{{ .OldValues }}', '{{ .NewValues }}', '{{ .IPAddress }}', '{{ .UserAgent }}', '{{ .Status }}', '{{ .ErrorMessage }}')">
+                                            data-log-id="{{ .ID }}"
+                                            data-log-timestamp="{{ .CreatedAt.Format "02/01/2006 15:04:05" }}"
+                                            data-log-username="{{ .Username }}"
+                                            data-log-role="{{ .UserRole }}"
+                                            data-log-action="{{ .Action }}"
+                                            data-log-entity-type="{{ .EntityType }}"
+                                            data-log-entity-id="{{ if .EntityID }}{{ .EntityID }}{{ end }}"
+                                            data-log-description="{{ .Description }}"
+                                            data-log-old-values="{{ .OldValues }}"
+                                            data-log-new-values="{{ .NewValues }}"
+                                            data-log-ip="{{ .IPAddress }}"
+                                            data-log-user-agent="{{ .UserAgent }}"
+                                            data-log-status="{{ .Status }}"
+                                            data-log-error="{{ .ErrorMessage }}">
                                         <i class="bi bi-eye"></i>
                                     </button>
                                 </td>
@@ -228,9 +241,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
-    <script>
+    <!-- Detail Modal -->
     <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -327,46 +338,66 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js"></script>
     <script>
-        function showDetail(id, timestamp, username, role, action, entityType, entityID, description, oldValues, newValues, ipAddress, userAgent, status, errorMessage) {
-            // Set basic info
-            document.getElementById('detail-timestamp').textContent = timestamp;
-            document.getElementById('detail-user').textContent = username + ' (' + role + ')';
-            document.getElementById('detail-action').textContent = action.toUpperCase();
-            document.getElementById('detail-entity').textContent = entityType + (entityID ? ' #' + entityID : '');
-            document.getElementById('detail-description').textContent = description;
-            document.getElementById('detail-ip').textContent = ipAddress;
-            document.getElementById('detail-status').textContent = status.toUpperCase();
-            document.getElementById('detail-user-agent').textContent = userAgent;
+        // Attach event listeners to detail buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.detail-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const id = this.dataset.logId;
+                    const timestamp = this.dataset.logTimestamp;
+                    const username = this.dataset.logUsername;
+                    const role = this.dataset.logRole;
+                    const action = this.dataset.logAction;
+                    const entityType = this.dataset.logEntityType;
+                    const entityID = this.dataset.logEntityId;
+                    const description = this.dataset.logDescription;
+                    const oldValues = this.dataset.logOldValues;
+                    const newValues = this.dataset.logNewValues;
+                    const ipAddress = this.dataset.logIp;
+                    const userAgent = this.dataset.logUserAgent;
+                    const status = this.dataset.logStatus;
+                    const errorMessage = this.dataset.logError;
 
-            // Show error message if failed
-            if (status === 'failed' && errorMessage) {
-                document.getElementById('error-section').style.display = 'block';
-                document.getElementById('detail-error').textContent = errorMessage;
-            } else {
-                document.getElementById('error-section').style.display = 'none';
-            }
+                    // Set basic info
+                    document.getElementById('detail-timestamp').textContent = timestamp;
+                    document.getElementById('detail-user').textContent = username + ' (' + role + ')';
+                    document.getElementById('detail-action').textContent = action.toUpperCase();
+                    document.getElementById('detail-entity').textContent = entityType + (entityID ? ' #' + entityID : '');
+                    document.getElementById('detail-description').textContent = description;
+                    document.getElementById('detail-ip').textContent = ipAddress;
+                    document.getElementById('detail-status').textContent = status.toUpperCase();
+                    document.getElementById('detail-user-agent').textContent = userAgent;
 
-            // Hide all value sections first
-            document.getElementById('diff-section').style.display = 'none';
-            document.getElementById('old-only-section').style.display = 'none';
-            document.getElementById('new-only-section').style.display = 'none';
+                    // Show error message if failed
+                    if (status === 'failed' && errorMessage) {
+                        document.getElementById('error-section').style.display = 'block';
+                        document.getElementById('detail-error').textContent = errorMessage;
+                    } else {
+                        document.getElementById('error-section').style.display = 'none';
+                    }
 
-            // Show appropriate value section
-            if (oldValues && newValues) {
-                // Update action - show diff
-                document.getElementById('diff-section').style.display = 'block';
-                document.getElementById('detail-old-values').textContent = formatJSON(oldValues);
-                document.getElementById('detail-new-values').textContent = formatJSON(newValues);
-            } else if (oldValues && !newValues) {
-                // Delete action - show old values only
-                document.getElementById('old-only-section').style.display = 'block';
-                document.getElementById('detail-old-only').textContent = formatJSON(oldValues);
-            } else if (!oldValues && newValues) {
-                // Create/Upload action - show new values only
-                document.getElementById('new-only-section').style.display = 'block';
-                document.getElementById('detail-new-only').textContent = formatJSON(newValues);
-            }
-        }
+                    // Hide all value sections first
+                    document.getElementById('diff-section').style.display = 'none';
+                    document.getElementById('old-only-section').style.display = 'none';
+                    document.getElementById('new-only-section').style.display = 'none';
+
+                    // Show appropriate value section
+                    if (oldValues && newValues) {
+                        // Update action - show diff
+                        document.getElementById('diff-section').style.display = 'block';
+                        document.getElementById('detail-old-values').textContent = formatJSON(oldValues);
+                        document.getElementById('detail-new-values').textContent = formatJSON(newValues);
+                    } else if (oldValues && !newValues) {
+                        // Delete action - show old values only
+                        document.getElementById('old-only-section').style.display = 'block';
+                        document.getElementById('detail-old-only').textContent = formatJSON(oldValues);
+                    } else if (!oldValues && newValues) {
+                        // Create/Upload action - show new values only
+                        document.getElementById('new-only-section').style.display = 'block';
+                        document.getElementById('detail-new-only').textContent = formatJSON(newValues);
+                    }
+                });
+            });
+        });
 
         function formatJSON(jsonString) {
             if (!jsonString) return '-';

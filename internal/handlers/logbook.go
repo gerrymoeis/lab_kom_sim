@@ -51,10 +51,11 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "logbook/list.html", gin.H{
-		"title":    "Logbook Absensi - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
-		"entries":  entries,
+		"title":       "Logbook Absensi - Sistem Inventaris Lab",
+		"currentPage": "logbook",
+		"username":    username,
+		"role":        role,
+		"entries":     entries,
 	})
 }
 
@@ -67,9 +68,10 @@ func (h *Handler) LogbookUploadPage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "logbook/upload.html", gin.H{
-		"title":    "Upload Logbook - Sistem Inventaris Lab",
-		"username": username,
-		"role":     role,
+		"title":       "Upload Logbook - Sistem Inventaris Lab",
+		"currentPage": "logbook",
+		"username":    username,
+		"role":        role,
 	})
 }
 
@@ -179,13 +181,14 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 
 	// Redirect to preview page with extracted data
 	c.HTML(http.StatusOK, "logbook/preview.html", gin.H{
-		"title":      "Preview Hasil OCR - Sistem Inventaris Lab",
-		"username":   username,
-		"role":       role,
-		"entries":    result.Entries,
-		"raw_text":   result.RawText,
-		"success":    result.Success,
-		"error":      result.Error,
+		"title":       "Preview Hasil OCR - Sistem Inventaris Lab",
+		"currentPage": "logbook",
+		"username":    username,
+		"role":        role,
+		"entries":     result.Entries,
+		"raw_text":    result.RawText,
+		"success":     result.Success,
+		"error":       result.Error,
 		"source_file": filename,
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,13 @@ import (
 
 // ActivityLogList displays the activity log list page with filters
 func (h *Handler) ActivityLogList(c *gin.Context) {
+	// Get current user info
+	_, username, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
 	// Parse filters from query params
 	filters := services.ActivityLogFilters{
 		Limit:  50, // Default 50 entries per page
@@ -118,8 +126,8 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 	c.HTML(http.StatusOK, "activity_log/list.html", gin.H{
 		"title":        "Activity Logs",
 		"currentPage":  "activity_logs",
-		"username":     c.GetString("username"),
-		"role":         c.GetString("role"),
+		"username":     username,
+		"role":         role,
 		"logs":         logs,
 		"totalCount":   totalCount,
 		"page":         page,
