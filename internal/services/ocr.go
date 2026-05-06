@@ -36,7 +36,7 @@ type LogbookEntry struct {
 	NIM         string `json:"nim"`
 	TimeIn      string `json:"time_in"`
 	TimeOut     string `json:"time_out"`
-	Notes       string `json:"notes"`
+	Purpose     string `json:"purpose"` // Changed from Notes to Purpose (keperluan)
 }
 
 // OCRResult represents the result of OCR processing
@@ -106,7 +106,7 @@ Extract the data and return it in JSON format with the following structure:
       "nim": "Student ID",
       "time_in": "HH:MM",
       "time_out": "HH:MM",
-      "notes": "Any notes"
+      "purpose": "Purpose/reason for attendance"
     }
   ]
 }

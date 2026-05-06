@@ -122,7 +122,7 @@ func RunMigrations(db *sql.DB) error {
 			nim TEXT NOT NULL,
 			time_in TEXT NOT NULL,
 			time_out TEXT,
-			notes TEXT,
+			purpose TEXT,
 			source_file TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

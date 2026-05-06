@@ -25,7 +25,7 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	}
 
 	rows, err := h.db.Query(`
-		SELECT id, date, student_name, nim, time_in, time_out, notes, source_file, created_at
+		SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at
 		FROM logbook_entries
 		ORDER BY date DESC, time_in DESC
 		LIMIT 100
@@ -43,7 +43,7 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	for rows.Next() {
 		var entry models.LogbookEntry
 		err := rows.Scan(&entry.ID, &entry.Date, &entry.StudentName, &entry.NIM,
-			&entry.TimeIn, &entry.TimeOut, &entry.Notes, &entry.SourceFile, &entry.CreatedAt)
+			&entry.TimeIn, &entry.TimeOut, &entry.Purpose, &entry.SourceFile, &entry.CreatedAt)
 		if err != nil {
 			continue
 		}
@@ -220,7 +220,7 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	nims := c.PostFormArray("nim[]")
 	timeIns := c.PostFormArray("time_in[]")
 	timeOuts := c.PostFormArray("time_out[]")
-	notes := c.PostFormArray("notes[]")
+	purposes := c.PostFormArray("purpose[]") // Changed from notes to purpose
 
 	if len(dates) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada data untuk disimpan"})
@@ -237,7 +237,7 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 
 	// Insert entries
 	stmt, err := tx.Prepare(`
-		INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, notes, source_file, created_at, updated_at)
+		INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
@@ -280,12 +280,12 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 			timeOut = timeOuts[i]
 		}
 		
-		note := ""
-		if i < len(notes) {
-			note = notes[i]
+		purpose := ""
+		if i < len(purposes) {
+			purpose = purposes[i]
 		}
 
-		_, err = stmt.Exec(dateValue, names[i], nims[i], timeIn, timeOut, note, sourceFile, now, now)
+		_, err = stmt.Exec(dateValue, names[i], nims[i], timeIn, timeOut, purpose, sourceFile, now, now)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Gagal menyimpan entry: %v", err)})
 			return
@@ -349,7 +349,7 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 
 	// Build query
 	query := `
-		SELECT id, date, student_name, nim, time_in, time_out, notes, source_file, created_at
+		SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at
 		FROM logbook_entries
 		WHERE 1=1
 	`
@@ -380,7 +380,7 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 	for rows.Next() {
 		var entry models.LogbookEntry
 		err := rows.Scan(&entry.ID, &entry.Date, &entry.StudentName, &entry.NIM,
-			&entry.TimeIn, &entry.TimeOut, &entry.Notes, &entry.SourceFile, &entry.CreatedAt)
+			&entry.TimeIn, &entry.TimeOut, &entry.Purpose, &entry.SourceFile, &entry.CreatedAt)
 		if err != nil {
 			continue
 		}
@@ -401,8 +401,8 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 		return
 	}
 
-	// Set headers
-	headers := []string{"No", "Tanggal", "Nama Mahasiswa", "NIM", "Jam Masuk", "Jam Keluar", "Keterangan"}
+	// Set headers - NEW ORDER: Tanggal, Nama Mahasiswa, NIM, Keperluan, Jam Masuk, Jam Keluar
+	headers := []string{"No", "Tanggal", "Nama Mahasiswa", "NIM", "Keperluan", "Jam Masuk", "Jam Keluar"}
 	for i, header := range headers {
 		cell := string(rune('A'+i)) + "1"
 		f.SetCellValue(sheetName, cell, header)
@@ -416,26 +416,26 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 	})
 	f.SetCellStyle(sheetName, "A1", "G1", headerStyle)
 
-	// Set data
+	// Set data - NEW ORDER: No, Tanggal, Nama, NIM, Keperluan, Jam Masuk, Jam Keluar
 	for i, entry := range entries {
 		row := i + 2
 		f.SetCellValue(sheetName, "A"+strconv.Itoa(row), i+1)
 		f.SetCellValue(sheetName, "B"+strconv.Itoa(row), entry.Date.Format("2006-01-02"))
 		f.SetCellValue(sheetName, "C"+strconv.Itoa(row), entry.StudentName)
 		f.SetCellValue(sheetName, "D"+strconv.Itoa(row), entry.NIM)
-		f.SetCellValue(sheetName, "E"+strconv.Itoa(row), entry.TimeIn)
-		f.SetCellValue(sheetName, "F"+strconv.Itoa(row), entry.TimeOut)
-		f.SetCellValue(sheetName, "G"+strconv.Itoa(row), entry.Notes)
+		f.SetCellValue(sheetName, "E"+strconv.Itoa(row), entry.Purpose)
+		f.SetCellValue(sheetName, "F"+strconv.Itoa(row), entry.TimeIn)
+		f.SetCellValue(sheetName, "G"+strconv.Itoa(row), entry.TimeOut)
 	}
 
-	// Auto-fit columns
-	f.SetColWidth(sheetName, "A", "A", 5)
-	f.SetColWidth(sheetName, "B", "B", 12)
-	f.SetColWidth(sheetName, "C", "C", 25)
-	f.SetColWidth(sheetName, "D", "D", 15)
-	f.SetColWidth(sheetName, "E", "E", 12)
-	f.SetColWidth(sheetName, "F", "F", 12)
-	f.SetColWidth(sheetName, "G", "G", 30)
+	// Auto-fit columns with proper proportions
+	f.SetColWidth(sheetName, "A", "A", 5)   // No
+	f.SetColWidth(sheetName, "B", "B", 12)  // Tanggal (2006-01-02 format)
+	f.SetColWidth(sheetName, "C", "C", 25)  // Nama Mahasiswa
+	f.SetColWidth(sheetName, "D", "D", 13)  // NIM (23091397164 = 11 chars)
+	f.SetColWidth(sheetName, "E", "E", 30)  // Keperluan (flexible)
+	f.SetColWidth(sheetName, "F", "F", 11)  // Jam Masuk (HH:MM format)
+	f.SetColWidth(sheetName, "G", "G", 11)  // Jam Keluar (HH:MM format)
 
 	f.SetActiveSheet(index)
 	f.DeleteSheet("Sheet1")
@@ -480,7 +480,7 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 	nims := c.QueryArray("nim[]")
 	timeIns := c.QueryArray("time_in[]")
 	timeOuts := c.QueryArray("time_out[]")
-	notes := c.QueryArray("notes[]")
+	purposes := c.QueryArray("purpose[]") // Changed from notes to purpose
 
 	if len(dates) == 0 {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
@@ -504,8 +504,8 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 		return
 	}
 
-	// Set headers
-	headers := []string{"No", "Tanggal", "Nama Mahasiswa", "NIM", "Jam Masuk", "Jam Keluar", "Keterangan"}
+	// Set headers - NEW ORDER: Tanggal, Nama Mahasiswa, NIM, Keperluan, Jam Masuk, Jam Keluar
+	headers := []string{"No", "Tanggal", "Nama Mahasiswa", "NIM", "Keperluan", "Jam Masuk", "Jam Keluar"}
 	for i, header := range headers {
 		cell := string(rune('A'+i)) + "1"
 		f.SetCellValue(sheetName, cell, header)
@@ -519,36 +519,37 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 	})
 	f.SetCellStyle(sheetName, "A1", "G1", headerStyle)
 
-	// Set data
+	// Set data - NEW ORDER: No, Tanggal, Nama, NIM, Keperluan, Jam Masuk, Jam Keluar
 	for i := 0; i < len(dates); i++ {
 		row := i + 2
 		f.SetCellValue(sheetName, "A"+strconv.Itoa(row), i+1)
 		f.SetCellValue(sheetName, "B"+strconv.Itoa(row), dates[i])
 		f.SetCellValue(sheetName, "C"+strconv.Itoa(row), names[i])
 		f.SetCellValue(sheetName, "D"+strconv.Itoa(row), nims[i])
-		f.SetCellValue(sheetName, "E"+strconv.Itoa(row), timeIns[i])
+		
+		purpose := ""
+		if i < len(purposes) {
+			purpose = purposes[i]
+		}
+		f.SetCellValue(sheetName, "E"+strconv.Itoa(row), purpose)
+		
+		f.SetCellValue(sheetName, "F"+strconv.Itoa(row), timeIns[i])
 		
 		timeOut := ""
 		if i < len(timeOuts) {
 			timeOut = timeOuts[i]
 		}
-		f.SetCellValue(sheetName, "F"+strconv.Itoa(row), timeOut)
-		
-		note := ""
-		if i < len(notes) {
-			note = notes[i]
-		}
-		f.SetCellValue(sheetName, "G"+strconv.Itoa(row), note)
+		f.SetCellValue(sheetName, "G"+strconv.Itoa(row), timeOut)
 	}
 
-	// Auto-fit columns
-	f.SetColWidth(sheetName, "A", "A", 5)
-	f.SetColWidth(sheetName, "B", "B", 12)
-	f.SetColWidth(sheetName, "C", "C", 25)
-	f.SetColWidth(sheetName, "D", "D", 15)
-	f.SetColWidth(sheetName, "E", "E", 12)
-	f.SetColWidth(sheetName, "F", "F", 12)
-	f.SetColWidth(sheetName, "G", "G", 30)
+	// Auto-fit columns with proper proportions
+	f.SetColWidth(sheetName, "A", "A", 5)   // No
+	f.SetColWidth(sheetName, "B", "B", 12)  // Tanggal (2006-01-02 format)
+	f.SetColWidth(sheetName, "C", "C", 25)  // Nama Mahasiswa
+	f.SetColWidth(sheetName, "D", "D", 13)  // NIM (23091397164 = 11 chars)
+	f.SetColWidth(sheetName, "E", "E", 30)  // Keperluan (flexible)
+	f.SetColWidth(sheetName, "F", "F", 11)  // Jam Masuk (HH:MM format)
+	f.SetColWidth(sheetName, "G", "G", 11)  // Jam Keluar (HH:MM format)
 
 	f.SetActiveSheet(index)
 	f.DeleteSheet("Sheet1")

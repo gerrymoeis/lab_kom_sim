@@ -79,7 +79,7 @@ type LogbookEntry struct {
 	NIM        string    `json:"nim"`
 	TimeIn     string    `json:"time_in"`
 	TimeOut    string    `json:"time_out"`
-	Notes      string    `json:"notes"`
+	Purpose    string    `json:"purpose"` // Changed from Notes to Purpose (keperluan)
 	SourceFile string    `json:"source_file"` // Original uploaded file
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
