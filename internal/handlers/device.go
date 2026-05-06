@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/models"
@@ -95,11 +97,39 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 	`, name, category, brand, condition, location, purchaseDatePtr, notes)
 
 	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "create", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to create device: %v", err),
+			)
+		}
 		c.HTML(http.StatusInternalServerError, "device/create.html", gin.H{
 			"title": "Tambah Perangkat Baru",
 			"error": "Gagal menyimpan data perangkat",
 		})
 		return
+	}
+
+	// Get last insert ID and log
+	var deviceID int
+	err = h.db.QueryRow("SELECT last_insert_rowid()").Scan(&deviceID)
+	if err == nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogCreate(
+				userID, username, role,
+				"device", deviceID,
+				map[string]interface{}{
+					"name":      name,
+					"category":  category,
+					"condition": condition,
+				},
+				ipAddress, userAgent,
+			)
+		}
 	}
 
 	c.Redirect(http.StatusFound, "/devices")
@@ -169,7 +199,30 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 		purchaseDatePtr = &purchaseDate
 	}
 
-	_, err := h.db.Exec(`
+	// Get old values before update
+	var oldName, oldCategory, oldCondition string
+	err := h.db.QueryRow(`
+		SELECT name, category, condition 
+		FROM devices WHERE id = ?
+	`, id).Scan(&oldName, &oldCategory, &oldCondition)
+	
+	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "update", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to get device data for update: %v", err),
+			)
+		}
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal mengambil data perangkat",
+		})
+		return
+	}
+
+	_, err = h.db.Exec(`
 		UPDATE devices 
 		SET name = ?, category = ?, brand = ?, condition = ?, location = ?,
 		    purchase_date = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
@@ -177,11 +230,47 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 	`, name, category, brand, condition, location, purchaseDatePtr, notes, id)
 
 	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			deviceIDInt, _ := strconv.Atoi(id)
+			h.activityLogService.LogAuth(
+				userID, username, role, "update", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to update device #%d: %v", deviceIDInt, err),
+			)
+		}
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
 			"message": "Gagal mengupdate data perangkat",
 		})
 		return
+	}
+
+	// Log successful update
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		deviceIDInt, _ := strconv.Atoi(id)
+		
+		oldValues := map[string]interface{}{
+			"name":      oldName,
+			"category":  oldCategory,
+			"condition": oldCondition,
+		}
+		
+		newValues := map[string]interface{}{
+			"name":      name,
+			"category":  category,
+			"condition": condition,
+		}
+		
+		h.activityLogService.LogUpdate(
+			userID, username, role,
+			"device", deviceIDInt,
+			oldValues,
+			newValues,
+			ipAddress, userAgent,
+		)
 	}
 
 	c.Redirect(http.StatusFound, "/devices")
@@ -191,12 +280,62 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 func (h *Handler) DeviceDelete(c *gin.Context) {
 	id := c.Param("id")
 
-	_, err := h.db.Exec("DELETE FROM devices WHERE id = ?", id)
+	// Get device data before delete
+	var deviceID int
+	var name, category, condition string
+	err := h.db.QueryRow(`
+		SELECT id, name, category, condition 
+		FROM devices WHERE id = ?
+	`, id).Scan(&deviceID, &name, &category, &condition)
+	
 	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "delete", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to get device data for delete: %v", err),
+			)
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal mengambil data perangkat",
+		})
+		return
+	}
+
+	_, err = h.db.Exec("DELETE FROM devices WHERE id = ?", id)
+	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "delete", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to delete device #%d: %v", deviceID, err),
+			)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Gagal menghapus perangkat",
 		})
 		return
+	}
+
+	// Log successful delete
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		
+		oldValues := map[string]interface{}{
+			"name":      name,
+			"category":  category,
+			"condition": condition,
+		}
+		
+		h.activityLogService.LogDelete(
+			userID, username, role,
+			"device", deviceID,
+			oldValues,
+			ipAddress, userAgent,
+		)
 	}
 
 	c.Redirect(http.StatusFound, "/devices")

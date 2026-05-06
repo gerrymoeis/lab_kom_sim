@@ -505,6 +505,17 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		if photoFrontFilename != "" {
 			os.Remove(filepath.Join("uploads", "pc", photoFrontFilename))
 		}
+		
+		// Log failed create
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "create", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to create PC #%d: %v", pcNumber, err),
+			)
+		}
+		
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
 			"title":       "Tambah PC Baru - Sistem Inventaris Lab",
 			"username":    username,
@@ -513,6 +524,48 @@ func (h *Handler) PCCreate(c *gin.Context) {
 			"error":       "Gagal menyimpan data PC. Mungkin nomor PC sudah digunakan.",
 		})
 		return
+	}
+
+	// Get the created PC ID
+	var pcID int
+	err = h.db.QueryRow("SELECT id FROM pcs WHERE pc_number = ?", pcNumber).Scan(&pcID)
+	if err == nil {
+		// Log successful create
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogCreate(
+				userID, username, role,
+				"pc", pcID,
+				map[string]interface{}{
+					"pc_number":     pcNumber,
+					"status":        status,
+					"serial_number": serialNumber,
+					"brand_model":   brandModel,
+					"device_type":   deviceType,
+				},
+				ipAddress, userAgent,
+			)
+			
+			// Log photo uploads separately (if uploaded)
+			if photoSerialFilename != "" {
+				h.activityLogService.LogUpload(
+					userID, username, role,
+					"pc", pcID,
+					photoSerialFilename, "photo_serial",
+					ipAddress, userAgent,
+				)
+			}
+			
+			if photoFrontFilename != "" {
+				h.activityLogService.LogUpload(
+					userID, username, role,
+					"pc", pcID,
+					photoFrontFilename, "photo_front",
+					ipAddress, userAgent,
+				)
+			}
+		}
 	}
 
 	c.Redirect(http.StatusFound, "/pc")
@@ -664,12 +717,23 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		lastCheckedPtr = &lastChecked
 	}
 
-	// Get current PC data to retrieve existing photos
+	// Get current PC data to retrieve existing photos AND old values for logging
 	var currentPhotoSerial, currentPhotoFront sql.NullString
-	var currentPCNumber int
-	err := h.db.QueryRow("SELECT pc_number, photo_serial, photo_front FROM pcs WHERE pc_number = ?", pcNumber).
-		Scan(&currentPCNumber, &currentPhotoSerial, &currentPhotoFront)
+	var currentPCNumber, pcID int
+	var oldStatus, oldDeviceType, oldSerialNumber, oldBrandModel sql.NullString
+	err := h.db.QueryRow(`
+		SELECT id, pc_number, status, device_type, serial_number, brand_model, photo_serial, photo_front 
+		FROM pcs WHERE pc_number = ?
+	`, pcNumber).Scan(&pcID, &currentPCNumber, &oldStatus, &oldDeviceType, &oldSerialNumber, &oldBrandModel, &currentPhotoSerial, &currentPhotoFront)
 	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "update", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to get PC data for update: %v", err),
+			)
+		}
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
 			"message": "Gagal mengambil data PC",
@@ -804,11 +868,76 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		pcNumber)
 
 	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "update", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to update PC #%d: %v", currentPCNumber, err),
+			)
+		}
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
 			"message": "Gagal mengupdate data PC",
 		})
 		return
+	}
+
+	// Log successful update
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		
+		// Prepare old and new values
+		oldValues := map[string]interface{}{}
+		if oldStatus.Valid {
+			oldValues["status"] = oldStatus.String
+		}
+		if oldDeviceType.Valid {
+			oldValues["device_type"] = oldDeviceType.String
+		}
+		if oldSerialNumber.Valid {
+			oldValues["serial_number"] = oldSerialNumber.String
+		}
+		if oldBrandModel.Valid {
+			oldValues["brand_model"] = oldBrandModel.String
+		}
+		
+		newValues := map[string]interface{}{
+			"status":        status,
+			"device_type":   deviceType,
+			"serial_number": serialNumber,
+			"brand_model":   brandModel,
+		}
+		
+		h.activityLogService.LogUpdate(
+			userID, username, role,
+			"pc", pcID,
+			oldValues,
+			newValues,
+			ipAddress, userAgent,
+		)
+		
+		// Log photo uploads separately (if new photos uploaded)
+		photoSerialUploaded, _ := c.FormFile("photo_serial")
+		if photoSerialUploaded != nil {
+			h.activityLogService.LogUpload(
+				userID, username, role,
+				"pc", pcID,
+				photoSerialFilename, "photo_serial",
+				ipAddress, userAgent,
+			)
+		}
+		
+		photoFrontUploaded, _ := c.FormFile("photo_front")
+		if photoFrontUploaded != nil {
+			h.activityLogService.LogUpload(
+				userID, username, role,
+				"pc", pcID,
+				photoFrontFilename, "photo_front",
+				ipAddress, userAgent,
+			)
+		}
 	}
 
 	c.Redirect(http.StatusFound, "/pc/"+pcNumber)
@@ -818,12 +947,24 @@ func (h *Handler) PCEdit(c *gin.Context) {
 func (h *Handler) PCDelete(c *gin.Context) {
 	pcNumber := c.Param("pc_number")
 
-	// Get photo filenames before deleting
+	// Get PC data before deleting (for logging)
+	var pcID, pcNumberInt int
+	var status, deviceType, serialNumber, brandModel sql.NullString
 	var photoSerial, photoFront sql.NullString
-	err := h.db.QueryRow("SELECT photo_serial, photo_front FROM pcs WHERE pc_number = ?", pcNumber).
-		Scan(&photoSerial, &photoFront)
+	err := h.db.QueryRow(`
+		SELECT id, pc_number, status, device_type, serial_number, brand_model, photo_serial, photo_front 
+		FROM pcs WHERE pc_number = ?
+	`, pcNumber).Scan(&pcID, &pcNumberInt, &status, &deviceType, &serialNumber, &brandModel, &photoSerial, &photoFront)
 	
 	if err != nil && err != sql.ErrNoRows {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "delete", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to get PC data for delete: %v", err),
+			)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Gagal mengambil data PC",
 		})
@@ -833,10 +974,47 @@ func (h *Handler) PCDelete(c *gin.Context) {
 	// Delete PC from database
 	_, err = h.db.Exec("DELETE FROM pcs WHERE pc_number = ?", pcNumber)
 	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "delete", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to delete PC #%d: %v", pcNumberInt, err),
+			)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Gagal menghapus PC",
 		})
 		return
+	}
+
+	// Log successful delete
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		
+		oldValues := map[string]interface{}{
+			"pc_number": pcNumberInt,
+		}
+		if status.Valid {
+			oldValues["status"] = status.String
+		}
+		if deviceType.Valid {
+			oldValues["device_type"] = deviceType.String
+		}
+		if serialNumber.Valid {
+			oldValues["serial_number"] = serialNumber.String
+		}
+		if brandModel.Valid {
+			oldValues["brand_model"] = brandModel.String
+		}
+		
+		h.activityLogService.LogDelete(
+			userID, username, role,
+			"pc", pcID,
+			oldValues,
+			ipAddress, userAgent,
+		)
 	}
 
 	// Delete photos if exist

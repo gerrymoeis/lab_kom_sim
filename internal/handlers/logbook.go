@@ -129,11 +129,31 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 	filepath := filepath.Join(uploadDir, filename)
 	
 	if err := c.SaveUploadedFile(file, filepath); err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "upload", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to save logbook file: %v", err),
+			)
+		}
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
 			"message": "Gagal menyimpan file",
 		})
 		return
+	}
+
+	// Log successful upload
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogUpload(
+			userID, username, role,
+			"logbook", 0, // No specific entity ID for upload
+			filename, "logbook_image",
+			ipAddress, userAgent,
+		)
 	}
 
 	// Get Gemini API key from config
@@ -271,8 +291,31 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	}
 
 	if err := tx.Commit(); err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "create", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to commit logbook entries: %v", err),
+			)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan data"})
 		return
+	}
+
+	// Log successful bulk create
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogCreate(
+			userID, username, role,
+			"logbook", 0, // Bulk operation, no specific ID
+			map[string]interface{}{
+				"entries_count": savedCount,
+				"source_file":   sourceFile,
+			},
+			ipAddress, userAgent,
+		)
 	}
 
 	c.JSON(http.StatusOK, gin.H{

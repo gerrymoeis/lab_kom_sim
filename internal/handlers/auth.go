@@ -64,6 +64,13 @@ func (h *Handler) Login(c *gin.Context) {
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		// Log failed login
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogAuth(
+			0, username, "", "login", false,
+			ipAddress, userAgent, "Invalid password",
+		)
+		
 		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
 			"title": "Login - Sistem Inventaris Lab",
 			"error": "Username atau password salah",
@@ -85,12 +92,33 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
+	// Log successful login
+	ipAddress, userAgent := getRequestContext(c)
+	h.activityLogService.LogAuth(
+		userID, username, role, "login", true,
+		ipAddress, userAgent, "",
+	)
+
 	c.Redirect(http.StatusFound, "/dashboard")
 }
 
 // Logout handles logout
 func (h *Handler) Logout(c *gin.Context) {
+	// Get user info before clearing session
 	session := sessions.Default(c)
+	userID := session.Get("user_id")
+	username := session.Get("username")
+	role := session.Get("role")
+	
+	// Log logout
+	if userID != nil && username != nil && role != nil {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogAuth(
+			userID.(int), username.(string), role.(string), "logout", true,
+			ipAddress, userAgent, "",
+		)
+	}
+	
 	session.Clear()
 	session.Save()
 	c.Redirect(http.StatusFound, "/login")

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/services"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Handler holds dependencies for all handlers
@@ -20,4 +22,11 @@ func NewHandler(db *sql.DB, cfg *config.Config) *Handler {
 		cfg:                cfg,
 		activityLogService: services.NewActivityLogService(db),
 	}
+}
+
+// getRequestContext extracts IP address and User-Agent from request
+func getRequestContext(c *gin.Context) (ipAddress, userAgent string) {
+	ipAddress = c.ClientIP()
+	userAgent = c.Request.UserAgent()
+	return
 }
