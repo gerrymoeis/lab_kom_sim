@@ -295,15 +295,16 @@ function handleFileSelectSerial(file) {
         document.getElementById('imagePreviewSerial').src = e.target.result;
         document.getElementById('previewSerial').classList.remove('d-none');
     };
-    reader.onerror = function() {
-        // Fallback for unsupported formats (like HEIC on some browsers)
-        document.getElementById('previewSerial').innerHTML = `
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i>
-                File berhasil dipilih: <strong>${file.name}</strong><br>
-                <small>Preview tidak tersedia untuk format ini, tapi file akan diupload dengan benar.</small>
-            </div>
-        `;
+    reader.onerror = function(e) {
+        console.log('FileReader error for serial photo:', file.name, e);
+        
+        // SAFE: Don't replace innerHTML, just update image with placeholder
+        const img = document.getElementById('imagePreviewSerial');
+        if (img) {
+            // Use SVG placeholder for unsupported preview
+            img.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"%3E%3Crect width="200" height="100" fill="%23f8f9fa" stroke="%23dee2e6"/%3E%3Ctext x="100" y="45" text-anchor="middle" font-family="Arial" font-size="12" fill="%236c757d"%3EPreview tidak tersedia%3C/text%3E%3Ctext x="100" y="65" text-anchor="middle" font-family="Arial" font-size="10" fill="%236c757d"%3E' + encodeURIComponent(file.name) + '%3C/text%3E%3C/svg%3E';
+            img.alt = `Preview tidak tersedia: ${file.name}`;
+        }
         document.getElementById('previewSerial').classList.remove('d-none');
     };
     reader.readAsDataURL(file);
@@ -347,15 +348,16 @@ function handleFileSelectFront(file) {
         document.getElementById('imagePreviewFront').src = e.target.result;
         document.getElementById('previewFront').classList.remove('d-none');
     };
-    reader.onerror = function() {
-        // Fallback for unsupported formats (like HEIC on some browsers)
-        document.getElementById('previewFront').innerHTML = `
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i>
-                File berhasil dipilih: <strong>${file.name}</strong><br>
-                <small>Preview tidak tersedia untuk format ini, tapi file akan diupload dengan benar.</small>
-            </div>
-        `;
+    reader.onerror = function(e) {
+        console.log('FileReader error for front photo:', file.name, e);
+        
+        // SAFE: Don't replace innerHTML, just update image with placeholder
+        const img = document.getElementById('imagePreviewFront');
+        if (img) {
+            // Use SVG placeholder for unsupported preview
+            img.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100"%3E%3Crect width="200" height="100" fill="%23f8f9fa" stroke="%23dee2e6"/%3E%3Ctext x="100" y="45" text-anchor="middle" font-family="Arial" font-size="12" fill="%236c757d"%3EPreview tidak tersedia%3C/text%3E%3Ctext x="100" y="65" text-anchor="middle" font-family="Arial" font-size="10" fill="%236c757d"%3E' + encodeURIComponent(file.name) + '%3C/text%3E%3C/svg%3E';
+            img.alt = `Preview tidak tersedia: ${file.name}`;
+        }
         document.getElementById('previewFront').classList.remove('d-none');
     };
     reader.readAsDataURL(file);
