@@ -342,10 +342,11 @@ async function uploadForProcessing(file, type) {
 }
 
 function showPreview(previewUrl, type) {
-    const img = document.getElementById(`imagePreview${type === 'serial' ? 'Serial' : 'Front'}`);
     const area = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
     
-    if (img && area) {
+    console.log(`[DEBUG] showPreview called - type: ${type}, area found:`, !!area);
+    
+    if (area) {
         // Replace loading state with proper preview structure
         area.innerHTML = `
             <div class="border rounded-3 p-3 bg-light">
@@ -358,6 +359,9 @@ function showPreview(previewUrl, type) {
             </div>
         `;
         area.classList.remove('d-none');
+        console.log(`[DEBUG] Preview HTML updated for ${type}`);
+    } else {
+        console.error(`[DEBUG] Preview area not found for type: ${type}`);
     }
 }
 
