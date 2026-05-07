@@ -245,40 +245,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function setupPageLeaveCleanup() {
-    // Cleanup on page unload (refresh, navigate away, close tab)
-    window.addEventListener('beforeunload', function(e) {
-        // Send cleanup request for any uploaded files
-        if (serialFileRef || frontFileRef) {
-            const filesToCleanup = [];
-            if (serialFileRef) filesToCleanup.push(serialFileRef);
-            if (frontFileRef) filesToCleanup.push(frontFileRef);
-            
-            // Use sendBeacon for reliable cleanup on page unload
-            if (filesToCleanup.length > 0) {
-                navigator.sendBeacon('/api/cleanup-temp-files', JSON.stringify({
-                    file_refs: filesToCleanup
-                }));
-            }
-        }
-    });
-    
-    // Also cleanup on visibility change (tab switch, minimize)
-    document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'hidden') {
-            // User switched tab or minimized - potential cleanup
-            if (serialFileRef || frontFileRef) {
-                const filesToCleanup = [];
-                if (serialFileRef) filesToCleanup.push(serialFileRef);
-                if (frontFileRef) filesToCleanup.push(frontFileRef);
-                
-                if (filesToCleanup.length > 0) {
-                    navigator.sendBeacon('/api/cleanup-temp-files', JSON.stringify({
-                        file_refs: filesToCleanup
-                    }));
-                }
-            }
-        }
-    });
+    // Note: Removed automatic cleanup on page unload and tab switch
+    // to prevent files being deleted before form submission completes.
+    // Only manual cleanup via "Hapus" button is now active.
+    // Background cleanup process will handle orphaned files.
 }
 
 function setupFileHandlers() {
