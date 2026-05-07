@@ -19,6 +19,12 @@ type UploadResponse struct {
 	Message    string `json:"message,omitempty"`
 }
 
+// CleanupRequest represents the request for temp file cleanup
+type CleanupRequest struct {
+	FileRef  string   `json:"file_ref,omitempty"`
+	FileRefs []string `json:"file_refs,omitempty"`
+}
+
 // UploadImage handles immediate image upload and processing for preview
 func (h *Handler) UploadImage(c *gin.Context) {
 	// Get form data
@@ -118,4 +124,39 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		FileRef:    finalFilename,
 		Message:    "File berhasil diproses",
 	})
+}
+
+// DeleteTempFile handles single temp file deletion
+func (h *Handler) DeleteTempFile(c *gin.Context) {
+	var req CleanupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if req.FileRef != "" {
+		tempPath := filepath.Join("uploads", "temp", req.FileRef)
+		os.Remove(tempPath) // Silent removal, no error if file doesn't exist
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// CleanupTempFiles handles multiple temp files deletion
+func (h *Handler) CleanupTempFiles(c *gin.Context) {
+	var req CleanupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	// Cleanup multiple files
+	for _, fileRef := range req.FileRefs {
+		if fileRef != "" {
+			tempPath := filepath.Join("uploads", "temp", fileRef)
+			os.Remove(tempPath) // Silent removal, no error if file doesn't exist
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }

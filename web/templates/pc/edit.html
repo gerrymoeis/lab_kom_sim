@@ -257,7 +257,45 @@ let frontFileRef = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     setupFileHandlers();
+    setupPageLeaveCleanup();
 });
+
+function setupPageLeaveCleanup() {
+    // Cleanup on page unload (refresh, navigate away, close tab)
+    window.addEventListener('beforeunload', function(e) {
+        // Send cleanup request for any uploaded files
+        if (serialFileRef || frontFileRef) {
+            const filesToCleanup = [];
+            if (serialFileRef) filesToCleanup.push(serialFileRef);
+            if (frontFileRef) filesToCleanup.push(frontFileRef);
+            
+            // Use sendBeacon for reliable cleanup on page unload
+            if (filesToCleanup.length > 0) {
+                navigator.sendBeacon('/api/cleanup-temp-files', JSON.stringify({
+                    file_refs: filesToCleanup
+                }));
+            }
+        }
+    });
+    
+    // Also cleanup on visibility change (tab switch, minimize)
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') {
+            // User switched tab or minimized - potential cleanup
+            if (serialFileRef || frontFileRef) {
+                const filesToCleanup = [];
+                if (serialFileRef) filesToCleanup.push(serialFileRef);
+                if (frontFileRef) filesToCleanup.push(frontFileRef);
+                
+                if (filesToCleanup.length > 0) {
+                    navigator.sendBeacon('/api/cleanup-temp-files', JSON.stringify({
+                        file_refs: filesToCleanup
+                    }));
+                }
+            }
+        }
+    });
+}
 
 function setupFileHandlers() {
     // Serial photo handlers
@@ -286,20 +324,15 @@ function setupFileHandlers() {
 async function handleFileSelect(file, type, source) {
     if (!file) return;
     
-    console.log(`[DEBUG] handleFileSelect called: ${type}, file: ${file.name}`);
-    
     // Show loading state
     showLoadingState(type);
     
     try {
         // Upload and process immediately
-        console.log(`[DEBUG] Starting upload for ${type}`);
         const result = await uploadForProcessing(file, type);
-        console.log(`[DEBUG] Upload result:`, result);
         
         if (result.success) {
             // Show preview from processed file
-            console.log(`[DEBUG] Showing preview: ${result.preview_url}`);
             showPreview(result.preview_url, type);
             
             // Store file reference for form submission
@@ -311,7 +344,6 @@ async function handleFileSelect(file, type, source) {
             throw new Error(result.message);
         }
     } catch (error) {
-        console.error(`[DEBUG] Upload failed:`, error);
         showError(type, error.message);
     }
 }
@@ -328,23 +360,16 @@ async function uploadForProcessing(file, type) {
         formData.append('pc_number', pcNumber);
     }
     
-    console.log(`[DEBUG] Uploading to /api/upload-image`);
     const response = await fetch('/api/upload-image', {
         method: 'POST',
         body: formData
     });
     
-    console.log(`[DEBUG] Response status: ${response.status}`);
-    const result = await response.json();
-    console.log(`[DEBUG] Response JSON:`, result);
-    
-    return result;
+    return await response.json();
 }
 
 function showPreview(previewUrl, type) {
     const area = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    
-    console.log(`[DEBUG] showPreview called - type: ${type}, area found:`, !!area);
     
     if (area) {
         // Replace loading state with proper preview structure
@@ -367,9 +392,6 @@ function showPreview(previewUrl, type) {
             </div>
         `;
         area.classList.remove('d-none');
-        console.log(`[DEBUG] Preview HTML updated for ${type}`);
-    } else {
-        console.error(`[DEBUG] Preview area not found for type: ${type}`);
     }
 }
 
@@ -449,7 +471,10 @@ function clearOtherInput(type, source) {
     }
 }
 
-function clearImage(type) {
+async function clearImage(type) {
+    // Get file reference before clearing
+    const fileRef = type === 'serial' ? serialFileRef : frontFileRef;
+    
     // Clear file references
     if (type === 'serial') {
         serialFileRef = null;
@@ -469,6 +494,21 @@ function clearImage(type) {
     if (cameraInput) cameraInput.value = '';
     if (galleryInput) galleryInput.value = '';
     if (previewArea) previewArea.classList.add('d-none');
+    
+    // Delete file from server temp folder
+    if (fileRef) {
+        try {
+            await fetch('/api/delete-temp-file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file_ref: fileRef })
+            });
+        } catch (error) {
+            // Silent fail - file might already be deleted or cleanup will handle it
+        }
+    }
 }
 </script>
 </body>

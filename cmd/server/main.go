@@ -210,7 +210,9 @@ func main() {
 	{
 		api.GET("/pc/status", h.PCStatusAPI)
 		api.POST("/pc/:id/status", h.UpdatePCStatusAPI)
-		api.POST("/upload-image", h.UploadImage) // New upload endpoint
+		api.POST("/upload-image", h.UploadImage) // Image upload endpoint
+		api.POST("/delete-temp-file", h.DeleteTempFile) // Single temp file cleanup
+		api.POST("/cleanup-temp-files", h.CleanupTempFiles) // Multiple temp files cleanup
 	}
 
 	// Create uploads directory if not exists
