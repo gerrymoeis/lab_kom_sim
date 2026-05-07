@@ -264,14 +264,30 @@ document.getElementById('photo_serial_gallery').addEventListener('change', funct
 function handleFileSelectSerial(file) {
     if (!file) return;
     
-    if (!file.type.match('image.*')) {
-        alert('File harus berupa gambar');
+    // Enhanced file type validation for HEIC support
+    const isValidImage = file.type.match('image.*') || 
+                        file.name.toLowerCase().endsWith('.heic') || 
+                        file.name.toLowerCase().endsWith('.heif');
+    
+    if (!isValidImage) {
+        alert('File harus berupa gambar (JPEG, PNG, HEIC)');
         return;
     }
     
     const reader = new FileReader();
     reader.onload = function(e) {
         document.getElementById('imagePreviewSerial').src = e.target.result;
+        document.getElementById('previewSerial').classList.remove('d-none');
+    };
+    reader.onerror = function() {
+        // Fallback for unsupported formats (like HEIC on some browsers)
+        document.getElementById('previewSerial').innerHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                File berhasil dipilih: <strong>${file.name}</strong><br>
+                <small>Preview tidak tersedia untuk format ini, tapi file akan diupload dengan benar.</small>
+            </div>
+        `;
         document.getElementById('previewSerial').classList.remove('d-none');
     };
     reader.readAsDataURL(file);
@@ -300,14 +316,30 @@ document.getElementById('photo_front_gallery').addEventListener('change', functi
 function handleFileSelectFront(file) {
     if (!file) return;
     
-    if (!file.type.match('image.*')) {
-        alert('File harus berupa gambar');
+    // Enhanced file type validation for HEIC support
+    const isValidImage = file.type.match('image.*') || 
+                        file.name.toLowerCase().endsWith('.heic') || 
+                        file.name.toLowerCase().endsWith('.heif');
+    
+    if (!isValidImage) {
+        alert('File harus berupa gambar (JPEG, PNG, HEIC)');
         return;
     }
     
     const reader = new FileReader();
     reader.onload = function(e) {
         document.getElementById('imagePreviewFront').src = e.target.result;
+        document.getElementById('previewFront').classList.remove('d-none');
+    };
+    reader.onerror = function() {
+        // Fallback for unsupported formats (like HEIC on some browsers)
+        document.getElementById('previewFront').innerHTML = `
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                File berhasil dipilih: <strong>${file.name}</strong><br>
+                <small>Preview tidak tersedia untuk format ini, tapi file akan diupload dengan benar.</small>
+            </div>
+        `;
         document.getElementById('previewFront').classList.remove('d-none');
     };
     reader.readAsDataURL(file);
