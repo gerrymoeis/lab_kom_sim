@@ -460,6 +460,18 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		}
 	}
 
+	// Cleanup any remaining temp files for this session
+	defer func() {
+		if serialFileRef != "" {
+			tempPath := filepath.Join("uploads", "temp", serialFileRef)
+			os.Remove(tempPath) // Remove if still exists
+		}
+		if frontFileRef != "" {
+			tempPath := filepath.Join("uploads", "temp", frontFileRef)
+			os.Remove(tempPath) // Remove if still exists
+		}
+	}()
+
 	// Insert to database
 	_, err := h.db.Exec(`
 		INSERT INTO pcs (
@@ -844,6 +856,18 @@ func (h *Handler) PCEdit(c *gin.Context) {
 			}
 		}
 	}
+
+	// Cleanup any remaining temp files for this session
+	defer func() {
+		if serialFileRef != "" {
+			tempPath := filepath.Join("uploads", "temp", serialFileRef)
+			os.Remove(tempPath) // Remove if still exists
+		}
+		if frontFileRef != "" {
+			tempPath := filepath.Join("uploads", "temp", frontFileRef)
+			os.Remove(tempPath) // Remove if still exists
+		}
+	}()
 
 	// Update database
 	_, err = h.db.Exec(`
