@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
@@ -14,6 +15,30 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// cleanupTempFiles removes temporary files older than 1 hour
+func cleanupTempFiles() {
+	tempDir := filepath.Join("uploads", "temp")
+	cutoff := time.Now().Add(-1 * time.Hour)
+	
+	err := filepath.Walk(tempDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Continue on error
+		}
+		
+		if !info.IsDir() && info.ModTime().Before(cutoff) {
+			if err := os.Remove(path); err == nil {
+				log.Printf("Cleaned up temp file: %s", path)
+			}
+		}
+		
+		return nil
+	})
+	
+	if err != nil {
+		log.Printf("Warning: Failed to cleanup temp files: %v", err)
+	}
+}
 
 // loadTemplates loads all HTML templates from the templates directory
 func loadTemplates(templatesDir string) (*template.Template, error) {
@@ -185,12 +210,26 @@ func main() {
 	{
 		api.GET("/pc/status", h.PCStatusAPI)
 		api.POST("/pc/:id/status", h.UpdatePCStatusAPI)
+		api.POST("/upload-image", h.UploadImage) // New upload endpoint
 	}
 
 	// Create uploads directory if not exists
 	if err := os.MkdirAll("uploads", 0755); err != nil {
 		log.Printf("Warning: Failed to create uploads directory: %v", err)
 	}
+	
+	// Create temp directory if not exists
+	if err := os.MkdirAll("uploads/temp", 0755); err != nil {
+		log.Printf("Warning: Failed to create temp directory: %v", err)
+	}
+
+	// Start cleanup goroutine for temporary files
+	go func() {
+		for {
+			time.Sleep(30 * time.Minute) // Run every 30 minutes
+			cleanupTempFiles()
+		}
+	}()
 
 	// Start server
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)

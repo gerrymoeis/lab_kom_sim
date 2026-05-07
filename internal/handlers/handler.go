@@ -13,6 +13,7 @@ type Handler struct {
 	db                 *sql.DB
 	cfg                *config.Config
 	activityLogService *services.ActivityLogService
+	imageService       *services.ImageService
 }
 
 // NewHandler creates a new handler instance
@@ -21,6 +22,7 @@ func NewHandler(db *sql.DB, cfg *config.Config) *Handler {
 		db:                 db,
 		cfg:                cfg,
 		activityLogService: services.NewActivityLogService(db),
+		imageService:       services.NewImageService(),
 	}
 }
 

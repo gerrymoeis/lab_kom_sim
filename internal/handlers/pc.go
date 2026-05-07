@@ -3,11 +3,11 @@ package handlers
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"inventaris-lab-kom/internal/middleware"
@@ -16,6 +16,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	return err
+}
 
 // PCList renders list of all PCs
 func (h *Handler) PCList(c *gin.Context) {
@@ -378,172 +396,72 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		}
 	}
 
-	// Handle file uploads (optional)
+	// Handle file uploads using file references (no processing needed)
 	var photoSerialFilename, photoFrontFilename string
-	imageService := services.NewImageService()
 
-	// Process photo_serial
-	photoSerial, err := c.FormFile("photo_serial")
-	if err == nil && photoSerial != nil {
-		// Validate file size (max 5MB)
-		if photoSerial.Size > 5*1024*1024 {
-			c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
+	// Get file references from form (uploaded via /api/upload-image)
+	serialFileRef := c.PostForm("serial_file_ref")
+	frontFileRef := c.PostForm("front_file_ref")
+
+	// Move files from temp to final location (no processing needed)
+	if serialFileRef != "" {
+		tempPath := filepath.Join("uploads", "temp", serialFileRef)
+		finalPath := filepath.Join("uploads", "pc", serialFileRef)
+		
+		// Ensure pc directory exists
+		pcDir := filepath.Join("uploads", "pc")
+		if err := os.MkdirAll(pcDir, 0755); err != nil {
+			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
 				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
 				"username":    username,
 				"role":        role,
 				"currentPage": "pc",
-				"error":       "Ukuran foto serial number terlalu besar (max 5MB)",
+				"error":       "Gagal membuat direktori upload",
 			})
 			return
 		}
-
-		// Validate file extension
-		ext := strings.ToLower(filepath.Ext(photoSerial.Filename))
-		allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
-		isAllowed := false
-		for _, allowed := range allowedExts {
-			if ext == allowed {
-				isAllowed = true
-				break
+		
+		if err := os.Rename(tempPath, finalPath); err == nil {
+			photoSerialFilename = serialFileRef
+		} else {
+			// If rename fails, try copy and delete
+			if err := copyFile(tempPath, finalPath); err == nil {
+				os.Remove(tempPath)
+				photoSerialFilename = serialFileRef
 			}
 		}
-		if !isAllowed {
-			c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
-				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
-				"username":    username,
-				"role":        role,
-				"currentPage": "pc",
-				"error":       "Format foto serial number tidak didukung. Gunakan JPEG, PNG, atau HEIC",
-			})
-			return
-		}
-
-		// Generate unique filename - always use .jpeg extension (output is always JPEG)
-		now := time.Now()
-		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%s.jpeg", pcNumber, now.Format("1504_02012006"))
-		tempPath := filepath.Join("uploads", "temp", photoSerialFilename)
-		finalPath := filepath.Join("uploads", "pc", photoSerialFilename)
-
-		// Save temporary file with original extension for processing
-		tempOriginal := tempPath + ext
-		if err := c.SaveUploadedFile(photoSerial, tempOriginal); err != nil {
-			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
-				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
-				"username":    username,
-				"role":        role,
-				"currentPage": "pc",
-				"error":       "Gagal menyimpan foto serial number",
-			})
-			return
-		}
-
-		// Compress and save (converts to JPEG)
-		if err := imageService.CompressAndSave(tempOriginal, finalPath, 1280); err != nil {
-			os.Remove(tempOriginal)
-			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
-				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
-				"username":    username,
-				"role":        role,
-				"currentPage": "pc",
-				"error":       "Gagal mengkompresi foto serial number: " + err.Error(),
-			})
-			return
-		}
-
-		// Delete temp file
-		os.Remove(tempOriginal)
 	}
 
-	// Process photo_front
-	photoFront, err := c.FormFile("photo_front")
-	if err == nil && photoFront != nil {
-		// Validate file size (max 5MB)
-		if photoFront.Size > 5*1024*1024 {
-			// Cleanup photo_serial if already uploaded
-			if photoSerialFilename != "" {
-				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
-			}
-			c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
-				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
-				"username":    username,
-				"role":        role,
-				"currentPage": "pc",
-				"error":       "Ukuran foto tampilan depan terlalu besar (max 5MB)",
-			})
-			return
-		}
-
-		// Validate file extension
-		ext := strings.ToLower(filepath.Ext(photoFront.Filename))
-		allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
-		isAllowed := false
-		for _, allowed := range allowedExts {
-			if ext == allowed {
-				isAllowed = true
-				break
-			}
-		}
-		if !isAllowed {
-			// Cleanup photo_serial if already uploaded
-			if photoSerialFilename != "" {
-				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
-			}
-			c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
-				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
-				"username":    username,
-				"role":        role,
-				"currentPage": "pc",
-				"error":       "Format foto tampilan depan tidak didukung. Gunakan JPEG, PNG, atau HEIC",
-			})
-			return
-		}
-
-		// Generate unique filename - always use .jpeg extension (output is always JPEG)
-		now := time.Now()
-		photoFrontFilename = fmt.Sprintf("pc_%d_front_%s.jpeg", pcNumber, now.Format("1504_02012006"))
-		tempPath := filepath.Join("uploads", "temp", photoFrontFilename)
-		finalPath := filepath.Join("uploads", "pc", photoFrontFilename)
-
-		// Save temporary file with original extension for processing
-		tempOriginal := tempPath + ext
-		if err := c.SaveUploadedFile(photoFront, tempOriginal); err != nil {
-			// Cleanup photo_serial if already uploaded
-			if photoSerialFilename != "" {
-				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
-			}
+	if frontFileRef != "" {
+		tempPath := filepath.Join("uploads", "temp", frontFileRef)
+		finalPath := filepath.Join("uploads", "pc", frontFileRef)
+		
+		// Ensure pc directory exists
+		pcDir := filepath.Join("uploads", "pc")
+		if err := os.MkdirAll(pcDir, 0755); err != nil {
 			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
 				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
 				"username":    username,
 				"role":        role,
 				"currentPage": "pc",
-				"error":       "Gagal menyimpan foto tampilan depan",
+				"error":       "Gagal membuat direktori upload",
 			})
 			return
 		}
-
-		// Compress and save (converts to JPEG)
-		if err := imageService.CompressAndSave(tempOriginal, finalPath, 1920); err != nil {
-			os.Remove(tempOriginal)
-			// Cleanup photo_serial if already uploaded
-			if photoSerialFilename != "" {
-				os.Remove(filepath.Join("uploads", "pc", photoSerialFilename))
+		
+		if err := os.Rename(tempPath, finalPath); err == nil {
+			photoFrontFilename = frontFileRef
+		} else {
+			// If rename fails, try copy and delete
+			if err := copyFile(tempPath, finalPath); err == nil {
+				os.Remove(tempPath)
+				photoFrontFilename = frontFileRef
 			}
-			c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
-				"title":       "Tambah PC Baru - Sistem Inventaris Lab",
-				"username":    username,
-				"role":        role,
-				"currentPage": "pc",
-				"error":       "Gagal mengkompresi foto tampilan depan: " + err.Error(),
-			})
-			return
 		}
-
-		// Delete temp file
-		os.Remove(tempOriginal)
 	}
 
 	// Insert to database
-	_, err = h.db.Exec(`
+	_, err := h.db.Exec(`
 		INSERT INTO pcs (
 			pc_number, row, column, status, 
 			device_type, serial_number, brand_model, accessories,
@@ -844,7 +762,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	}
 	// If both empty, lastCheckedPtr = nil (set to NULL)
 
-	// Handle file uploads (optional - keep existing if not uploaded)
+	// Handle file uploads using file references (no processing needed)
 	photoSerialFilename := ""
 	if currentPhotoSerial.Valid {
 		photoSerialFilename = currentPhotoSerial.String
@@ -857,136 +775,74 @@ func (h *Handler) PCEdit(c *gin.Context) {
 
 	imageService := services.NewImageService()
 
-	// Process photo_serial (if uploaded)
-	photoSerial, err := c.FormFile("photo_serial")
-	if err == nil && photoSerial != nil {
-		// Validate file size (max 5MB)
-		if photoSerial.Size > 5*1024*1024 {
-			c.HTML(http.StatusBadRequest, "error.html", gin.H{
-				"title":   "Error",
-				"message": "Ukuran foto serial number terlalu besar (max 5MB)",
-			})
-			return
-		}
+	// Get file references from form (uploaded via /api/upload-image)
+	serialFileRef := c.PostForm("serial_file_ref")
+	frontFileRef := c.PostForm("front_file_ref")
 
-		// Validate file extension
-		ext := strings.ToLower(filepath.Ext(photoSerial.Filename))
-		allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
-		isAllowed := false
-		for _, allowed := range allowedExts {
-			if ext == allowed {
-				isAllowed = true
-				break
-			}
-		}
-		if !isAllowed {
-			c.HTML(http.StatusBadRequest, "error.html", gin.H{
-				"title":   "Error",
-				"message": "Format foto serial number tidak didukung. Gunakan JPEG, PNG, atau HEIC",
-			})
-			return
-		}
-
+	// Handle serial photo update
+	if serialFileRef != "" {
 		// Delete old photo if exists
 		if photoSerialFilename != "" {
 			oldPath := filepath.Join("uploads", "pc", photoSerialFilename)
 			imageService.DeleteImage(oldPath)
 		}
 
-		// Generate unique filename - always use .jpeg extension (output is always JPEG)
-		now := time.Now()
-		photoSerialFilename = fmt.Sprintf("pc_%d_serial_%s.jpeg", currentPCNumber, now.Format("1504_02012006"))
-		tempPath := filepath.Join("uploads", "temp", photoSerialFilename)
-		finalPath := filepath.Join("uploads", "pc", photoSerialFilename)
-
-		// Save temporary file with original extension for processing
-		tempOriginal := tempPath + ext
-		if err := c.SaveUploadedFile(photoSerial, tempOriginal); err != nil {
+		// Move file from temp to final location
+		tempPath := filepath.Join("uploads", "temp", serialFileRef)
+		finalPath := filepath.Join("uploads", "pc", serialFileRef)
+		
+		// Ensure pc directory exists
+		pcDir := filepath.Join("uploads", "pc")
+		if err := os.MkdirAll(pcDir, 0755); err != nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"title":   "Error",
-				"message": "Gagal menyimpan foto serial number",
+				"message": "Gagal membuat direktori upload",
 			})
 			return
 		}
-
-		// Compress and save (converts to JPEG)
-		if err := imageService.CompressAndSave(tempOriginal, finalPath, 1280); err != nil {
-			os.Remove(tempOriginal)
-			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-				"title":   "Error",
-				"message": "Gagal mengkompresi foto serial number: " + err.Error(),
-			})
-			return
-		}
-
-		// Delete temp file
-		os.Remove(tempOriginal)
-	}
-
-	// Process photo_front (if uploaded)
-	photoFront, err := c.FormFile("photo_front")
-	if err == nil && photoFront != nil {
-		// Validate file size (max 5MB)
-		if photoFront.Size > 5*1024*1024 {
-			c.HTML(http.StatusBadRequest, "error.html", gin.H{
-				"title":   "Error",
-				"message": "Ukuran foto tampilan depan terlalu besar (max 5MB)",
-			})
-			return
-		}
-
-		// Validate file extension
-		ext := strings.ToLower(filepath.Ext(photoFront.Filename))
-		allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
-		isAllowed := false
-		for _, allowed := range allowedExts {
-			if ext == allowed {
-				isAllowed = true
-				break
+		
+		if err := os.Rename(tempPath, finalPath); err == nil {
+			photoSerialFilename = serialFileRef
+		} else {
+			// If rename fails, try copy and delete
+			if err := copyFile(tempPath, finalPath); err == nil {
+				os.Remove(tempPath)
+				photoSerialFilename = serialFileRef
 			}
 		}
-		if !isAllowed {
-			c.HTML(http.StatusBadRequest, "error.html", gin.H{
-				"title":   "Error",
-				"message": "Format foto tampilan depan tidak didukung. Gunakan JPEG, PNG, atau HEIC",
-			})
-			return
-		}
+	}
 
+	// Handle front photo update
+	if frontFileRef != "" {
 		// Delete old photo if exists
 		if photoFrontFilename != "" {
 			oldPath := filepath.Join("uploads", "pc", photoFrontFilename)
 			imageService.DeleteImage(oldPath)
 		}
 
-		// Generate unique filename - always use .jpeg extension (output is always JPEG)
-		now := time.Now()
-		photoFrontFilename = fmt.Sprintf("pc_%d_front_%s.jpeg", currentPCNumber, now.Format("1504_02012006"))
-		tempPath := filepath.Join("uploads", "temp", photoFrontFilename)
-		finalPath := filepath.Join("uploads", "pc", photoFrontFilename)
-
-		// Save temporary file with original extension for processing
-		tempOriginal := tempPath + ext
-		if err := c.SaveUploadedFile(photoFront, tempOriginal); err != nil {
+		// Move file from temp to final location
+		tempPath := filepath.Join("uploads", "temp", frontFileRef)
+		finalPath := filepath.Join("uploads", "pc", frontFileRef)
+		
+		// Ensure pc directory exists
+		pcDir := filepath.Join("uploads", "pc")
+		if err := os.MkdirAll(pcDir, 0755); err != nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"title":   "Error",
-				"message": "Gagal menyimpan foto tampilan depan",
+				"message": "Gagal membuat direktori upload",
 			})
 			return
 		}
-
-		// Compress and save (converts to JPEG)
-		if err := imageService.CompressAndSave(tempOriginal, finalPath, 1920); err != nil {
-			os.Remove(tempOriginal)
-			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-				"title":   "Error",
-				"message": "Gagal mengkompresi foto tampilan depan: " + err.Error(),
-			})
-			return
+		
+		if err := os.Rename(tempPath, finalPath); err == nil {
+			photoFrontFilename = frontFileRef
+		} else {
+			// If rename fails, try copy and delete
+			if err := copyFile(tempPath, finalPath); err == nil {
+				os.Remove(tempPath)
+				photoFrontFilename = frontFileRef
+			}
 		}
-
-		// Delete temp file
-		os.Remove(tempOriginal)
 	}
 
 	// Update database
@@ -1058,8 +914,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		)
 		
 		// Log photo uploads separately (if new photos uploaded)
-		photoSerialUploaded, _ := c.FormFile("photo_serial")
-		if photoSerialUploaded != nil {
+		if serialFileRef != "" {
 			h.activityLogService.LogUpload(
 				userID, username, role,
 				"pc", pcID,
@@ -1068,8 +923,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 			)
 		}
 		
-		photoFrontUploaded, _ := c.FormFile("photo_front")
-		if photoFrontUploaded != nil {
+		if frontFileRef != "" {
 			h.activityLogService.LogUpload(
 				userID, username, role,
 				"pc", pcID,
