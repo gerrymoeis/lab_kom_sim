@@ -107,16 +107,100 @@
                         <hr class="my-4">
                         <h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Dokumentasi Foto (Optional)</h6>
 
-                        <div class="mb-3">
-                            <label for="photo_serial" class="form-label">Foto Serial Number + Barcode</label>
-                            <input type="file" class="form-control" id="photo_serial" name="photo_serial" accept="image/jpeg,image/png,image/heic,image/heif">
-                            <small class="text-muted">Close-up foto S/N dan barcode (biasanya di belakang monitor). Max 5MB, format JPEG/PNG/HEIC</small>
+                        <!-- Photo Serial Number -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Foto Serial Number + Barcode</label>
+                            <small class="text-muted d-block mb-2">Close-up foto S/N dan barcode (biasanya di belakang monitor). Max 5MB, format JPEG/PNG/HEIC</small>
+                            
+                            <!-- Hidden file inputs -->
+                            <input type="file" 
+                                   id="photo_serial" 
+                                   name="photo_serial" 
+                                   accept="image/*" 
+                                   capture="environment"
+                                   class="d-none">
+                            <input type="file" 
+                                   id="photo_serial_gallery" 
+                                   accept="image/jpeg,image/png,image/heic,image/heif" 
+                                   class="d-none">
+                            
+                            <!-- Custom buttons -->
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary w-100"
+                                            onclick="document.getElementById('photo_serial').click()">
+                                        <i class="bi bi-camera-fill"></i> Ambil Foto
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button type="button" 
+                                            class="btn btn-outline-secondary w-100"
+                                            onclick="document.getElementById('photo_serial_gallery').click()">
+                                        <i class="bi bi-images"></i> Pilih dari Galeri
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Preview area -->
+                            <div id="previewSerial" class="mt-3 d-none">
+                                <div class="border rounded p-2 bg-light text-center">
+                                    <img id="imagePreviewSerial" src="" alt="Preview" class="img-fluid" style="max-height: 200px;">
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="clearImageSerial()">
+                                            <i class="bi bi-x-circle"></i> Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
+                        <!-- Photo Front -->
                         <div class="mb-3">
-                            <label for="photo_front" class="form-label">Foto Tampilan Depan</label>
-                            <input type="file" class="form-control" id="photo_front" name="photo_front" accept="image/jpeg,image/png,image/heic,image/heif">
-                            <small class="text-muted">Full view PC menyala dengan monitor, keyboard, dan mouse terlihat. Max 5MB, format JPEG/PNG/HEIC</small>
+                            <label class="form-label fw-bold">Foto Tampilan Depan</label>
+                            <small class="text-muted d-block mb-2">Full view PC menyala dengan monitor, keyboard, dan mouse terlihat. Max 5MB, format JPEG/PNG/HEIC</small>
+                            
+                            <!-- Hidden file inputs -->
+                            <input type="file" 
+                                   id="photo_front" 
+                                   name="photo_front" 
+                                   accept="image/*" 
+                                   capture="environment"
+                                   class="d-none">
+                            <input type="file" 
+                                   id="photo_front_gallery" 
+                                   accept="image/jpeg,image/png,image/heic,image/heif" 
+                                   class="d-none">
+                            
+                            <!-- Custom buttons -->
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary w-100"
+                                            onclick="document.getElementById('photo_front').click()">
+                                        <i class="bi bi-camera-fill"></i> Ambil Foto
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button type="button" 
+                                            class="btn btn-outline-secondary w-100"
+                                            onclick="document.getElementById('photo_front_gallery').click()">
+                                        <i class="bi bi-images"></i> Pilih dari Galeri
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Preview area -->
+                            <div id="previewFront" class="mt-3 d-none">
+                                <div class="border rounded p-2 bg-light text-center">
+                                    <img id="imagePreviewFront" src="" alt="Preview" class="img-fluid" style="max-height: 200px;">
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="clearImageFront()">
+                                            <i class="bi bi-x-circle"></i> Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <hr class="my-4">
@@ -162,6 +246,79 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/static/js/main.js"></script>
+<script>
+// Photo Serial Number handlers
+document.getElementById('photo_serial').addEventListener('change', function(e) {
+    handleFileSelectSerial(e.target.files[0]);
+});
+
+document.getElementById('photo_serial_gallery').addEventListener('change', function(e) {
+    if (e.target.files.length > 0) {
+        const dt = new DataTransfer();
+        dt.items.add(e.target.files[0]);
+        document.getElementById('photo_serial').files = dt.files;
+        handleFileSelectSerial(e.target.files[0]);
+    }
+});
+
+function handleFileSelectSerial(file) {
+    if (!file) return;
+    
+    if (!file.type.match('image.*')) {
+        alert('File harus berupa gambar');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('imagePreviewSerial').src = e.target.result;
+        document.getElementById('previewSerial').classList.remove('d-none');
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearImageSerial() {
+    document.getElementById('photo_serial').value = '';
+    document.getElementById('photo_serial_gallery').value = '';
+    document.getElementById('previewSerial').classList.add('d-none');
+}
+
+// Photo Front handlers
+document.getElementById('photo_front').addEventListener('change', function(e) {
+    handleFileSelectFront(e.target.files[0]);
+});
+
+document.getElementById('photo_front_gallery').addEventListener('change', function(e) {
+    if (e.target.files.length > 0) {
+        const dt = new DataTransfer();
+        dt.items.add(e.target.files[0]);
+        document.getElementById('photo_front').files = dt.files;
+        handleFileSelectFront(e.target.files[0]);
+    }
+});
+
+function handleFileSelectFront(file) {
+    if (!file) return;
+    
+    if (!file.type.match('image.*')) {
+        alert('File harus berupa gambar');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('imagePreviewFront').src = e.target.result;
+        document.getElementById('previewFront').classList.remove('d-none');
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearImageFront() {
+    document.getElementById('photo_front').value = '';
+    document.getElementById('photo_front_gallery').value = '';
+    document.getElementById('previewFront').classList.add('d-none');
+}
+</script>
 </body>
 </html>
 {{ end }}
