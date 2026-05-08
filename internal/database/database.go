@@ -220,6 +220,14 @@ func RunMigrations(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_pcs_device_type ON pcs(device_type)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_brand_model ON pcs(brand_model)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_serial_number ON pcs(serial_number)`,
+		// Logbook indexes untuk performance (search, sort, filter)
+		`CREATE INDEX IF NOT EXISTS idx_logbook_student_name ON logbook_entries(student_name)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_purpose ON logbook_entries(purpose)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_time_in ON logbook_entries(time_in)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_composite_search ON logbook_entries(student_name, nim, date)`,
+		// Unique constraint untuk prevent duplicates (date, nim, time_in)
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, nim, time_in)`,
 	}
 
 	for _, indexSQL := range indexes {

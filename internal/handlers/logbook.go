@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"inventaris-lab-kom/internal/middleware"
@@ -14,7 +15,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// LogbookList renders list of logbook entries
+// LogbookFilters represents filter options for logbook queries
+type LogbookFilters struct {
+	DateFrom  *time.Time
+	DateTo    *time.Time
+	Search    string
+	SortBy    string
+	SortOrder string
+	Limit     int
+	Offset    int
+}
+
+// LogbookList renders list of logbook entries with filters, search, and sort
 func (h *Handler) LogbookList(c *gin.Context) {
 	_, username, role, ok := middleware.GetCurrentUser(c)
 	if !ok {
@@ -22,12 +34,120 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		return
 	}
 
-	rows, err := h.db.Query(`
+	// Parse pagination parameters
+	page := 1
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	pageSize := 25 // Default
+	if sizeStr := c.Query("size"); sizeStr != "" {
+		if s, err := strconv.Atoi(sizeStr); err == nil && s > 0 && s <= 100 {
+			pageSize = s
+		}
+	}
+
+	// Build filters
+	filters := LogbookFilters{
+		Limit:     pageSize,
+		Offset:    (page - 1) * pageSize,
+		SortBy:    c.DefaultQuery("sort_by", "date"),
+		SortOrder: c.DefaultQuery("sort_order", "DESC"),
+		Search:    c.Query("search"),
+	}
+
+	// Parse date filters
+	if dateFrom := c.Query("date_from"); dateFrom != "" {
+		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
+			filters.DateFrom = &t
+		}
+	}
+
+	if dateTo := c.Query("date_to"); dateTo != "" {
+		if t, err := time.Parse("2006-01-02", dateTo); err == nil {
+			filters.DateTo = &t
+		}
+	}
+
+	// Build query
+	baseQuery := `
 		SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at
-		FROM logbook_entries
-		ORDER BY date DESC, time_in DESC
-		LIMIT 100
-	`)
+		FROM logbook_entries WHERE 1=1
+	`
+	countQuery := `SELECT COUNT(*) FROM logbook_entries WHERE 1=1`
+	args := []interface{}{}
+	conditions := ""
+
+	// Date filtering
+	if filters.DateFrom != nil {
+		conditions += " AND date >= ?"
+		args = append(args, filters.DateFrom)
+	}
+	if filters.DateTo != nil {
+		conditions += " AND date <= ?"
+		args = append(args, filters.DateTo)
+	}
+
+	// Search functionality
+	if filters.Search != "" {
+		conditions += ` AND (
+			student_name LIKE ? OR 
+			nim LIKE ? OR 
+			purpose LIKE ?
+		)`
+		searchTerm := "%" + filters.Search + "%"
+		args = append(args, searchTerm, searchTerm, searchTerm)
+	}
+
+	// Get total count
+	var totalCount int
+	countArgs := make([]interface{}, len(args))
+	copy(countArgs, args)
+	err := h.db.QueryRow(countQuery+conditions, countArgs...).Scan(&totalCount)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal menghitung data logbook",
+		})
+		return
+	}
+
+	// Sorting
+	orderBy := " ORDER BY "
+	switch filters.SortBy {
+	case "student_name":
+		orderBy += "student_name"
+	case "nim":
+		orderBy += "nim"
+	case "time_in":
+		orderBy += "time_in"
+	case "created_at":
+		orderBy += "created_at"
+	default:
+		orderBy += "date"
+	}
+
+	if filters.SortOrder == "ASC" {
+		orderBy += " ASC"
+	} else {
+		orderBy += " DESC"
+	}
+
+	// Add secondary sort untuk consistency
+	if filters.SortBy != "date" {
+		orderBy += ", date DESC"
+	}
+	if filters.SortBy != "time_in" && filters.SortBy != "date" {
+		orderBy += ", time_in DESC"
+	}
+
+	// Final query dengan pagination
+	finalQuery := baseQuery + conditions + orderBy + " LIMIT ? OFFSET ?"
+	args = append(args, filters.Limit, filters.Offset)
+
+	rows, err := h.db.Query(finalQuery, args...)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
@@ -48,12 +168,29 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		entries = append(entries, entry)
 	}
 
+	// Calculate pagination
+	totalPages := (totalCount + filters.Limit - 1) / filters.Limit
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
 	c.HTML(http.StatusOK, "logbook/list.html", gin.H{
 		"title":       "Logbook Absensi - Sistem Inventaris Lab",
 		"currentPage": "logbook",
 		"username":    username,
 		"role":        role,
 		"entries":     entries,
+		"totalCount":  totalCount,
+		"page":        page,
+		"totalPages":  totalPages,
+		"pageSize":    pageSize,
+		"filters": gin.H{
+			"date_from":  c.Query("date_from"),
+			"date_to":    c.Query("date_to"),
+			"search":     filters.Search,
+			"sort_by":    filters.SortBy,
+			"sort_order": filters.SortOrder,
+		},
 	})
 }
 
@@ -218,7 +355,7 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	nims := c.PostFormArray("nim[]")
 	timeIns := c.PostFormArray("time_in[]")
 	timeOuts := c.PostFormArray("time_out[]")
-	purposes := c.PostFormArray("purpose[]") // Changed from notes to purpose
+	purposes := c.PostFormArray("purpose[]")
 
 	if len(dates) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada data untuk disimpan"})
@@ -233,9 +370,9 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	// Insert entries
+	// Use INSERT OR IGNORE untuk handle duplicates
 	stmt, err := tx.Prepare(`
-		INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at)
+		INSERT OR IGNORE INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
@@ -246,6 +383,7 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 
 	now := time.Now()
 	savedCount := 0
+	duplicateCount := 0
 
 	for i := 0; i < len(dates); i++ {
 		// Skip empty entries
@@ -283,12 +421,19 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 			purpose = purposes[i]
 		}
 
-		_, err = stmt.Exec(dateValue, names[i], nims[i], timeIn, timeOut, purpose, sourceFile, now, now)
+		result, err := stmt.Exec(dateValue, names[i], nims[i], timeIn, timeOut, purpose, sourceFile, now, now)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Gagal menyimpan entry: %v", err)})
 			return
 		}
-		savedCount++
+		
+		// Check if row was actually inserted (not ignored due to duplicate)
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected > 0 {
+			savedCount++
+		} else {
+			duplicateCount++
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -312,16 +457,26 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 			userID, username, role,
 			"logbook", 0, // Bulk operation, no specific ID
 			map[string]interface{}{
-				"entries_count": savedCount,
-				"source_file":   sourceFile,
+				"entries_saved":     savedCount,
+				"entries_duplicate": duplicateCount,
+				"source_file":       sourceFile,
 			},
 			ipAddress, userAgent,
 		)
 	}
 
+	// Return result dengan info tentang duplicates
+	message := fmt.Sprintf("Berhasil menyimpan %d entry logbook", savedCount)
+	if duplicateCount > 0 {
+		message += fmt.Sprintf(" (%d duplikat dilewati)", duplicateCount)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": fmt.Sprintf("Berhasil menyimpan %d entry logbook", savedCount),
+		"success":        true,
+		"message":        message,
+		"saved":          savedCount,
+		"duplicates":     duplicateCount,
+		"total_processed": len(dates),
 	})
 }
 
