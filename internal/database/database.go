@@ -226,13 +226,46 @@ func RunMigrations(db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_logbook_purpose ON logbook_entries(purpose)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_time_in ON logbook_entries(time_in)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_composite_search ON logbook_entries(student_name, nim, date)`,
-		// Unique constraint untuk prevent duplicates (date, nim, time_in)
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, nim, time_in)`,
 	}
 
 	for _, indexSQL := range indexes {
 		if _, err := db.Exec(indexSQL); err != nil {
 			return fmt.Errorf("failed to create index: %w", err)
+		}
+	}
+
+	// Handle unique constraint untuk logbook dengan cleanup duplicates
+	var uniqueIndexExists bool
+	err := db.QueryRow(`
+		SELECT COUNT(*) > 0 
+		FROM sqlite_master 
+		WHERE type='index' AND name='idx_logbook_unique'
+	`).Scan(&uniqueIndexExists)
+
+	if err == nil && !uniqueIndexExists {
+		// Cleanup duplicates before creating unique index
+		result, err := db.Exec(`
+			DELETE FROM logbook_entries
+			WHERE id NOT IN (
+				SELECT MIN(id)
+				FROM logbook_entries
+				GROUP BY date, nim, time_in
+			)
+		`)
+		
+		if err != nil {
+			fmt.Printf("Warning: Failed to cleanup duplicates: %v\n", err)
+		} else {
+			rowsAffected, _ := result.RowsAffected()
+			if rowsAffected > 0 {
+				fmt.Printf("Cleaned up %d duplicate logbook entries\n", rowsAffected)
+			}
+		}
+
+		// Now create unique index
+		_, err = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, nim, time_in)`)
+		if err != nil {
+			return fmt.Errorf("failed to create unique index: %w", err)
 		}
 	}
 
