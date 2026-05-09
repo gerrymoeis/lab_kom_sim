@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/services"
@@ -364,6 +365,9 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		return
 	}
 
+	// Load duplicate check config
+	dupConfig := config.DefaultDuplicateConfig
+
 	// Begin transaction
 	tx, err := h.db.Begin()
 	if err != nil {
@@ -372,9 +376,9 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	// Use INSERT OR IGNORE untuk handle duplicates
+	// Prepare insert statement
 	stmt, err := tx.Prepare(`
-		INSERT OR IGNORE INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at)
+		INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
@@ -423,19 +427,48 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 			purpose = purposes[i]
 		}
 
-		result, err := stmt.Exec(dateValue, names[i], nims[i], timeIn, timeOut, purpose, sourceFile, now, now)
+		// Check for similarity-based duplicates
+		isDuplicate := false
+		rows, err := h.db.Query(`
+			SELECT date, student_name, nim, time_in 
+			FROM logbook_entries 
+			WHERE date = ? AND time_in = ?
+		`, dateValue, timeIn)
+		
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var existingDate time.Time
+				var existingName, existingNIM, existingTimeIn string
+				if err := rows.Scan(&existingDate, &existingName, &existingNIM, &existingTimeIn); err == nil {
+					// Check similarity
+					if isDuplicateEntry(dateValue, existingDate, timeIn, existingTimeIn, 
+						names[i], existingName, nims[i], existingNIM, dupConfig) {
+						isDuplicate = true
+						break
+					}
+				}
+			}
+		}
+
+		if isDuplicate {
+			duplicateCount++
+			continue
+		}
+
+		// Insert if not duplicate
+		_, err = stmt.Exec(dateValue, names[i], nims[i], timeIn, timeOut, purpose, sourceFile, now, now)
 		if err != nil {
+			// Check if database-level unique constraint triggered
+			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+				duplicateCount++
+				continue
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Gagal menyimpan entry: %v", err)})
 			return
 		}
 		
-		// Check if row was actually inserted (not ignored due to duplicate)
-		rowsAffected, _ := result.RowsAffected()
-		if rowsAffected > 0 {
-			savedCount++
-		} else {
-			duplicateCount++
-		}
+		savedCount++
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -764,6 +797,42 @@ func (h *Handler) LogbookCreate(c *gin.Context) {
 	nim = normalizeNIM(nim)
 	purpose = normalizePurpose(purpose)
 
+	// Load duplicate check config
+	dupConfig := config.DefaultDuplicateConfig
+
+	// Check for similarity-based duplicates
+	isDuplicate := false
+	rows, err := h.db.Query(`
+		SELECT date, student_name, nim, time_in 
+		FROM logbook_entries 
+		WHERE date = ? AND time_in = ?
+	`, date, timeIn)
+	
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var existingDate time.Time
+			var existingName, existingNIM, existingTimeIn string
+			if err := rows.Scan(&existingDate, &existingName, &existingNIM, &existingTimeIn); err == nil {
+				// Check similarity
+				if isDuplicateEntry(date, existingDate, timeIn, existingTimeIn, 
+					studentName, existingName, nim, existingNIM, dupConfig) {
+					isDuplicate = true
+					break
+				}
+			}
+		}
+	}
+
+	if isDuplicate {
+		c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{
+			"title":       "Tambah Entry Logbook",
+			"currentPage": "logbook",
+			"error":       "Entry duplikat: Mahasiswa dengan nama/NIM serupa sudah tercatat di tanggal dan jam yang sama",
+		})
+		return
+	}
+
 	// Insert to database
 	result, err := h.db.Exec(`
 		INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at)
@@ -905,6 +974,42 @@ func (h *Handler) LogbookEdit(c *gin.Context) {
 	studentName = normalizeStudentName(studentName)
 	nim = normalizeNIM(nim)
 	purpose = normalizePurpose(purpose)
+
+	// Load duplicate check config
+	dupConfig := config.DefaultDuplicateConfig
+
+	// Check for similarity-based duplicates (excluding current entry)
+	isDuplicate := false
+	rows, err := h.db.Query(`
+		SELECT id, date, student_name, nim, time_in 
+		FROM logbook_entries 
+		WHERE date = ? AND time_in = ? AND id != ?
+	`, date, timeIn, id)
+	
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var existingID int
+			var existingDate time.Time
+			var existingName, existingNIM, existingTimeIn string
+			if err := rows.Scan(&existingID, &existingDate, &existingName, &existingNIM, &existingTimeIn); err == nil {
+				// Check similarity
+				if isDuplicateEntry(date, existingDate, timeIn, existingTimeIn, 
+					studentName, existingName, nim, existingNIM, dupConfig) {
+					isDuplicate = true
+					break
+				}
+			}
+		}
+	}
+
+	if isDuplicate {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Entry duplikat: Mahasiswa dengan nama/NIM serupa sudah tercatat di tanggal dan jam yang sama",
+		})
+		return
+	}
 
 	// Update database
 	_, err = h.db.Exec(`

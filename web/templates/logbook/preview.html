@@ -43,8 +43,8 @@
 
                         <div id="duplicateWarning" class="alert alert-warning d-none">
                             <i class="bi bi-exclamation-triangle"></i> 
-                            <strong>Peringatan Duplikat:</strong> Terdeteksi entry dengan nama, tanggal, dan jam yang sama. 
-                            Periksa dan hapus duplikat sebelum menyimpan.
+                            <strong>Peringatan Duplikat:</strong> Terdeteksi entry dengan nama/NIM serupa di tanggal dan jam yang sama. 
+                            Sistem menggunakan deteksi similarity untuk menangkap typo OCR. Periksa dan hapus duplikat sebelum menyimpan.
                         </div>
 
                         <form id="previewForm" action="/logbook/save" method="POST">
@@ -202,6 +202,92 @@
     <script>
     let rowCounter = {{ if .entries }}{{ len .entries }}{{ else }}1{{ end }};
 
+    // Similarity checking functions (matching backend logic)
+    function countCharDifferences(s1, s2) {
+        s1 = s1.toLowerCase().trim();
+        s2 = s2.toLowerCase().trim();
+        
+        if (s1 === s2) return 0;
+        
+        const len1 = s1.length;
+        const len2 = s2.length;
+        
+        // Levenshtein distance
+        const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
+        
+        for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+        for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+        
+        for (let i = 1; i <= len1; i++) {
+            for (let j = 1; j <= len2; j++) {
+                const cost = s1[i-1] === s2[j-1] ? 0 : 1;
+                matrix[i][j] = Math.min(
+                    matrix[i-1][j] + 1,      // deletion
+                    matrix[i][j-1] + 1,      // insertion
+                    matrix[i-1][j-1] + cost  // substitution
+                );
+            }
+        }
+        
+        return matrix[len1][len2];
+    }
+
+    function areNamesSimilar(name1, name2) {
+        // Config matching backend
+        const config = {
+            maxDiffShortWord: 1,
+            maxDiffLongWord: 2,
+            maxLengthDiff: 2
+        };
+        
+        name1 = name1.toLowerCase().trim();
+        name2 = name2.toLowerCase().trim();
+        
+        if (name1 === name2) return true;
+        
+        // Check length difference
+        const lenDiff = Math.abs(name1.length - name2.length);
+        if (lenDiff > config.maxLengthDiff) return false;
+        
+        // Split into words
+        const words1 = name1.split(/\s+/);
+        const words2 = name2.split(/\s+/);
+        
+        // Must have same number of words
+        if (words1.length !== words2.length) return false;
+        
+        // Compare each word pair
+        for (let i = 0; i < words1.length; i++) {
+            const word1 = words1[i];
+            const word2 = words2[i];
+            
+            if (word1 === word2) continue;
+            
+            const diff = countCharDifferences(word1, word2);
+            const wordLen = Math.max(word1.length, word2.length);
+            const threshold = wordLen <= 5 ? config.maxDiffShortWord : config.maxDiffLongWord;
+            
+            if (diff > threshold) return false;
+        }
+        
+        return true;
+    }
+
+    function areNIMsSimilar(nim1, nim2) {
+        const config = {
+            maxDiffNIM: 1
+        };
+        
+        nim1 = nim1.toUpperCase().trim().replace(/\s/g, '');
+        nim2 = nim2.toUpperCase().trim().replace(/\s/g, '');
+        
+        if (nim1 === nim2) return true;
+        if (nim1.length !== nim2.length) return false;
+        
+        const diff = countCharDifferences(nim1, nim2);
+        return diff <= config.maxDiffNIM;
+    }
+
     // Check for duplicates on page load
     document.addEventListener('DOMContentLoaded', function() {
         checkDuplicates();
@@ -214,11 +300,12 @@
         
         // Collect all entries
         rows.forEach((row, index) => {
-            const name = row.querySelector('input[name="student_name[]"]').value.trim().toLowerCase();
+            const name = row.querySelector('input[name="student_name[]"]').value.trim();
+            const nim = row.querySelector('input[name="nim[]"]').value.trim();
             const date = row.querySelector('input[name="date[]"]').value;
             const timeIn = row.querySelector('input[name="time_in[]"]').value;
             
-            entries.push({ index, name, date, timeIn, row });
+            entries.push({ index, name, nim, date, timeIn, row });
         });
         
         // Clear previous warnings
@@ -228,13 +315,20 @@
             if (existingBadge) existingBadge.remove();
         });
         
-        // Check for duplicates
+        // Check for duplicates using similarity
         for (let i = 0; i < entries.length; i++) {
             for (let j = i + 1; j < entries.length; j++) {
-                if (entries[i].name === entries[j].name && 
-                    entries[i].date === entries[j].date && 
-                    entries[i].timeIn === entries[j].timeIn) {
-                    
+                // Must have same date and time
+                if (entries[i].date !== entries[j].date || 
+                    entries[i].timeIn !== entries[j].timeIn) {
+                    continue;
+                }
+                
+                // Check name similarity OR NIM similarity
+                const nameSimilar = areNamesSimilar(entries[i].name, entries[j].name);
+                const nimSimilar = areNIMsSimilar(entries[i].nim, entries[j].nim);
+                
+                if (nameSimilar || nimSimilar) {
                     // Mark both rows as potential duplicates
                     entries[i].row.classList.add('table-warning');
                     entries[j].row.classList.add('table-warning');
