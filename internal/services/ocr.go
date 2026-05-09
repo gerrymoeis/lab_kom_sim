@@ -125,7 +125,16 @@ CRITICAL RULES - READ CAREFULLY:
      * "~~~" in purpose field → Copy purpose from row above
      * "Rian Dwi Hermawan" with inconsistent capitalization → Standardize to proper Title Case
 
-3. DATE HANDLING:
+3. NAME ABBREVIATIONS:
+   - For middle abbreviations (initials), add dots between letters: "Herman SW" → "Herman S.W"
+   - NEVER add trailing dot at the end: "Herman S.W." → "Herman S.W"
+   - Examples:
+     * "Rian DH" → "Rian D.H"
+     * "Herman SW" → "Herman S.W"
+     * "Najwa AS" → "Najwa A.S"
+   - Apply this consistently to all names
+
+4. DATE HANDLING:
    - Parse to YYYY-MM-DD format
    - Accept formats: DD/MM/YYYY, DD-MM-YYYY, D/M/YYYY
    - If date is missing but can be inferred from context, fill it in
@@ -397,5 +406,33 @@ func toTitleCase(text string) string {
 		}
 	}
 	
-	return strings.Join(words, " ")
+	result := strings.Join(words, " ")
+	
+	// Normalize abbreviations (singkatan)
+	result = normalizeAbbreviations(result)
+	
+	return result
+}
+
+// normalizeAbbreviations normalizes abbreviations in names
+// Rules:
+// - Middle abbreviations get dots: "Herman SW" → "Herman S.W"
+// - No trailing dot at end: "Herman S.W." → "Herman S.W"
+func normalizeAbbreviations(text string) string {
+	if text == "" {
+		return ""
+	}
+	
+	// Pattern: single uppercase letter followed by space or another uppercase letter
+	// This handles cases like "SW", "SH", "A", etc.
+	re := regexp.MustCompile(`\b([A-Z])([A-Z])\b`)
+	
+	// Add dots between consecutive uppercase letters
+	// "SW" → "S.W", "SH" → "S.H"
+	text = re.ReplaceAllString(text, "$1.$2")
+	
+	// Remove trailing dot at the end of text
+	text = strings.TrimSuffix(text, ".")
+	
+	return text
 }

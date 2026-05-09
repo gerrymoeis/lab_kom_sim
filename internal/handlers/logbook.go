@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"inventaris-lab-kom/internal/middleware"
@@ -703,3 +705,388 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 		return
 	}
 }
+
+// LogbookCreatePage renders manual logbook entry creation form
+func (h *Handler) LogbookCreatePage(c *gin.Context) {
+	_, username, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	c.HTML(http.StatusOK, "logbook/create.html", gin.H{
+		"title":       "Tambah Entry Logbook - Sistem Inventaris Lab",
+		"currentPage": "logbook",
+		"username":    username,
+		"role":        role,
+	})
+}
+
+// LogbookCreate handles manual logbook entry creation
+func (h *Handler) LogbookCreate(c *gin.Context) {
+	_, _, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	// Parse form data
+	dateStr := c.PostForm("date")
+	studentName := c.PostForm("student_name")
+	nim := c.PostForm("nim")
+	timeIn := c.PostForm("time_in")
+	timeOut := c.PostForm("time_out")
+	purpose := c.PostForm("purpose")
+
+	// Validate required fields
+	if dateStr == "" || studentName == "" || nim == "" || timeIn == "" {
+		c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{
+			"title":       "Tambah Entry Logbook",
+			"currentPage": "logbook",
+			"error":       "Tanggal, Nama Mahasiswa, NIM, dan Jam Masuk harus diisi",
+		})
+		return
+	}
+
+	// Parse date
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{
+			"title":       "Tambah Entry Logbook",
+			"currentPage": "logbook",
+			"error":       "Format tanggal tidak valid",
+		})
+		return
+	}
+
+	// Apply normalization (same as OCR)
+	studentName = normalizeStudentName(studentName)
+	nim = normalizeNIM(nim)
+	purpose = normalizePurpose(purpose)
+
+	// Insert to database
+	result, err := h.db.Exec(`
+		INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, date, studentName, nim, timeIn, timeOut, purpose, "manual_entry", time.Now(), time.Now())
+
+	if err != nil {
+		// Check if duplicate
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{
+				"title":       "Tambah Entry Logbook",
+				"currentPage": "logbook",
+				"error":       "Entry duplikat: Mahasiswa dengan NIM ini sudah tercatat di tanggal dan jam yang sama",
+			})
+			return
+		}
+
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "create", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to create logbook entry: %v", err),
+			)
+		}
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal menyimpan entry logbook",
+		})
+		return
+	}
+
+	// Get last insert ID and log
+	entryID, _ := result.LastInsertId()
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogCreate(
+			userID, username, role,
+			"logbook", int(entryID),
+			map[string]interface{}{
+				"date":         dateStr,
+				"student_name": studentName,
+				"nim":          nim,
+			},
+			ipAddress, userAgent,
+		)
+	}
+
+	c.Redirect(http.StatusFound, "/logbook")
+}
+
+// LogbookEditPage renders logbook entry edit form
+func (h *Handler) LogbookEditPage(c *gin.Context) {
+	_, username, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	id := c.Param("id")
+	var entry models.LogbookEntry
+
+	err := h.db.QueryRow(`
+		SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file
+		FROM logbook_entries WHERE id = ?
+	`, id).Scan(&entry.ID, &entry.Date, &entry.StudentName, &entry.NIM,
+		&entry.TimeIn, &entry.TimeOut, &entry.Purpose, &entry.SourceFile)
+
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"title":   "Entry Tidak Ditemukan",
+			"message": "Entry logbook yang Anda cari tidak ditemukan",
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "logbook/edit.html", gin.H{
+		"title":       "Edit Entry Logbook - Sistem Inventaris Lab",
+		"currentPage": "logbook",
+		"username":    username,
+		"role":        role,
+		"entry":       entry,
+		"dateStr":     entry.Date.Format("2006-01-02"),
+	})
+}
+
+// LogbookEdit handles logbook entry update
+func (h *Handler) LogbookEdit(c *gin.Context) {
+	_, _, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	id := c.Param("id")
+	dateStr := c.PostForm("date")
+	studentName := c.PostForm("student_name")
+	nim := c.PostForm("nim")
+	timeIn := c.PostForm("time_in")
+	timeOut := c.PostForm("time_out")
+	purpose := c.PostForm("purpose")
+
+	// Validate required fields
+	if dateStr == "" || studentName == "" || nim == "" || timeIn == "" {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Tanggal, Nama Mahasiswa, NIM, dan Jam Masuk harus diisi",
+		})
+		return
+	}
+
+	// Parse date
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Format tanggal tidak valid",
+		})
+		return
+	}
+
+	// Get old values for logging
+	var oldDate time.Time
+	var oldName, oldNIM string
+	err = h.db.QueryRow(`
+		SELECT date, student_name, nim FROM logbook_entries WHERE id = ?
+	`, id).Scan(&oldDate, &oldName, &oldNIM)
+
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Entry logbook tidak ditemukan",
+		})
+		return
+	}
+
+	// Apply normalization
+	studentName = normalizeStudentName(studentName)
+	nim = normalizeNIM(nim)
+	purpose = normalizePurpose(purpose)
+
+	// Update database
+	_, err = h.db.Exec(`
+		UPDATE logbook_entries 
+		SET date = ?, student_name = ?, nim = ?, time_in = ?, time_out = ?, purpose = ?, updated_at = ?
+		WHERE id = ?
+	`, date, studentName, nim, timeIn, timeOut, purpose, time.Now(), id)
+
+	if err != nil {
+		// Check if duplicate
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Entry duplikat: Mahasiswa dengan NIM ini sudah tercatat di tanggal dan jam yang sama",
+			})
+			return
+		}
+
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			entryIDInt, _ := strconv.Atoi(id)
+			h.activityLogService.LogAuth(
+				userID, username, role, "update", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to update logbook entry #%d: %v", entryIDInt, err),
+			)
+		}
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal mengupdate entry logbook",
+		})
+		return
+	}
+
+	// Log successful update
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		entryIDInt, _ := strconv.Atoi(id)
+
+		oldValues := map[string]interface{}{
+			"date":         oldDate.Format("2006-01-02"),
+			"student_name": oldName,
+			"nim":          oldNIM,
+		}
+
+		newValues := map[string]interface{}{
+			"date":         dateStr,
+			"student_name": studentName,
+			"nim":          nim,
+		}
+
+		h.activityLogService.LogUpdate(
+			userID, username, role,
+			"logbook", entryIDInt,
+			oldValues,
+			newValues,
+			ipAddress, userAgent,
+		)
+	}
+
+	c.Redirect(http.StatusFound, "/logbook")
+}
+
+// LogbookDelete handles logbook entry deletion
+func (h *Handler) LogbookDelete(c *gin.Context) {
+	_, _, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	id := c.Param("id")
+
+	// Get entry data before delete
+	var entryID int
+	var date time.Time
+	var studentName, nim string
+	err := h.db.QueryRow(`
+		SELECT id, date, student_name, nim FROM logbook_entries WHERE id = ?
+	`, id).Scan(&entryID, &date, &studentName, &nim)
+
+	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "delete", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to get logbook entry data for delete: %v", err),
+			)
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal mengambil data entry logbook",
+		})
+		return
+	}
+
+	// Delete entry
+	_, err = h.db.Exec("DELETE FROM logbook_entries WHERE id = ?", id)
+	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "delete", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to delete logbook entry #%d: %v", entryID, err),
+			)
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal menghapus entry logbook",
+		})
+		return
+	}
+
+	// Log successful delete
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+
+		oldValues := map[string]interface{}{
+			"date":         date.Format("2006-01-02"),
+			"student_name": studentName,
+			"nim":          nim,
+		}
+
+		h.activityLogService.LogDelete(
+			userID, username, role,
+			"logbook", entryID,
+			oldValues,
+			ipAddress, userAgent,
+		)
+	}
+
+	c.Redirect(http.StatusFound, "/logbook")
+}
+
+// Helper functions for normalization (same logic as OCR)
+func normalizeStudentName(name string) string {
+	// Apply title case with abbreviation normalization
+	return toTitleCaseWithAbbr(name)
+}
+
+func normalizeNIM(nim string) string {
+	// Uppercase and remove all spaces
+	nim = strings.ToUpper(strings.TrimSpace(nim))
+	nim = strings.ReplaceAll(nim, " ", "")
+	return nim
+}
+
+func normalizePurpose(purpose string) string {
+	// Apply title case
+	return toTitleCaseWithAbbr(purpose)
+}
+
+func toTitleCaseWithAbbr(text string) string {
+	if text == "" {
+		return ""
+	}
+	
+	// Trim and remove double spaces
+	text = strings.TrimSpace(text)
+	re := regexp.MustCompile(`\s+`)
+	text = re.ReplaceAllString(text, " ")
+	
+	// Split by space and capitalize each word
+	words := strings.Fields(text)
+	for i, word := range words {
+		if len(word) > 0 {
+			words[i] = strings.ToUpper(string(word[0])) + strings.ToLower(word[1:])
+		}
+	}
+	
+	result := strings.Join(words, " ")
+	
+	// Normalize abbreviations
+	// Pattern: single uppercase letter followed by another uppercase letter
+	reAbbr := regexp.MustCompile(`\b([A-Z])([A-Z])\b`)
+	result = reAbbr.ReplaceAllString(result, "$1.$2")
+	
+	// Remove trailing dot at the end
+	result = strings.TrimSuffix(result, ".")
+	
+	return result
+}
+

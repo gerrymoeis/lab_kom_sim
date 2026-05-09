@@ -22,10 +22,13 @@
             </div>
             <div class="col-md-6 text-end">
                 {{ if eq .role "admin" }}
-                <a href="/logbook/upload" class="btn btn-primary">
-                    <i class="bi bi-upload"></i> Upload Logbook (OCR)
+                <a href="/logbook/create" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Tambah Manual
                 </a>
-                <button type="button" class="btn btn-success" onclick="exportLogbook()">
+                <a href="/logbook/upload" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> Upload (OCR)
+                </a>
+                <button type="button" class="btn btn-secondary" onclick="exportLogbook()">
                     <i class="bi bi-file-earmark-excel"></i> Export Excel
                 </button>
                 {{ end }}
@@ -118,6 +121,9 @@
                                 <th>Keperluan</th>
                                 <th>Jam Masuk</th>
                                 <th>Jam Keluar</th>
+                                {{ if eq .role "admin" }}
+                                <th width="120">Aksi</th>
+                                {{ end }}
                             </tr>
                         </thead>
                         <tbody>
@@ -129,10 +135,23 @@
                                 <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>
                                 <td>{{ .TimeIn }}</td>
                                 <td>{{ if .TimeOut }}{{ .TimeOut }}{{ else }}-{{ end }}</td>
+                                {{ if eq $.role "admin" }}
+                                <td>
+                                    <a href="/logbook/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form method="POST" action="/logbook/{{ .ID }}/delete" style="display: inline;" 
+                                          onsubmit="return confirm('Yakin ingin menghapus entry ini?');">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                {{ end }}
                             </tr>
                             {{ else }}
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">
+                                <td colspan="{{ if eq $.role "admin" }}7{{ else }}6{{ end }}" class="text-center text-muted py-4">
                                     <i class="bi bi-inbox" style="font-size: 2rem;"></i>
                                     <p class="mt-2">Belum ada data logbook</p>
                                 </td>

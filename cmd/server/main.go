@@ -180,6 +180,12 @@ func main() {
 		protected.POST("/logbook/save", h.LogbookSave)
 		protected.GET("/logbook/export", h.LogbookExport)
 		protected.GET("/logbook/export-preview", h.LogbookExportPreview)
+		// Manual CRUD for logbook
+		protected.GET("/logbook/create", h.LogbookCreatePage)
+		protected.POST("/logbook/create", h.LogbookCreate)
+		protected.GET("/logbook/:id/edit", h.LogbookEditPage)
+		protected.POST("/logbook/:id/edit", h.LogbookEdit)
+		protected.POST("/logbook/:id/delete", h.LogbookDelete)
 
 		// Experiment: OCR Finance Table (Testing only)
 		protected.GET("/experiment/ocr", h.ExperimentOCRPage)

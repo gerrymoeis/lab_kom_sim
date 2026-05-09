@@ -1,0 +1,100 @@
+{{ define "logbook/create.html" }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    {{ template "layout/navbar.html" . }}
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Tambah Entry Logbook Manual</h4>
+                    </div>
+                    <div class="card-body">
+                        {{ if .error }}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle"></i> {{ .error }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {{ end }}
+
+                        <form method="POST" action="/logbook/create">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="date" class="form-label">Tanggal <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="date" name="date" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="nim" class="form-label">NIM <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nim" name="nim" 
+                                           placeholder="Contoh: 24091397012" required>
+                                    <small class="text-muted">Akan otomatis diformat uppercase tanpa spasi</small>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="student_name" class="form-label">Nama Mahasiswa <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="student_name" name="student_name" 
+                                       placeholder="Contoh: Rian Dwi Hermawan" required>
+                                <small class="text-muted">Akan otomatis diformat Title Case dengan singkatan yang benar</small>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="time_in" class="form-label">Jam Masuk <span class="text-danger">*</span></label>
+                                    <input type="time" class="form-control" id="time_in" name="time_in" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="time_out" class="form-label">Jam Keluar</label>
+                                    <input type="time" class="form-control" id="time_out" name="time_out">
+                                    <small class="text-muted">Opsional</small>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="purpose" class="form-label">Keperluan</label>
+                                <input type="text" class="form-control" id="purpose" name="purpose" 
+                                       placeholder="Contoh: Pemrograman Web Lanjut">
+                                <small class="text-muted">Akan otomatis diformat Title Case</small>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> 
+                                <strong>Catatan:</strong> Sistem akan otomatis mendeteksi duplikat berdasarkan tanggal, NIM, dan jam masuk.
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="/logbook" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Kembali
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Simpan Entry
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        // Set default date to today
+        document.getElementById('date').valueAsDate = new Date();
+    </script>
+</body>
+</html>
+{{ end }}
