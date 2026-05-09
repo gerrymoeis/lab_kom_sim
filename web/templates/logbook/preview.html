@@ -41,6 +41,12 @@
                             Anda dapat mengedit langsung di tabel. Klik "Simpan ke Database" untuk menyimpan atau "Export Excel" untuk download.
                         </div>
 
+                        <div id="duplicateWarning" class="alert alert-warning d-none">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            <strong>Peringatan Duplikat:</strong> Terdeteksi entry dengan nama, tanggal, dan jam yang sama. 
+                            Periksa dan hapus duplikat sebelum menyimpan.
+                        </div>
+
                         <form id="previewForm" action="/logbook/save" method="POST">
                             <input type="hidden" name="source_file" value="{{ .source_file }}">
                             
@@ -196,6 +202,71 @@
     <script>
     let rowCounter = {{ if .entries }}{{ len .entries }}{{ else }}1{{ end }};
 
+    // Check for duplicates on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        checkDuplicates();
+    });
+
+    function checkDuplicates() {
+        const rows = document.querySelectorAll('#entriesTableBody tr');
+        const entries = [];
+        let hasDuplicate = false;
+        
+        // Collect all entries
+        rows.forEach((row, index) => {
+            const name = row.querySelector('input[name="student_name[]"]').value.trim().toLowerCase();
+            const date = row.querySelector('input[name="date[]"]').value;
+            const timeIn = row.querySelector('input[name="time_in[]"]').value;
+            
+            entries.push({ index, name, date, timeIn, row });
+        });
+        
+        // Clear previous warnings
+        rows.forEach(row => {
+            row.classList.remove('table-warning');
+            const existingBadge = row.querySelector('.duplicate-badge');
+            if (existingBadge) existingBadge.remove();
+        });
+        
+        // Check for duplicates
+        for (let i = 0; i < entries.length; i++) {
+            for (let j = i + 1; j < entries.length; j++) {
+                if (entries[i].name === entries[j].name && 
+                    entries[i].date === entries[j].date && 
+                    entries[i].timeIn === entries[j].timeIn) {
+                    
+                    // Mark both rows as potential duplicates
+                    entries[i].row.classList.add('table-warning');
+                    entries[j].row.classList.add('table-warning');
+                    
+                    // Add warning badge if not exists
+                    if (!entries[i].row.querySelector('.duplicate-badge')) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-warning text-dark duplicate-badge ms-2';
+                        badge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Possible Duplicate';
+                        entries[i].row.querySelector('td:nth-child(2)').appendChild(badge);
+                    }
+                    if (!entries[j].row.querySelector('.duplicate-badge')) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-warning text-dark duplicate-badge ms-2';
+                        badge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Possible Duplicate';
+                        entries[j].row.querySelector('td:nth-child(2)').appendChild(badge);
+                    }
+                    
+                    hasDuplicate = true;
+                }
+            }
+        }
+        
+        // Show/hide warning alert
+        const warningAlert = document.getElementById('duplicateWarning');
+        if (hasDuplicate) {
+            warningAlert.classList.remove('d-none');
+        } else {
+            warningAlert.classList.add('d-none');
+        }
+    }
+
     function addRow() {
         rowCounter++;
         const tbody = document.getElementById('entriesTableBody');
@@ -261,6 +332,7 @@
         
         row.remove();
         updateRowNumbers();
+        checkDuplicates(); // Re-check after deletion
     }
 
     function updateRowNumbers() {
@@ -269,6 +341,13 @@
             row.querySelector('td:first-child').textContent = index + 1;
         });
     }
+
+    // Add event listeners to inputs to check duplicates on change
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('input[name="student_name[]"], input[name="date[]"], input[name="time_in[]"]')) {
+            checkDuplicates();
+        }
+    });
 
     function exportExcel() {
         // Create form data

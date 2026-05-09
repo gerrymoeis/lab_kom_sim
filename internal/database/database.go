@@ -243,7 +243,7 @@ func RunMigrations(db *sql.DB) error {
 	`).Scan(&uniqueIndexExists)
 
 	if err == nil && uniqueIndexExists {
-		// Drop old index (case-sensitive)
+		// Drop old index (NIM-based)
 		_, err = db.Exec(`DROP INDEX IF EXISTS idx_logbook_unique`)
 		if err != nil {
 			fmt.Printf("Warning: Failed to drop old index: %v\n", err)
@@ -251,13 +251,14 @@ func RunMigrations(db *sql.DB) error {
 	}
 
 	// Cleanup duplicates before creating new unique index
-	// Duplicates defined as: same date + same NIM (case-insensitive) + same time_in
+	// Duplicates defined as: same date + same student_name (case-insensitive) + same time_in
+	// This catches cases where OCR misreads NIM but name/date/time are same
 	result, err := db.Exec(`
 		DELETE FROM logbook_entries
 		WHERE id NOT IN (
 			SELECT MIN(id)
 			FROM logbook_entries
-			GROUP BY date, LOWER(TRIM(nim)), time_in
+			GROUP BY date, LOWER(TRIM(student_name)), time_in
 		)
 	`)
 	
@@ -270,8 +271,9 @@ func RunMigrations(db *sql.DB) error {
 		}
 	}
 
-	// Create new unique index with case-insensitive NIM comparison
-	_, err = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, LOWER(TRIM(nim)), time_in)`)
+	// Create new unique index based on name + date + time (not NIM)
+	// This prevents duplicates even if OCR misreads NIM digits
+	_, err = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, LOWER(TRIM(student_name)), time_in)`)
 	if err != nil {
 		return fmt.Errorf("failed to create unique index: %w", err)
 	}

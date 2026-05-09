@@ -140,7 +140,23 @@ CRITICAL RULES - READ CAREFULLY:
    - If date is missing but can be inferred from context, fill it in
    - If completely unclear, use empty string ""
 
-4. TIME FIELDS:
+5. NIM (STUDENT ID) VALIDATION:
+   - NIM format: 11 digits (example: 24091397XXX)
+   - First 7-8 digits usually same for same batch/program
+   - Last 3 digits are unique per student
+   - CRITICAL: If same student name appears multiple times in the table, NIM MUST be EXACTLY the same
+   - Common OCR errors to watch for:
+     * 4 ↔ 9 (very common confusion)
+     * 3 ↔ 8 (similar shapes)
+     * 1 ↔ 7 (handwriting variation)
+     * 0 ↔ 6 (similar shapes)
+   - Cross-reference strategy:
+     * If "Ulul Rosyad R" has NIM "24091397101" in row 1
+     * And "Ulul Rosyad R" appears again in row 5 with unclear NIM
+     * Use "24091397101" from row 1 (same person = same NIM)
+   - If uncertain about a digit, prefer the most common pattern in the table
+
+6. TIME FIELDS:
    - If you see a COMBINED time range like "13.00 - 14.40" or "13:00 - 14:40":
      * SPLIT it into two separate times
      * Put the START time in "time_in" field
@@ -152,13 +168,13 @@ CRITICAL RULES - READ CAREFULLY:
      * Input: "~~~" → Copy from row above
    - Always use HH:MM format (24-hour)
 
-5. TEXT QUALITY:
+7. TEXT QUALITY:
    - Fix obvious spelling mistakes
    - Standardize capitalization (proper names should be Title Case)
    - Remove extra spaces
    - Be intelligent about abbreviations (e.g., "Pemrog Web" → "Pemrograman Web")
 
-6. RETURN ONLY valid JSON, no additional text or explanations
+8. RETURN ONLY valid JSON, no additional text or explanations
 
 Please extract the data now with smart context understanding:`
 
@@ -294,6 +310,20 @@ Please extract the data now with smart context understanding:`
 		
 		// Remove extra whitespace from NIM
 		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
+	}
+
+	// Check for potential duplicates within the extracted entries
+	// Mark entries that have same name + date + time
+	duplicateWarnings := make(map[int][]int) // map[index][]duplicate_indices
+	for i := 0; i < len(result.Entries); i++ {
+		for j := i + 1; j < len(result.Entries); j++ {
+			// Same name (case-insensitive) + same date + same time_in
+			if strings.EqualFold(strings.TrimSpace(result.Entries[i].StudentName), strings.TrimSpace(result.Entries[j].StudentName)) &&
+				result.Entries[i].Date == result.Entries[j].Date &&
+				result.Entries[i].TimeIn == result.Entries[j].TimeIn {
+				duplicateWarnings[i] = append(duplicateWarnings[i], j)
+			}
+		}
 	}
 
 	return &OCRResult{
