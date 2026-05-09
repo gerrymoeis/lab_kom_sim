@@ -111,12 +111,27 @@ Extract the data and return it in JSON format with the following structure:
   ]
 }
 
-Rules:
-1. Extract ALL rows from the table
-2. If a field is empty or unclear, use empty string ""
-3. For date, try to parse to YYYY-MM-DD format
+CRITICAL RULES - READ CAREFULLY:
 
-4. IMPORTANT - For time fields:
+1. EXTRACT ALL ROWS from the table
+
+2. SMART CONTEXT UNDERSTANDING:
+   - If a field is empty or shows ditto marks ("~~~", "\\", "''", or similar), COPY the value from the row above
+   - If date is empty but other rows have dates, INFER the date from context (usually same date for consecutive entries)
+   - If you see spelling errors or typos, CORRECT them intelligently based on context
+   - Examples:
+     * "Pemrograman Web lanjut" with typo → Correct to "Pemrograman Web Lanjut"
+     * Empty date but previous row is "05/05/2026" → Use "05/05/2026"
+     * "~~~" in purpose field → Copy purpose from row above
+     * "Rian Dwi Hermawan" with inconsistent capitalization → Standardize to proper Title Case
+
+3. DATE HANDLING:
+   - Parse to YYYY-MM-DD format
+   - Accept formats: DD/MM/YYYY, DD-MM-YYYY, D/M/YYYY
+   - If date is missing but can be inferred from context, fill it in
+   - If completely unclear, use empty string ""
+
+4. TIME FIELDS:
    - If you see a COMBINED time range like "13.00 - 14.40" or "13:00 - 14:40":
      * SPLIT it into two separate times
      * Put the START time in "time_in" field
@@ -125,14 +140,18 @@ Rules:
    - Examples:
      * Input: "13.00 - 14.40" → Output: time_in="13:00", time_out="14:40"
      * Input: "09.00 - 10.20" → Output: time_in="09:00", time_out="10:20"
-     * Input: "14:00 - 16:00" → Output: time_in="14:00", time_out="16:00"
-   - If only ONE time is visible, put it in "time_in" and leave "time_out" empty
+     * Input: "~~~" → Copy from row above
    - Always use HH:MM format (24-hour)
 
-5. Return ONLY valid JSON, no additional text
-6. If you cannot read the handwriting clearly, make your best guess
+5. TEXT QUALITY:
+   - Fix obvious spelling mistakes
+   - Standardize capitalization (proper names should be Title Case)
+   - Remove extra spaces
+   - Be intelligent about abbreviations (e.g., "Pemrog Web" → "Pemrograman Web")
 
-Please extract the data now:`
+6. RETURN ONLY valid JSON, no additional text or explanations
+
+Please extract the data now with smart context understanding:`
 
 	// Create request
 	reqBody := GeminiRequest{
@@ -258,6 +277,14 @@ Please extract the data now:`
 	// Normalize time format for all entries (post-processing fallback)
 	for i := range result.Entries {
 		normalizeTimeEntry(&result.Entries[i])
+		
+		// Apply text normalization
+		result.Entries[i].StudentName = toTitleCase(result.Entries[i].StudentName)
+		result.Entries[i].Purpose = toTitleCase(result.Entries[i].Purpose)
+		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
+		
+		// Remove extra whitespace from NIM
+		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
 	}
 
 	return &OCRResult{
@@ -331,4 +358,44 @@ func normalizeTimeFormat(timeStr string) string {
 	
 	// If cannot parse, return as is
 	return timeStr
+}
+
+// normalizeText normalizes text by:
+// - Trimming leading/trailing whitespace
+// - Removing double spaces
+// - Converting to Title Case for proper names
+func normalizeText(text string) string {
+	if text == "" {
+		return ""
+	}
+	
+	// Trim leading and trailing whitespace
+	text = strings.TrimSpace(text)
+	
+	// Replace multiple spaces with single space
+	re := regexp.MustCompile(`\s+`)
+	text = re.ReplaceAllString(text, " ")
+	
+	return text
+}
+
+// toTitleCase converts text to Title Case (proper capitalization)
+func toTitleCase(text string) string {
+	if text == "" {
+		return ""
+	}
+	
+	// Normalize first
+	text = normalizeText(text)
+	
+	// Split by space and capitalize each word
+	words := strings.Fields(text)
+	for i, word := range words {
+		if len(word) > 0 {
+			// Convert to lowercase first, then capitalize first letter
+			words[i] = strings.ToUpper(string(word[0])) + strings.ToLower(word[1:])
+		}
+	}
+	
+	return strings.Join(words, " ")
 }

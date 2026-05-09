@@ -242,31 +242,38 @@ func RunMigrations(db *sql.DB) error {
 		WHERE type='index' AND name='idx_logbook_unique'
 	`).Scan(&uniqueIndexExists)
 
-	if err == nil && !uniqueIndexExists {
-		// Cleanup duplicates before creating unique index
-		result, err := db.Exec(`
-			DELETE FROM logbook_entries
-			WHERE id NOT IN (
-				SELECT MIN(id)
-				FROM logbook_entries
-				GROUP BY date, nim, time_in
-			)
-		`)
-		
+	if err == nil && uniqueIndexExists {
+		// Drop old index (case-sensitive)
+		_, err = db.Exec(`DROP INDEX IF EXISTS idx_logbook_unique`)
 		if err != nil {
-			fmt.Printf("Warning: Failed to cleanup duplicates: %v\n", err)
-		} else {
-			rowsAffected, _ := result.RowsAffected()
-			if rowsAffected > 0 {
-				fmt.Printf("Cleaned up %d duplicate logbook entries\n", rowsAffected)
-			}
+			fmt.Printf("Warning: Failed to drop old index: %v\n", err)
 		}
+	}
 
-		// Now create unique index
-		_, err = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, nim, time_in)`)
-		if err != nil {
-			return fmt.Errorf("failed to create unique index: %w", err)
+	// Cleanup duplicates before creating new unique index
+	// Duplicates defined as: same date + same NIM (case-insensitive) + same time_in
+	result, err := db.Exec(`
+		DELETE FROM logbook_entries
+		WHERE id NOT IN (
+			SELECT MIN(id)
+			FROM logbook_entries
+			GROUP BY date, LOWER(TRIM(nim)), time_in
+		)
+	`)
+	
+	if err != nil {
+		fmt.Printf("Warning: Failed to cleanup duplicates: %v\n", err)
+	} else {
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected > 0 {
+			fmt.Printf("Cleaned up %d duplicate logbook entries\n", rowsAffected)
 		}
+	}
+
+	// Create new unique index with case-insensitive NIM comparison
+	_, err = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, LOWER(TRIM(nim)), time_in)`)
+	if err != nil {
+		return fmt.Errorf("failed to create unique index: %w", err)
 	}
 
 	return nil
