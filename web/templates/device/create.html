@@ -25,22 +25,66 @@
                     {{ end }}
 
                     <form method="POST" action="/devices/create">
+                        <!-- Step 1: Pilih Kategori -->
+                        <div class="mb-3">
+                            <label for="category_filter" class="form-label">Kategori *</label>
+                            <select class="form-select" id="category_filter" required>
+                                <option value="">Pilih kategori...</option>
+                                <option value="peripheral">Peripheral</option>
+                                <option value="network">Network</option>
+                                <option value="consumable">Consumable</option>
+                                <option value="power">Power</option>
+                                <option value="display">Display</option>
+                                <option value="printer">Printer</option>
+                                <option value="audio">Audio</option>
+                                <option value="tools">Tools</option>
+                                <option value="server">Server</option>
+                                <option value="security">Security</option>
+                                <option value="stationery">Stationery</option>
+                            </select>
+                            <small class="text-muted">Pilih kategori untuk menampilkan template yang sesuai</small>
+                        </div>
+
+                        <!-- Step 2: Pilih Template (Filtered by Category) -->
+                        <div class="mb-3">
+                            <label for="device_type_id" class="form-label">Template Jenis Barang *</label>
+                            <select class="form-select" id="device_type_id" name="device_type_id" required disabled>
+                                <option value="">Pilih kategori terlebih dahulu...</option>
+                                {{ range .deviceTypes }}
+                                <option value="{{ .ID }}" 
+                                        data-category="{{ .Category }}"
+                                        data-prefix="{{ .AssetCodePrefix }}" 
+                                        data-brand="{{ .Brand }}" 
+                                        data-model="{{ .Model }}" 
+                                        data-item-type="{{ .ItemType }}"
+                                        data-loanable="{{ .IsLoanable }}" 
+                                        data-consumable="{{ .IsConsumable }}" 
+                                        data-location="{{ .DefaultLocation }}" 
+                                        data-notes="{{ .NotesTemplate }}"
+                                        style="display:none;">
+                                    {{ .Name }} ({{ .AssetCodePrefix }})
+                                </option>
+                                {{ end }}
+                            </select>
+                            <small class="text-muted" id="template_help">Template akan muncul setelah memilih kategori</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="asset_code" class="form-label">Asset Code *</label>
+                            <input type="text" class="form-control" id="asset_code" name="asset_code" required>
+                            <small class="text-muted">Contoh: PENTAB-001, SWITCH-001</small>
+                        </div>
+
                         <div class="mb-3">
                             <label for="name" class="form-label">Nama Perangkat *</label>
                             <input type="text" class="form-control" id="name" name="name" required>
                         </div>
 
                         <div class="mb-3">
-                            <label for="category" class="form-label">Kategori *</label>
-                            <select class="form-select" id="category" name="category" required>
-                                <option value="">Pilih kategori...</option>
-                                <option value="printer">Printer</option>
-                                <option value="router">Router</option>
-                                <option value="speaker">Speaker</option>
-                                <option value="pc_cadangan">PC Cadangan</option>
-                                <option value="komputer_labor">Komputer Labor</option>
-                                <option value="komputer_dosen">Komputer Dosen</option>
-                                <option value="lainnya">Lainnya</option>
+                            <label for="item_type" class="form-label">Tipe Item *</label>
+                            <select class="form-select" id="item_type" name="item_type" required>
+                                <option value="individual">Individual (1 unit)</option>
+                                <option value="consumable">Consumable (habis pakai)</option>
                             </select>
                         </div>
 
@@ -50,13 +94,58 @@
                                 <input type="text" class="form-control" id="brand" name="brand">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="condition" class="form-label">Kondisi *</label>
-                                <select class="form-select" id="condition" name="condition" required>
-                                    <option value="baik">Baik</option>
-                                    <option value="rusak">Rusak</option>
-                                    <option value="maintenance">Maintenance</option>
-                                </select>
+                                <label for="model" class="form-label">Model</label>
+                                <input type="text" class="form-control" id="model" name="model">
                             </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="serial_number" class="form-label">Serial Number</label>
+                            <input type="text" class="form-control" id="serial_number" name="serial_number">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Properti</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_loanable" name="is_loanable" value="1" checked>
+                                <label class="form-check-label" for="is_loanable">
+                                    Dapat dipinjam
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_consumable" name="is_consumable" value="1">
+                                <label class="form-check-label" for="is_consumable">
+                                    Barang habis pakai
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="quantity_total" class="form-label">Jumlah Total *</label>
+                                <input type="number" class="form-control" id="quantity_total" name="quantity_total" min="1" value="1" required>
+                                <small class="text-muted">
+                                    <span id="qty_help_individual">Jumlah unit yang dimiliki</span>
+                                    <span id="qty_help_consumable" style="display:none;">Total stok barang habis pakai</span>
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="quantity_available" class="form-label">Jumlah Tersedia *</label>
+                                <input type="number" class="form-control" id="quantity_available" name="quantity_available" min="0" value="1" required>
+                                <small class="text-muted">
+                                    <span id="avail_help_individual">Jumlah yang bisa dipinjam</span>
+                                    <span id="avail_help_consumable" style="display:none;">Stok yang tersedia saat ini</span>
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="condition" class="form-label">Kondisi *</label>
+                            <select class="form-select" id="condition" name="condition" required>
+                                <option value="baik">Baik</option>
+                                <option value="rusak">Rusak</option>
+                                <option value="maintenance">Maintenance</option>
+                            </select>
                         </div>
 
                         <div class="mb-3">
@@ -91,6 +180,147 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js"></script>
+    <script>
+        // Store all template options for filtering
+        const allTemplateOptions = [];
+        document.querySelectorAll('#device_type_id option[data-category]').forEach(option => {
+            allTemplateOptions.push({
+                value: option.value,
+                text: option.textContent,
+                category: option.dataset.category,
+                prefix: option.dataset.prefix,
+                brand: option.dataset.brand,
+                model: option.dataset.model,
+                itemType: option.dataset.itemType,
+                loanable: option.dataset.loanable,
+                consumable: option.dataset.consumable,
+                location: option.dataset.location,
+                notes: option.dataset.notes
+            });
+        });
+
+        // Cascading dropdown: Category filter
+        document.getElementById('category_filter').addEventListener('change', function() {
+            const selectedCategory = this.value;
+            const templateSelect = document.getElementById('device_type_id');
+            const templateHelp = document.getElementById('template_help');
+            
+            // Reset template dropdown
+            templateSelect.value = '';
+            templateSelect.innerHTML = '<option value="">Pilih template...</option>';
+            
+            if (selectedCategory) {
+                // Enable template dropdown
+                templateSelect.disabled = false;
+                
+                // Filter and add matching templates
+                const matchingTemplates = allTemplateOptions.filter(t => t.category === selectedCategory);
+                
+                matchingTemplates.forEach(template => {
+                    const option = document.createElement('option');
+                    option.value = template.value;
+                    option.textContent = template.text;
+                    option.dataset.category = template.category;
+                    option.dataset.prefix = template.prefix;
+                    option.dataset.brand = template.brand;
+                    option.dataset.model = template.model;
+                    option.dataset.itemType = template.itemType;
+                    option.dataset.loanable = template.loanable;
+                    option.dataset.consumable = template.consumable;
+                    option.dataset.location = template.location;
+                    option.dataset.notes = template.notes;
+                    templateSelect.appendChild(option);
+                });
+                
+                // Update helper text
+                const count = matchingTemplates.length;
+                templateHelp.textContent = `${count} template tersedia untuk kategori ${selectedCategory}`;
+                templateHelp.classList.remove('text-muted');
+                templateHelp.classList.add('text-success');
+            } else {
+                // Disable template dropdown if no category selected
+                templateSelect.disabled = true;
+                templateHelp.textContent = 'Template akan muncul setelah memilih kategori';
+                templateHelp.classList.remove('text-success');
+                templateHelp.classList.add('text-muted');
+            }
+        });
+
+        // Auto-fill from device type template
+        document.getElementById('device_type_id').addEventListener('change', function() {
+            const option = this.options[this.selectedIndex];
+            if (option.value) {
+                const prefix = option.dataset.prefix;
+                
+                // Auto-fill other fields
+                document.getElementById('brand').value = option.dataset.brand || '';
+                document.getElementById('model').value = option.dataset.model || '';
+                document.getElementById('item_type').value = option.dataset.itemType || 'individual';
+                document.getElementById('is_loanable').checked = option.dataset.loanable === 'true';
+                document.getElementById('is_consumable').checked = option.dataset.consumable === 'true';
+                document.getElementById('location').value = option.dataset.location || '';
+                document.getElementById('notes').value = option.dataset.notes || '';
+                
+                // Fetch next asset code
+                if (prefix) {
+                    fetch(`/api/devices/next-asset-code?prefix=${prefix}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            document.getElementById('asset_code').value = data.next_code;
+                        });
+                }
+                
+                // Trigger item type change
+                document.getElementById('item_type').dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Show/hide quantity fields based on item type
+        document.getElementById('item_type').addEventListener('change', function() {
+            const qtyHelpIndividual = document.getElementById('qty_help_individual');
+            const qtyHelpConsumable = document.getElementById('qty_help_consumable');
+            const availHelpIndividual = document.getElementById('avail_help_individual');
+            const availHelpConsumable = document.getElementById('avail_help_consumable');
+            const qtyTotalInput = document.getElementById('quantity_total');
+            const qtyAvailInput = document.getElementById('quantity_available');
+            
+            if (this.value === 'consumable') {
+                // Consumable: show consumable help text
+                qtyHelpIndividual.style.display = 'none';
+                qtyHelpConsumable.style.display = 'inline';
+                availHelpIndividual.style.display = 'none';
+                availHelpConsumable.style.display = 'inline';
+                
+                document.getElementById('is_consumable').checked = true;
+                
+                // Reset to 0 for consumable (user must input)
+                qtyTotalInput.value = '0';
+                qtyAvailInput.value = '0';
+                qtyTotalInput.min = '0';
+            } else {
+                // Individual: show individual help text
+                qtyHelpIndividual.style.display = 'inline';
+                qtyHelpConsumable.style.display = 'none';
+                availHelpIndividual.style.display = 'inline';
+                availHelpConsumable.style.display = 'none';
+                
+                document.getElementById('is_consumable').checked = false;
+                
+                // Default to 1 for individual
+                qtyTotalInput.value = '1';
+                qtyAvailInput.value = '1';
+                qtyTotalInput.min = '1';
+            }
+        });
+
+        // Sync is_consumable checkbox with item_type
+        document.getElementById('is_consumable').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('item_type').value = 'consumable';
+                document.getElementById('item_type').dispatchEvent(new Event('change'));
+            }
+        });
+    </script>
 </body>
 </html>
 {{ end }}

@@ -165,9 +165,35 @@ func main() {
 		protected.GET("/devices/create", h.DeviceCreatePage)
 		protected.POST("/devices/create", h.DeviceCreate)
 		protected.GET("/devices/export", h.DeviceExport)
+		protected.GET("/devices/:id", h.DeviceDetail)
 		protected.GET("/devices/:id/edit", h.DeviceEditPage)
 		protected.POST("/devices/:id/edit", h.DeviceEdit)
 		protected.POST("/devices/:id/delete", h.DeviceDelete)
+
+		// Device Types
+		protected.GET("/device-types", h.DeviceTypeList)
+		protected.GET("/device-types/create", h.DeviceTypeCreatePage)
+		protected.POST("/device-types/create", h.DeviceTypeCreate)
+		protected.GET("/device-types/:id", h.DeviceTypeDetail)
+		protected.GET("/device-types/:id/edit", h.DeviceTypeEditPage)
+		protected.POST("/device-types/:id/edit", h.DeviceTypeEdit)
+		protected.POST("/device-types/:id/delete", h.DeviceTypeDelete)
+
+		// Device Loans
+		protected.GET("/device-loans", h.DeviceLoanList)
+		protected.GET("/device-loans/create", h.DeviceLoanCreatePage)
+		protected.POST("/device-loans/create", h.DeviceLoanCreate)
+		protected.GET("/device-loans/:id/edit", h.DeviceLoanEditPage)
+		protected.POST("/device-loans/:id/edit", h.DeviceLoanEdit)
+		protected.POST("/device-loans/:id/delete", h.DeviceLoanDelete)
+
+		// Device Usages
+		protected.GET("/device-usages", h.DeviceUsageList)
+		protected.GET("/device-usages/create", h.DeviceUsageCreatePage)
+		protected.POST("/device-usages/create", h.DeviceUsageCreate)
+		protected.GET("/device-usages/:id/edit", h.DeviceUsageEditPage)
+		protected.POST("/device-usages/:id/edit", h.DeviceUsageEdit)
+		protected.POST("/device-usages/:id/delete", h.DeviceUsageDelete)
 
 		// Software Tracking
 		protected.GET("/software", h.SoftwareList)
@@ -219,6 +245,7 @@ func main() {
 		api.POST("/upload-image", h.UploadImage) // Image upload endpoint
 		api.POST("/delete-temp-file", h.DeleteTempFile) // Single temp file cleanup
 		api.POST("/cleanup-temp-files", h.CleanupTempFiles) // Multiple temp files cleanup
+		api.GET("/devices/next-asset-code", h.GetNextAssetCode) // Get next asset code for device
 	}
 
 	// Create uploads directory if not exists

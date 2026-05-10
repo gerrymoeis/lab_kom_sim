@@ -1,0 +1,105 @@
+{{ define "device_loan/create.html" }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    {{ template "layout/navbar.html" . }}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-box-arrow-right"></i> Pinjam Perangkat</h5>
+                </div>
+                <div class="card-body">
+                    {{ if .error }}
+                    <div class="alert alert-danger">{{ .error }}</div>
+                    {{ end }}
+
+                    <form method="POST" action="/device-loans/create">
+                        <div class="mb-3">
+                            <label for="device_id" class="form-label">Perangkat *</label>
+                            <select class="form-select" id="device_id" name="device_id" required {{ if .deviceID }}disabled{{ end }}>
+                                <option value="">Pilih perangkat...</option>
+                                {{ range .devices }}
+                                <option value="{{ .ID }}" {{ if eq $.deviceID (printf "%d" .ID) }}selected{{ end }}>
+                                    {{ .AssetCode }} - {{ .Name }} (Tersedia: {{ .QuantityAvailable }})
+                                </option>
+                                {{ end }}
+                            </select>
+                            {{ if .deviceID }}
+                            <input type="hidden" name="device_id" value="{{ .deviceID }}">
+                            {{ end }}
+                            <small class="text-muted">Hanya perangkat yang dapat dipinjam dan memiliki stok tersedia</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="borrower_name" class="form-label">Nama Peminjam *</label>
+                            <input type="text" class="form-control" id="borrower_name" name="borrower_name" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="borrower_type" class="form-label">Tipe Peminjam *</label>
+                            <select class="form-select" id="borrower_type" name="borrower_type" required>
+                                <option value="">Pilih tipe...</option>
+                                <option value="mahasiswa">Mahasiswa</option>
+                                <option value="dosen">Dosen</option>
+                                <option value="staff">Staff</option>
+                                <option value="external">External</option>
+                            </select>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="loan_date" class="form-label">Tanggal Pinjam *</label>
+                                <input type="date" class="form-control" id="loan_date" name="loan_date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="expected_return_date" class="form-label">Target Tanggal Kembali</label>
+                                <input type="date" class="form-control" id="expected_return_date" name="expected_return_date">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">Jumlah *</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="1" required>
+                            <small class="text-muted">Jumlah unit yang dipinjam</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="purpose" class="form-label">Keperluan</label>
+                            <textarea class="form-control" id="purpose" name="purpose" rows="3"></textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Simpan
+                            </button>
+                            <a href="/devices?tab=loans" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Batal
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        // Set today as default loan date
+        document.getElementById('loan_date').valueAsDate = new Date();
+    </script>
+</body>
+</html>
+{{ end }}

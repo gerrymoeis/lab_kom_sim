@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"inventaris-lab-kom/internal/middleware"
@@ -14,7 +15,64 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DeviceList renders list of all devices
+// Helper function to fetch device types for dropdown
+func (h *Handler) fetchDeviceTypes() []models.DeviceType {
+	rows, err := h.db.Query(`
+		SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location
+		FROM device_types ORDER BY category, name
+	`)
+	if err != nil {
+		return []models.DeviceType{}
+	}
+	defer rows.Close()
+
+	var deviceTypes []models.DeviceType
+	for rows.Next() {
+		var dt models.DeviceType
+		var brand, model, assetCodePrefix, defaultLocation sql.NullString
+		
+		err := rows.Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType,
+			&dt.IsLoanable, &dt.IsConsumable, &assetCodePrefix, &defaultLocation)
+		if err != nil {
+			continue
+		}
+		
+		// Convert NullString to string
+		if brand.Valid {
+			dt.Brand = brand.String
+		}
+		if model.Valid {
+			dt.Model = model.String
+		}
+		if assetCodePrefix.Valid {
+			dt.AssetCodePrefix = assetCodePrefix.String
+		}
+		if defaultLocation.Valid {
+			dt.DefaultLocation = defaultLocation.String
+		}
+		
+		deviceTypes = append(deviceTypes, dt)
+	}
+	
+	return deviceTypes
+}
+
+// Helper function to render device create page with error
+func (h *Handler) renderDeviceCreateWithError(c *gin.Context, errorMsg string) {
+	_, username, role, _ := middleware.GetCurrentUser(c)
+	deviceTypes := h.fetchDeviceTypes()
+	
+	c.HTML(http.StatusBadRequest, "device/create.html", gin.H{
+		"title":       "Tambah Perangkat Baru - Sistem Inventaris Lab",
+		"currentPage": "devices",
+		"username":    username,
+		"role":        role,
+		"deviceTypes": deviceTypes,
+		"error":       errorMsg,
+	})
+}
+
+// DeviceList renders list of all devices with tab navigation
 func (h *Handler) DeviceList(c *gin.Context) {
 	_, username, role, ok := middleware.GetCurrentUser(c)
 	if !ok {
@@ -22,11 +80,305 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		return
 	}
 
-	rows, err := h.db.Query(`
-		SELECT id, name, category, brand, condition, location, purchase_date, notes, created_at
-		FROM devices
-		ORDER BY category, name
-	`)
+	// Get active tab (default: list)
+	tab := c.DefaultQuery("tab", "list")
+
+	// Parse filters
+	search := c.Query("search")
+	category := c.Query("category")
+	itemType := c.Query("item_type")
+	condition := c.Query("condition")
+	status := c.Query("status")
+	sortBy := c.DefaultQuery("sort_by", "name")
+	sortOrder := c.DefaultQuery("sort_order", "ASC")
+
+	// Prepare data based on active tab
+	var devices []models.DeviceWithCategory
+	var deviceTypes []models.DeviceType
+	var deviceLoans []models.DeviceLoan
+	var deviceUsages []models.DeviceUsage
+
+	switch tab {
+	case "list":
+		// Daftar Perangkat (JOIN with device_types for category)
+		query := `SELECT d.id, d.asset_code, d.name, dt.category, d.brand, d.model, d.item_type, 
+		                 d.quantity_total, d.quantity_available, d.condition, d.location, d.created_at 
+		          FROM devices d
+		          JOIN device_types dt ON d.device_type_id = dt.id
+		          WHERE 1=1`
+		args := []interface{}{}
+
+		if search != "" {
+			query += ` AND (d.name LIKE ? OR d.asset_code LIKE ? OR d.brand LIKE ?)`
+			searchTerm := "%" + search + "%"
+			args = append(args, searchTerm, searchTerm, searchTerm)
+		}
+
+		if category != "" {
+			query += ` AND dt.category = ?`
+			args = append(args, category)
+		}
+
+		if itemType != "" {
+			query += ` AND d.item_type = ?`
+			args = append(args, itemType)
+		}
+
+		if condition != "" {
+			query += ` AND d.condition = ?`
+			args = append(args, condition)
+		}
+
+		// Sorting
+		validSortColumns := map[string]bool{
+			"name": true, "asset_code": true, "category": true, "condition": true, "created_at": true,
+		}
+		if !validSortColumns[sortBy] {
+			sortBy = "name"
+		}
+		if sortOrder != "ASC" && sortOrder != "DESC" {
+			sortOrder = "ASC"
+		}
+		// Prefix column names for sorting
+		sortColumn := sortBy
+		if sortBy == "name" || sortBy == "asset_code" || sortBy == "condition" || sortBy == "created_at" {
+			sortColumn = "d." + sortBy
+		} else if sortBy == "category" {
+			sortColumn = "dt.category"
+		}
+		query += fmt.Sprintf(" ORDER BY %s %s", sortColumn, sortOrder)
+
+		rows, err := h.db.Query(query, args...)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal mengambil data perangkat",
+			})
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var device models.DeviceWithCategory
+			err := rows.Scan(&device.ID, &device.AssetCode, &device.Name, &device.Category, &device.Brand,
+				&device.Model, &device.ItemType, &device.QuantityTotal, &device.QuantityAvailable,
+				&device.Condition, &device.Location, &device.CreatedAt)
+			if err != nil {
+				continue
+			}
+			devices = append(devices, device)
+		}
+
+	case "types":
+		// Jenis Barang
+		query := `SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, created_at
+		          FROM device_types WHERE 1=1`
+		args := []interface{}{}
+
+		if search != "" {
+			query += ` AND (name LIKE ? OR category LIKE ?)`
+			searchTerm := "%" + search + "%"
+			args = append(args, searchTerm, searchTerm)
+		}
+
+		if category != "" {
+			query += ` AND category = ?`
+			args = append(args, category)
+		}
+
+		query += ` ORDER BY category, name`
+
+		rows, err := h.db.Query(query, args...)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal mengambil data jenis barang",
+			})
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var dt models.DeviceType
+			var brand, model, assetCodePrefix, defaultLocation sql.NullString
+			
+			err := rows.Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType,
+				&dt.IsLoanable, &dt.IsConsumable, &assetCodePrefix, &defaultLocation, &dt.CreatedAt)
+			if err != nil {
+				fmt.Printf("Error scanning device_type row: %v\n", err)
+				continue
+			}
+			
+			// Convert NullString to string
+			if brand.Valid {
+				dt.Brand = brand.String
+			}
+			if model.Valid {
+				dt.Model = model.String
+			}
+			if assetCodePrefix.Valid {
+				dt.AssetCodePrefix = assetCodePrefix.String
+			}
+			if defaultLocation.Valid {
+				dt.DefaultLocation = defaultLocation.String
+			}
+			
+			deviceTypes = append(deviceTypes, dt)
+		}
+
+	case "loans":
+		// Peminjaman with computed status
+		query := `SELECT l.id, l.device_id, d.asset_code, d.name, l.borrower_name, l.borrower_type, 
+		                 l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose,
+		                 CASE 
+		                   WHEN l.actual_return_date IS NOT NULL THEN 'returned'
+		                   WHEN l.expected_return_date IS NOT NULL AND DATE('now') > DATE(l.expected_return_date) THEN 'overdue'
+		                   ELSE 'active'
+		                 END as computed_status
+		          FROM device_loans l
+		          JOIN devices d ON l.device_id = d.id
+		          WHERE 1=1`
+		args := []interface{}{}
+
+		if search != "" {
+			query += ` AND (l.borrower_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
+			searchTerm := "%" + search + "%"
+			args = append(args, searchTerm, searchTerm, searchTerm)
+		}
+
+		if status != "" {
+			// Filter by computed status
+			query += ` AND (CASE 
+			              WHEN l.actual_return_date IS NOT NULL THEN 'returned'
+			              WHEN l.expected_return_date IS NOT NULL AND DATE('now') > DATE(l.expected_return_date) THEN 'overdue'
+			              ELSE 'active'
+			            END) = ?`
+			args = append(args, status)
+		}
+
+		query += ` ORDER BY l.loan_date DESC`
+
+		rows, err := h.db.Query(query, args...)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal mengambil data peminjaman",
+			})
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var loan models.DeviceLoan
+			var assetCode, deviceName, computedStatus string
+			err := rows.Scan(&loan.ID, &loan.DeviceID, &assetCode, &deviceName, &loan.BorrowerName,
+				&loan.BorrowerType, &loan.LoanDate, &loan.ExpectedReturnDate, &loan.ActualReturnDate,
+				&loan.Quantity, &loan.Status, &loan.Purpose, &computedStatus)
+			if err != nil {
+				continue
+			}
+			// Store asset code, device name, and computed status for display
+			loan.DeviceAssetCode = assetCode
+			loan.DeviceName = deviceName
+			loan.ComputedStatus = computedStatus
+			deviceLoans = append(deviceLoans, loan)
+		}
+
+	case "usages":
+		// Pemakaian
+		query := `SELECT u.id, u.device_id, d.asset_code, d.name, u.user_name, u.user_type, 
+		                 u.usage_date, u.quantity, u.purpose
+		          FROM device_usages u
+		          JOIN devices d ON u.device_id = d.id
+		          WHERE 1=1`
+		args := []interface{}{}
+
+		if search != "" {
+			query += ` AND (u.user_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
+			searchTerm := "%" + search + "%"
+			args = append(args, searchTerm, searchTerm, searchTerm)
+		}
+
+		query += ` ORDER BY u.usage_date DESC`
+
+		rows, err := h.db.Query(query, args...)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal mengambil data pemakaian",
+			})
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var usage models.DeviceUsage
+			var assetCode, deviceName string
+			err := rows.Scan(&usage.ID, &usage.DeviceID, &assetCode, &deviceName, &usage.UserName,
+				&usage.UserType, &usage.UsageDate, &usage.Quantity, &usage.Purpose)
+			if err != nil {
+				continue
+			}
+			// Store asset code and device name for display
+			usage.DeviceAssetCode = assetCode
+			usage.DeviceName = deviceName
+			deviceUsages = append(deviceUsages, usage)
+		}
+	}
+
+	c.HTML(http.StatusOK, "device/list.html", gin.H{
+		"title":        "Manajemen Perangkat - Sistem Inventaris Lab",
+		"currentPage":  "devices",
+		"username":     username,
+		"role":         role,
+		"devices":      devices,
+		"deviceTypes":  deviceTypes,
+		"deviceLoans":  deviceLoans,
+		"deviceUsages": deviceUsages,
+		"activeTab":    tab,
+		"filters": gin.H{
+			"search":     search,
+			"category":   category,
+			"item_type":  itemType,
+			"condition":  condition,
+			"status":     status,
+			"sort_by":    sortBy,
+			"sort_order": sortOrder,
+		},
+	})
+}
+
+// DeviceDetail renders device detail page with loan/usage tabs
+func (h *Handler) DeviceDetail(c *gin.Context) {
+	_, username, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	id := c.Param("id")
+	var device models.DeviceWithCategory
+
+	err := h.db.QueryRow(`
+		SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model, d.serial_number,
+		       d.item_type, d.is_loanable, d.is_consumable, d.quantity_total, d.quantity_available,
+		       d.condition, d.location, d.purchase_date, d.notes, d.created_at, d.updated_at
+		FROM devices d
+		JOIN device_types dt ON d.device_type_id = dt.id
+		WHERE d.id = ?
+	`, id).Scan(&device.ID, &device.DeviceTypeID, &device.AssetCode, &device.Name, &device.Category,
+		&device.Brand, &device.Model, &device.SerialNumber, &device.ItemType, &device.IsLoanable,
+		&device.IsConsumable, &device.QuantityTotal, &device.QuantityAvailable, &device.Condition,
+		&device.Location, &device.PurchaseDate, &device.Notes, &device.CreatedAt, &device.UpdatedAt)
+
+	if err == sql.ErrNoRows {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"title":   "Perangkat Tidak Ditemukan",
+			"message": "Perangkat yang Anda cari tidak ditemukan",
+		})
+		return
+	}
+
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
@@ -34,25 +386,51 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		})
 		return
 	}
-	defer rows.Close()
 
-	var devices []models.Device
-	for rows.Next() {
-		var device models.Device
-		err := rows.Scan(&device.ID, &device.Name, &device.Category, &device.Brand,
-			&device.Condition, &device.Location, &device.PurchaseDate, &device.Notes, &device.CreatedAt)
-		if err != nil {
-			continue
-		}
-		devices = append(devices, device)
+	// Get device type name
+	var deviceTypeName string
+	h.db.QueryRow(`SELECT name FROM device_types WHERE id = ?`, device.DeviceTypeID).Scan(&deviceTypeName)
+
+	// Get loans history
+	loanRows, _ := h.db.Query(`
+		SELECT id, borrower_name, loan_date, expected_return_date, actual_return_date, quantity, status
+		FROM device_loans WHERE device_id = ? ORDER BY loan_date DESC LIMIT 10
+	`, id)
+	defer loanRows.Close()
+
+	var loans []models.DeviceLoan
+	for loanRows.Next() {
+		var loan models.DeviceLoan
+		loanRows.Scan(&loan.ID, &loan.BorrowerName, &loan.LoanDate, &loan.ExpectedReturnDate,
+			&loan.ActualReturnDate, &loan.Quantity, &loan.Status)
+		loans = append(loans, loan)
 	}
 
-	c.HTML(http.StatusOK, "device/list.html", gin.H{
-		"title":       "Daftar Perangkat - Sistem Inventaris Lab",
-		"currentPage": "devices",
-		"username":    username,
-		"role":        role,
-		"devices":     devices,
+	// Get usages history (only if consumable)
+	var usages []models.DeviceUsage
+	if device.IsConsumable {
+		usageRows, _ := h.db.Query(`
+			SELECT id, user_name, usage_date, quantity, purpose
+			FROM device_usages WHERE device_id = ? ORDER BY usage_date DESC LIMIT 10
+		`, id)
+		defer usageRows.Close()
+
+		for usageRows.Next() {
+			var usage models.DeviceUsage
+			usageRows.Scan(&usage.ID, &usage.UserName, &usage.UsageDate, &usage.Quantity, &usage.Purpose)
+			usages = append(usages, usage)
+		}
+	}
+
+	c.HTML(http.StatusOK, "device/detail.html", gin.H{
+		"title":          "Detail Perangkat - Sistem Inventaris Lab",
+		"currentPage":    "devices",
+		"username":       username,
+		"role":           role,
+		"device":         device,
+		"deviceTypeName": deviceTypeName,
+		"loans":          loans,
+		"usages":         usages,
 	})
 }
 
@@ -64,30 +442,92 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 		return
 	}
 
+	deviceTypes := h.fetchDeviceTypes()
+
 	c.HTML(http.StatusOK, "device/create.html", gin.H{
 		"title":       "Tambah Perangkat Baru - Sistem Inventaris Lab",
 		"currentPage": "devices",
 		"username":    username,
 		"role":        role,
+		"deviceTypes": deviceTypes,
 	})
 }
 
 // DeviceCreate handles device creation
 func (h *Handler) DeviceCreate(c *gin.Context) {
+	deviceTypeIDStr := c.PostForm("device_type_id")
+	assetCode := c.PostForm("asset_code")
 	name := c.PostForm("name")
-	category := c.PostForm("category")
 	brand := c.PostForm("brand")
+	model := c.PostForm("model")
+	serialNumber := c.PostForm("serial_number")
+	itemType := c.PostForm("item_type")
+	isLoanable := c.PostForm("is_loanable") == "1"
+	isConsumable := c.PostForm("is_consumable") == "1"
+	quantityTotalStr := c.PostForm("quantity_total")
 	condition := c.PostForm("condition")
 	location := c.PostForm("location")
 	purchaseDate := c.PostForm("purchase_date")
 	notes := c.PostForm("notes")
 
-	if name == "" || category == "" {
-		c.HTML(http.StatusBadRequest, "device/create.html", gin.H{
-			"title": "Tambah Perangkat Baru",
-			"error": "Nama dan kategori harus diisi",
-		})
+	// Validation: Required fields (device_type_id is now REQUIRED)
+	if deviceTypeIDStr == "" || name == "" || itemType == "" {
+		h.renderDeviceCreateWithError(c, "Template jenis barang, nama, dan tipe item harus diisi")
 		return
+	}
+
+	// Parse device_type_id (REQUIRED)
+	deviceTypeID, err := strconv.Atoi(deviceTypeIDStr)
+	if err != nil {
+		h.renderDeviceCreateWithError(c, "Template jenis barang tidak valid")
+		return
+	}
+
+	// Validation: Item type whitelist
+	if itemType != "individual" && itemType != "consumable" {
+		h.renderDeviceCreateWithError(c, "Tipe item tidak valid")
+		return
+	}
+
+	// Validation: Condition whitelist
+	validConditions := map[string]bool{
+		"baik":        true,
+		"rusak":       true,
+		"maintenance": true,
+	}
+	if condition != "" && !validConditions[condition] {
+		h.renderDeviceCreateWithError(c, "Kondisi tidak valid")
+		return
+	}
+
+	// Parse quantity with validation
+	quantityTotal := 1
+	quantityAvailable := 1
+
+	if quantityTotalStr != "" {
+		parsed, err := strconv.Atoi(quantityTotalStr)
+		if err == nil && parsed > 0 {
+			quantityTotal = parsed
+		}
+	}
+
+	quantityAvailableStr := c.PostForm("quantity_available")
+	if quantityAvailableStr != "" {
+		parsed, err := strconv.Atoi(quantityAvailableStr)
+		if err == nil && parsed >= 0 {
+			quantityAvailable = parsed
+		}
+	}
+
+	// Validation: Individual items must have quantity >= 1
+	if itemType == "individual" && quantityTotal < 1 {
+		quantityTotal = 1
+		quantityAvailable = 1
+	}
+
+	// Validation: Available cannot exceed total
+	if quantityAvailable > quantityTotal {
+		quantityAvailable = quantityTotal
 	}
 
 	var purchaseDatePtr *string
@@ -95,12 +535,20 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 		purchaseDatePtr = &purchaseDate
 	}
 
-	_, err := h.db.Exec(`
-		INSERT INTO devices (name, category, brand, condition, location, purchase_date, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, name, category, brand, condition, location, purchaseDatePtr, notes)
+	result, err := h.db.Exec(`
+		INSERT INTO devices (device_type_id, asset_code, name, brand, model, serial_number,
+		                     item_type, is_loanable, is_consumable, quantity_total, quantity_available,
+		                     condition, location, purchase_date, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, deviceTypeID, assetCode, name, brand, model, serialNumber, itemType, isLoanable,
+		isConsumable, quantityTotal, quantityAvailable, condition, location, purchaseDatePtr, notes)
 
 	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			h.renderDeviceCreateWithError(c, "Asset code sudah digunakan")
+			return
+		}
+
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
@@ -109,31 +557,24 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 				ipAddress, userAgent, fmt.Sprintf("Failed to create device: %v", err),
 			)
 		}
-		c.HTML(http.StatusInternalServerError, "device/create.html", gin.H{
-			"title": "Tambah Perangkat Baru",
-			"error": "Gagal menyimpan data perangkat",
-		})
+		h.renderDeviceCreateWithError(c, "Gagal menyimpan data perangkat")
 		return
 	}
 
-	// Get last insert ID and log
-	var deviceID int
-	err = h.db.QueryRow("SELECT last_insert_rowid()").Scan(&deviceID)
-	if err == nil {
-		userID, username, role, ok := middleware.GetCurrentUser(c)
-		if ok {
-			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogCreate(
-				userID, username, role,
-				"device", deviceID,
-				map[string]interface{}{
-					"name":      name,
-					"category":  category,
-					"condition": condition,
-				},
-				ipAddress, userAgent,
-			)
-		}
+	// Log successful create
+	deviceID, _ := result.LastInsertId()
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogCreate(
+			userID, username, role,
+			"device", int(deviceID),
+			map[string]interface{}{
+				"name":       name,
+				"asset_code": assetCode,
+			},
+			ipAddress, userAgent,
+		)
 	}
 
 	c.Redirect(http.StatusFound, "/devices")
@@ -148,14 +589,20 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	var device models.Device
+	var device models.DeviceWithCategory
 	var purchaseDateStr sql.NullString
 
 	err := h.db.QueryRow(`
-		SELECT id, name, category, brand, condition, location, purchase_date, notes
-		FROM devices WHERE id = ?
-	`, id).Scan(&device.ID, &device.Name, &device.Category, &device.Brand,
-		&device.Condition, &device.Location, &purchaseDateStr, &device.Notes)
+		SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model, d.serial_number,
+		       d.item_type, d.is_loanable, d.is_consumable, d.quantity_total, d.quantity_available,
+		       d.condition, d.location, d.purchase_date, d.notes
+		FROM devices d
+		JOIN device_types dt ON d.device_type_id = dt.id
+		WHERE d.id = ?
+	`, id).Scan(&device.ID, &device.DeviceTypeID, &device.AssetCode, &device.Name, &device.Category,
+		&device.Brand, &device.Model, &device.SerialNumber, &device.ItemType, &device.IsLoanable,
+		&device.IsConsumable, &device.QuantityTotal, &device.QuantityAvailable, &device.Condition,
+		&device.Location, &purchaseDateStr, &device.Notes)
 
 	if err == sql.ErrNoRows {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
@@ -175,7 +622,6 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 
 	var purchaseDateFormatted string
 	if purchaseDateStr.Valid {
-		// Try multiple date formats
 		formats := []string{"2006-01-02", "2006-01-02T15:04:05Z", time.RFC3339}
 		for _, format := range formats {
 			if t, err := time.Parse(format, purchaseDateStr.String); err == nil {
@@ -183,10 +629,20 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 				break
 			}
 		}
-		// If parsing fails, use the string as-is (fallback)
 		if purchaseDateFormatted == "" {
 			purchaseDateFormatted = purchaseDateStr.String
 		}
+	}
+
+	// Get device types
+	rows, _ := h.db.Query(`SELECT id, name FROM device_types ORDER BY name`)
+	defer rows.Close()
+
+	var deviceTypes []models.DeviceType
+	for rows.Next() {
+		var dt models.DeviceType
+		rows.Scan(&dt.ID, &dt.Name)
+		deviceTypes = append(deviceTypes, dt)
 	}
 
 	c.HTML(http.StatusOK, "device/edit.html", gin.H{
@@ -196,37 +652,37 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 		"role":         role,
 		"device":       device,
 		"purchaseDate": purchaseDateFormatted,
+		"deviceTypes":  deviceTypes,
 	})
 }
 
 // DeviceEdit handles device update
 func (h *Handler) DeviceEdit(c *gin.Context) {
 	id := c.Param("id")
+	deviceTypeIDStr := c.PostForm("device_type_id")
+	assetCode := c.PostForm("asset_code")
 	name := c.PostForm("name")
-	category := c.PostForm("category")
 	brand := c.PostForm("brand")
+	model := c.PostForm("model")
+	serialNumber := c.PostForm("serial_number")
+	itemType := c.PostForm("item_type")
+	isLoanable := c.PostForm("is_loanable") == "1"
+	isConsumable := c.PostForm("is_consumable") == "1"
+	quantityTotalStr := c.PostForm("quantity_total")
+	quantityAvailableStr := c.PostForm("quantity_available")
 	condition := c.PostForm("condition")
 	location := c.PostForm("location")
 	purchaseDateForm := c.PostForm("purchase_date")
 	notes := c.PostForm("notes")
 
-	// Get current device data including purchase_date and old values for logging
+	// Get old values for logging
+	var oldName, oldAssetCode, oldCondition string
 	var currentPurchaseDate sql.NullString
-	var oldName, oldCategory, oldCondition string
 	err := h.db.QueryRow(`
-		SELECT name, category, condition, purchase_date
-		FROM devices WHERE id = ?
-	`, id).Scan(&oldName, &oldCategory, &oldCondition, &currentPurchaseDate)
-	
+		SELECT name, asset_code, condition, purchase_date FROM devices WHERE id = ?
+	`, id).Scan(&oldName, &oldAssetCode, &oldCondition, &currentPurchaseDate)
+
 	if err != nil {
-		userID, username, role, ok := middleware.GetCurrentUser(c)
-		if ok {
-			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "update", false,
-				ipAddress, userAgent, fmt.Sprintf("Failed to get device data for update: %v", err),
-			)
-		}
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
 			"message": "Gagal mengambil data perangkat",
@@ -234,25 +690,46 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 		return
 	}
 
+	// Parse device_type_id (REQUIRED)
+	if deviceTypeIDStr == "" {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Template jenis barang harus diisi",
+		})
+		return
+	}
+	deviceTypeID, _ := strconv.Atoi(deviceTypeIDStr)
+
+	// Parse quantities
+	quantityTotal, _ := strconv.Atoi(quantityTotalStr)
+	quantityAvailable, _ := strconv.Atoi(quantityAvailableStr)
+
 	// Preserve existing purchase_date if form field is empty
 	var purchaseDatePtr *string
 	if purchaseDateForm != "" {
-		// User provided new value
 		purchaseDatePtr = &purchaseDateForm
 	} else if currentPurchaseDate.Valid {
-		// Preserve existing value
 		purchaseDatePtr = &currentPurchaseDate.String
 	}
-	// If both empty, purchaseDatePtr = nil (set to NULL)
 
 	_, err = h.db.Exec(`
 		UPDATE devices 
-		SET name = ?, category = ?, brand = ?, condition = ?, location = ?,
-		    purchase_date = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+		SET device_type_id = ?, asset_code = ?, name = ?, brand = ?, model = ?, serial_number = ?,
+		    item_type = ?, is_loanable = ?, is_consumable = ?, quantity_total = ?, quantity_available = ?,
+		    condition = ?, location = ?, purchase_date = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, name, category, brand, condition, location, purchaseDatePtr, notes, id)
+	`, deviceTypeID, assetCode, name, brand, model, serialNumber, itemType, isLoanable,
+		isConsumable, quantityTotal, quantityAvailable, condition, location, purchaseDatePtr, notes, id)
 
 	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Asset code sudah digunakan",
+			})
+			return
+		}
+
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
@@ -274,24 +751,12 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 	if ok {
 		ipAddress, userAgent := getRequestContext(c)
 		deviceIDInt, _ := strconv.Atoi(id)
-		
-		oldValues := map[string]interface{}{
-			"name":      oldName,
-			"category":  oldCategory,
-			"condition": oldCondition,
-		}
-		
-		newValues := map[string]interface{}{
-			"name":      name,
-			"category":  category,
-			"condition": condition,
-		}
-		
+
 		h.activityLogService.LogUpdate(
 			userID, username, role,
 			"device", deviceIDInt,
-			oldValues,
-			newValues,
+			map[string]interface{}{"name": oldName, "asset_code": oldAssetCode, "condition": oldCondition},
+			map[string]interface{}{"name": name, "asset_code": assetCode, "condition": condition},
 			ipAddress, userAgent,
 		)
 	}
@@ -305,21 +770,12 @@ func (h *Handler) DeviceDelete(c *gin.Context) {
 
 	// Get device data before delete
 	var deviceID int
-	var name, category, condition string
+	var name, assetCode, condition string
 	err := h.db.QueryRow(`
-		SELECT id, name, category, condition 
-		FROM devices WHERE id = ?
-	`, id).Scan(&deviceID, &name, &category, &condition)
-	
+		SELECT id, name, asset_code, condition FROM devices WHERE id = ?
+	`, id).Scan(&deviceID, &name, &assetCode, &condition)
+
 	if err != nil {
-		userID, username, role, ok := middleware.GetCurrentUser(c)
-		if ok {
-			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "delete", false,
-				ipAddress, userAgent, fmt.Sprintf("Failed to get device data for delete: %v", err),
-			)
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Gagal mengambil data perangkat",
 		})
@@ -346,17 +802,11 @@ func (h *Handler) DeviceDelete(c *gin.Context) {
 	userID, username, role, ok := middleware.GetCurrentUser(c)
 	if ok {
 		ipAddress, userAgent := getRequestContext(c)
-		
-		oldValues := map[string]interface{}{
-			"name":      name,
-			"category":  category,
-			"condition": condition,
-		}
-		
+
 		h.activityLogService.LogDelete(
 			userID, username, role,
 			"device", deviceID,
-			oldValues,
+			map[string]interface{}{"name": name, "asset_code": assetCode, "condition": condition},
 			ipAddress, userAgent,
 		)
 	}
@@ -364,7 +814,49 @@ func (h *Handler) DeviceDelete(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/devices")
 }
 
-// DeviceExport exports device list to Excel
+// GetNextAssetCode API endpoint to get next available asset code
+func (h *Handler) GetNextAssetCode(c *gin.Context) {
+	prefix := c.Query("prefix")
+
+	if prefix == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Prefix required"})
+		return
+	}
+
+	// Query last asset code with this prefix
+	var lastCode string
+	err := h.db.QueryRow(`
+		SELECT asset_code FROM devices 
+		WHERE asset_code LIKE ? 
+		ORDER BY asset_code DESC LIMIT 1
+	`, prefix+"-%").Scan(&lastCode)
+
+	var nextNumber int
+	if err == sql.ErrNoRows {
+		nextNumber = 1
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	} else {
+		// Extract number from "PENTAB-012" → 12
+		parts := strings.Split(lastCode, "-")
+		if len(parts) == 2 {
+			num, _ := strconv.Atoi(parts[1])
+			nextNumber = num + 1
+		} else {
+			nextNumber = 1
+		}
+	}
+
+	nextCode := fmt.Sprintf("%s-%03d", prefix, nextNumber)
+
+	c.JSON(http.StatusOK, gin.H{
+		"next_code": nextCode,
+		"number":    nextNumber,
+	})
+}
+
+// DeviceExport exports all device management data to Excel (4 sheets in 1 file)
 func (h *Handler) DeviceExport(c *gin.Context) {
 	_, _, role, ok := middleware.GetCurrentUser(c)
 	if !ok {
@@ -380,171 +872,201 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 		return
 	}
 
-	// Query all devices
-	rows, err := h.db.Query(`
-		SELECT id, name, category, brand, condition, location, purchase_date, notes
-		FROM devices
-		ORDER BY category, name
+	// ===== SHEET 1: Daftar Perangkat =====
+	devicesData := [][]interface{}{}
+	devicesRows, err := h.db.Query(`
+		SELECT d.asset_code, d.name, dt.category, d.brand, d.model, d.item_type, d.quantity_total, d.quantity_available,
+		       d.condition, d.location, d.purchase_date, d.notes
+		FROM devices d
+		JOIN device_types dt ON d.device_type_id = dt.id
+		ORDER BY dt.category, d.name
 	`)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengambil data perangkat",
-		})
-		return
-	}
-	defer rows.Close()
-
-	// Collect data
-	type DeviceExportData struct {
-		ID           int
-		Name         string
-		Category     string
-		Brand        string
-		Condition    string
-		Location     string
-		PurchaseDate sql.NullString
-		Notes        string
-	}
-
-	var devices []DeviceExportData
-	for rows.Next() {
-		var device DeviceExportData
-		err := rows.Scan(&device.ID, &device.Name, &device.Category, &device.Brand,
-			&device.Condition, &device.Location, &device.PurchaseDate, &device.Notes)
-		if err != nil {
-			continue
-		}
-		devices = append(devices, device)
-	}
-
-	// Category translation map
-	categoryMap := map[string]string{
-		"printer":         "Printer",
-		"router":          "Router",
-		"speaker":         "Speaker",
-		"pc_cadangan":     "PC Cadangan",
-		"komputer_labor":  "Komputer Labor",
-		"komputer_dosen":  "Komputer Dosen",
-		"lainnya":         "Lainnya",
-	}
-
-	// Condition translation map
-	conditionMap := map[string]string{
-		"baik":        "Baik",
-		"rusak":       "Rusak",
-		"maintenance": "Maintenance",
-	}
-
-	// Transform data to [][]interface{}
-	data := [][]interface{}{}
-	for i, device := range devices {
-		// Translate category
-		category := categoryMap[device.Category]
-		if category == "" {
-			category = device.Category
-		}
-
-		// Translate condition
-		condition := conditionMap[device.Condition]
-		if condition == "" {
-			condition = device.Condition
-		}
-
-		// Format purchase date
-		purchaseDate := "-"
-		if device.PurchaseDate.Valid && device.PurchaseDate.String != "" {
-			formats := []string{"2006-01-02", "2006-01-02T15:04:05Z", time.RFC3339}
-			for _, format := range formats {
-				if t, err := time.Parse(format, device.PurchaseDate.String); err == nil {
-					purchaseDate = t.Format("02/01/2006")
-					break
+	if err == nil {
+		defer devicesRows.Close()
+		i := 1
+		for devicesRows.Next() {
+			var assetCode, name, category, brand, model, itemType, condition, location, notes string
+			var quantityTotal, quantityAvailable int
+			var purchaseDate sql.NullString
+			
+			devicesRows.Scan(&assetCode, &name, &category, &brand, &model, &itemType, &quantityTotal,
+				&quantityAvailable, &condition, &location, &purchaseDate, &notes)
+			
+			purchaseDateStr := "-"
+			if purchaseDate.Valid && purchaseDate.String != "" {
+				if t, err := time.Parse("2006-01-02", purchaseDate.String); err == nil {
+					purchaseDateStr = t.Format("02/01/2006")
 				}
 			}
-			if purchaseDate == "-" {
-				purchaseDate = device.PurchaseDate.String
+			
+			devicesData = append(devicesData, []interface{}{
+				i, assetCode, name, category, brand, model, itemType,
+				quantityTotal, quantityAvailable, condition, location, purchaseDateStr, notes,
+			})
+			i++
+		}
+	}
+
+	// ===== SHEET 2: Jenis Barang =====
+	typesData := [][]interface{}{}
+	typesRows, err := h.db.Query(`
+		SELECT name, category, brand, model, item_type, asset_code_prefix, default_location
+		FROM device_types ORDER BY category, name
+	`)
+	if err == nil {
+		defer typesRows.Close()
+		i := 1
+		for typesRows.Next() {
+			var name, category, itemType string
+			var brand, model, prefix, location sql.NullString
+			
+			typesRows.Scan(&name, &category, &brand, &model, &itemType, &prefix, &location)
+			
+			brandStr := ""
+			if brand.Valid {
+				brandStr = brand.String
 			}
-		}
-
-		// Handle empty values
-		brand := device.Brand
-		if brand == "" {
-			brand = "-"
-		}
-		location := device.Location
-		if location == "" {
-			location = "-"
-		}
-		notes := device.Notes
-		if notes == "" {
-			notes = "-"
-		}
-
-		row := []interface{}{
-			i + 1,       // No
-			device.Name, // Name
-			category,    // Category
-			brand,       // Brand
-			condition,   // Condition
-			location,    // Location
-			purchaseDate, // Purchase Date
-			notes,       // Notes
-		}
-		data = append(data, row)
-	}
-
-	// Prepare conditional formatting for condition column (column E, index 4)
-	conditionalFormats := []services.ConditionalFormat{}
-	if len(data) > 0 {
-		conditionalFormats = []services.ConditionalFormat{
-			{
-				Column:    "E",
-				RowStart:  2,
-				RowEnd:    len(data) + 1,
-				Condition: "Baik",
-				Color:     "#92D050", // Green
-			},
-			{
-				Column:    "E",
-				RowStart:  2,
-				RowEnd:    len(data) + 1,
-				Condition: "Rusak",
-				Color:     "#FFC7CE", // Red
-			},
-			{
-				Column:    "E",
-				RowStart:  2,
-				RowEnd:    len(data) + 1,
-				Condition: "Maintenance",
-				Color:     "#FFEB9C", // Yellow
-			},
+			modelStr := ""
+			if model.Valid {
+				modelStr = model.String
+			}
+			prefixStr := ""
+			if prefix.Valid {
+				prefixStr = prefix.String
+			}
+			locationStr := ""
+			if location.Valid {
+				locationStr = location.String
+			}
+			
+			typesData = append(typesData, []interface{}{
+				i, name, category, brandStr, modelStr, itemType, prefixStr, locationStr,
+			})
+			i++
 		}
 	}
 
-	// Configure Excel export
+	// ===== SHEET 3: Peminjaman =====
+	loansData := [][]interface{}{}
+	loansRows, err := h.db.Query(`
+		SELECT d.asset_code, d.name, l.borrower_name, l.borrower_type, l.loan_date,
+		       l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose
+		FROM device_loans l
+		JOIN devices d ON l.device_id = d.id
+		ORDER BY l.loan_date DESC
+	`)
+	if err == nil {
+		defer loansRows.Close()
+		i := 1
+		for loansRows.Next() {
+			var assetCode, deviceName, borrowerName, borrowerType, status, purpose string
+			var loanDate time.Time
+			var expectedReturn, actualReturn sql.NullTime
+			var quantity int
+			
+			loansRows.Scan(&assetCode, &deviceName, &borrowerName, &borrowerType, &loanDate,
+				&expectedReturn, &actualReturn, &quantity, &status, &purpose)
+			
+			expectedReturnStr := "-"
+			if expectedReturn.Valid {
+				expectedReturnStr = expectedReturn.Time.Format("02/01/2006")
+			}
+			
+			actualReturnStr := "-"
+			if actualReturn.Valid {
+				actualReturnStr = actualReturn.Time.Format("02/01/2006")
+			}
+			
+			loansData = append(loansData, []interface{}{
+				i, assetCode, deviceName, borrowerName, borrowerType,
+				loanDate.Format("02/01/2006"), expectedReturnStr, actualReturnStr,
+				quantity, status, purpose,
+			})
+			i++
+		}
+	}
+
+	// ===== SHEET 4: Pemakaian =====
+	usagesData := [][]interface{}{}
+	usagesRows, err := h.db.Query(`
+		SELECT d.asset_code, d.name, u.user_name, u.user_type, u.usage_date, u.quantity, u.purpose
+		FROM device_usages u
+		JOIN devices d ON u.device_id = d.id
+		ORDER BY u.usage_date DESC
+	`)
+	if err == nil {
+		defer usagesRows.Close()
+		i := 1
+		for usagesRows.Next() {
+			var assetCode, deviceName, userName, userType, purpose string
+			var usageDate time.Time
+			var quantity int
+			
+			usagesRows.Scan(&assetCode, &deviceName, &userName, &userType, &usageDate, &quantity, &purpose)
+			
+			usagesData = append(usagesData, []interface{}{
+				i, assetCode, deviceName, userName, userType,
+				usageDate.Format("02/01/2006"), quantity, purpose,
+			})
+			i++
+		}
+	}
+
+	// ===== Configure Multi-Sheet Excel =====
 	excelService := services.NewExcelService()
-	config := services.ExcelExportConfig{
-		SheetName: "Daftar Perangkat",
-		Headers: []string{
-			"No", "Nama Perangkat", "Kategori", "Merk", "Kondisi",
-			"Lokasi", "Tanggal Pembelian", "Catatan",
+	configs := []services.ExcelExportConfig{
+		// Sheet 1: Daftar Perangkat
+		{
+			SheetName: "Daftar Perangkat",
+			Headers: []string{
+				"No", "Asset Code", "Nama", "Kategori", "Merk", "Model", "Tipe",
+				"Qty Total", "Qty Tersedia", "Kondisi", "Lokasi", "Tgl Beli", "Catatan",
+			},
+			Data: devicesData,
+			ColumnWidths: map[string]float64{
+				"A": 5, "B": 15, "C": 25, "D": 15, "E": 15, "F": 15, "G": 12,
+				"H": 10, "I": 10, "J": 12, "K": 20, "L": 12, "M": 30,
+			},
 		},
-		Data: data,
-		ColumnWidths: map[string]float64{
-			"A": 5,   // No
-			"B": 25,  // Nama Perangkat
-			"C": 18,  // Kategori
-			"D": 15,  // Merk
-			"E": 12,  // Kondisi
-			"F": 20,  // Lokasi
-			"G": 16,  // Tanggal Pembelian
-			"H": 30,  // Catatan
+		// Sheet 2: Jenis Barang
+		{
+			SheetName: "Jenis Barang",
+			Headers: []string{
+				"No", "Nama", "Kategori", "Merk", "Model", "Tipe", "Prefix", "Lokasi Default",
+			},
+			Data: typesData,
+			ColumnWidths: map[string]float64{
+				"A": 5, "B": 25, "C": 15, "D": 15, "E": 15, "F": 12, "G": 12, "H": 20,
+			},
 		},
-		ConditionalFormats: conditionalFormats,
+		// Sheet 3: Peminjaman
+		{
+			SheetName: "Peminjaman",
+			Headers: []string{
+				"No", "Asset Code", "Perangkat", "Peminjam", "Tipe", "Tgl Pinjam",
+				"Target Kembali", "Tgl Kembali", "Jumlah", "Status", "Keperluan",
+			},
+			Data: loansData,
+			ColumnWidths: map[string]float64{
+				"A": 5, "B": 15, "C": 25, "D": 20, "E": 12, "F": 12,
+				"G": 12, "H": 12, "I": 8, "J": 10, "K": 30,
+			},
+		},
+		// Sheet 4: Pemakaian
+		{
+			SheetName: "Pemakaian",
+			Headers: []string{
+				"No", "Asset Code", "Perangkat", "Pengguna", "Tipe", "Tgl Pemakaian", "Jumlah", "Keperluan",
+			},
+			Data: usagesData,
+			ColumnWidths: map[string]float64{
+				"A": 5, "B": 15, "C": 25, "D": 20, "E": 12, "F": 12, "G": 8, "H": 30,
+			},
+		},
 	}
 
-	// Generate Excel file
-	f, err := excelService.GenerateExcel(config)
+	// Generate multi-sheet Excel file
+	f, err := excelService.GenerateMultiSheetExcel(configs)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
@@ -554,15 +1076,12 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 	}
 	defer f.Close()
 
-	// Generate filename: devices_export_HHMM_DDMMYYYY.xlsx
 	filename := excelService.GenerateFilename("devices_export")
 
-	// Set headers for download
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	c.Header("Content-Transfer-Encoding", "binary")
 
-	// Write to response
 	if err := f.Write(c.Writer); err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",

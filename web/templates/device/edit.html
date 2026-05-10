@@ -22,20 +22,29 @@
                 <div class="card-body">
                     <form method="POST" action="/devices/{{ .device.ID }}/edit">
                         <div class="mb-3">
+                            <label class="form-label">Kategori (dari template)</label>
+                            <input type="text" class="form-control" value="{{ .device.Category }}" readonly disabled>
+                            <small class="text-muted">Kategori tidak dapat diubah (ditentukan oleh template)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="asset_code" class="form-label">Asset Code *</label>
+                            <input type="text" class="form-control" id="asset_code" name="asset_code" value="{{ .device.AssetCode }}" required>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="name" class="form-label">Nama Perangkat *</label>
                             <input type="text" class="form-control" id="name" name="name" value="{{ .device.Name }}" required>
                         </div>
 
+                        <!-- Hidden field for device_type_id (required but not editable) -->
+                        <input type="hidden" name="device_type_id" value="{{ .device.DeviceTypeID }}">
+
                         <div class="mb-3">
-                            <label for="category" class="form-label">Kategori *</label>
-                            <select class="form-select" id="category" name="category" required>
-                                <option value="printer" {{ if eq .device.Category "printer" }}selected{{ end }}>Printer</option>
-                                <option value="router" {{ if eq .device.Category "router" }}selected{{ end }}>Router</option>
-                                <option value="speaker" {{ if eq .device.Category "speaker" }}selected{{ end }}>Speaker</option>
-                                <option value="pc_cadangan" {{ if eq .device.Category "pc_cadangan" }}selected{{ end }}>PC Cadangan</option>
-                                <option value="komputer_labor" {{ if eq .device.Category "komputer_labor" }}selected{{ end }}>Komputer Labor</option>
-                                <option value="komputer_dosen" {{ if eq .device.Category "komputer_dosen" }}selected{{ end }}>Komputer Dosen</option>
-                                <option value="lainnya" {{ if eq .device.Category "lainnya" }}selected{{ end }}>Lainnya</option>
+                            <label for="item_type" class="form-label">Tipe Item *</label>
+                            <select class="form-select" id="item_type" name="item_type" required>
+                                <option value="individual" {{ if eq .device.ItemType "individual" }}selected{{ end }}>Individual (1 unit)</option>
+                                <option value="consumable" {{ if eq .device.ItemType "consumable" }}selected{{ end }}>Consumable (habis pakai)</option>
                             </select>
                         </div>
 
@@ -45,13 +54,69 @@
                                 <input type="text" class="form-control" id="brand" name="brand" value="{{ .device.Brand }}">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="condition" class="form-label">Kondisi *</label>
-                                <select class="form-select" id="condition" name="condition" required>
-                                    <option value="baik" {{ if eq .device.Condition "baik" }}selected{{ end }}>Baik</option>
-                                    <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
-                                    <option value="maintenance" {{ if eq .device.Condition "maintenance" }}selected{{ end }}>Maintenance</option>
-                                </select>
+                                <label for="model" class="form-label">Model</label>
+                                <input type="text" class="form-control" id="model" name="model" value="{{ .device.Model }}">
                             </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="serial_number" class="form-label">Serial Number</label>
+                            <input type="text" class="form-control" id="serial_number" name="serial_number" value="{{ .device.SerialNumber }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Properti</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_loanable" name="is_loanable" value="1" {{ if .device.IsLoanable }}checked{{ end }}>
+                                <label class="form-check-label" for="is_loanable">
+                                    Dapat dipinjam
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_consumable" name="is_consumable" value="1" {{ if .device.IsConsumable }}checked{{ end }}>
+                                <label class="form-check-label" for="is_consumable">
+                                    Barang habis pakai
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="quantity_total" class="form-label">Jumlah Total *</label>
+                                <input type="number" class="form-control" id="quantity_total" name="quantity_total" 
+                                       min="{{ if eq .device.ItemType "individual" }}1{{ else }}0{{ end }}" 
+                                       value="{{ .device.QuantityTotal }}" required>
+                                <small class="text-muted">
+                                    <span id="qty_help_individual" style="display: {{ if eq .device.ItemType "individual" }}inline{{ else }}none{{ end }};">
+                                        Jumlah unit yang dimiliki
+                                    </span>
+                                    <span id="qty_help_consumable" style="display: {{ if eq .device.ItemType "consumable" }}inline{{ else }}none{{ end }};">
+                                        Total stok barang habis pakai
+                                    </span>
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="quantity_available" class="form-label">Jumlah Tersedia *</label>
+                                <input type="number" class="form-control" id="quantity_available" name="quantity_available" 
+                                       min="0" value="{{ .device.QuantityAvailable }}" required>
+                                <small class="text-muted">
+                                    <span id="avail_help_individual" style="display: {{ if eq .device.ItemType "individual" }}inline{{ else }}none{{ end }};">
+                                        Jumlah yang bisa dipinjam
+                                    </span>
+                                    <span id="avail_help_consumable" style="display: {{ if eq .device.ItemType "consumable" }}inline{{ else }}none{{ end }};">
+                                        Stok yang tersedia saat ini
+                                    </span>
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="condition" class="form-label">Kondisi *</label>
+                            <select class="form-select" id="condition" name="condition" required>
+                                <option value="baik" {{ if eq .device.Condition "baik" }}selected{{ end }}>Baik</option>
+                                <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
+                                <option value="maintenance" {{ if eq .device.Condition "maintenance" }}selected{{ end }}>Maintenance</option>
+                            </select>
                         </div>
 
                         <div class="mb-3">
@@ -89,6 +154,50 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js"></script>
+    <script>
+        // Show/hide quantity fields based on item type
+        document.getElementById('item_type').addEventListener('change', function() {
+            const qtyHelpIndividual = document.getElementById('qty_help_individual');
+            const qtyHelpConsumable = document.getElementById('qty_help_consumable');
+            const availHelpIndividual = document.getElementById('avail_help_individual');
+            const availHelpConsumable = document.getElementById('avail_help_consumable');
+            const qtyTotalInput = document.getElementById('quantity_total');
+            
+            if (this.value === 'consumable') {
+                // Consumable: show consumable help text
+                qtyHelpIndividual.style.display = 'none';
+                qtyHelpConsumable.style.display = 'inline';
+                availHelpIndividual.style.display = 'none';
+                availHelpConsumable.style.display = 'inline';
+                
+                document.getElementById('is_consumable').checked = true;
+                qtyTotalInput.min = '0';
+            } else {
+                // Individual: show individual help text
+                qtyHelpIndividual.style.display = 'inline';
+                qtyHelpConsumable.style.display = 'none';
+                availHelpIndividual.style.display = 'inline';
+                availHelpConsumable.style.display = 'none';
+                
+                document.getElementById('is_consumable').checked = false;
+                qtyTotalInput.min = '1';
+                
+                // Ensure minimum 1 for individual
+                if (parseInt(qtyTotalInput.value) < 1) {
+                    qtyTotalInput.value = '1';
+                    document.getElementById('quantity_available').value = '1';
+                }
+            }
+        });
+
+        // Sync is_consumable checkbox with item_type
+        document.getElementById('is_consumable').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('item_type').value = 'consumable';
+                document.getElementById('item_type').dispatchEvent(new Event('change'));
+            }
+        });
+    </script>
 </body>
 </html>
 {{ end }}

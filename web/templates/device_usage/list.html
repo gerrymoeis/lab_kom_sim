@@ -1,0 +1,98 @@
+{{ define "device_usage/list.html" }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    {{ template "layout/navbar.html" . }}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <!-- Filter & Search -->
+            <form method="GET" action="/devices" class="row g-3 mb-3">
+                <input type="hidden" name="tab" value="usages">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="search" placeholder="Cari pengguna atau perangkat..." value="{{ .filters.search }}">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="sort_by">
+                        <option value="usage_date" {{ if eq .filters.sort_by "usage_date" }}selected{{ end }}>Tanggal Pemakaian</option>
+                        <option value="user_name" {{ if eq .filters.sort_by "user_name" }}selected{{ end }}>Nama Pengguna</option>
+                        <option value="quantity" {{ if eq .filters.sort_by "quantity" }}selected{{ end }}>Jumlah</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="sort_order">
+                        <option value="DESC" {{ if eq .filters.sort_order "DESC" }}selected{{ end }}>Terbaru</option>
+                        <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>Terlama</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                </div>
+            </form>
+
+            <!-- Table -->
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Perangkat</th>
+                            <th>Asset Code</th>
+                            <th>Pengguna</th>
+                            <th>Tipe</th>
+                            <th>Tanggal Pemakaian</th>
+                            <th>Jumlah</th>
+                            <th>Keperluan</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range .usages }}
+                        <tr>
+                            <td><strong>{{ .DeviceName }}</strong></td>
+                            <td><code>{{ .AssetCode }}</code></td>
+                            <td>{{ .UserName }}</td>
+                            <td><span class="badge bg-secondary">{{ .UserType }}</span></td>
+                            <td>{{ .UsageDate }}</td>
+                            <td><span class="badge bg-warning">{{ .Quantity }}</span></td>
+                            <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>
+                            <td>
+                                {{ if eq $.role "admin" }}
+                                <a href="/device-usages/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="POST" action="/device-usages/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini? Stok akan dikembalikan.')">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {{ end }}
+                            </td>
+                        </tr>
+                        {{ else }}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">Belum ada data pemakaian</td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
+{{ end }}
