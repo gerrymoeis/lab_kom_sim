@@ -9,7 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func InitDB(dbPath, dbURL string) (*sql.DB, error) {
+func InitDB(dbPath, dbURL string) (*DB, error) {
 	if dbURL != "" {
 		log.Println("Using PostgreSQL (Neon DB)")
 		db, err := sql.Open("pgx", dbURL)
@@ -21,7 +21,7 @@ func InitDB(dbPath, dbURL string) (*sql.DB, error) {
 		if err := db.Ping(); err != nil {
 			return nil, fmt.Errorf("failed to ping postgres: %w", err)
 		}
-		return db, nil
+		return wrapPG(db), nil
 	}
 
 	log.Println("Using SQLite (local)")
@@ -32,10 +32,10 @@ func InitDB(dbPath, dbURL string) (*sql.DB, error) {
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
-	return db, nil
+	return wrapSQLite(db), nil
 }
 
-func RunMigrations(db *sql.DB, isPostgres bool) error {
+func RunMigrations(db *DB, isPostgres bool) error {
 	if isPostgres {
 		return runPostgresMigrations(db)
 	}

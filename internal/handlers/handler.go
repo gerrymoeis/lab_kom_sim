@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"database/sql"
 	"inventaris-lab-kom/internal/config"
+	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -10,14 +10,14 @@ import (
 
 // Handler holds dependencies for all handlers
 type Handler struct {
-	db                 *sql.DB
+	db                 *database.DB
 	cfg                *config.Config
 	activityLogService *services.ActivityLogService
 	imageService       *services.ImageService
 }
 
 // NewHandler creates a new handler instance
-func NewHandler(db *sql.DB, cfg *config.Config) *Handler {
+func NewHandler(db *database.DB, cfg *config.Config) *Handler {
 	return &Handler{
 		db:                 db,
 		cfg:                cfg,

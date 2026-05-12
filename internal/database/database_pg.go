@@ -1,11 +1,10 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 )
 
-func runPostgresMigrations(db *sql.DB) error {
+func runPostgresMigrations(db *DB) error {
 	columnExists := func(tableName, columnName string) (bool, error) {
 		var exists bool
 		err := db.QueryRow(`

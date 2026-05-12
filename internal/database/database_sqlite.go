@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func runSQLiteMigrations(db *sql.DB) error {
+func runSQLiteMigrations(db *DB) error {
 	columnExists := func(tableName, columnName string) (bool, error) {
 		query := fmt.Sprintf("PRAGMA table_info(%s)", tableName)
 		rows, err := db.Query(query)

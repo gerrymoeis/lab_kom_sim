@@ -1,14 +1,13 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 // SeedDefaultUser creates default admin user if not exists
-func SeedDefaultUser(db *sql.DB) error {
+func SeedDefaultUser(db *DB) error {
 	// Check if admin user exists
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", "admin").Scan(&count)

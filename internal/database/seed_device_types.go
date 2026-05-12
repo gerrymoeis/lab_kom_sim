@@ -1,11 +1,10 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 )
 
-func seedDeviceTypesIfEmpty(db *sql.DB, boolTrue, boolFalse string) error {
+func seedDeviceTypesIfEmpty(db *DB, boolTrue, boolFalse string) error {
 	var count int
 	err := db.QueryRow("SELECT COUNT(*) FROM device_types").Scan(&count)
 	if err != nil {

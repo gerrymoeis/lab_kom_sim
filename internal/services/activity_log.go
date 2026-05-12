@@ -1,21 +1,21 @@
 package services
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
 
+	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
 )
 
 // ActivityLogService handles activity logging operations
 type ActivityLogService struct {
-	db *sql.DB
+	db *database.DB
 }
 
 // NewActivityLogService creates a new activity log service
-func NewActivityLogService(db *sql.DB) *ActivityLogService {
+func NewActivityLogService(db *database.DB) *ActivityLogService {
 	return &ActivityLogService{db: db}
 }
 
