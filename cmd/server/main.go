@@ -91,15 +91,16 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
-	// Initialize database
-	db, err := database.InitDB(cfg.DatabasePath)
+	// Initialize database (PostgreSQL if DATABASE_URL set, else SQLite)
+	isPostgres := cfg.DatabaseURL != ""
+	db, err := database.InitDB(cfg.DatabasePath, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
 	// Run migrations
-	if err := database.RunMigrations(db); err != nil {
+	if err := database.RunMigrations(db, isPostgres); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 

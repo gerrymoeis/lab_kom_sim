@@ -232,7 +232,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		                 l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose,
 		                 CASE 
 		                   WHEN l.actual_return_date IS NOT NULL THEN 'returned'
-		                   WHEN l.expected_return_date IS NOT NULL AND DATE('now') > DATE(l.expected_return_date) THEN 'overdue'
+		                   WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
 		                   ELSE 'active'
 		                 END as computed_status
 		          FROM device_loans l
@@ -250,7 +250,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			// Filter by computed status
 			query += ` AND (CASE 
 			              WHEN l.actual_return_date IS NOT NULL THEN 'returned'
-			              WHEN l.expected_return_date IS NOT NULL AND DATE('now') > DATE(l.expected_return_date) THEN 'overdue'
+			              WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
 			              ELSE 'active'
 			            END) = ?`
 			args = append(args, status)
