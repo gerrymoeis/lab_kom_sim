@@ -20,9 +20,9 @@ func (h *Handler) Dashboard(c *gin.Context) {
 
 	// Get all PCs ordered by row and column
 	rows, err := h.db.Query(`
-		SELECT id, pc_number, row, column, status, processor, ram, storage, operating_system, notes, last_checked
+		SELECT id, pc_number, "row", "column", status, processor, ram, storage, operating_system, notes, last_checked
 		FROM pcs
-		ORDER BY row, column
+		ORDER BY "row", "column"
 	`)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{

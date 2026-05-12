@@ -30,8 +30,8 @@ func runPostgresMigrations(db *sql.DB) error {
 		`CREATE TABLE IF NOT EXISTS pcs (
 			id SERIAL PRIMARY KEY,
 			pc_number INTEGER UNIQUE NOT NULL CHECK(pc_number >= 1 AND pc_number <= 40),
-			row INTEGER NOT NULL CHECK(row >= 1 AND row <= 5),
-			column INTEGER NOT NULL CHECK(column >= 1 AND column <= 8),
+			"row" INTEGER NOT NULL CHECK("row" >= 1 AND "row" <= 5),
+			"column" INTEGER NOT NULL CHECK("column" >= 1 AND "column" <= 8),
 			status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken', 'inactive')),
 			processor TEXT,
 			ram TEXT,

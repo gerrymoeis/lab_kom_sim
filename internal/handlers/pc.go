@@ -44,7 +44,7 @@ func (h *Handler) PCList(c *gin.Context) {
 	}
 
 	rows, err := h.db.Query(`
-		SELECT id, pc_number, row, column, status, processor, ram, storage, 
+		SELECT id, pc_number, "row", "column", status, processor, ram, storage, 
 		       purchase_date, notes, last_checked, 
 		       asset_id, serial_number, brand, model, operating_system, physical_condition,
 		       device_type, brand_model, accessories, action_notes, photo_serial, photo_front,
@@ -164,7 +164,7 @@ func (h *Handler) PCDetail(c *gin.Context) {
 	var purchaseDate, lastChecked sql.NullTime
 	
 	err := h.db.QueryRow(`
-		SELECT id, pc_number, row, column, status, processor, ram, storage,
+		SELECT id, pc_number, "row", "column", status, processor, ram, storage,
 		       purchase_date, notes, last_checked,
 		       asset_id, serial_number, brand, model, operating_system, physical_condition,
 		       device_type, brand_model, accessories, action_notes, photo_serial, photo_front,
@@ -475,7 +475,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	// Insert to database
 	_, err := h.db.Exec(`
 		INSERT INTO pcs (
-			pc_number, row, column, status, 
+			pc_number, "row", "column", status, 
 			device_type, serial_number, brand_model, accessories,
 			processor, ram, storage, operating_system, 
 			purchase_date, last_checked, notes, action_notes,
@@ -577,7 +577,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 	var deviceType, serialNumber, brandModel, accessories, actionNotes, photoSerial, photoFront sql.NullString
 
 	err := h.db.QueryRow(`
-		SELECT id, pc_number, row, column, status, processor, ram, storage,
+		SELECT id, pc_number, "row", "column", status, processor, ram, storage,
 		       purchase_date, last_checked, operating_system, notes,
 		       device_type, serial_number, brand_model, accessories, action_notes,
 		       photo_serial, photo_front
@@ -1128,7 +1128,7 @@ func (h *Handler) PCExport(c *gin.Context) {
 
 	// Query all PCs
 	rows, err := h.db.Query(`
-		SELECT pc_number, row, column, status, device_type, serial_number, brand_model,
+		SELECT pc_number, "row", "column", status, device_type, serial_number, brand_model,
 		       processor, ram, storage, operating_system, accessories,
 		       purchase_date, last_checked, notes, action_notes
 		FROM pcs

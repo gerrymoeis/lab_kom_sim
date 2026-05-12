@@ -11,8 +11,9 @@ import (
 	"strings"
 
 	"github.com/disintegration/imaging"
-	"github.com/jdeng/goheif"
+	"github.com/gen2brain/heic"
 	"github.com/rwcarlsen/goexif/exif"
+	heifparser "go4.org/media/heif"
 )
 
 // ImageService handles image compression and processing
@@ -52,31 +53,20 @@ func (s *ImageService) CompressAndSave(sourcePath, destPath string, maxDimension
 
 	// Decode based on format
 	if ext == ".heic" || ext == ".heif" {
-		// Decode HEIC using goheif
-		img, err = goheif.Decode(srcFile)
+		img, err = heic.Decode(srcFile)
 		if err != nil {
 			return fmt.Errorf("failed to decode HEIC image: %w", err)
 		}
 		log.Printf("[ImageService] HEIC decoded successfully, dimensions: %dx%d", img.Bounds().Dx(), img.Bounds().Dy())
 
-		// Extract EXIF orientation from HEIC
-		// Need to reopen file for EXIF extraction
 		srcFile.Close()
-		srcFile, err = os.Open(sourcePath)
-		if err == nil {
-			exifData, err := goheif.ExtractExif(srcFile)
-			if err == nil && len(exifData) > 0 {
-				log.Printf("[ImageService] EXIF data extracted, length: %d bytes", len(exifData))
-				// Parse EXIF to get orientation
-				orientation = s.getOrientationFromExif(exifData)
-				log.Printf("[ImageService] EXIF orientation detected: %d", orientation)
-			} else {
-				log.Printf("[ImageService] Failed to extract EXIF or empty: %v", err)
-				// For iPhone HEIC, assume orientation 6 (most common)
-				// This is a fallback when EXIF extraction fails
-				orientation = 6
-				log.Printf("[ImageService] Using fallback orientation: %d (iPhone portrait)", orientation)
-			}
+		exifData, exifErr := s.extractHeicExif(sourcePath)
+		if exifErr == nil && len(exifData) > 0 {
+			orientation = s.getOrientationFromExif(exifData)
+			log.Printf("[ImageService] EXIF orientation detected: %d", orientation)
+		} else {
+			orientation = 6
+			log.Printf("[ImageService] Using fallback orientation: %d (iPhone portrait)", orientation)
 		}
 	} else {
 		// For JPEG/PNG, try to extract EXIF orientation before decoding
@@ -161,8 +151,6 @@ func (s *ImageService) getOrientationFromFile(file *os.File) int {
 
 // getOrientationFromExif extracts orientation from EXIF byte data
 func (s *ImageService) getOrientationFromExif(exifData []byte) int {
-	// Parse EXIF data using goexif library
-	// goheif.ExtractExif returns raw EXIF data that can be parsed
 	
 	// Create a reader from the EXIF byte data
 	reader := bytes.NewReader(exifData)
@@ -189,6 +177,21 @@ func (s *ImageService) getOrientationFromExif(exifData []byte) int {
 
 	log.Printf("[ImageService] Successfully extracted orientation from EXIF: %d", orient)
 	return orient
+}
+
+// extractHeicExif extracts raw EXIF data from a HEIC/HEIF file
+func (s *ImageService) extractHeicExif(sourcePath string) ([]byte, error) {
+	f, err := os.Open(sourcePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open HEIC for EXIF: %w", err)
+	}
+	defer f.Close()
+
+	h := heifparser.Open(f)
+	if h == nil {
+		return nil, fmt.Errorf("failed to parse HEIC container")
+	}
+	return h.EXIF()
 }
 
 // applyOrientation applies EXIF orientation transformation to image
