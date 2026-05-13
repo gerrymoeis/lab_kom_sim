@@ -311,13 +311,12 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 
 	success := true
 	errorMsg := ""
-	entries := result.Entries
+	var entries []services.LogbookEntry
 	rawText := ""
 
 	if err != nil {
 		success = false
 		errorMsg = fmt.Sprintf("Gagal memproses OCR: %v. File tetap tersimpan, Anda bisa coba upload ulang.", err)
-		rawText = ""
 		entries = []services.LogbookEntry{}
 	} else {
 		success = result.Success
@@ -444,19 +443,19 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		`, dateValue, timeIn)
 		
 		if err == nil {
-			defer rows.Close()
 			for rows.Next() {
 				var existingDate time.Time
 				var existingName, existingNIM, existingTimeIn string
 				if err := rows.Scan(&existingDate, &existingName, &existingNIM, &existingTimeIn); err == nil {
-					// Check similarity
 					if isDuplicateEntry(dateValue, existingDate, timeIn, existingTimeIn, 
 						names[i], existingName, nims[i], existingNIM, dupConfig) {
 						isDuplicate = true
+						rows.Close()
 						break
 					}
 				}
 			}
+			rows.Close()
 		}
 
 		if isDuplicate {
