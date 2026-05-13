@@ -325,6 +325,37 @@ const FormValidator = {
 // Initialize form validation system
 FormValidator.init();
 
+// Client-side HEIC/HEIF to JPEG conversion
+async function heicToJpeg(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'heic' && ext !== 'heif') return file;
+
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob((blob) => {
+                    const jpegFile = new File([blob],
+                        file.name.replace(/\.(heic|heif)$/i, '.jpg'),
+                        { type: 'image/jpeg', lastModified: Date.now() }
+                    );
+                    resolve(jpegFile);
+                }, 'image/jpeg', 0.88);
+            };
+            img.onerror = () => reject(new Error('Gagal membaca HEIC. Coba pilih foto lain.'));
+            img.src = e.target.result;
+        };
+        reader.onerror = () => reject(new Error('Gagal membaca file'));
+        reader.readAsDataURL(file);
+    });
+}
+
 // Show toast notification
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toastContainer');

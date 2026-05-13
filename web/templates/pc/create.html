@@ -277,22 +277,15 @@ function setupFileHandlers() {
 
 async function handleFileSelect(file, type, source) {
     if (!file) return;
-    
-    // Show loading state
     showLoadingState(type);
     
     try {
-        // Upload and process immediately
+        file = await heicToJpeg(file);
         const result = await uploadForProcessing(file, type);
         
         if (result.success) {
-            // Show preview from processed file
             showPreview(result.preview_url, type);
-            
-            // Store file reference for form submission
             storeFileReference(result.file_ref, type);
-            
-            // Clear other input
             clearOtherInput(type, source);
         } else {
             throw new Error(result.message);
