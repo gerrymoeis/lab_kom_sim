@@ -12,7 +12,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.44
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/xuri/excelize/v2 v2.10.1
-	go4.org v0.0.0-20260112195520-a5071408f32f
 	golang.org/x/crypto v0.50.0
 )
 

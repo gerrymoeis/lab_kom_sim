@@ -14,7 +14,6 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/gen2brain/heic"
 	"github.com/rwcarlsen/goexif/exif"
-	heifparser "go4.org/media/heif"
 )
 
 // ImageService handles image compression and processing
@@ -60,17 +59,7 @@ func (s *ImageService) CompressAndSave(sourcePath, destPath string, maxDimension
 		}
 		log.Printf("[ImageService] HEIC decode: %v, dims: %dx%d", time.Since(t0), img.Bounds().Dx(), img.Bounds().Dy())
 
-		srcFile.Close()
-		t1 := time.Now()
-		exifData, exifErr := s.extractHeicExif(sourcePath)
-		log.Printf("[ImageService] EXIF extract: %v, len=%d, err=%v", time.Since(t1), len(exifData), exifErr)
-		if exifErr == nil && len(exifData) > 0 {
-			orientation = s.getOrientationFromExif(exifData)
-		} else {
-			orientation = 6
-			log.Printf("[ImageService] Using fallback orientation: 6 (iPhone portrait)")
-		}
-		log.Printf("[ImageService] EXIF orientation detected: %d", orientation)
+		orientation = 1
 	} else {
 		orientation = s.getOrientationFromFile(srcFile)
 		log.Printf("[ImageService] JPEG/PNG orientation detected: %d", orientation)
@@ -176,21 +165,6 @@ func (s *ImageService) getOrientationFromExif(exifData []byte) int {
 
 	log.Printf("[ImageService] Successfully extracted orientation from EXIF: %d", orient)
 	return orient
-}
-
-// extractHeicExif extracts raw EXIF data from a HEIC/HEIF file
-func (s *ImageService) extractHeicExif(sourcePath string) ([]byte, error) {
-	f, err := os.Open(sourcePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open HEIC for EXIF: %w", err)
-	}
-	defer f.Close()
-
-	h := heifparser.Open(f)
-	if h == nil {
-		return nil, fmt.Errorf("failed to parse HEIC container")
-	}
-	return h.EXIF()
 }
 
 // applyOrientation applies EXIF orientation transformation to image
