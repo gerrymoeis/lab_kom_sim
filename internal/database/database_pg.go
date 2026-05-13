@@ -141,7 +141,7 @@ func runPostgresMigrations(db *DB) error {
 			username TEXT NOT NULL,
 			user_role TEXT NOT NULL,
 			action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
-			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth')),
+			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage')),
 			entity_id INTEGER,
 			description TEXT NOT NULL,
 			old_values TEXT,
@@ -285,6 +285,17 @@ func runPostgresMigrations(db *DB) error {
 	_, err = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, LOWER(TRIM(student_name)), time_in)`)
 	if err != nil {
 		return fmt.Errorf("failed to create unique index: %w", err)
+	}
+
+	// Update activity_logs entity_type CHECK constraint to include device_loan and device_usage
+	_, err = db.Exec(`ALTER TABLE activity_logs DROP CONSTRAINT IF EXISTS activity_logs_entity_type_check`)
+	if err != nil {
+		fmt.Printf("Warning: Failed to drop activity_logs constraint: %v\n", err)
+	}
+	_, err = db.Exec(`ALTER TABLE activity_logs ADD CONSTRAINT activity_logs_entity_type_check 
+		CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage'))`)
+	if err != nil {
+		fmt.Printf("Warning: Failed to add activity_logs constraint: %v\n", err)
 	}
 
 	return seedDeviceTypesIfEmpty(db, "TRUE", "FALSE")
