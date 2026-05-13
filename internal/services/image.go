@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/disintegration/imaging"
 	"github.com/gen2brain/heic"
@@ -37,93 +38,91 @@ func NewImageService() *ImageService {
 // maxDimension: maximum width or height (maintains aspect ratio)
 // Returns error if compression fails
 func (s *ImageService) CompressAndSave(sourcePath, destPath string, maxDimension int) error {
-	// Open source image
+	tStart := time.Now()
+
 	srcFile, err := os.Open(sourcePath)
 	if err != nil {
 		return fmt.Errorf("failed to open source image: %w", err)
 	}
 	defer srcFile.Close()
 
-	// Detect file format by extension
 	ext := strings.ToLower(filepath.Ext(sourcePath))
 	var img image.Image
-	var orientation int = 1 // Default orientation (normal)
+	var orientation int = 1
 
 	log.Printf("[ImageService] Processing file: %s (ext: %s)", sourcePath, ext)
 
-	// Decode based on format
 	if ext == ".heic" || ext == ".heif" {
+		t0 := time.Now()
 		img, err = heic.Decode(srcFile)
 		if err != nil {
 			return fmt.Errorf("failed to decode HEIC image: %w", err)
 		}
-		log.Printf("[ImageService] HEIC decoded successfully, dimensions: %dx%d", img.Bounds().Dx(), img.Bounds().Dy())
+		log.Printf("[ImageService] HEIC decode: %v, dims: %dx%d", time.Since(t0), img.Bounds().Dx(), img.Bounds().Dy())
 
 		srcFile.Close()
+		t1 := time.Now()
 		exifData, exifErr := s.extractHeicExif(sourcePath)
+		log.Printf("[ImageService] EXIF extract: %v, len=%d, err=%v", time.Since(t1), len(exifData), exifErr)
 		if exifErr == nil && len(exifData) > 0 {
 			orientation = s.getOrientationFromExif(exifData)
-			log.Printf("[ImageService] EXIF orientation detected: %d", orientation)
 		} else {
 			orientation = 6
-			log.Printf("[ImageService] Using fallback orientation: %d (iPhone portrait)", orientation)
+			log.Printf("[ImageService] Using fallback orientation: 6 (iPhone portrait)")
 		}
+		log.Printf("[ImageService] EXIF orientation detected: %d", orientation)
 	} else {
-		// For JPEG/PNG, try to extract EXIF orientation before decoding
 		orientation = s.getOrientationFromFile(srcFile)
 		log.Printf("[ImageService] JPEG/PNG orientation detected: %d", orientation)
-		
-		// Reset file pointer after EXIF read
+
 		srcFile.Seek(0, 0)
-		
-		// Decode JPEG/PNG using standard library
+
+		t0 := time.Now()
 		img, _, err = image.Decode(srcFile)
 		if err != nil {
 			return fmt.Errorf("failed to decode image: %w", err)
 		}
-		log.Printf("[ImageService] JPEG/PNG decoded successfully, dimensions: %dx%d", img.Bounds().Dx(), img.Bounds().Dy())
+		log.Printf("[ImageService] JPEG/PNG decode: %v, dims: %dx%d", time.Since(t0), img.Bounds().Dx(), img.Bounds().Dy())
 	}
 
-	// Apply EXIF orientation transformation
+	t2 := time.Now()
 	log.Printf("[ImageService] Applying orientation transformation: %d", orientation)
 	img = s.applyOrientation(img, orientation)
-	log.Printf("[ImageService] After orientation, dimensions: %dx%d", img.Bounds().Dx(), img.Bounds().Dy())
+	log.Printf("[ImageService] Orientation transform: %v, new dims: %dx%d", time.Since(t2), img.Bounds().Dx(), img.Bounds().Dy())
 
-	// Get dimensions after orientation correction
 	bounds := img.Bounds()
 	width := bounds.Dx()
 	height := bounds.Dy()
 
-	// Resize if needed (maintain aspect ratio)
 	var resized image.Image
 	if width > maxDimension || height > maxDimension {
-		resized = imaging.Fit(img, maxDimension, maxDimension, imaging.Lanczos)
-		log.Printf("[ImageService] Resized to fit %d, new dimensions: %dx%d", maxDimension, resized.Bounds().Dx(), resized.Bounds().Dy())
+		t3 := time.Now()
+		resized = imaging.Fit(img, maxDimension, maxDimension, imaging.MitchellNetravali)
+		log.Printf("[ImageService] Resize (MitchellNetravali): %v, dims: %dx%d", time.Since(t3), resized.Bounds().Dx(), resized.Bounds().Dy())
 	} else {
 		resized = img
 		log.Printf("[ImageService] No resize needed (within %d)", maxDimension)
 	}
 
-	// Create destination directory if not exists
 	destDir := filepath.Dir(destPath)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	// Create destination file
 	destFile, err := os.Create(destPath)
 	if err != nil {
 		return fmt.Errorf("failed to create destination file: %w", err)
 	}
 	defer destFile.Close()
 
-	// Encode to JPEG with quality setting
+	t4 := time.Now()
 	options := &jpeg.Options{Quality: s.quality}
 	if err := jpeg.Encode(destFile, resized, options); err != nil {
 		return fmt.Errorf("failed to encode JPEG: %w", err)
 	}
+	log.Printf("[ImageService] JPEG encode: %v", time.Since(t4))
 
-	log.Printf("[ImageService] Successfully saved to: %s", destPath)
+	log.Printf("[ImageService] TOTAL: %v — saved to: %s", time.Since(tStart), destPath)
 	return nil
 }
 
