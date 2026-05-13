@@ -47,6 +47,47 @@ func (db *DB) Prepare(query string) (*sql.Stmt, error) {
 	return db.DB.Prepare(query)
 }
 
+type Tx struct {
+	*sql.Tx
+	rewrite bool
+}
+
+func (db *DB) Begin() (*Tx, error) {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	return &Tx{Tx: tx, rewrite: db.rewrite}, nil
+}
+
+func (tx *Tx) Exec(query string, args ...interface{}) (sql.Result, error) {
+	if tx.rewrite {
+		query = rewriteQM(query)
+	}
+	return tx.Tx.Exec(query, args...)
+}
+
+func (tx *Tx) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	if tx.rewrite {
+		query = rewriteQM(query)
+	}
+	return tx.Tx.Query(query, args...)
+}
+
+func (tx *Tx) QueryRow(query string, args ...interface{}) *sql.Row {
+	if tx.rewrite {
+		query = rewriteQM(query)
+	}
+	return tx.Tx.QueryRow(query, args...)
+}
+
+func (tx *Tx) Prepare(query string) (*sql.Stmt, error) {
+	if tx.rewrite {
+		query = rewriteQM(query)
+	}
+	return tx.Tx.Prepare(query)
+}
+
 func rewriteQM(query string) string {
 	if !strings.Contains(query, "?") {
 		return query
