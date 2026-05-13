@@ -80,6 +80,9 @@ type GeminiResponse struct {
 
 // ExtractLogbookFromImage extracts logbook data from image using Gemini API
 func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, error) {
+	totalStart := time.Now()
+	log.Printf("[OCR] Starting OCR for %s", imagePath)
+
 	imageData, err := os.ReadFile(imagePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read image: %w", err)
@@ -99,23 +102,26 @@ func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, erro
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
 			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
-			log.Printf("[OCR] Retry %d/%d, waiting %v", attempt, maxRetries, backoff)
+			log.Printf("[OCR] Retry %d/%d after %v (elapsed: %v)", attempt, maxRetries, backoff, time.Since(totalStart))
 			time.Sleep(backoff)
 		}
 
+		callStart := time.Now()
 		responseText, lastErr = s.callGemini(base64Image, mimeType)
 		if lastErr == nil {
+			log.Printf("[OCR] Gemini success on attempt %d in %v (total: %v)", attempt+1, time.Since(callStart), time.Since(totalStart))
 			break
 		}
 
 		if !isTransientError(lastErr) {
+			log.Printf("[OCR] Non-transient error attempt %d in %v: %v", attempt+1, time.Since(callStart), lastErr)
 			break
 		}
-		log.Printf("[OCR] Transient error attempt %d: %v", attempt+1, lastErr)
+		log.Printf("[OCR] Transient error attempt %d in %v: %v", attempt+1, time.Since(callStart), lastErr)
 	}
 
 	if lastErr != nil {
-		return nil, lastErr
+		return nil, fmt.Errorf("OCR failed after %v: %w", time.Since(totalStart), lastErr)
 	}
 
 	jsonText := responseText
