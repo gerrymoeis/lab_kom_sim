@@ -128,7 +128,7 @@ func (h *Handler) DeviceLoanCreatePage(c *gin.Context) {
 	rows, err := h.db.Query(`
 		SELECT id, asset_code, name, item_type, quantity_available, is_loanable
 		FROM devices
-		WHERE is_loanable = 1 AND quantity_available > 0
+		WHERE is_loanable = TRUE AND quantity_available > 0
 		ORDER BY name
 	`)
 	if err != nil {

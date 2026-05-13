@@ -1,0 +1,20 @@
+fix: resolve boolean PG compatibility, OCR retry, and activity log errors
+
+Items 8.2, 9, 10:
+
+Item 9 - Boolean PostgreSQL compatibility:
+- is_loanable = 1 to is_loanable = TRUE in device_loan.go
+- is_consumable = 1 to is_consumable = TRUE in device_usage.go
+- PostgreSQL BOOLEAN type does not support integer comparison
+
+Item 8.2 - Gemini OCR reliability:
+- Add retry loop (max 3 attempts) with exponential backoff
+- Retry on transient errors: 429, 5xx
+- Keep 60s HTTP timeout per call (no hard total cap)
+- On failure: show preview page with error (not error.html)
+- Uploaded file preserved so admin can retry
+
+Item 10 - Activity log error recording:
+- Add variadic errorMsg to LogCreate, LogUpdate, LogDelete, LogUpload
+- Existing callers unchanged (no arg = success)
+- When errorMsg provided: status='failed', error_message filled

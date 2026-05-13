@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -79,22 +80,106 @@ type GeminiResponse struct {
 
 // ExtractLogbookFromImage extracts logbook data from image using Gemini API
 func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, error) {
-	// Read image file
 	imageData, err := os.ReadFile(imagePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read image: %w", err)
 	}
 
-	// Encode image to base64
 	base64Image := base64.StdEncoding.EncodeToString(imageData)
 
-	// Determine mime type
 	mimeType := "image/jpeg"
 	if strings.HasSuffix(strings.ToLower(imagePath), ".png") {
 		mimeType = "image/png"
 	}
 
-	// Create prompt for Gemini
+	maxRetries := 3
+	var responseText string
+	var lastErr error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			log.Printf("[OCR] Retry %d/%d, waiting %v", attempt, maxRetries, backoff)
+			time.Sleep(backoff)
+		}
+
+		responseText, lastErr = s.callGemini(base64Image, mimeType)
+		if lastErr == nil {
+			break
+		}
+
+		if !isTransientError(lastErr) {
+			break
+		}
+		log.Printf("[OCR] Transient error attempt %d: %v", attempt+1, lastErr)
+	}
+
+	if lastErr != nil {
+		return nil, lastErr
+	}
+
+	jsonText := responseText
+	if strings.Contains(responseText, "```json") {
+		start := strings.Index(responseText, "```json")
+		if start != -1 {
+			start += 7
+			end := strings.Index(responseText[start:], "```")
+			if end != -1 {
+				jsonText = responseText[start : start+end]
+			}
+		}
+	} else if strings.Contains(responseText, "```") {
+		start := strings.Index(responseText, "```")
+		if start != -1 {
+			start += 3
+			end := strings.Index(responseText[start:], "```")
+			if end != -1 {
+				jsonText = responseText[start : start+end]
+			}
+		}
+	}
+	jsonText = strings.TrimSpace(jsonText)
+
+	var result struct {
+		Entries []LogbookEntry `json:"entries"`
+	}
+	result.Entries = []LogbookEntry{}
+
+	if err := json.Unmarshal([]byte(jsonText), &result); err != nil {
+		return &OCRResult{
+			Success: false,
+			Entries: []LogbookEntry{},
+			RawText: responseText,
+			Error:   fmt.Sprintf("Gagal parse JSON: %v", err),
+		}, nil
+	}
+
+	if len(result.Entries) == 0 {
+		return &OCRResult{
+			Success: false,
+			Entries: []LogbookEntry{},
+			RawText: responseText,
+			Error:   "JSON valid tapi tidak ada entry ditemukan.",
+		}, nil
+	}
+
+	for i := range result.Entries {
+		normalizeTimeEntry(&result.Entries[i])
+		result.Entries[i].StudentName = toTitleCase(result.Entries[i].StudentName)
+		result.Entries[i].Purpose = toTitleCase(result.Entries[i].Purpose)
+		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
+		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
+	}
+
+	return &OCRResult{
+		Success: true,
+		Entries: result.Entries,
+		RawText: responseText,
+	}, nil
+}
+
+// callGemini sends image to Gemini API and returns response text
+func (s *OCRService) callGemini(base64Image, mimeType string) (string, error) {
 	prompt := `Analyze this image of a handwritten logbook/attendance table.
 Extract the data and return it in JSON format with the following structure:
 
@@ -150,11 +235,6 @@ CRITICAL RULES - READ CAREFULLY:
      * 3 ↔ 8 (similar shapes)
      * 1 ↔ 7 (handwriting variation)
      * 0 ↔ 6 (similar shapes)
-   - Cross-reference strategy:
-     * If "Ulul Rosyad R" has NIM "24091397101" in row 1
-     * And "Ulul Rosyad R" appears again in row 5 with unclear NIM
-     * Use "24091397101" from row 1 (same person = same NIM)
-   - If uncertain about a digit, prefer the most common pattern in the table
 
 6. TIME FIELDS:
    - If you see a COMBINED time range like "13.00 - 14.40" or "13:00 - 14:40":
@@ -162,10 +242,6 @@ CRITICAL RULES - READ CAREFULLY:
      * Put the START time in "time_in" field
      * Put the END time in "time_out" field
    - If you see dots (.) in time format, CONVERT them to colons (:)
-   - Examples:
-     * Input: "13.00 - 14.40" → Output: time_in="13:00", time_out="14:40"
-     * Input: "09.00 - 10.20" → Output: time_in="09:00", time_out="10:20"
-     * Input: "~~~" → Copy from row above
    - Always use HH:MM format (24-hour)
 
 7. TEXT QUALITY:
@@ -178,20 +254,12 @@ CRITICAL RULES - READ CAREFULLY:
 
 Please extract the data now with smart context understanding:`
 
-	// Create request
 	reqBody := GeminiRequest{
 		Contents: []GeminiContent{
 			{
 				Parts: []GeminiPart{
-					{
-						Text: prompt,
-					},
-					{
-						InlineData: &GeminiInlineData{
-							MimeType: mimeType,
-							Data:     base64Image,
-						},
-					},
+					{Text: prompt},
+					{InlineData: &GeminiInlineData{MimeType: mimeType, Data: base64Image}},
 				},
 			},
 		},
@@ -199,138 +267,52 @@ Please extract the data now with smart context understanding:`
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// Call Gemini API
-	// Using gemini-3.1-flash-lite which works correctly
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=%s", s.apiKey)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return "", fmt.Errorf("failed to create request: %w", err)
 	}
-
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call Gemini API: %w", err)
+		return "", fmt.Errorf("failed to call Gemini API: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return "", fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Gemini API error (status %d): %s", resp.StatusCode, string(body))
+		return "", fmt.Errorf("Gemini API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
-	// Parse response
 	var geminiResp GeminiResponse
 	if err := json.Unmarshal(body, &geminiResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
-		return nil, fmt.Errorf("no response from Gemini API")
+		return "", fmt.Errorf("no response from Gemini API")
 	}
 
-	// Extract text from response
-	responseText := geminiResp.Candidates[0].Content.Parts[0].Text
+	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
+}
 
-	// Try to parse JSON from response
-	// Sometimes Gemini wraps JSON in markdown code blocks
-	jsonText := responseText
-
-	// Remove markdown code blocks if present
-	if strings.Contains(responseText, "```json") {
-		// Find the start after ```json
-		start := strings.Index(responseText, "```json")
-		if start != -1 {
-			start += 7 // length of "```json"
-			// Find the closing ```
-			end := strings.Index(responseText[start:], "```")
-			if end != -1 {
-				jsonText = responseText[start : start+end]
-			}
-		}
-	} else if strings.Contains(responseText, "```") {
-		// Generic code block
-		start := strings.Index(responseText, "```")
-		if start != -1 {
-			start += 3 // length of "```"
-			end := strings.Index(responseText[start:], "```")
-			if end != -1 {
-				jsonText = responseText[start : start+end]
-			}
-		}
-	}
-
-	jsonText = strings.TrimSpace(jsonText)
-
-	// Parse extracted data
-	var result struct {
-		Entries []LogbookEntry `json:"entries"`
-	}
-
-	// Initialize with empty slice to avoid nil
-	result.Entries = []LogbookEntry{}
-
-	if err := json.Unmarshal([]byte(jsonText), &result); err != nil {
-		// If JSON parsing fails, return raw text for manual processing
-		return &OCRResult{
-			Success: false,
-			Entries: []LogbookEntry{}, // Empty array instead of nil
-			RawText: responseText,
-			Error:   fmt.Sprintf("Failed to parse JSON: %v. Raw JSON text length: %d chars. Please check the raw text.", err, len(jsonText)),
-		}, nil
-	}
-
-	// Check if entries were actually parsed
-	if len(result.Entries) == 0 {
-		return &OCRResult{
-			Success: false,
-			Entries: []LogbookEntry{}, // Empty array
-			RawText: responseText,
-			Error:   "JSON parsed successfully but no entries found. Check if JSON structure matches expected format.",
-		}, nil
-	}
-
-	// Normalize time format for all entries (post-processing fallback)
-	for i := range result.Entries {
-		normalizeTimeEntry(&result.Entries[i])
-
-		// Apply text normalization
-		result.Entries[i].StudentName = toTitleCase(result.Entries[i].StudentName)
-		result.Entries[i].Purpose = toTitleCase(result.Entries[i].Purpose)
-		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
-
-		// Remove extra whitespace from NIM
-		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
-	}
-
-	// Check for potential duplicates within the extracted entries
-	// Mark entries that have same name + date + time
-	duplicateWarnings := make(map[int][]int) // map[index][]duplicate_indices
-	for i := 0; i < len(result.Entries); i++ {
-		for j := i + 1; j < len(result.Entries); j++ {
-			// Same name (case-insensitive) + same date + same time_in
-			if strings.EqualFold(strings.TrimSpace(result.Entries[i].StudentName), strings.TrimSpace(result.Entries[j].StudentName)) &&
-				result.Entries[i].Date == result.Entries[j].Date &&
-				result.Entries[i].TimeIn == result.Entries[j].TimeIn {
-				duplicateWarnings[i] = append(duplicateWarnings[i], j)
-			}
-		}
-	}
-
-	return &OCRResult{
-		Success: true,
-		Entries: result.Entries,
-		RawText: responseText,
-	}, nil
+// isTransientError returns true if the error is retryable
+func isTransientError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "status 429") ||
+		strings.Contains(msg, "status 500") ||
+		strings.Contains(msg, "status 502") ||
+		strings.Contains(msg, "status 503") ||
+		strings.Contains(msg, "status 504")
 }
 
 // normalizeTimeEntry normalizes time format in logbook entry

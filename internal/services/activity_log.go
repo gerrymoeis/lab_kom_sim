@@ -55,35 +55,49 @@ func (s *ActivityLogService) Log(log *models.ActivityLog) error {
 }
 
 // LogCreate logs a create action
-func (s *ActivityLogService) LogCreate(userID int, username, role, entityType string, entityID int, newValues interface{}, ipAddress, userAgent string) error {
+func (s *ActivityLogService) LogCreate(userID int, username, role, entityType string, entityID int, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
 	newValuesJSON, err := json.Marshal(newValues)
 	if err != nil {
 		return fmt.Errorf("failed to marshal new values: %w", err)
 	}
 
+	errText := ""
+	if len(errorMsg) > 0 {
+		errText = errorMsg[0]
+	}
+
+	status := "success"
+	if errText != "" {
+		status = "failed"
+	}
+
 	description := fmt.Sprintf("Created %s #%d", entityType, entityID)
+	if errText != "" {
+		description = fmt.Sprintf("Failed to create %s #%d: %s", entityType, entityID, errText)
+	}
 
 	log := &models.ActivityLog{
-		UserID:      userID,
-		Username:    username,
-		UserRole:    role,
-		Action:      "create",
-		EntityType:  entityType,
-		EntityID:    &entityID,
-		Description: description,
-		OldValues:   "",
-		NewValues:   string(newValuesJSON),
-		CreatedAt:   time.Now(),
-		IPAddress:   ipAddress,
-		UserAgent:   userAgent,
-		Status:      "success",
+		UserID:       userID,
+		Username:     username,
+		UserRole:     role,
+		Action:       "create",
+		EntityType:   entityType,
+		EntityID:     &entityID,
+		Description:  description,
+		OldValues:    "",
+		NewValues:    string(newValuesJSON),
+		CreatedAt:    time.Now(),
+		IPAddress:    ipAddress,
+		UserAgent:    userAgent,
+		Status:       status,
+		ErrorMessage: errText,
 	}
 
 	return s.Log(log)
 }
 
 // LogUpdate logs an update action
-func (s *ActivityLogService) LogUpdate(userID int, username, role, entityType string, entityID int, oldValues, newValues interface{}, ipAddress, userAgent string) error {
+func (s *ActivityLogService) LogUpdate(userID int, username, role, entityType string, entityID int, oldValues, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
 	oldValuesJSON, err := json.Marshal(oldValues)
 	if err != nil {
 		return fmt.Errorf("failed to marshal old values: %w", err)
@@ -94,58 +108,99 @@ func (s *ActivityLogService) LogUpdate(userID int, username, role, entityType st
 		return fmt.Errorf("failed to marshal new values: %w", err)
 	}
 
+	errText := ""
+	if len(errorMsg) > 0 {
+		errText = errorMsg[0]
+	}
+
+	status := "success"
+	if errText != "" {
+		status = "failed"
+	}
+
 	description := fmt.Sprintf("Updated %s #%d", entityType, entityID)
+	if errText != "" {
+		description = fmt.Sprintf("Failed to update %s #%d: %s", entityType, entityID, errText)
+	}
 
 	log := &models.ActivityLog{
-		UserID:      userID,
-		Username:    username,
-		UserRole:    role,
-		Action:      "update",
-		EntityType:  entityType,
-		EntityID:    &entityID,
-		Description: description,
-		OldValues:   string(oldValuesJSON),
-		NewValues:   string(newValuesJSON),
-		CreatedAt:   time.Now(),
-		IPAddress:   ipAddress,
-		UserAgent:   userAgent,
-		Status:      "success",
+		UserID:       userID,
+		Username:     username,
+		UserRole:     role,
+		Action:       "update",
+		EntityType:   entityType,
+		EntityID:     &entityID,
+		Description:  description,
+		OldValues:    string(oldValuesJSON),
+		NewValues:    string(newValuesJSON),
+		CreatedAt:    time.Now(),
+		IPAddress:    ipAddress,
+		UserAgent:    userAgent,
+		Status:       status,
+		ErrorMessage: errText,
 	}
 
 	return s.Log(log)
 }
 
 // LogDelete logs a delete action
-func (s *ActivityLogService) LogDelete(userID int, username, role, entityType string, entityID int, oldValues interface{}, ipAddress, userAgent string) error {
+func (s *ActivityLogService) LogDelete(userID int, username, role, entityType string, entityID int, oldValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
 	oldValuesJSON, err := json.Marshal(oldValues)
 	if err != nil {
 		return fmt.Errorf("failed to marshal old values: %w", err)
 	}
 
+	errText := ""
+	if len(errorMsg) > 0 {
+		errText = errorMsg[0]
+	}
+
+	status := "success"
+	if errText != "" {
+		status = "failed"
+	}
+
 	description := fmt.Sprintf("Deleted %s #%d", entityType, entityID)
+	if errText != "" {
+		description = fmt.Sprintf("Failed to delete %s #%d: %s", entityType, entityID, errText)
+	}
 
 	log := &models.ActivityLog{
-		UserID:      userID,
-		Username:    username,
-		UserRole:    role,
-		Action:      "delete",
-		EntityType:  entityType,
-		EntityID:    &entityID,
-		Description: description,
-		OldValues:   string(oldValuesJSON),
-		NewValues:   "",
-		CreatedAt:   time.Now(),
-		IPAddress:   ipAddress,
-		UserAgent:   userAgent,
-		Status:      "success",
+		UserID:       userID,
+		Username:     username,
+		UserRole:     role,
+		Action:       "delete",
+		EntityType:   entityType,
+		EntityID:     &entityID,
+		Description:  description,
+		OldValues:    string(oldValuesJSON),
+		NewValues:    "",
+		CreatedAt:    time.Now(),
+		IPAddress:    ipAddress,
+		UserAgent:    userAgent,
+		Status:       status,
+		ErrorMessage: errText,
 	}
 
 	return s.Log(log)
 }
 
 // LogUpload logs a file upload action
-func (s *ActivityLogService) LogUpload(userID int, username, role, entityType string, entityID int, filename, fileType string, ipAddress, userAgent string) error {
+func (s *ActivityLogService) LogUpload(userID int, username, role, entityType string, entityID int, filename, fileType string, ipAddress, userAgent string, errorMsg ...string) error {
+	errText := ""
+	if len(errorMsg) > 0 {
+		errText = errorMsg[0]
+	}
+
+	status := "success"
+	if errText != "" {
+		status = "failed"
+	}
+
 	description := fmt.Sprintf("Uploaded %s for %s #%d: %s", fileType, entityType, entityID, filename)
+	if errText != "" {
+		description = fmt.Sprintf("Failed to upload %s for %s #%d: %s", fileType, entityType, entityID, errText)
+	}
 
 	newValues := map[string]string{
 		"filename":  filename,
@@ -158,19 +213,20 @@ func (s *ActivityLogService) LogUpload(userID int, username, role, entityType st
 	}
 
 	log := &models.ActivityLog{
-		UserID:      userID,
-		Username:    username,
-		UserRole:    role,
-		Action:      "upload",
-		EntityType:  entityType,
-		EntityID:    &entityID,
-		Description: description,
-		OldValues:   "",
-		NewValues:   string(newValuesJSON),
-		CreatedAt:   time.Now(),
-		IPAddress:   ipAddress,
-		UserAgent:   userAgent,
-		Status:      "success",
+		UserID:       userID,
+		Username:     username,
+		UserRole:     role,
+		Action:       "upload",
+		EntityType:   entityType,
+		EntityID:     &entityID,
+		Description:  description,
+		OldValues:    "",
+		NewValues:    string(newValuesJSON),
+		CreatedAt:    time.Now(),
+		IPAddress:    ipAddress,
+		UserAgent:    userAgent,
+		Status:       status,
+		ErrorMessage: errText,
 	}
 
 	return s.Log(log)

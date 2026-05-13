@@ -109,7 +109,7 @@ func (h *Handler) DeviceUsageCreatePage(c *gin.Context) {
 	rows, err := h.db.Query(`
 		SELECT id, asset_code, name, item_type, quantity_available, is_consumable
 		FROM devices
-		WHERE is_consumable = 1 AND quantity_available > 0
+		WHERE is_consumable = TRUE AND quantity_available > 0
 		ORDER BY name
 	`)
 	if err != nil {

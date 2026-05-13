@@ -306,27 +306,35 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		return
 	}
 
-	// Process OCR
 	ocrService := services.NewOCRService(apiKey)
 	result, err := ocrService.ExtractLogbookFromImage(filepath)
+
+	success := true
+	errorMsg := ""
+	entries := result.Entries
+	rawText := ""
+
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": fmt.Sprintf("Gagal memproses OCR: %v", err),
-		})
-		return
+		success = false
+		errorMsg = fmt.Sprintf("Gagal memproses OCR: %v. File tetap tersimpan, Anda bisa coba upload ulang.", err)
+		rawText = ""
+		entries = []services.LogbookEntry{}
+	} else {
+		success = result.Success
+		errorMsg = result.Error
+		entries = result.Entries
+		rawText = result.RawText
 	}
 
-	// Redirect to preview page with extracted data
 	c.HTML(http.StatusOK, "logbook/preview.html", gin.H{
 		"title":       "Preview Hasil OCR - Sistem Inventaris Lab",
 		"currentPage": "logbook",
 		"username":    username,
 		"role":        role,
-		"entries":     result.Entries,
-		"raw_text":    result.RawText,
-		"success":     result.Success,
-		"error":       result.Error,
+		"entries":     entries,
+		"raw_text":    rawText,
+		"success":     success,
+		"error":       errorMsg,
 		"source_file": filename,
 	})
 }
