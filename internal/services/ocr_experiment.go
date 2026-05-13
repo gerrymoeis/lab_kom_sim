@@ -13,27 +13,27 @@ import (
 
 // FinanceEntry represents extracted finance table data
 type FinanceEntry struct {
-	No              string `json:"no"`
-	Jenis           string `json:"jenis"`
-	Nama            string `json:"nama"`
-	HargaDasar      string `json:"harga_dasar"`
-	HargaJual       string `json:"harga_jual"`
-	Untung          string `json:"untung"`
-	TotalUntung     string `json:"total_untung"`
-	Hutang          string `json:"hutang"`
-	TotalHutang     string `json:"total_hutang"`
-	Bayar           string `json:"bayar"`
-	SaldoTunai      string `json:"saldo_tunai"`
-	SaldoAkun       string `json:"saldo_akun"`
-	Total           string `json:"total"`
+	No          string `json:"no"`
+	Jenis       string `json:"jenis"`
+	Nama        string `json:"nama"`
+	HargaDasar  string `json:"harga_dasar"`
+	HargaJual   string `json:"harga_jual"`
+	Untung      string `json:"untung"`
+	TotalUntung string `json:"total_untung"`
+	Hutang      string `json:"hutang"`
+	TotalHutang string `json:"total_hutang"`
+	Bayar       string `json:"bayar"`
+	SaldoTunai  string `json:"saldo_tunai"`
+	SaldoAkun   string `json:"saldo_akun"`
+	Total       string `json:"total"`
 }
 
 // FinanceOCRResult represents the result of finance OCR processing
 type FinanceOCRResult struct {
-	Success bool            `json:"success"`
-	Entries []FinanceEntry  `json:"entries"`
-	RawText string          `json:"raw_text"`
-	Error   string          `json:"error,omitempty"`
+	Success bool           `json:"success"`
+	Entries []FinanceEntry `json:"entries"`
+	RawText string         `json:"raw_text"`
+	Error   string         `json:"error,omitempty"`
 }
 
 // ExtractFinanceTableFromImage extracts finance table data from image using Gemini API
@@ -54,7 +54,7 @@ func (s *OCRService) ExtractFinanceTableFromImage(imagePath string) (*FinanceOCR
 	}
 
 	// Create prompt for Gemini - Finance table specific
-	prompt := `Analyze this image of a handwritten finance/accounting table. 
+	prompt := `Analyze this image of a handwritten finance/accounting table.
 Extract ALL the data and return it in JSON format with the following structure:
 
 {
@@ -113,8 +113,8 @@ Please extract the data now:`
 	}
 
 	// Call Gemini API
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=%s", s.apiKey)
-	
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=%s", s.apiKey)
+
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -153,7 +153,7 @@ Please extract the data now:`
 	// Try to parse JSON from response
 	// Sometimes Gemini wraps JSON in markdown code blocks
 	jsonText := responseText
-	
+
 	// Remove markdown code blocks if present
 	if strings.Contains(responseText, "```json") {
 		// Find the start after ```json

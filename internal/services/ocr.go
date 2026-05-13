@@ -41,10 +41,10 @@ type LogbookEntry struct {
 
 // OCRResult represents the result of OCR processing
 type OCRResult struct {
-	Success bool            `json:"success"`
-	Entries []LogbookEntry  `json:"entries"`
-	RawText string          `json:"raw_text"`
-	Error   string          `json:"error,omitempty"`
+	Success bool           `json:"success"`
+	Entries []LogbookEntry `json:"entries"`
+	RawText string         `json:"raw_text"`
+	Error   string         `json:"error,omitempty"`
 }
 
 // GeminiRequest represents request to Gemini API
@@ -95,7 +95,7 @@ func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, erro
 	}
 
 	// Create prompt for Gemini
-	prompt := `Analyze this image of a handwritten logbook/attendance table. 
+	prompt := `Analyze this image of a handwritten logbook/attendance table.
 Extract the data and return it in JSON format with the following structure:
 
 {
@@ -203,9 +203,9 @@ Please extract the data now with smart context understanding:`
 	}
 
 	// Call Gemini API
-	// Using gemini-3-flash-preview which works correctly
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=%s", s.apiKey)
-	
+	// Using gemini-3.1-flash-lite which works correctly
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=%s", s.apiKey)
+
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -244,7 +244,7 @@ Please extract the data now with smart context understanding:`
 	// Try to parse JSON from response
 	// Sometimes Gemini wraps JSON in markdown code blocks
 	jsonText := responseText
-	
+
 	// Remove markdown code blocks if present
 	if strings.Contains(responseText, "```json") {
 		// Find the start after ```json
@@ -302,12 +302,12 @@ Please extract the data now with smart context understanding:`
 	// Normalize time format for all entries (post-processing fallback)
 	for i := range result.Entries {
 		normalizeTimeEntry(&result.Entries[i])
-		
+
 		// Apply text normalization
 		result.Entries[i].StudentName = toTitleCase(result.Entries[i].StudentName)
 		result.Entries[i].Purpose = toTitleCase(result.Entries[i].Purpose)
 		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
-		
+
 		// Remove extra whitespace from NIM
 		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
 	}
@@ -348,11 +348,11 @@ func normalizeTimeEntry(entry *LogbookEntry) {
 			}
 		}
 	}
-	
+
 	// Convert dots to colons in both fields
 	entry.TimeIn = strings.ReplaceAll(entry.TimeIn, ".", ":")
 	entry.TimeOut = strings.ReplaceAll(entry.TimeOut, ".", ":")
-	
+
 	// Validate and pad time format (ensure HH:MM)
 	entry.TimeIn = normalizeTimeFormat(entry.TimeIn)
 	entry.TimeOut = normalizeTimeFormat(entry.TimeOut)
@@ -363,22 +363,22 @@ func normalizeTimeFormat(timeStr string) string {
 	if timeStr == "" {
 		return ""
 	}
-	
+
 	// Remove any extra spaces
 	timeStr = strings.TrimSpace(timeStr)
-	
+
 	// If already in HH:MM format, return as is
 	if matched, _ := regexp.MatchString(`^\d{2}:\d{2}$`, timeStr); matched {
 		return timeStr
 	}
-	
+
 	// Try to parse and reformat
 	// Handle formats like "9:00" → "09:00"
 	parts := strings.Split(timeStr, ":")
 	if len(parts) == 2 {
 		hour := strings.TrimSpace(parts[0])
 		minute := strings.TrimSpace(parts[1])
-		
+
 		// Pad with zero if needed
 		if len(hour) == 1 {
 			hour = "0" + hour
@@ -386,7 +386,7 @@ func normalizeTimeFormat(timeStr string) string {
 		if len(minute) == 1 {
 			minute = "0" + minute
 		}
-		
+
 		// Validate hour and minute are numeric
 		if matched, _ := regexp.MatchString(`^\d+$`, hour); matched {
 			if matched, _ := regexp.MatchString(`^\d+$`, minute); matched {
@@ -394,7 +394,7 @@ func normalizeTimeFormat(timeStr string) string {
 			}
 		}
 	}
-	
+
 	// If cannot parse, return as is
 	return timeStr
 }
@@ -407,14 +407,14 @@ func normalizeText(text string) string {
 	if text == "" {
 		return ""
 	}
-	
+
 	// Trim leading and trailing whitespace
 	text = strings.TrimSpace(text)
-	
+
 	// Replace multiple spaces with single space
 	re := regexp.MustCompile(`\s+`)
 	text = re.ReplaceAllString(text, " ")
-	
+
 	return text
 }
 
@@ -423,10 +423,10 @@ func toTitleCase(text string) string {
 	if text == "" {
 		return ""
 	}
-	
+
 	// Normalize first
 	text = normalizeText(text)
-	
+
 	// Split by space and capitalize each word
 	words := strings.Fields(text)
 	for i, word := range words {
@@ -435,12 +435,12 @@ func toTitleCase(text string) string {
 			words[i] = strings.ToUpper(string(word[0])) + strings.ToLower(word[1:])
 		}
 	}
-	
+
 	result := strings.Join(words, " ")
-	
+
 	// Normalize abbreviations (singkatan)
 	result = normalizeAbbreviations(result)
-	
+
 	return result
 }
 
@@ -452,17 +452,17 @@ func normalizeAbbreviations(text string) string {
 	if text == "" {
 		return ""
 	}
-	
+
 	// Pattern: single uppercase letter followed by space or another uppercase letter
 	// This handles cases like "SW", "SH", "A", etc.
 	re := regexp.MustCompile(`\b([A-Z])([A-Z])\b`)
-	
+
 	// Add dots between consecutive uppercase letters
 	// "SW" → "S.W", "SH" → "S.H"
 	text = re.ReplaceAllString(text, "$1.$2")
-	
+
 	// Remove trailing dot at the end of text
 	text = strings.TrimSuffix(text, ".")
-	
+
 	return text
 }
