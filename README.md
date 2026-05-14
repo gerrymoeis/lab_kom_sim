@@ -6,9 +6,18 @@ Sistem manajemen inventaris laboratorium komputer dengan visualisasi grid PC, OC
 
 - **Backend**: Go 1.25+ dengan Gin Framework
 - **Database**: SQLite (lokal) / PostgreSQL / Neon DB (production)
-- **Frontend**: HTMX + Alpine.js + Bootstrap 5
-- **OCR**: Google Gemini API
-- **Image**: WASM-based HEIC decoder (gen2brain/heic)
+- **Frontend**: Bootstrap 5 + vanilla JS
+- **OCR**: OpenRouter (primary) → Google Gemini (fallback)
+- **Image**: WASM-based HEIC decoder (heic-to via CDN)
+
+## Branch Strategy
+
+| Branch | Tujuan |
+|--------|--------|
+| `deploy_test` | **Stabil** — branch deploy yang sudah teruji |
+| `refinement` | **Development** — fitur baru, perbaikan bug |
+| *(future)* `deploy/windows` | Deployment khusus Windows |
+| *(future)* `deploy/linux` | Deployment khusus Linux |
 
 ## Struktur Project
 
@@ -22,12 +31,13 @@ poc_prototype/
 │   ├── handlers/        # HTTP handlers
 │   ├── services/        # Business logic
 │   └── middleware/      # Auth, session
-├── web/templates/       # HTML templates
+├── web/templates/       # HTML templates (Go templates)
 ├── web/static/          # CSS, JS
 ├── uploads/             # Upload foto
 └── scripts/
     ├── build_termux.sh  # Build untuk Android/Termux
-    └── reset_database.sql / reset_database_pg.sql
+    ├── deploy.sh        # Auto-deploy via SSH
+    └── README_DEPLOY.md # Panduan auto-deploy
 ```
 
 ## Development Lokal (SQLite)
@@ -41,26 +51,41 @@ go run cmd/server/main.go
 # → http://localhost:8080
 ```
 
+## Auto Deploy (Laptop → HP Android via Tailscale + SSH)
+
+**Prasyarat:**
+- HP Android (Termux) dengan `sshd` berjalan di port 8022
+- HP dan laptop dalam 1 Tailscale network
+- SSH key laptop sudah terdaftar di HP (passwordless)
+
+**Setup sekali:**
+
+```powershell
+# Di laptop
+git config --global alias.deploy "!git push origin refinement && ssh -p 8022 -i C:/Users/Gallan/.ssh/id_sim_lab_mi galaxy-a52s-5g.taila6b5cf.ts.net 'cd ~/lab_kom_sim && ./scripts/deploy.sh'"
+```
+
+**Cara pakai:**
+
+```bash
+git deploy
+```
+
+Satu perintah → push ke GitHub → SSH ke HP → git pull → build → restart server.
+
 ## Deploy ke Android (Termux + Neon DB + Tailscale)
 
 ### Prasyarat
-- HP Android dengan Termux (dari F-Droid) & Tailscale terinstall
+- HP Android dengan Termux & Tailscale terinstall
 - Akun Neon DB (gratis di neon.tech)
-- Akun Tailscale (gratis, 3 users)
 
-### 1. Buat Database Neon DB
-
-1. Daftar di https://neon.tech
-2. Buat project baru (region: Singapore)
-3. Copy connection string: `postgres://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`
-
-### 2. Clone & Build di Termux
+### Setup di Termux
 
 ```bash
 pkg update && pkg upgrade -y
-pkg install golang git -y
+pkg install golang git openssh -y
 
-git clone -b deploy_test https://github.com/gerrymoeis/lab_kom_sim.git
+git clone -b refinement https://github.com/gerrymoeis/lab_kom_sim.git
 cd lab_kom_sim
 
 # Buat .env
@@ -73,76 +98,39 @@ ENVIRONMENT=production
 HOST=0.0.0.0
 PORT=8080
 DATABASE_URL=postgres://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
-SESSION_SECRET=generate-random-string-panjang
-UPLOAD_PATH=uploads
+SESSION_SECRET=random-string
 GEMINI_API_KEY=your-key
+OPENROUTER_API_KEY=sk-or-your-key
 ```
 
 ```bash
-# Build (WAJIB pakai CGO_ENABLED=0 + tags nodynamic)
-CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
-
-# Jalankan
-./app-simlab
-# → Server: http://0.0.0.0:8080
-```
-
-### 3. Setup Tailscale
-
-1. Install Tailscale di HP (Play Store) dan laptop
-2. Login di akun yang sama
-3. Di HP, pastikan Tailscale aktif (icon di status bar)
-4. Dari laptop: buka `http://[IP-TAILSCALE-HP]:8080`
-
-> MagicDNS: Jika diaktifkan, bisa akses via `http://[nama-perangkat]:8080`
-
-### 4. Reset Neon DB (jika perlu)
-
-Via Neon Console (https://console.neon.tech):
-1. Pilih project → **Branches**
-2. Main branch → **Reset**
-3. Atau via SQL Editor:
-
-```sql
-DROP SCHEMA public CASCADE;
-CREATE SCHEMA public;
-```
-
-Kemudian restart aplikasi — migrasi akan jalan dari awal.
-
-### 5. Deploy ke HP Lain
-
-Di HP baru:
-```bash
-pkg install golang git tailscale -y
-git clone -b deploy_test https://github.com/gerrymoeis/lab_kom_sim.git
-# Buat .env (isi DATABASE_URL sama)
 CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
 ./app-simlab
 ```
 
-Pastikan HP baru join ke tailnet yang sama (via Tailscale app).
+## Fitur
+
+- ✅ Dashboard grid 40 PC (8×5) dengan status color-coded
+- ✅ CRUD PC dengan upload foto serial & front panel
+- ✅ Manajemen perangkat (device types, loans, usages) — mutual exclusive dropdown
+- ✅ Software catalog (required + others) — many-to-many dengan toggle per PC
+- ✅ Batch edit software assignment (dari catalog, centang per PC)
+- ✅ OCR logbook absensi via OpenRouter → Gemini (retry + fallback)
+- ✅ Activity log / audit trail (success + failure)
+- ✅ Export Excel (PC, device, logbook, software catalog)
+- ✅ HEIC/HEIF photo upload (WASM client-side conversion)
+- ✅ PostgreSQL via Neon DB (production) / SQLite (development)
+- ✅ Auto-deploy via SSH + Tailscale
 
 ## Default Login
 
 - **Username**: admin
 - **Password**: admin123
 
-⚠️ Ganti password setelah login pertama!
-
-## Fitur
-
-- Dashboard grid 40 PC (8×5) dengan status color-coded
-- CRUD PC dengan foto serial & front panel
-- Manajemen perangkat (device types, loans, usages)
-- Software tracking per PC
-- OCR logbook absensi via Google Gemini
-- Activity log / audit trail
-- Export Excel
-
 ## Catatan Penting
 
-- HEIC/HEIF photos dari iPhone didukung (WASM decoder)
-- PostgreSQL mode aktif jika `DATABASE_URL` diisi
-- SQLite otomatis untuk development tanpa Neon
-- `?` placeholder di query otomatis dikonversi untuk PostgreSQL oleh wrapper
+- **Database**: `DATABASE_URL` diisi = PostgreSQL (Neon), kosong = SQLite lokal
+- **Placeholder**: `?` di query otomatis dikonversi ke `$N` untuk PostgreSQL (DB wrapper)
+- **Image**: HEIC dikonversi di browser via CDN library, server terima JPEG
+- **OCR**: OpenRouter primary (free vision model), Gemini fallback jika gagal
+- **Build**: WAJIB `CGO_ENABLED=0 -tags nodynamic` untuk Termux/Android
