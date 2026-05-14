@@ -280,17 +280,15 @@ func (h *Handler) PCDetail(c *gin.Context) {
 		}
 	}
 
-	// Separate required and other
 	var requiredSW, otherSW []models.PCSoftware
 	for _, sw := range pcSoftware {
 		if sw.Category == "required" {
 			requiredSW = append(requiredSW, sw)
-		} else {
+		} else if sw.Installed {
 			otherSW = append(otherSW, sw)
 		}
 	}
 
-	// Format lastChecked for display
 	var lastCheckedFormatted string
 	if pc.LastChecked != nil {
 		lastCheckedFormatted = pc.LastChecked.Format("02/01/2006 15:04")
@@ -720,7 +718,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 				}
 				if category == "required" {
 					requiredSW = append(requiredSW, sw)
-				} else {
+				} else if installed {
 					otherSW = append(otherSW, sw)
 				}
 			}

@@ -332,16 +332,17 @@
 
 <script>
 let catalogData = [];
+let autocompleteIndex = -1;
 
 fetch('/software/catalog.json')
     .then(r => r.json())
     .then(items => { catalogData = items; })
     .catch(() => {});
 
-document.getElementById('newOtherName').addEventListener('input', function() {
-    const val = this.value.toLowerCase().trim();
+function renderAutocomplete(val) {
     const box = document.getElementById('otherAutocomplete');
     box.innerHTML = '';
+    autocompleteIndex = -1;
     if (!val) { box.style.display = 'none'; return; }
 
     const matches = catalogData.filter(item => item.name.toLowerCase().includes(val));
@@ -352,21 +353,41 @@ document.getElementById('newOtherName').addEventListener('input', function() {
         a.type = 'button';
         a.className = 'list-group-item list-group-item-action py-1';
         a.textContent = item.name;
-        a.onclick = () => {
-            document.getElementById('newOtherName').value = item.name;
-            document.getElementById('newOtherDesc').value = item.description || '-';
-            box.style.display = 'none';
-            addOtherRow();
-        };
+        a.dataset.desc = item.description || '';
+        a.onclick = () => selectAutocomplete(item.name, item.description || '');
         box.appendChild(a);
     });
     box.style.display = 'block';
+}
+
+function selectAutocomplete(name, desc) {
+    document.getElementById('newOtherName').value = name;
+    document.getElementById('newOtherDesc').value = desc || '-';
+    document.getElementById('otherAutocomplete').style.display = 'none';
+    addOtherRow();
+}
+
+document.getElementById('newOtherName').addEventListener('input', function() {
+    renderAutocomplete(this.value.toLowerCase().trim());
 });
 
 document.getElementById('newOtherName').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
+    const items = document.querySelectorAll('#otherAutocomplete .list-group-item');
+    if (e.key === 'ArrowDown') {
         e.preventDefault();
-        addOtherRow();
+        autocompleteIndex = Math.min(autocompleteIndex + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle('active', i === autocompleteIndex));
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        autocompleteIndex = Math.max(autocompleteIndex - 1, -1);
+        items.forEach((el, i) => el.classList.toggle('active', i === autocompleteIndex));
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (autocompleteIndex >= 0 && items[autocompleteIndex]) {
+            items[autocompleteIndex].click();
+        } else {
+            addOtherRow();
+        }
     }
 });
 
