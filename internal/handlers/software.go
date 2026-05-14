@@ -38,7 +38,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 		args = append(args, filterCategory)
 	}
 
-	query += ` ORDER BY category, name`
+	query += ` ORDER BY CASE WHEN category = 'required' THEN 0 ELSE 1 END, name`
 
 	rows, err := h.db.Query(query, args...)
 	if err != nil {

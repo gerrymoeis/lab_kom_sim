@@ -53,6 +53,7 @@
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
+                            <th>#</th>
                             <th>Nama Software</th>
                             <th>Kategori</th>
                             <th>Deskripsi</th>
@@ -61,8 +62,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range .catalog }}
+                        {{ range $i, $s := .catalog }}
                         <tr>
+                            <td>{{ add $i 1 }}</td>
                             <td><strong>{{ .Name }}</strong></td>
                             <td>
                                 {{ if eq .Category "required" }}
@@ -86,7 +88,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="5" class="text-center text-muted">Belum ada data software</td>
+                            <td colspan="6" class="text-center text-muted">Belum ada data software</td>
                         </tr>
                         {{ end }}
                     </tbody>
