@@ -74,13 +74,11 @@ func (h *Handler) Login(c *gin.Context) {
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
-		// Log failed login
 		ipAddress, userAgent := getRequestContext(c)
 		h.activityLogService.LogAuth(
 			0, username, "", "login", false,
 			ipAddress, userAgent, "Invalid password",
 		)
-		
 		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
 			"title": "Login - Sistem Inventaris Lab",
 			"error": "Username atau password salah",
@@ -88,7 +86,22 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	// Generate and store session token (single session enforcement)
+	// Check if account is already logged in elsewhere
+	var existingToken string
+	h.db.QueryRow(`SELECT session_token FROM users WHERE id = ?`, userID).Scan(&existingToken)
+	if existingToken != "" {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogAuth(
+			userID, username, role, "login", false,
+			ipAddress, userAgent, "Account already logged in elsewhere",
+		)
+		c.HTML(http.StatusConflict, "login.html", gin.H{
+			"title": "Login - Sistem Inventaris Lab",
+			"error": "Akun sedang digunakan di perangkat lain. Logout terlebih dahulu atau tunggu sesi berakhir.",
+		})
+		return
+	}
+
 	token, err := generateSessionToken()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
