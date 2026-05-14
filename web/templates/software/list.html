@@ -54,6 +54,7 @@
                             <th>Kategori</th>
                             <th>Deskripsi</th>
                             <th>PC Terinstall</th>
+                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,10 +70,15 @@
                             </td>
                             <td>{{ .Description }}</td>
                             <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
+                            <td>
+                                <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="4" class="text-center text-muted">Belum ada data software</td>
+                            <td colspan="5" class="text-center text-muted">Belum ada data software</td>
                         </tr>
                         {{ end }}
                     </tbody>

@@ -118,6 +118,130 @@ func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
+// SoftwareEditPage renders form to edit software assignment across all PCs
+func (h *Handler) SoftwareEditPage(c *gin.Context) {
+	_, username, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+	if role != "admin" {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title": "Error", "message": "Hanya admin yang dapat mengedit software",
+		})
+		return
+	}
+
+	id := c.Param("id")
+	var sw models.SoftwareCatalog
+	err := h.db.QueryRow(`SELECT id, name, category, description FROM software_catalog WHERE id = ?`, id).Scan(&sw.ID, &sw.Name, &sw.Category, &sw.Description)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"title": "Error", "message": "Software tidak ditemukan",
+		})
+		return
+	}
+
+	// Get all PCs with installed status
+	rows, err := h.db.Query(`
+		SELECT p.id, p.pc_number, COALESCE(ps.installed, FALSE)
+		FROM pcs p
+		LEFT JOIN pc_software ps ON p.id = ps.pc_id AND ps.software_id = ?
+		ORDER BY p.pc_number
+	`, id)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title": "Error", "message": "Gagal mengambil data PC",
+		})
+		return
+	}
+	defer rows.Close()
+
+	type PCWithSoftware struct {
+		PCID      int
+		PCNumber  int
+		Installed bool
+	}
+
+	var pcList []PCWithSoftware
+	for rows.Next() {
+		var p PCWithSoftware
+		if err := rows.Scan(&p.PCID, &p.PCNumber, &p.Installed); err == nil {
+			pcList = append(pcList, p)
+		}
+	}
+
+	c.HTML(http.StatusOK, "software/edit.html", gin.H{
+		"title":       "Edit Software - " + sw.Name,
+		"currentPage": "software",
+		"username":    username,
+		"role":        role,
+		"software":    sw,
+		"pcList":      pcList,
+	})
+}
+
+// SoftwareEdit handles updating software assignment across all PCs
+func (h *Handler) SoftwareEdit(c *gin.Context) {
+	id := c.Param("id")
+	installedPCs := c.PostFormArray("pc_ids[]")
+
+	checked := make(map[string]bool)
+	for _, pcID := range installedPCs {
+		checked[pcID] = true
+	}
+
+	rows, err := h.db.Query(`SELECT id FROM pcs ORDER BY id`)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title": "Error", "message": "Gagal mengambil data PC",
+		})
+		return
+	}
+
+	var allPCIDs []int
+	for rows.Next() {
+		var pcID int
+		rows.Scan(&pcID)
+		allPCIDs = append(allPCIDs, pcID)
+	}
+	rows.Close()
+
+	tx, err := h.db.Begin()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title": "Error", "message": "Gagal memulai transaksi",
+		})
+		return
+	}
+	defer tx.Rollback()
+
+	for _, pcID := range allPCIDs {
+		pcIDStr := fmt.Sprintf("%d", pcID)
+
+		if checked[pcIDStr] {
+			var exists bool
+			tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM pc_software WHERE pc_id = ? AND software_id = ?)`, pcID, id).Scan(&exists)
+			if exists {
+				tx.Exec(`UPDATE pc_software SET installed = TRUE WHERE pc_id = ? AND software_id = ?`, pcID, id)
+			} else {
+				tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, id)
+			}
+		} else {
+			tx.Exec(`DELETE FROM pc_software WHERE pc_id = ? AND software_id = ?`, pcID, id)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title": "Error", "message": "Gagal menyimpan data",
+		})
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/software")
+}
+
 func (h *Handler) SoftwareCreate(c *gin.Context) {
 	name := strings.TrimSpace(c.PostForm("name"))
 	category := c.PostForm("category")
