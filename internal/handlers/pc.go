@@ -1407,7 +1407,6 @@ func (h *Handler) PCExport(c *gin.Context) {
 // syncPCSoftware synchronizes software assignments for a PC
 // Deletes existing entries and inserts new ones based on form data
 func syncPCSoftware(db *database.DB, pcID int, requiredIDs []string, otherNames []string) error {
-	// Build set of checked required software IDs
 	checked := make(map[int]bool)
 	for _, idStr := range requiredIDs {
 		id, err := strconv.Atoi(idStr)
@@ -1443,17 +1442,21 @@ func syncPCSoftware(db *database.DB, pcID int, requiredIDs []string, otherNames 
 			continue
 		}
 
-		// Find or create in catalog
+		// Find or create in catalog (within transaction)
 		var swID int
-		err := db.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID)
+		err := tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID)
 		if err != nil {
 			// Create new catalog entry as "other"
-			res, execErr := tx.Exec(`INSERT INTO software_catalog (name, category) VALUES (?, 'other')`, name)
-			if execErr != nil {
-				return fmt.Errorf("failed to create catalog entry for %s: %w", name, execErr)
+			insertErr := tx.QueryRow(`INSERT INTO software_catalog (name, category) VALUES (?, 'other') RETURNING id`, name).Scan(&swID)
+			if insertErr != nil {
+				// SQLite fallback (no RETURNING)
+				res, execErr := tx.Exec(`INSERT INTO software_catalog (name, category) VALUES (?, 'other')`, name)
+				if execErr != nil {
+					return fmt.Errorf("failed to create catalog entry for %s: %w", name, execErr)
+				}
+				lastID, _ := res.LastInsertId()
+				swID = int(lastID)
 			}
-			lastID, _ := res.LastInsertId()
-			swID = int(lastID)
 		}
 
 		// Insert into pc_software
