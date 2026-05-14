@@ -1,6 +1,6 @@
 # Sistem Inventaris Laboratorium Komputer
 
-Sistem manajemen inventaris laboratorium komputer dengan visualisasi grid PC, OCR logbook, tracking software & perangkat.
+Sistem manajemen inventaris laboratorium komputer — develop di laptop, deploy ke HP Android (Termux) via SSH + Tailscale.
 
 ## Tech Stack
 
