@@ -287,7 +287,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 	case "usages":
 		// Pemakaian
 		query := `SELECT u.id, u.device_id, d.asset_code, d.name, u.user_name, u.user_type, 
-		                 u.usage_date, u.quantity, u.purpose
+		                 u.usage_date, u.quantity, u.is_available, u.purpose
 		          FROM device_usages u
 		          JOIN devices d ON u.device_id = d.id
 		          WHERE 1=1`
@@ -315,7 +315,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			var usage models.DeviceUsage
 			var assetCode, deviceName string
 			err := rows.Scan(&usage.ID, &usage.DeviceID, &assetCode, &deviceName, &usage.UserName,
-				&usage.UserType, &usage.UsageDate, &usage.Quantity, &usage.Purpose)
+				&usage.UserType, &usage.UsageDate, &usage.Quantity, &usage.IsAvailable, &usage.Purpose)
 			if err != nil {
 				continue
 			}
@@ -410,14 +410,14 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 	var usages []models.DeviceUsage
 	if device.IsConsumable {
 		usageRows, _ := h.db.Query(`
-			SELECT id, user_name, usage_date, quantity, purpose
+			SELECT id, user_name, usage_date, quantity, purpose, is_available
 			FROM device_usages WHERE device_id = ? ORDER BY usage_date DESC LIMIT 10
 		`, id)
 		defer usageRows.Close()
 
 		for usageRows.Next() {
 			var usage models.DeviceUsage
-			usageRows.Scan(&usage.ID, &usage.UserName, &usage.UsageDate, &usage.Quantity, &usage.Purpose)
+			usageRows.Scan(&usage.ID, &usage.UserName, &usage.UsageDate, &usage.Quantity, &usage.Purpose, &usage.IsAvailable)
 			usages = append(usages, usage)
 		}
 	}
