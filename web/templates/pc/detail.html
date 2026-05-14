@@ -175,22 +175,42 @@
         </div>
 
         <div class="col-md-4">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-app-indicator"></i> Software Required</h6>
+                </div>
+                <div class="card-body py-2">
+                    {{ if .requiredSW }}
+                        {{ range .requiredSW }}
+                        <div class="d-flex align-items-center py-1 border-bottom">
+                            <span class="me-2" id="sw-status-{{ .SoftwareID }}">
+                                {{ if .Installed }}
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                                {{ else }}
+                                <i class="bi bi-x-circle-fill text-danger"></i>
+                                {{ end }}
+                            </span>
+                            <span>{{ .SoftwareName }}</span>
+                            {{ if .Version }}<small class="text-muted ms-1">v{{ .Version }}</small>{{ end }}
+                        </div>
+                        {{ end }}
+                    {{ else }}
+                    <p class="text-muted text-center small my-2">Tidak ada data</p>
+                    {{ end }}
+                </div>
+            </div>
+
             <div class="card shadow-sm">
                 <div class="card-header bg-secondary text-white">
-                    <h6 class="mb-0"><i class="bi bi-app-indicator"></i> Software Terinstall</h6>
+                    <h6 class="mb-0"><i class="bi bi-box"></i> Software Others</h6>
                 </div>
-                <div class="card-body">
-                    {{ if .software }}
-                    <ul class="list-group list-group-flush">
-                        {{ range .software }}
-                        <li class="list-group-item">
-                            <strong>{{ .Name }}</strong>
-                            {{ if .Version }}<br><small class="text-muted">v{{ .Version }}</small>{{ end }}
-                        </li>
+                <div class="card-body py-2">
+                    {{ if .otherSW }}
+                        {{ range .otherSW }}
+                        <span class="badge bg-secondary me-1 mb-1">{{ .SoftwareName }}</span>
                         {{ end }}
-                    </ul>
                     {{ else }}
-                    <p class="text-muted text-center">Belum ada software yang tercatat</p>
+                    <p class="text-muted text-center small my-2">Tidak ada</p>
                     {{ end }}
                 </div>
             </div>

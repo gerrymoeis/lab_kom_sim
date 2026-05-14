@@ -119,17 +119,23 @@ func runSQLiteMigrations(db *DB) error {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
 		)`,
-		`CREATE TABLE IF NOT EXISTS software (
+		`CREATE TABLE IF NOT EXISTS software_catalog (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			pc_id INTEGER NOT NULL,
-			name TEXT NOT NULL,
-			version TEXT,
-			license TEXT,
-			install_date DATE,
-			notes TEXT,
+			name TEXT NOT NULL UNIQUE,
+			category TEXT NOT NULL DEFAULT 'other' CHECK(category IN ('required', 'other')),
+			description TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (pc_id) REFERENCES pcs(id) ON DELETE CASCADE
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS pc_software (
+			pc_id INTEGER NOT NULL,
+			software_id INTEGER NOT NULL,
+			installed INTEGER NOT NULL DEFAULT 1,
+			version TEXT,
+			notes TEXT,
+			PRIMARY KEY (pc_id, software_id),
+			FOREIGN KEY (pc_id) REFERENCES pcs(id) ON DELETE CASCADE,
+			FOREIGN KEY (software_id) REFERENCES software_catalog(id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS logbook_entries (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -309,15 +315,6 @@ func runSQLiteMigrations(db *DB) error {
 	_, err = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, LOWER(TRIM(student_name)), time_in)`)
 	if err != nil {
 		return fmt.Errorf("failed to create unique index: %w", err)
-	}
-
-	// Add category column to software table
-	exists, err := columnExists("software", "category")
-	if err == nil && !exists {
-		_, err = db.Exec(`ALTER TABLE software ADD COLUMN category TEXT NOT NULL DEFAULT 'other'`)
-		if err != nil {
-			fmt.Printf("Warning: Failed to add category to software: %v\n", err)
-		}
 	}
 
 	return seedDeviceTypesIfEmpty(db, "1", "0")

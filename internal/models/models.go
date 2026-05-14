@@ -127,18 +127,26 @@ type DeviceUsage struct {
 }
 
 
-// Software represents software installed on PCs
-type Software struct {
+// SoftwareCatalog represents a software entry in the master catalog
+type SoftwareCatalog struct {
 	ID          int       `json:"id"`
-	PCID        int       `json:"pc_id"`
-	Name        string    `json:"name"`
-	Version     string    `json:"version"`
-	License     string    `json:"license"`
-	Category    string    `json:"category"`     // "required" (lab-installed) or "other" (student-installed)
-	InstallDate *time.Time `json:"install_date"`
-	Notes       string    `json:"notes"`
+	Name        string    `json:"name"`     // UNIQUE
+	Category    string    `json:"category"` // "required" or "other"
+	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// PCSoftware represents the many-to-many relation between PCs and software
+type PCSoftware struct {
+	PCID       int    `json:"pc_id"`
+	SoftwareID int    `json:"software_id"`
+	Installed  bool   `json:"installed"`
+	Version    string `json:"version"`
+	Notes      string `json:"notes"`
+	// Joined fields (not in DB)
+	SoftwareName string `json:"software_name,omitempty"`
+	Category     string `json:"category,omitempty"`
 }
 
 // LogbookEntry represents an attendance logbook entry

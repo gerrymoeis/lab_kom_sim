@@ -249,22 +249,53 @@ func (h *Handler) PCDetail(c *gin.Context) {
 		pc.LastChecked = &lastChecked.Time
 	}
 
-	// Get software installed on this PC
-	softwareRows, err := h.db.Query(`
-		SELECT id, name, version, license, install_date, notes
-		FROM software WHERE pc_id = ?
-		ORDER BY name
+	// Get software for this PC (via junction)
+	swRows, err := h.db.Query(`
+		SELECT sc.id, sc.name, sc.category, ps.installed, ps.version
+		FROM software_catalog sc
+		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.pc_id = ?
+		ORDER BY sc.category, sc.name
 	`, pc.ID)
 
-	var software []models.Software
+	var catalogSoftware []models.SoftwareCatalog
+	var pcSoftware []models.PCSoftware
 	if err == nil {
-		defer softwareRows.Close()
-		for softwareRows.Next() {
-			var sw models.Software
-			if err := softwareRows.Scan(&sw.ID, &sw.Name, &sw.Version, &sw.License, 
-				&sw.InstallDate, &sw.Notes); err == nil {
-				software = append(software, sw)
+		defer swRows.Close()
+		for swRows.Next() {
+			var catID int
+			var name, category string
+			var installed bool
+			var version sql.NullString
+
+			if err := swRows.Scan(&catID, &name, &category, &installed, &version); err == nil {
+				catalogSoftware = append(catalogSoftware, models.SoftwareCatalog{
+					ID:       catID,
+					Name:     name,
+					Category: category,
+				})
+				ver := ""
+				if version.Valid {
+					ver = version.String
+				}
+				pcSoftware = append(pcSoftware, models.PCSoftware{
+					PCID:         pc.ID,
+					SoftwareID:   catID,
+					Installed:    installed,
+					Version:      ver,
+					SoftwareName: name,
+					Category:     category,
+				})
 			}
+		}
+	}
+
+	// Separate required and other
+	var requiredSW, otherSW []models.PCSoftware
+	for _, sw := range pcSoftware {
+		if sw.Category == "required" {
+			requiredSW = append(requiredSW, sw)
+		} else {
+			otherSW = append(otherSW, sw)
 		}
 	}
 
@@ -280,7 +311,8 @@ func (h *Handler) PCDetail(c *gin.Context) {
 		"role":                  role,
 		"currentPage":           "pc",
 		"pc":                    pc,
-		"software":              software,
+		"requiredSW":            requiredSW,
+		"otherSW":               otherSW,
 		"lastCheckedFormatted":  lastCheckedFormatted,
 	})
 }
@@ -675,6 +707,37 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		}
 	}
 
+	// Get software catalog with installed status for this PC
+	swRows, err := h.db.Query(`
+		SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE)
+		FROM software_catalog sc
+		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.pc_id = ?
+		ORDER BY sc.category, sc.name
+	`, pc.ID)
+
+	var catalogSoftware []models.SoftwareCatalog
+	var requiredSW, otherSW []models.PCSoftware
+	if err == nil {
+		defer swRows.Close()
+		for swRows.Next() {
+			var catID int
+			var name, category string
+			var installed bool
+			if err := swRows.Scan(&catID, &name, &category, &installed); err == nil {
+				catalogSoftware = append(catalogSoftware, models.SoftwareCatalog{ID: catID, Name: name, Category: category})
+				sw := models.PCSoftware{
+					PCID: pc.ID, SoftwareID: catID, Installed: installed,
+					SoftwareName: name, Category: category,
+				}
+				if category == "required" {
+					requiredSW = append(requiredSW, sw)
+				} else {
+					otherSW = append(otherSW, sw)
+				}
+			}
+		}
+	}
+
 	c.HTML(http.StatusOK, "pc/edit.html", gin.H{
 		"title":              "Edit PC - Sistem Inventaris Lab",
 		"username":           username,
@@ -684,6 +747,8 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		"purchaseDate":       purchaseDateFormatted,
 		"lastChecked":        lastCheckedFormatted,
 		"lastCheckedDisplay": lastCheckedDisplay,
+		"requiredSW":         requiredSW,
+		"otherSW":            otherSW,
 	})
 }
 

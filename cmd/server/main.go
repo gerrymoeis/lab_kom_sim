@@ -199,6 +199,10 @@ func main() {
 		// Software Tracking
 		protected.GET("/software", h.SoftwareList)
 		protected.POST("/software/create", h.SoftwareCreate)
+		protected.POST("/software/toggle", h.SoftwareToggle)
+		protected.POST("/software/add-to-pc", h.SoftwareAddToPC)
+		protected.POST("/software/remove-from-pc", h.SoftwareRemoveFromPC)
+		protected.GET("/software/catalog.json", h.GetSoftwareCatalogJSON)
 
 		// OCR Logbook
 		protected.GET("/logbook", h.LogbookList)

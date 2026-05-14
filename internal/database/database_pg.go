@@ -102,16 +102,21 @@ func runPostgresMigrations(db *DB) error {
 			notes TEXT,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
-		`CREATE TABLE IF NOT EXISTS software (
+		`CREATE TABLE IF NOT EXISTS software_catalog (
 			id SERIAL PRIMARY KEY,
-			pc_id INTEGER NOT NULL REFERENCES pcs(id) ON DELETE CASCADE,
-			name TEXT NOT NULL,
-			version TEXT,
-			license TEXT,
-			install_date DATE,
-			notes TEXT,
+			name TEXT NOT NULL UNIQUE,
+			category TEXT NOT NULL DEFAULT 'other' CHECK(category IN ('required', 'other')),
+			description TEXT,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS pc_software (
+			pc_id INTEGER NOT NULL REFERENCES pcs(id) ON DELETE CASCADE,
+			software_id INTEGER NOT NULL REFERENCES software_catalog(id) ON DELETE CASCADE,
+			installed BOOLEAN NOT NULL DEFAULT TRUE,
+			version TEXT,
+			notes TEXT,
+			PRIMARY KEY (pc_id, software_id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS logbook_entries (
 			id SERIAL PRIMARY KEY,
@@ -296,15 +301,6 @@ func runPostgresMigrations(db *DB) error {
 		CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage'))`)
 	if err != nil {
 		fmt.Printf("Warning: Failed to add activity_logs constraint: %v\n", err)
-	}
-
-	// Add category column to software table
-	exists, err := columnExists("software", "category")
-	if err == nil && !exists {
-		_, err = db.Exec(`ALTER TABLE software ADD COLUMN category TEXT NOT NULL DEFAULT 'other'`)
-		if err != nil {
-			fmt.Printf("Warning: Failed to add category to software: %v\n", err)
-		}
 	}
 
 	return seedDeviceTypesIfEmpty(db, "TRUE", "FALSE")
