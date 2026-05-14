@@ -145,6 +145,7 @@ type PCSoftware struct {
 	// Joined fields (not in DB)
 	SoftwareName string `json:"software_name,omitempty"`
 	Category     string `json:"category,omitempty"`
+	Description  string `json:"description,omitempty"`
 }
 
 // LogbookEntry represents an attendance logbook entry

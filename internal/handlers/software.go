@@ -91,9 +91,9 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 }
 
 // SoftwareCreate handles adding new software to the catalog
-// GetSoftwareCatalogJSON returns all software catalog entries as JSON (for AJAX autocomplete)
+// GetSoftwareCatalogJSON returns "other" catalog entries as JSON (for AJAX autocomplete)
 func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
-	rows, err := h.db.Query(`SELECT id, name, category FROM software_catalog ORDER BY name`)
+	rows, err := h.db.Query(`SELECT id, name, category FROM software_catalog WHERE category = 'other' ORDER BY name`)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"})
 		return

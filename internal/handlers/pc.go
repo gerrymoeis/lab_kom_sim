@@ -253,7 +253,7 @@ func (h *Handler) PCDetail(c *gin.Context) {
 
 	// Get software for this PC (via junction)
 	swRows, err := h.db.Query(`
-		SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE)
+		SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE), sc.description
 		FROM software_catalog sc
 		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.pc_id = ?
 		ORDER BY sc.category, sc.name
@@ -263,18 +263,19 @@ func (h *Handler) PCDetail(c *gin.Context) {
 	if err == nil {
 		defer swRows.Close()
 		for swRows.Next() {
-			var catID int
-			var name, category string
-			var installed bool
+		var catID int
+		var name, category, description string
+		var installed bool
 
-			if err := swRows.Scan(&catID, &name, &category, &installed); err == nil {
-				pcSoftware = append(pcSoftware, models.PCSoftware{
-					PCID:         pc.ID,
-					SoftwareID:   catID,
-					Installed:    installed,
-					SoftwareName: name,
-					Category:     category,
-				})
+		if err := swRows.Scan(&catID, &name, &category, &installed, &description); err == nil {
+			pcSoftware = append(pcSoftware, models.PCSoftware{
+				PCID:         pc.ID,
+				SoftwareID:   catID,
+				Installed:    installed,
+				SoftwareName: name,
+				Category:     category,
+				Description:  description,
+			})
 			}
 		}
 	}
@@ -699,7 +700,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 
 	// Get software catalog with installed status for this PC
 	swRows, err := h.db.Query(`
-		SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE)
+		SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE), sc.description
 		FROM software_catalog sc
 		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.pc_id = ?
 		ORDER BY sc.category, sc.name
@@ -710,12 +711,12 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		defer swRows.Close()
 		for swRows.Next() {
 			var catID int
-			var name, category string
+			var name, category, description string
 			var installed bool
-			if err := swRows.Scan(&catID, &name, &category, &installed); err == nil {
+			if err := swRows.Scan(&catID, &name, &category, &installed, &description); err == nil {
 				sw := models.PCSoftware{
 					PCID: pc.ID, SoftwareID: catID, Installed: installed,
-					SoftwareName: name, Category: category,
+					SoftwareName: name, Category: category, Description: description,
 				}
 				if category == "required" {
 					requiredSW = append(requiredSW, sw)
@@ -958,8 +959,9 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	// Sync software assignments (all or nothing via transaction)
 	requiredIDs := c.PostFormArray("required_sw[]")
 	otherNames := c.PostFormArray("other_name[]")
+	otherDescs := c.PostFormArray("other_desc[]")
 
-	if err := syncPCSoftware(h.db, pcID, requiredIDs, otherNames); err != nil {
+	if err := syncPCSoftware(h.db, pcID, requiredIDs, otherNames, otherDescs); err != nil {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
@@ -1406,7 +1408,7 @@ func (h *Handler) PCExport(c *gin.Context) {
 
 // syncPCSoftware synchronizes software assignments for a PC
 // Deletes existing entries and inserts new ones based on form data
-func syncPCSoftware(db *database.DB, pcID int, requiredIDs []string, otherNames []string) error {
+func syncPCSoftware(db *database.DB, pcID int, requiredIDs []string, otherNames []string, otherDescs []string) error {
 	checked := make(map[int]bool)
 	for _, idStr := range requiredIDs {
 		id, err := strconv.Atoi(idStr)
@@ -1421,13 +1423,11 @@ func syncPCSoftware(db *database.DB, pcID int, requiredIDs []string, otherNames 
 	}
 	defer tx.Rollback()
 
-	// Delete all existing pc_software entries for this PC
 	_, err = tx.Exec(`DELETE FROM pc_software WHERE pc_id = ?`, pcID)
 	if err != nil {
 		return fmt.Errorf("failed to delete existing software: %w", err)
 	}
 
-	// Insert checked required software
 	for swID := range checked {
 		_, err = tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
 		if err != nil {
@@ -1435,31 +1435,38 @@ func syncPCSoftware(db *database.DB, pcID int, requiredIDs []string, otherNames 
 		}
 	}
 
-	// Process other software names
-	for _, name := range otherNames {
+	for i, name := range otherNames {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
 		}
 
-		// Find or create in catalog (within transaction)
+		desc := ""
+		if i < len(otherDescs) {
+			desc = strings.TrimSpace(otherDescs[i])
+		}
+
 		var swID int
 		err := tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID)
 		if err != nil {
-			// Create new catalog entry as "other"
-			insertErr := tx.QueryRow(`INSERT INTO software_catalog (name, category) VALUES (?, 'other') RETURNING id`, name).Scan(&swID)
-			if insertErr != nil {
-				// SQLite fallback (no RETURNING)
-				res, execErr := tx.Exec(`INSERT INTO software_catalog (name, category) VALUES (?, 'other')`, name)
+			pgErr := tx.QueryRow(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', ?) RETURNING id`, name, desc).Scan(&swID)
+			if pgErr != nil {
+				_, execErr := tx.Exec(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', ?)`, name, desc)
 				if execErr != nil {
 					return fmt.Errorf("failed to create catalog entry for %s: %w", name, execErr)
 				}
-				lastID, _ := res.LastInsertId()
-				swID = int(lastID)
+				tx.QueryRow(`SELECT MAX(id) FROM software_catalog WHERE name = ?`, name).Scan(&swID)
+				if swID == 0 {
+					return fmt.Errorf("failed to get ID for created software: %s", name)
+				}
+			} else if desc != "" {
+				// Update description if already exists but new description provided
+				tx.Exec(`UPDATE software_catalog SET description = ? WHERE id = ?`, desc, swID)
 			}
+		} else if desc != "" {
+			tx.Exec(`UPDATE software_catalog SET description = ? WHERE id = ?`, desc, swID)
 		}
 
-		// Insert into pc_software
 		_, err = tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
 		if err != nil {
 			return fmt.Errorf("failed to insert other software %s: %w", name, err)

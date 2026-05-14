@@ -258,23 +258,26 @@
                         <div class="mb-4">
                             <label class="form-label fw-bold">Others — tambahkan software lain (opsional):</label>
                             <div id="othersContainer">
-                                {{ range $i, $sw := .otherSW }}
-                                <div class="input-group mb-1 other-row">
-                                    <input type="text" class="form-control" name="other_name[]"
-                                           value="{{ .SoftwareName }}" placeholder="Nama software">
-                                    <button type="button" class="btn btn-outline-danger" onclick="this.closest('.other-row').remove()">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
+                                {{ range .otherSW }}
+                                <div class="other-row border rounded p-2 mb-1 bg-light">
+                                    <div class="d-flex gap-2 align-items-center">
+                                        <input type="text" class="form-control form-control-sm" name="other_name[]"
+                                               value="{{ .SoftwareName }}" placeholder="Nama software"
+                                               list="otherSoftwareList">
+                                        <input type="text" class="form-control form-control-sm" name="other_desc[]"
+                                               value="{{ .Description }}" placeholder="Deskripsi (opsional)" style="max-width: 250px;">
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                onclick="this.closest('.other-row').remove()">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 {{ end }}
                             </div>
-                            <div class="d-flex gap-2 mt-1">
-                                <input type="text" class="form-control" id="newOtherInput"
-                                       placeholder="Ketik atau pilih dari daftar, Enter untuk tambah"
-                                       list="otherSoftwareList">
-                                <datalist id="otherSoftwareList"></datalist>
-                            </div>
-                            <small class="text-muted">Tekan Enter untuk menambah baris baru. Tersedia autocomplete dari software yang sudah pernah diinput.</small>
+                            <input type="text" class="form-control mt-1" id="newOtherInput"
+                                       placeholder="Ketik nama software others lalu Enter untuk tambah...">
+                            <small class="text-muted mt-1 d-block">Autocomplete tersedia dari daftar software others yang sudah pernah ditambahkan.</small>
+                            <datalist id="otherSoftwareList"></datalist>
                         </div>
 
                         <div class="d-flex gap-2">
@@ -293,7 +296,6 @@
 </div>
 
 <script>
-// Load autocomplete data for other software
 fetch('/software/catalog.json')
     .then(r => r.json())
     .then(items => {
@@ -309,20 +311,29 @@ fetch('/software/catalog.json')
 document.getElementById('newOtherInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
-        const val = this.value.trim();
-        if (!val) return;
-        const container = document.getElementById('othersContainer');
-        const existing = container.querySelectorAll('.other-row input');
-        for (let inp of existing) {
-            if (inp.value.toLowerCase() === val.toLowerCase()) return;
-        }
-        const div = document.createElement('div');
-        div.className = 'input-group mb-1 other-row';
-        div.innerHTML = '<input type="text" class="form-control" name="other_name[]" value="' + val.replace(/"/g, '&quot;') + '" placeholder="Nama software">' +
-                        '<button type="button" class="btn btn-outline-danger" onclick="this.closest(\'.other-row\').remove()"><i class="bi bi-x-lg"></i></button>';
-        container.appendChild(div);
-        this.value = '';
+        addEmptyOtherRow();
     }
+});
+
+function addEmptyOtherRow() {
+    const container = document.getElementById('othersContainer');
+    const div = document.createElement('div');
+    div.className = 'other-row border rounded p-2 mb-1 bg-light';
+    div.innerHTML =
+        '<div class="d-flex gap-2 align-items-center">' +
+        '<input type="text" class="form-control form-control-sm" name="other_name[]" placeholder="Nama software" list="otherSoftwareList">' +
+        '<input type="text" class="form-control form-control-sm" name="other_desc[]" placeholder="Deskripsi (opsional)" style="max-width: 250px;">' +
+        '<button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'.other-row\').remove()"><i class="bi bi-x-lg"></i></button>' +
+        '</div>';
+    container.appendChild(div);
+    const inp = div.querySelector('input[name="other_name[]"]');
+    inp.focus();
+}
+
+// Auto-focus newOtherInput on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const inp = document.getElementById('newOtherInput');
+    if (!inp) addEmptyOtherRow();
 });
 </script>
 
