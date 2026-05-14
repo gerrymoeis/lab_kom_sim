@@ -522,18 +522,16 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "create", false,
+			h.activityLogService.LogCreate(
+				userID, username, role, "pc", 0,
+				map[string]interface{}{"pc_number": pcNumber},
 				ipAddress, userAgent, fmt.Sprintf("Failed to create PC #%d: %v", pcNumber, err),
 			)
 		}
-		
-		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
-			"title":       "Tambah PC Baru - Sistem Inventaris Lab",
-			"username":    username,
-			"role":        role,
-			"currentPage": "pc",
-			"error":       "Gagal menyimpan data PC. Mungkin nomor PC sudah digunakan.",
+
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal menyimpan data PC",
 		})
 		return
 	}
@@ -786,8 +784,9 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "update", false,
+			h.activityLogService.LogUpdate(
+				userID, username, role, "pc", 0,
+				map[string]interface{}{"pc_number": pcNumber}, map[string]interface{}{"error": err.Error()},
 				ipAddress, userAgent, fmt.Sprintf("Failed to get PC data for update: %v", err),
 			)
 		}
@@ -942,8 +941,9 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "update", false,
+			h.activityLogService.LogUpdate(
+				userID, username, role, "pc", currentPCNumber,
+				map[string]interface{}{"pc_number": currentPCNumber}, map[string]interface{}{"error": err.Error()},
 				ipAddress, userAgent, fmt.Sprintf("Failed to update PC #%d: %v", currentPCNumber, err),
 			)
 		}
@@ -963,8 +963,9 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "update", false,
+			h.activityLogService.LogUpdate(
+				userID, username, role, "pc", pcID,
+				map[string]interface{}{"pc_id": pcID}, map[string]interface{}{"error": err.Error()},
 				ipAddress, userAgent, fmt.Sprintf("Failed to sync software for PC #%d: %v", pcID, err),
 			)
 		}
@@ -1050,8 +1051,9 @@ func (h *Handler) PCDelete(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "delete", false,
+			h.activityLogService.LogDelete(
+				userID, username, role, "pc", 0,
+				map[string]interface{}{"pc_number": pcNumber},
 				ipAddress, userAgent, fmt.Sprintf("Failed to get PC data for delete: %v", err),
 			)
 		}
@@ -1067,8 +1069,9 @@ func (h *Handler) PCDelete(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "delete", false,
+			h.activityLogService.LogDelete(
+				userID, username, role, "pc", pcNumberInt,
+				map[string]interface{}{"pc_number": pcNumberInt},
 				ipAddress, userAgent, fmt.Sprintf("Failed to delete PC #%d: %v", pcNumberInt, err),
 			)
 		}

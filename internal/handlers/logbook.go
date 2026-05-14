@@ -272,8 +272,8 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "upload", false,
+			h.activityLogService.LogUpload(
+				userID, username, role, "logbook", 0, "", "",
 				ipAddress, userAgent, fmt.Sprintf("Failed to save logbook file: %v", err),
 			)
 		}
@@ -482,8 +482,9 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "create", false,
+			h.activityLogService.LogCreate(
+				userID, username, role, "logbook", 0,
+				map[string]interface{}{"error": err.Error()},
 				ipAddress, userAgent, fmt.Sprintf("Failed to commit logbook entries: %v", err),
 			)
 		}
@@ -860,8 +861,9 @@ func (h *Handler) LogbookCreate(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "create", false,
+			h.activityLogService.LogCreate(
+				userID, username, role, "logbook", 0,
+				map[string]interface{}{"error": err.Error()},
 				ipAddress, userAgent, fmt.Sprintf("Failed to create logbook entry: %v", err),
 			)
 		}
@@ -1039,8 +1041,9 @@ func (h *Handler) LogbookEdit(c *gin.Context) {
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
 			entryIDInt, _ := strconv.Atoi(id)
-			h.activityLogService.LogAuth(
-				userID, username, role, "update", false,
+			h.activityLogService.LogUpdate(
+				userID, username, role, "logbook", entryIDInt,
+				map[string]interface{}{"id": entryIDInt}, map[string]interface{}{"error": err.Error()},
 				ipAddress, userAgent, fmt.Sprintf("Failed to update logbook entry #%d: %v", entryIDInt, err),
 			)
 		}
@@ -1103,8 +1106,9 @@ func (h *Handler) LogbookDelete(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "delete", false,
+			h.activityLogService.LogDelete(
+				userID, username, role, "logbook", 0,
+				map[string]interface{}{"id": id},
 				ipAddress, userAgent, fmt.Sprintf("Failed to get logbook entry data for delete: %v", err),
 			)
 		}
@@ -1120,8 +1124,9 @@ func (h *Handler) LogbookDelete(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "delete", false,
+			h.activityLogService.LogDelete(
+				userID, username, role, "logbook", entryID,
+				map[string]interface{}{"id": entryID},
 				ipAddress, userAgent, fmt.Sprintf("Failed to delete logbook entry #%d: %v", entryID, err),
 			)
 		}

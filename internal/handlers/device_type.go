@@ -239,8 +239,9 @@ func (h *Handler) DeviceTypeCreate(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "create", false,
+			h.activityLogService.LogCreate(
+				userID, username, role, "device_type", 0,
+				map[string]interface{}{"error": "Failed to create device type"},
 				ipAddress, userAgent, fmt.Sprintf("Failed to create device type: %v", err),
 			)
 		}
@@ -377,8 +378,9 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
 			deviceTypeIDInt, _ := strconv.Atoi(id)
-			h.activityLogService.LogAuth(
-				userID, username, role, "update", false,
+			h.activityLogService.LogUpdate(
+				userID, username, role, "device_type", deviceTypeIDInt,
+				map[string]interface{}{"id": deviceTypeIDInt}, map[string]interface{}{"error": err.Error()},
 				ipAddress, userAgent, fmt.Sprintf("Failed to update device type #%d: %v", deviceTypeIDInt, err),
 			)
 		}
@@ -438,8 +440,9 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 		userID, username, role, ok := middleware.GetCurrentUser(c)
 		if ok {
 			ipAddress, userAgent := getRequestContext(c)
-			h.activityLogService.LogAuth(
-				userID, username, role, "delete", false,
+			h.activityLogService.LogDelete(
+				userID, username, role, "device_type", deviceTypeID,
+				map[string]interface{}{"id": deviceTypeID},
 				ipAddress, userAgent, fmt.Sprintf("Failed to delete device type #%d: %v", deviceTypeID, err),
 			)
 		}
