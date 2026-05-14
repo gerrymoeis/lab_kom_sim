@@ -102,9 +102,9 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 	timeEnd := c.PostForm("time_end")
 	notes := c.PostForm("notes")
 
-	if courseName == "" || day == "" || timeStart == "" {
+	if courseName == "" || lecturer == "" || day == "" || class == "" || timeStart == "" || timeEnd == "" {
 		c.HTML(http.StatusBadRequest, "schedule/create.html", gin.H{
-			"title": "Tambah Jadwal", "error": "Mata Kuliah, Hari, dan Jam Mulai harus diisi",
+			"title": "Tambah Jadwal", "error": "Semua field wajib diisi",
 		})
 		return
 	}
@@ -112,10 +112,25 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 	_, err := h.db.Exec(`INSERT INTO course_schedules (course_name, lecturer, day, class, time_start, time_end, notes) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		courseName, lecturer, day, class, timeStart, timeEnd, notes)
 	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogCreate(userID, username, role, "schedule", 0,
+				map[string]interface{}{"course_name": courseName, "error": err.Error()},
+				ipAddress, userAgent, err.Error())
+		}
 		c.HTML(http.StatusInternalServerError, "schedule/create.html", gin.H{
 			"title": "Tambah Jadwal", "error": "Gagal menyimpan data",
 		})
 		return
+	}
+
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogCreate(userID, username, role, "schedule", 0,
+			map[string]interface{}{"course_name": courseName, "lecturer": lecturer, "day": day, "class": class, "time": timeStart + "-" + timeEnd},
+			ipAddress, userAgent)
 	}
 
 	c.Redirect(http.StatusFound, "/schedules")
@@ -162,8 +177,24 @@ func (h *Handler) ScheduleEdit(c *gin.Context) {
 	_, err := h.db.Exec(`UPDATE course_schedules SET course_name=?, lecturer=?, day=?, class=?, time_start=?, time_end=?, notes=? WHERE id=?`,
 		courseName, lecturer, day, class, timeStart, timeEnd, notes, id)
 	if err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogCreate(userID, username, role, "schedule", 0,
+				map[string]interface{}{"action": "update", "id": id, "error": err.Error()},
+				ipAddress, userAgent, err.Error())
+		}
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{"title": "Error", "message": "Gagal mengupdate jadwal"})
 		return
+	}
+
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogUpdate(userID, username, role, "schedule", 0,
+			map[string]interface{}{"id": id, "course_name": courseName},
+			map[string]interface{}{"course_name": courseName, "lecturer": lecturer, "day": day, "class": class},
+			ipAddress, userAgent)
 	}
 
 	c.Redirect(http.StatusFound, "/schedules")

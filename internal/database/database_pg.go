@@ -158,7 +158,7 @@ func runPostgresMigrations(db *DB) error {
 			username TEXT NOT NULL,
 			user_role TEXT NOT NULL,
 			action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
-			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage')),
+			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule')),
 			entity_id INTEGER,
 			description TEXT NOT NULL,
 			old_values TEXT,
@@ -310,7 +310,7 @@ func runPostgresMigrations(db *DB) error {
 		fmt.Printf("Warning: Failed to drop activity_logs constraint: %v\n", err)
 	}
 	_, err = db.Exec(`ALTER TABLE activity_logs ADD CONSTRAINT activity_logs_entity_type_check 
-		CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage'))`)
+		CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule'))`)
 	if err != nil {
 		fmt.Printf("Warning: Failed to add activity_logs constraint: %v\n", err)
 	}

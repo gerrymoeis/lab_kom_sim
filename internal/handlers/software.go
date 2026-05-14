@@ -291,11 +291,33 @@ func (h *Handler) SoftwareCreate(c *gin.Context) {
 	_, err := h.db.Exec(`INSERT INTO software_catalog (name, category, description, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, name, category, description)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			userID, username, role, ok := middleware.GetCurrentUser(c)
+			if ok {
+				ipAddress, userAgent := getRequestContext(c)
+				h.activityLogService.LogCreate(userID, username, role, "software", 0,
+					map[string]interface{}{"name": name, "category": category},
+					ipAddress, userAgent, "Duplicate software name: "+name)
+			}
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Software dengan nama tersebut sudah ada"})
 			return
 		}
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogCreate(userID, username, role, "software", 0,
+				map[string]interface{}{"name": name, "category": category},
+				ipAddress, userAgent, err.Error())
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan software"})
 		return
+	}
+
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogCreate(userID, username, role, "software", 0,
+			map[string]interface{}{"name": name, "category": category, "description": description},
+			ipAddress, userAgent)
 	}
 
 	c.Redirect(http.StatusFound, "/software")

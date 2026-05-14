@@ -27,15 +27,15 @@
                                 <input type="text" class="form-control" id="course_name" name="course_name" value="{{ .s.CourseName }}" required>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label for="class" class="form-label">Kelas</label>
-                                <input type="text" class="form-control" id="class" name="class" value="{{ .s.Class }}">
+                                <label for="class" class="form-label">Kelas *</label>
+                                <input type="text" class="form-control" id="class" name="class" value="{{ .s.Class }}" required>
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="lecturer" class="form-label">Dosen</label>
-                                <input type="text" class="form-control" id="lecturer" name="lecturer" value="{{ .s.Lecturer }}">
+                                <label for="lecturer" class="form-label">Dosen *</label>
+                                <input type="text" class="form-control" id="lecturer" name="lecturer" value="{{ .s.Lecturer }}" required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="day" class="form-label">Hari *</label>
@@ -54,8 +54,8 @@
                                 <input type="time" class="form-control" id="time_start" name="time_start" value="{{ .s.TimeStart }}" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="time_end" class="form-label">Jam Selesai</label>
-                                <input type="time" class="form-control" id="time_end" name="time_end" value="{{ .s.TimeEnd }}">
+                                <label for="time_end" class="form-label">Jam Selesai *</label>
+                                <input type="time" class="form-control" id="time_end" name="time_end" value="{{ .s.TimeEnd }}" required>
                             </div>
                         </div>
 
