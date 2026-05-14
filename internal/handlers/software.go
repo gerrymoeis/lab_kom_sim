@@ -242,6 +242,39 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/software")
 }
 
+// SoftwareDelete handles deleting a software from the catalog
+func (h *Handler) SoftwareDelete(c *gin.Context) {
+	id := c.Param("id")
+
+	// Get name for logging
+	var name string
+	err := h.db.QueryRow(`SELECT name FROM software_catalog WHERE id = ?`, id).Scan(&name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Software tidak ditemukan"})
+		return
+	}
+
+	_, err = h.db.Exec(`DELETE FROM software_catalog WHERE id = ?`, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus software"})
+		return
+	}
+
+	// Log the deletion
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		h.activityLogService.LogDelete(
+			userID, username, role,
+			"software", 0,
+			map[string]interface{}{"name": name},
+			ipAddress, userAgent,
+		)
+	}
+
+	c.Redirect(http.StatusFound, "/software")
+}
+
 func (h *Handler) SoftwareCreate(c *gin.Context) {
 	name := strings.TrimSpace(c.PostForm("name"))
 	category := c.PostForm("category")

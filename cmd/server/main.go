@@ -203,6 +203,7 @@ func main() {
 		protected.GET("/software/catalog.json", h.GetSoftwareCatalogJSON)
 		protected.GET("/software/:id/edit", h.SoftwareEditPage)
 		protected.POST("/software/:id/edit", h.SoftwareEdit)
+		protected.POST("/software/:id/delete", h.SoftwareDelete)
 
 		// OCR Logbook
 		protected.GET("/logbook", h.LogbookList)

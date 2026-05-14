@@ -74,6 +74,11 @@
                                 <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        onclick="if(confirm('Hapus software {{ .Name }}? Semua relasi PC akan ikut terhapus.')){ document.getElementById('del-{{ .ID }}').submit(); }">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-{{ .ID }}" method="POST" action="/software/{{ .ID }}/delete" style="display:none;"></form>
                             </td>
                         </tr>
                         {{ else }}
