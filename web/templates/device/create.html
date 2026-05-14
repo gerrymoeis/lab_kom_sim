@@ -105,19 +105,13 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Properti</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_loanable" name="is_loanable" value="1" checked>
-                                <label class="form-check-label" for="is_loanable">
-                                    Dapat dipinjam
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_consumable" name="is_consumable" value="1">
-                                <label class="form-check-label" for="is_consumable">
-                                    Barang habis pakai
-                                </label>
-                            </div>
+                            <label for="item_mode" class="form-label">Mode Penggunaan *</label>
+                            <select class="form-select" id="item_mode" name="item_mode" required>
+                                <option value="loanable" selected>Dapat Dipinjam</option>
+                                <option value="consumable">Barang Habis Pakai</option>
+                                <option value="none">Tidak Keduanya</option>
+                            </select>
+                            <small class="text-muted">Tentukan apakah barang dapat dipinjam atau habis pakai</small>
                         </div>
 
                         <div class="row mb-3">
@@ -256,8 +250,9 @@
                 document.getElementById('brand').value = option.dataset.brand || '';
                 document.getElementById('model').value = option.dataset.model || '';
                 document.getElementById('item_type').value = option.dataset.itemType || 'individual';
-                document.getElementById('is_loanable').checked = option.dataset.loanable === 'true';
-                document.getElementById('is_consumable').checked = option.dataset.consumable === 'true';
+                const loanable = option.dataset.loanable === 'true';
+                const consumable = option.dataset.consumable === 'true';
+                document.getElementById('item_mode').value = consumable ? 'consumable' : (loanable ? 'loanable' : 'none');
                 document.getElementById('location').value = option.dataset.location || '';
                 document.getElementById('notes').value = option.dataset.notes || '';
                 
@@ -285,39 +280,25 @@
             const qtyAvailInput = document.getElementById('quantity_available');
             
             if (this.value === 'consumable') {
-                // Consumable: show consumable help text
                 qtyHelpIndividual.style.display = 'none';
                 qtyHelpConsumable.style.display = 'inline';
                 availHelpIndividual.style.display = 'none';
                 availHelpConsumable.style.display = 'inline';
-                
-                document.getElementById('is_consumable').checked = true;
-                
-                // Reset to 0 for consumable (user must input)
+                document.getElementById('item_mode').value = 'consumable';
                 qtyTotalInput.value = '0';
                 qtyAvailInput.value = '0';
                 qtyTotalInput.min = '0';
             } else {
-                // Individual: show individual help text
                 qtyHelpIndividual.style.display = 'inline';
                 qtyHelpConsumable.style.display = 'none';
                 availHelpIndividual.style.display = 'inline';
                 availHelpConsumable.style.display = 'none';
-                
-                document.getElementById('is_consumable').checked = false;
-                
-                // Default to 1 for individual
+                if (document.getElementById('item_mode').value === 'consumable') {
+                    document.getElementById('item_mode').value = 'loanable';
+                }
                 qtyTotalInput.value = '1';
                 qtyAvailInput.value = '1';
                 qtyTotalInput.min = '1';
-            }
-        });
-
-        // Sync is_consumable checkbox with item_type
-        document.getElementById('is_consumable').addEventListener('change', function() {
-            if (this.checked) {
-                document.getElementById('item_type').value = 'consumable';
-                document.getElementById('item_type').dispatchEvent(new Event('change'));
             }
         });
     </script>

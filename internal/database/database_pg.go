@@ -298,5 +298,14 @@ func runPostgresMigrations(db *DB) error {
 		fmt.Printf("Warning: Failed to add activity_logs constraint: %v\n", err)
 	}
 
+	// Add category column to software table
+	exists, err := columnExists("software", "category")
+	if err == nil && !exists {
+		_, err = db.Exec(`ALTER TABLE software ADD COLUMN category TEXT NOT NULL DEFAULT 'other'`)
+		if err != nil {
+			fmt.Printf("Warning: Failed to add category to software: %v\n", err)
+		}
+	}
+
 	return seedDeviceTypesIfEmpty(db, "TRUE", "FALSE")
 }

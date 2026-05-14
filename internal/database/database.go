@@ -37,7 +37,13 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 
 func RunMigrations(db *DB, isPostgres bool) error {
 	if isPostgres {
-		return runPostgresMigrations(db)
+		if err := runPostgresMigrations(db); err != nil {
+			return err
+		}
+	} else {
+		if err := runSQLiteMigrations(db); err != nil {
+			return err
+		}
 	}
-	return runSQLiteMigrations(db)
+	return seedRequiredSoftware(db)
 }

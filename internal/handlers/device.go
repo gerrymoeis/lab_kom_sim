@@ -462,8 +462,9 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 	model := c.PostForm("model")
 	serialNumber := c.PostForm("serial_number")
 	itemType := c.PostForm("item_type")
-	isLoanable := c.PostForm("is_loanable") == "1"
-	isConsumable := c.PostForm("is_consumable") == "1"
+	itemMode := c.PostForm("item_mode")
+	isLoanable := itemMode == "loanable"
+	isConsumable := itemMode == "consumable"
 	quantityTotalStr := c.PostForm("quantity_total")
 	condition := c.PostForm("condition")
 	location := c.PostForm("location")
@@ -666,8 +667,9 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 	model := c.PostForm("model")
 	serialNumber := c.PostForm("serial_number")
 	itemType := c.PostForm("item_type")
-	isLoanable := c.PostForm("is_loanable") == "1"
-	isConsumable := c.PostForm("is_consumable") == "1"
+	itemMode := c.PostForm("item_mode")
+	isLoanable := itemMode == "loanable"
+	isConsumable := itemMode == "consumable"
 	quantityTotalStr := c.PostForm("quantity_total")
 	quantityAvailableStr := c.PostForm("quantity_available")
 	condition := c.PostForm("condition")

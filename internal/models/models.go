@@ -134,6 +134,7 @@ type Software struct {
 	Name        string    `json:"name"`
 	Version     string    `json:"version"`
 	License     string    `json:"license"`
+	Category    string    `json:"category"`     // "required" (lab-installed) or "other" (student-installed)
 	InstallDate *time.Time `json:"install_date"`
 	Notes       string    `json:"notes"`
 	CreatedAt   time.Time `json:"created_at"`

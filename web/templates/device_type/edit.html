@@ -64,19 +64,13 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Properti</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_loanable" name="is_loanable" value="1" {{ if .deviceType.IsLoanable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_loanable">
-                                    Dapat dipinjam
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_consumable" name="is_consumable" value="1" {{ if .deviceType.IsConsumable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_consumable">
-                                    Barang habis pakai
-                                </label>
-                            </div>
+                            <label for="item_mode" class="form-label">Mode Penggunaan *</label>
+                            <select class="form-select" id="item_mode" name="item_mode" required>
+                                <option value="loanable" {{ if .deviceType.IsLoanable }}selected{{ end }}>Dapat Dipinjam</option>
+                                <option value="consumable" {{ if .deviceType.IsConsumable }}selected{{ end }}>Barang Habis Pakai</option>
+                                <option value="none" {{ if not .deviceType.IsLoanable }}{{ if not .deviceType.IsConsumable }}selected{{ end }}{{ end }}>Tidak Keduanya</option>
+                            </select>
+                            <small class="text-muted">Tentukan apakah barang dapat dipinjam atau habis pakai</small>
                         </div>
 
                         <div class="mb-3">

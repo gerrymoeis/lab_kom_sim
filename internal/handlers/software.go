@@ -18,11 +18,11 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	}
 
 	rows, err := h.db.Query(`
-		SELECT s.id, s.pc_id, s.name, s.version, s.license, s.install_date, s.notes,
+		SELECT s.id, s.pc_id, s.name, s.version, s.license, s.category, s.install_date, s.notes,
 		       p.pc_number
 		FROM software s
 		JOIN pcs p ON s.pc_id = p.id
-		ORDER BY s.name, p.pc_number
+		ORDER BY s.category, s.name, p.pc_number
 	`)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -41,7 +41,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	var software []SoftwareWithPC
 	for rows.Next() {
 		var sw SoftwareWithPC
-		err := rows.Scan(&sw.ID, &sw.PCID, &sw.Name, &sw.Version, &sw.License,
+		err := rows.Scan(&sw.ID, &sw.PCID, &sw.Name, &sw.Version, &sw.License, &sw.Category,
 			&sw.InstallDate, &sw.Notes, &sw.PCNumber)
 		if err != nil {
 			continue
@@ -78,6 +78,7 @@ func (h *Handler) SoftwareCreate(c *gin.Context) {
 	name := c.PostForm("name")
 	version := c.PostForm("version")
 	license := c.PostForm("license")
+	category := c.PostForm("category")
 	installDate := c.PostForm("install_date")
 	notes := c.PostForm("notes")
 
@@ -88,15 +89,19 @@ func (h *Handler) SoftwareCreate(c *gin.Context) {
 		return
 	}
 
+	if category != "required" && category != "other" {
+		category = "other"
+	}
+
 	var installDatePtr *string
 	if installDate != "" {
 		installDatePtr = &installDate
 	}
 
 	_, err := h.db.Exec(`
-		INSERT INTO software (pc_id, name, version, license, install_date, notes)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, pcID, name, version, license, installDatePtr, notes)
+		INSERT INTO software (pc_id, name, version, license, category, install_date, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, pcID, name, version, license, category, installDatePtr, notes)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

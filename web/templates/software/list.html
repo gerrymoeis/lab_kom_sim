@@ -34,6 +34,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>PC</th>
+                            <th>Kategori</th>
                             <th>Nama Software</th>
                             <th>Versi</th>
                             <th>Lisensi</th>
@@ -44,7 +45,14 @@
                     <tbody>
                         {{ range .software }}
                         <tr>
-                            <td><strong>PC-{{ printf "%02d" .PCID }}</strong></td>
+                            <td><strong>PC-{{ printf "%02d" .PCNumber }}</strong></td>
+                            <td>
+                                {{ if eq .Category "required" }}
+                                <span class="badge bg-primary">Required</span>
+                                {{ else }}
+                                <span class="badge bg-secondary">Other</span>
+                                {{ end }}
+                            </td>
                             <td>{{ .Name }}</td>
                             <td>{{ if .Version }}{{ .Version }}{{ else }}-{{ end }}</td>
                             <td>
@@ -55,7 +63,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="6" class="text-center text-muted">Belum ada data software</td>
+                            <td colspan="7" class="text-center text-muted">Belum ada data software</td>
                         </tr>
                         {{ end }}
                     </tbody>

@@ -206,8 +206,9 @@ func (h *Handler) DeviceTypeCreate(c *gin.Context) {
 	brand := c.PostForm("brand")
 	model := c.PostForm("model")
 	itemType := c.PostForm("item_type")
-	isLoanable := c.PostForm("is_loanable") == "1"
-	isConsumable := c.PostForm("is_consumable") == "1"
+	itemMode := c.PostForm("item_mode")
+	isLoanable := itemMode == "loanable"
+	isConsumable := itemMode == "consumable"
 	assetCodePrefix := c.PostForm("asset_code_prefix")
 	defaultLocation := c.PostForm("default_location")
 	notesTemplate := c.PostForm("notes_template")
@@ -338,8 +339,9 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	brand := c.PostForm("brand")
 	model := c.PostForm("model")
 	itemType := c.PostForm("item_type")
-	isLoanable := c.PostForm("is_loanable") == "1"
-	isConsumable := c.PostForm("is_consumable") == "1"
+	itemMode := c.PostForm("item_mode")
+	isLoanable := itemMode == "loanable"
+	isConsumable := itemMode == "consumable"
 	assetCodePrefix := c.PostForm("asset_code_prefix")
 	defaultLocation := c.PostForm("default_location")
 	notesTemplate := c.PostForm("notes_template")

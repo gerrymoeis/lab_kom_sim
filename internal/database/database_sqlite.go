@@ -311,5 +311,14 @@ func runSQLiteMigrations(db *DB) error {
 		return fmt.Errorf("failed to create unique index: %w", err)
 	}
 
+	// Add category column to software table
+	exists, err := columnExists("software", "category")
+	if err == nil && !exists {
+		_, err = db.Exec(`ALTER TABLE software ADD COLUMN category TEXT NOT NULL DEFAULT 'other'`)
+		if err != nil {
+			fmt.Printf("Warning: Failed to add category to software: %v\n", err)
+		}
+	}
+
 	return seedDeviceTypesIfEmpty(db, "1", "0")
 }
