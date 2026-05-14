@@ -135,11 +135,10 @@ func seedPCs(db *DB) error {
 			return fmt.Errorf("failed to get PC-%d ID: %w", pc.Number, err)
 		}
 
-		// Seed required software (installed = true)
 		for _, swName := range pc.RequiredSW {
 			var swID int
 			err := db.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, swName).Scan(&swID)
-			if err != nil {
+			if err != nil || swID == 0 {
 				continue
 			}
 			var exists int
@@ -153,15 +152,20 @@ func seedPCs(db *DB) error {
 			var swID int
 			err := db.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, swName).Scan(&swID)
 			if err != nil {
-				pgErr := db.QueryRow(`INSERT INTO software_catalog (name, category) VALUES (?, 'other') RETURNING id`, swName).Scan(&swID)
+				pgErr := db.QueryRow(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '') RETURNING id`, swName).Scan(&swID)
 				if pgErr != nil {
-					res, execErr := db.Exec(`INSERT INTO software_catalog (name, category) VALUES (?, 'other')`, swName)
+					_, execErr := db.Exec(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '')`, swName)
 					if execErr != nil {
 						continue
 					}
-					lastID, _ := res.LastInsertId()
-					swID = int(lastID)
+					db.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, swName).Scan(&swID)
+					if swID == 0 {
+						continue
+					}
 				}
+			}
+			if swID == 0 {
+				continue
 			}
 			var exists int
 			db.QueryRow(`SELECT COUNT(*) FROM pc_software WHERE pc_id = ? AND software_id = ?`, pcID, swID).Scan(&exists)
