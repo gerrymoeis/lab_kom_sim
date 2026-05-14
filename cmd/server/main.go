@@ -244,6 +244,7 @@ func main() {
 
 		// Profile
 		protected.GET("/profile", h.Profile)
+		protected.POST("/profile", h.UpdateProfile)
 		protected.POST("/profile/password", h.ChangePassword)
 	}
 

@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/models"
@@ -183,7 +184,53 @@ func (h *Handler) Profile(c *gin.Context) {
 		"username":    username,
 		"role":        role,
 		"user":        user,
+		"success":     c.Query("success"),
+		"error":       c.Query("error"),
 	})
+}
+
+// UpdateProfile handles profile update (username + full_name)
+func (h *Handler) UpdateProfile(c *gin.Context) {
+	userID, _, role, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	newUsername := strings.TrimSpace(c.PostForm("username"))
+	newFullName := strings.TrimSpace(c.PostForm("full_name"))
+
+	if newUsername == "" || newFullName == "" {
+		c.Redirect(http.StatusFound, "/profile?error=Username dan Nama Lengkap harus diisi")
+		return
+	}
+
+	var exists int
+	err := h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE username = ? AND id != ?`, newUsername, userID).Scan(&exists)
+	if err == nil && exists > 0 {
+		c.Redirect(http.StatusFound, "/profile?error=Username sudah digunakan")
+		return
+	}
+
+	_, err = h.db.Exec(`UPDATE users SET username = ?, full_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		newUsername, newFullName, userID)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/profile?error=Gagal mengupdate profil")
+		return
+	}
+
+	session := sessions.Default(c)
+	session.Set("username", newUsername)
+	session.Set("full_name", newFullName)
+	session.Save()
+
+	ipAddress, userAgent := getRequestContext(c)
+	h.activityLogService.LogUpdate(userID, newUsername, role, "user", userID,
+		map[string]interface{}{"id": userID},
+		map[string]interface{}{"username": newUsername, "full_name": newFullName},
+		ipAddress, userAgent)
+
+	c.Redirect(http.StatusFound, "/profile?success=Profil berhasil diupdate")
 }
 
 // ChangePassword handles password change

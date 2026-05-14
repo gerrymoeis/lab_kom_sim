@@ -20,56 +20,53 @@
                     <h5 class="mb-0"><i class="bi bi-person-circle"></i> Profil User</h5>
                 </div>
                 <div class="card-body">
+                    {{ if .error }}
+                    <div class="alert alert-danger">{{ .error }}</div>
+                    {{ end }}
+                    {{ if .success }}
+                    <div class="alert alert-success">{{ .success }}</div>
+                    {{ end }}
+
                     <div class="mb-4">
-                        <h6 class="text-muted">Informasi Akun</h6>
-                        <table class="table table-borderless">
-                            <tr>
-                                <th width="30%">Username:</th>
-                                <td>{{ .user.Username }}</td>
-                            </tr>
-                            <tr>
-                                <th>Nama Lengkap:</th>
-                                <td>{{ .user.FullName }}</td>
-                            </tr>
-                            <tr>
-                                <th>Role:</th>
-                                <td>
-                                    <span class="badge bg-{{ if eq .user.Role "admin" }}danger{{ else }}info{{ end }}">
-                                        {{ .user.Role }}
-                                    </span>
-                                </td>
-                            </tr>
-                        </table>
+                        <h6 class="text-muted">Edit Profil</h6>
+                        <form method="POST" action="/profile">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username *</label>
+                                <input type="text" class="form-control" id="username" name="username" value="{{ .user.Username }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="full_name" class="form-label">Nama Lengkap *</label>
+                                <input type="text" class="form-control" id="full_name" name="full_name" value="{{ .user.FullName }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Role</label>
+                                <input type="text" class="form-control" value="{{ .user.Role }}" disabled>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Simpan Profil
+                            </button>
+                        </form>
                     </div>
 
                     <hr>
 
                     <div class="mt-4">
                         <h6 class="text-muted">Ubah Password</h6>
-                        {{ if .error }}
-                        <div class="alert alert-danger">{{ .error }}</div>
-                        {{ end }}
-                        {{ if .success }}
-                        <div class="alert alert-success">{{ .success }}</div>
-                        {{ end }}
 
                         <form method="POST" action="/profile/password">
                             <div class="mb-3">
                                 <label for="old_password" class="form-label">Password Lama *</label>
                                 <input type="password" class="form-control" id="old_password" name="old_password" required>
                             </div>
-
                             <div class="mb-3">
                                 <label for="new_password" class="form-label">Password Baru *</label>
                                 <input type="password" class="form-control" id="new_password" name="new_password" required>
                             </div>
-
                             <div class="mb-3">
                                 <label for="confirm_password" class="form-label">Konfirmasi Password Baru *</label>
                                 <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                             </div>
-
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-key"></i> Ubah Password
                             </button>
                         </form>
