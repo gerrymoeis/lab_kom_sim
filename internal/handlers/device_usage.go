@@ -302,6 +302,20 @@ func (h *Handler) DeviceUsageUpdateAvailability(c *gin.Context) {
 		return
 	}
 
+	// Log
+	userID, username, role, ok := middleware.GetCurrentUser(c)
+	if ok {
+		ipAddress, userAgent := getRequestContext(c)
+		status := "yes"
+		if isAvailable == "no" {
+			status = "no"
+		}
+		h.activityLogService.LogUpdate(userID, username, role, "device_usage", 0,
+			map[string]interface{}{"id": id, "old_is_available": oldIsAvailable},
+			map[string]interface{}{"id": id, "is_available": status},
+			ipAddress, userAgent)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 

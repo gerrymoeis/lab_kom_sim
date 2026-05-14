@@ -109,6 +109,13 @@ func (h *Handler) UserCreate(c *gin.Context) {
 		return
 	}
 
+	// Log
+	userID, _, _, _ := middleware.GetCurrentUser(c)
+	ipAddress, userAgent := getRequestContext(c)
+	h.activityLogService.LogCreate(userID, username, "admin", "user", 0,
+		map[string]interface{}{"username": username, "full_name": fullName, "role": role},
+		ipAddress, userAgent)
+
 	c.Redirect(http.StatusFound, "/admin/users")
 }
 
@@ -145,6 +152,13 @@ func (h *Handler) UserDelete(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/admin/users?error=Gagal menghapus user")
 		return
 	}
+
+	// Log
+	currUserID, currUsername, currRole, _ := middleware.GetCurrentUser(c)
+	ipAddress, userAgent := getRequestContext(c)
+	h.activityLogService.LogDelete(currUserID, currUsername, currRole, "user", targetID,
+		map[string]interface{}{"deleted_user_id": targetID, "deleted_username": username},
+		ipAddress, userAgent)
 
 	c.Redirect(http.StatusFound, "/admin/users")
 }
