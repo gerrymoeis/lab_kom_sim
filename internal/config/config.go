@@ -9,14 +9,15 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	Environment   string
-	Host          string
-	Port          string
-	DatabasePath  string
-	DatabaseURL   string
-	SessionSecret string
-	UploadPath    string
-	GeminiAPIKey  string
+	Environment      string
+	Host             string
+	Port             string
+	DatabasePath     string
+	DatabaseURL      string
+	SessionSecret    string
+	UploadPath       string
+	GeminiAPIKey     string
+	OpenRouterAPIKey string
 }
 
 // Load loads configuration from environment variables with defaults
@@ -34,7 +35,8 @@ func Load() *Config {
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
 		UploadPath:    getEnv("UPLOAD_PATH", "uploads"),
-		GeminiAPIKey:  getEnv("GEMINI_API_KEY", ""),
+		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
+		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
 	}
 }
 

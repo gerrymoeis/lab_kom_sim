@@ -93,7 +93,7 @@ func (h *Handler) ExperimentOCRUpload(c *gin.Context) {
 	}
 
 	// Process OCR
-	ocrService := services.NewOCRService(apiKey)
+	ocrService := services.NewOCRService(apiKey, h.cfg.OpenRouterAPIKey)
 	result, err := ocrService.ExtractFinanceTableFromImage(filepath)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{

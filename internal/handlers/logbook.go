@@ -306,7 +306,7 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		return
 	}
 
-	ocrService := services.NewOCRService(apiKey)
+	ocrService := services.NewOCRService(apiKey, h.cfg.OpenRouterAPIKey)
 	result, err := ocrService.ExtractLogbookFromImage(filepath)
 
 	success := true

@@ -14,16 +14,20 @@ import (
 	"time"
 )
 
-// OCRService handles OCR operations using Google Gemini API
+// OCRService handles OCR operations using AI vision APIs
 type OCRService struct {
-	apiKey string
-	client *http.Client
+	geminiKey     string
+	openRouterKey string
+	client        *http.Client
 }
 
 // NewOCRService creates a new OCR service
-func NewOCRService(apiKey string) *OCRService {
+// geminiKey: Google Gemini API key (used as fallback)
+// openRouterKey: OpenRouter API key (used as primary via openrouter/free)
+func NewOCRService(geminiKey, openRouterKey string) *OCRService {
 	return &OCRService{
-		apiKey: apiKey,
+		geminiKey:     geminiKey,
+		openRouterKey: openRouterKey,
 		client: &http.Client{
 			Timeout: 60 * time.Second,
 		},
@@ -78,7 +82,8 @@ type GeminiResponse struct {
 	} `json:"candidates"`
 }
 
-// ExtractLogbookFromImage extracts logbook data from image using Gemini API
+// ExtractLogbookFromImage extracts logbook data from image using AI vision API
+// Strategy: OpenRouter (primary) → Gemini (fallback)
 func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, error) {
 	totalStart := time.Now()
 	log.Printf("[OCR] Starting OCR for %s", imagePath)
@@ -95,35 +100,57 @@ func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, erro
 		mimeType = "image/png"
 	}
 
-	maxRetries := 3
 	var responseText string
-	var lastErr error
 
+	if s.openRouterKey != "" {
+		log.Printf("[OCR] Trying OpenRouter (openrouter/free) primary...")
+		responseText, err = s.tryProvider(s.callOpenRouter, "OpenRouter", base64Image, mimeType, totalStart)
+		if err == nil {
+			return s.parseOCRResponse(responseText)
+		}
+		log.Printf("[OCR] OpenRouter failed, falling back to Gemini: %v", err)
+	}
+
+	if s.geminiKey != "" {
+		responseText, err = s.tryProvider(s.callGemini, "Gemini", base64Image, mimeType, totalStart)
+		if err == nil {
+			return s.parseOCRResponse(responseText)
+		}
+	}
+
+	return nil, fmt.Errorf("OCR failed after %v: %w", time.Since(totalStart), err)
+}
+
+// tryProvider runs the provided callFn in a retry loop
+func (s *OCRService) tryProvider(callFn func(string, string) (string, error), name, base64Image, mimeType string, totalStart time.Time) (string, error) {
+	maxRetries := 3
+	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
 			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
-			log.Printf("[OCR] Retry %d/%d after %v (elapsed: %v)", attempt, maxRetries, backoff, time.Since(totalStart))
+			log.Printf("[OCR] %s retry %d/%d after %v (elapsed: %v)", name, attempt, maxRetries, backoff, time.Since(totalStart))
 			time.Sleep(backoff)
 		}
 
 		callStart := time.Now()
-		responseText, lastErr = s.callGemini(base64Image, mimeType)
-		if lastErr == nil {
-			log.Printf("[OCR] Gemini success on attempt %d in %v (total: %v)", attempt+1, time.Since(callStart), time.Since(totalStart))
-			break
+		responseText, err := callFn(base64Image, mimeType)
+		if err == nil {
+			log.Printf("[OCR] %s success on attempt %d in %v (total: %v)", name, attempt+1, time.Since(callStart), time.Since(totalStart))
+			return responseText, nil
 		}
 
-		if !isTransientError(lastErr) {
-			log.Printf("[OCR] Non-transient error attempt %d in %v: %v", attempt+1, time.Since(callStart), lastErr)
-			break
+		if !isTransientError(err) {
+			log.Printf("[OCR] %s non-transient error attempt %d in %v: %v", name, attempt+1, time.Since(callStart), err)
+			return "", err
 		}
-		log.Printf("[OCR] Transient error attempt %d in %v: %v", attempt+1, time.Since(callStart), lastErr)
+		log.Printf("[OCR] %s transient error attempt %d in %v: %v", name, attempt+1, time.Since(callStart), err)
+		lastErr = err
 	}
+	return "", lastErr
+}
 
-	if lastErr != nil {
-		return nil, fmt.Errorf("OCR failed after %v: %w", time.Since(totalStart), lastErr)
-	}
-
+// parseOCRResponse parses Gemini/OpenRouter response text into OCRResult
+func (s *OCRService) parseOCRResponse(responseText string) (*OCRResult, error) {
 	jsonText := responseText
 	if strings.Contains(responseText, "```json") {
 		start := strings.Index(responseText, "```json")
@@ -186,79 +213,7 @@ func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, erro
 
 // callGemini sends image to Gemini API and returns response text
 func (s *OCRService) callGemini(base64Image, mimeType string) (string, error) {
-	prompt := `Analyze this image of a handwritten logbook/attendance table.
-Extract the data and return it in JSON format with the following structure:
-
-{
-  "entries": [
-    {
-      "date": "YYYY-MM-DD",
-      "student_name": "Full Name",
-      "nim": "Student ID",
-      "time_in": "HH:MM",
-      "time_out": "HH:MM",
-      "purpose": "Purpose/reason for attendance"
-    }
-  ]
-}
-
-CRITICAL RULES - READ CAREFULLY:
-
-1. EXTRACT ALL ROWS from the table
-
-2. SMART CONTEXT UNDERSTANDING:
-   - If a field is empty or shows ditto marks ("~~~", "\\", "''", or similar), COPY the value from the row above
-   - If date is empty but other rows have dates, INFER the date from context (usually same date for consecutive entries)
-   - If you see spelling errors or typos, CORRECT them intelligently based on context
-   - Examples:
-     * "Pemrograman Web lanjut" with typo → Correct to "Pemrograman Web Lanjut"
-     * Empty date but previous row is "05/05/2026" → Use "05/05/2026"
-     * "~~~" in purpose field → Copy purpose from row above
-     * "Rian Dwi Hermawan" with inconsistent capitalization → Standardize to proper Title Case
-
-3. NAME ABBREVIATIONS:
-   - For middle abbreviations (initials), add dots between letters: "Herman SW" → "Herman S.W"
-   - NEVER add trailing dot at the end: "Herman S.W." → "Herman S.W"
-   - Examples:
-     * "Rian DH" → "Rian D.H"
-     * "Herman SW" → "Herman S.W"
-     * "Najwa AS" → "Najwa A.S"
-   - Apply this consistently to all names
-
-4. DATE HANDLING:
-   - Parse to YYYY-MM-DD format
-   - Accept formats: DD/MM/YYYY, DD-MM-YYYY, D/M/YYYY
-   - If date is missing but can be inferred from context, fill it in
-   - If completely unclear, use empty string ""
-
-5. NIM (STUDENT ID) VALIDATION:
-   - NIM format: 11 digits (example: 24091397XXX)
-   - First 7-8 digits usually same for same batch/program
-   - Last 3 digits are unique per student
-   - CRITICAL: If same student name appears multiple times in the table, NIM MUST be EXACTLY the same
-   - Common OCR errors to watch for:
-     * 4 ↔ 9 (very common confusion)
-     * 3 ↔ 8 (similar shapes)
-     * 1 ↔ 7 (handwriting variation)
-     * 0 ↔ 6 (similar shapes)
-
-6. TIME FIELDS:
-   - If you see a COMBINED time range like "13.00 - 14.40" or "13:00 - 14:40":
-     * SPLIT it into two separate times
-     * Put the START time in "time_in" field
-     * Put the END time in "time_out" field
-   - If you see dots (.) in time format, CONVERT them to colons (:)
-   - Always use HH:MM format (24-hour)
-
-7. TEXT QUALITY:
-   - Fix obvious spelling mistakes
-   - Standardize capitalization (proper names should be Title Case)
-   - Remove extra spaces
-   - Be intelligent about abbreviations (e.g., "Pemrog Web" → "Pemrograman Web")
-
-8. RETURN ONLY valid JSON, no additional text or explanations
-
-Please extract the data now with smart context understanding:`
+	prompt := buildOCRPrompt()
 
 	reqBody := GeminiRequest{
 		Contents: []GeminiContent{
@@ -276,7 +231,7 @@ Please extract the data now with smart context understanding:`
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=%s", s.apiKey)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=%s", s.geminiKey)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -309,6 +264,130 @@ Please extract the data now with smart context understanding:`
 	}
 
 	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
+}
+
+// OpenRouterResponse represents response from OpenRouter API (OpenAI-compatible)
+type OpenRouterResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
+// callOpenRouter sends image to OpenRouter (openrouter/free) and returns response text
+func (s *OCRService) callOpenRouter(base64Image, mimeType string) (string, error) {
+	prompt := buildOCRPrompt()
+
+	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image)
+
+	reqBody := map[string]interface{}{
+		"model": "openrouter/free",
+		"messages": []map[string]interface{}{
+			{
+				"role": "user",
+				"content": []map[string]interface{}{
+					{"type": "text", "text": prompt},
+					{"type": "image_url", "image_url": map[string]string{"url": dataURL}},
+				},
+			},
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.openRouterKey)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to call OpenRouter: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("OpenRouter API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var orResp OpenRouterResponse
+	if err := json.Unmarshal(body, &orResp); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if len(orResp.Choices) == 0 {
+		return "", fmt.Errorf("no response from OpenRouter")
+	}
+
+	return orResp.Choices[0].Message.Content, nil
+}
+
+func buildOCRPrompt() string {
+	return `Analyze this image of a handwritten logbook/attendance table.
+Extract the data and return it in JSON format with the following structure:
+
+{
+  "entries": [
+    {
+      "date": "YYYY-MM-DD",
+      "student_name": "Full Name",
+      "nim": "Student ID",
+      "time_in": "HH:MM",
+      "time_out": "HH:MM",
+      "purpose": "Purpose/reason for attendance"
+    }
+  ]
+}
+
+CRITICAL RULES - READ CAREFULLY:
+
+1. EXTRACT ALL ROWS from the table
+
+2. SMART CONTEXT UNDERSTANDING:
+   - If a field is empty or shows ditto marks ("~~~", "\\", "''", or similar), COPY the value from the row above
+   - If date is empty but other rows have dates, INFER the date from context (usually same date for consecutive entries)
+   - If you see spelling errors or typos, CORRECT them intelligently based on context
+
+3. NAME ABBREVIATIONS:
+   - For middle abbreviations (initials), add dots between letters: "Herman SW" → "Herman S.W"
+   - NEVER add trailing dot at the end: "Herman S.W." → "Herman S.W"
+   - Apply this consistently to all names
+
+4. DATE HANDLING:
+   - Parse to YYYY-MM-DD format
+   - Accept formats: DD/MM/YYYY, DD-MM-YYYY, D/M/YYYY
+
+5. NIM (STUDENT ID) VALIDATION:
+   - NIM format: 11 digits (example: 24091397XXX)
+   - If same student name appears multiple times, NIM MUST be EXACTLY the same
+   - Common OCR errors: 4↔9, 3↔8, 1↔7, 0↔6
+
+6. TIME FIELDS:
+   - If you see a combined time range like "13.00 - 14.40":
+     * SPLIT it: time_in="13:00", time_out="14:40"
+   - Convert dots (.) to colons (:)
+   - Always use HH:MM format (24-hour)
+
+7. TEXT QUALITY:
+   - Fix obvious spelling mistakes
+   - Standardize capitalization (Title Case)
+   - Be intelligent about abbreviations (e.g., "Pemrog Web" → "Pemrograman Web")
+
+8. RETURN ONLY valid JSON, no additional text or explanations
+
+Please extract the data now with smart context understanding:`
 }
 
 // isTransientError returns true if the error is retryable
