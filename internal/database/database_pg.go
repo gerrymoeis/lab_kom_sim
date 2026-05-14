@@ -98,6 +98,7 @@ func runPostgresMigrations(db *DB) error {
 			user_type TEXT CHECK(user_type IN ('dosen', 'mahasiswa', 'staff', 'lainnya')),
 			usage_date DATE NOT NULL,
 			quantity INTEGER NOT NULL DEFAULT 1,
+			is_available TEXT NOT NULL DEFAULT 'yes' CHECK(is_available IN ('yes', 'no')),
 			purpose TEXT,
 			notes TEXT,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

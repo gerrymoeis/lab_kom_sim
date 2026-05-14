@@ -31,12 +31,12 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="user_type" class="form-label">Tipe Pengguna *</label>
+                            <label for="user_type" class="form-label">Kategori Pengguna *</label>
                             <select class="form-select" id="user_type" name="user_type" required>
                                 <option value="mahasiswa" {{ if eq .usage.UserType "mahasiswa" }}selected{{ end }}>Mahasiswa</option>
                                 <option value="dosen" {{ if eq .usage.UserType "dosen" }}selected{{ end }}>Dosen</option>
                                 <option value="staff" {{ if eq .usage.UserType "staff" }}selected{{ end }}>Staff</option>
-                                <option value="external" {{ if eq .usage.UserType "external" }}selected{{ end }}>External</option>
+                                <option value="lainnya" {{ if eq .usage.UserType "lainnya" }}selected{{ end }}>Lainnya</option>
                             </select>
                         </div>
 
@@ -45,10 +45,19 @@
                             <input type="date" class="form-control" id="usage_date" name="usage_date" value="{{ .usage.UsageDate }}" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="quantity" class="form-label">Jumlah *</label>
-                            <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="{{ .usage.Quantity }}" required>
-                            <small class="text-muted">Jumlah saat ini: {{ .usage.Quantity }}. Perubahan akan menyesuaikan stok.</small>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="quantity" class="form-label">Jumlah *</label>
+                                <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="{{ .usage.Quantity }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="is_available" class="form-label">Masih Ada? *</label>
+                                <select class="form-select" id="is_available" name="is_available" required>
+                                    <option value="yes" {{ if eq .usage.IsAvailable "yes" }}selected{{ end }}>Ada</option>
+                                    <option value="no" {{ if eq .usage.IsAvailable "no" }}selected{{ end }}>Habis</option>
+                                </select>
+                                <small class="text-muted">Pilih "Habis" jika barang benar-benar habis, stok akan dikurangi.</small>
+                            </div>
                         </div>
 
                         <div class="mb-3">

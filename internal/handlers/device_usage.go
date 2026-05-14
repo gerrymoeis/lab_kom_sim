@@ -29,7 +29,7 @@ func (h *Handler) DeviceUsageList(c *gin.Context) {
 	// Build query with JOIN to get device name
 	query := `
 		SELECT u.id, u.device_id, d.name as device_name, d.asset_code, u.user_name, u.user_type,
-		       u.usage_date, u.quantity, u.purpose
+		       u.usage_date, u.quantity, u.is_available, u.purpose
 		FROM device_usages u
 		JOIN devices d ON u.device_id = d.id
 		WHERE 1=1
@@ -74,7 +74,7 @@ func (h *Handler) DeviceUsageList(c *gin.Context) {
 	for rows.Next() {
 		var usage UsageWithDevice
 		err := rows.Scan(&usage.ID, &usage.DeviceID, &usage.DeviceName, &usage.AssetCode, &usage.UserName,
-			&usage.UserType, &usage.UsageDate, &usage.Quantity, &usage.Purpose)
+			&usage.UserType, &usage.UsageDate, &usage.Quantity, &usage.IsAvailable, &usage.Purpose)
 		if err != nil {
 			continue
 		}
@@ -165,21 +165,14 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 		return
 	}
 
-	// Check available quantity
-	var quantityAvailable int
-	err := h.db.QueryRow(`SELECT quantity_available FROM devices WHERE id = ?`, deviceID).Scan(&quantityAvailable)
-	if err != nil || quantityAvailable < quantity {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"title":   "Error",
-			"message": fmt.Sprintf("Stok tidak cukup. Tersedia: %d", quantityAvailable),
-		})
-		return
+	isAvailable := c.PostForm("is_available")
+	if isAvailable != "no" {
+		isAvailable = "yes"
 	}
 
 	// Parse date
 	usageDate, _ := time.Parse("2006-01-02", usageDateStr)
 
-	// Begin transaction
 	tx, err := h.db.Begin()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -190,11 +183,10 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	// Insert usage
 	result, err := tx.Exec(`
-		INSERT INTO device_usages (device_id, user_name, user_type, usage_date, quantity, purpose)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, deviceID, userName, userType, usageDate, quantity, purpose)
+		INSERT INTO device_usages (device_id, user_name, user_type, usage_date, quantity, is_available, purpose)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, deviceID, userName, userType, usageDate, quantity, isAvailable, purpose)
 
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -204,14 +196,26 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 		return
 	}
 
-	// Update device quantity (permanent reduction)
-	_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, deviceID)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengupdate stok perangkat",
-		})
-		return
+	// Only deduct stock if item is marked as habis (not available)
+	if isAvailable == "no" {
+		var quantityAvailable int
+		err = tx.QueryRow(`SELECT quantity_available FROM devices WHERE id = ?`, deviceID).Scan(&quantityAvailable)
+		if err != nil || quantityAvailable < quantity {
+			tx.Rollback()
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"title":   "Error",
+				"message": fmt.Sprintf("Stok tidak cukup. Tersedia: %d", quantityAvailable),
+			})
+			return
+		}
+		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, deviceID)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title":   "Error",
+				"message": "Gagal mengupdate stok perangkat",
+			})
+			return
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -222,7 +226,6 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 		return
 	}
 
-	// Log
 	usageID, _ := result.LastInsertId()
 	userID, username, role, ok := middleware.GetCurrentUser(c)
 	if ok {
@@ -242,6 +245,66 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/devices?tab=usages")
 }
 
+// DeviceUsageUpdateAvailability handles inline is_available toggle from list
+func (h *Handler) DeviceUsageUpdateAvailability(c *gin.Context) {
+	id := c.Param("id")
+	isAvailable := c.PostForm("is_available")
+	if isAvailable != "yes" && isAvailable != "no" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Nilai tidak valid"})
+		return
+	}
+
+	var deviceID, quantity int
+	var oldIsAvailable string
+	err := h.db.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &quantity, &oldIsAvailable)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Data tidak ditemukan"})
+		return
+	}
+
+	if oldIsAvailable == isAvailable {
+		c.JSON(http.StatusOK, gin.H{"success": true})
+		return
+	}
+
+	tx, err := h.db.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal memulai transaksi"})
+		return
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`UPDATE device_usages SET is_available = ? WHERE id = ?`, isAvailable, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal mengupdate"})
+		return
+	}
+
+	if isAvailable == "yes" {
+		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, deviceID)
+	} else {
+		var qtyAvail int
+		tx.QueryRow(`SELECT quantity_available FROM devices WHERE id = ?`, deviceID).Scan(&qtyAvail)
+		if qtyAvail < quantity {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": fmt.Sprintf("Stok tidak cukup. Tersedia: %d", qtyAvail)})
+			return
+		}
+		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, deviceID)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal mengupdate stok"})
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal menyimpan"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
 // DeviceUsageEditPage renders device usage edit form
 func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 	_, username, role, ok := middleware.GetCurrentUser(c)
@@ -257,12 +320,12 @@ func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 	var purpose, notes sql.NullString
 	err := h.db.QueryRow(`
 		SELECT u.id, u.device_id, d.name, d.asset_code, u.user_name, u.user_type,
-		       u.usage_date, u.quantity, u.purpose, u.notes
+		       u.usage_date, u.quantity, u.is_available, u.purpose, u.notes
 		FROM device_usages u
 		JOIN devices d ON u.device_id = d.id
 		WHERE u.id = ?
 	`, id).Scan(&usage.ID, &usage.DeviceID, &deviceName, &assetCode, &usage.UserName, &usage.UserType,
-		&usage.UsageDate, &usage.Quantity, &purpose, &notes)
+		&usage.UsageDate, &usage.Quantity, &usage.IsAvailable, &purpose, &notes)
 	
 	// Convert NullString to string
 	if purpose.Valid {
@@ -306,13 +369,18 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	userType := c.PostForm("user_type")
 	usageDateStr := c.PostForm("usage_date")
 	quantityStr := c.PostForm("quantity")
+	isAvailable := c.PostForm("is_available")
 	purpose := c.PostForm("purpose")
 	notes := c.PostForm("notes")
 
-	// Get current usage data
+	if isAvailable != "no" {
+		isAvailable = "yes"
+	}
+
 	var oldQuantity int
+	var oldIsAvailable string
 	var deviceID int
-	err := h.db.QueryRow(`SELECT device_id, quantity FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &oldQuantity)
+	err := h.db.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &oldQuantity, &oldIsAvailable)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
@@ -324,7 +392,6 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	newQuantity, _ := strconv.Atoi(quantityStr)
 	usageDate, _ := time.Parse("2006-01-02", usageDateStr)
 
-	// Begin transaction
 	tx, err := h.db.Begin()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -335,12 +402,11 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	// Update usage
 	_, err = tx.Exec(`
 		UPDATE device_usages 
-		SET user_name = ?, user_type = ?, usage_date = ?, quantity = ?, purpose = ?, notes = ?
+		SET user_name = ?, user_type = ?, usage_date = ?, quantity = ?, is_available = ?, purpose = ?, notes = ?
 		WHERE id = ?
-	`, userName, userType, usageDate, newQuantity, purpose, notes, id)
+	`, userName, userType, usageDate, newQuantity, isAvailable, purpose, notes, id)
 
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -350,14 +416,37 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 		return
 	}
 
-	// Adjust device quantity if quantity changed
-	if newQuantity != oldQuantity {
-		quantityDiff := oldQuantity - newQuantity // If old=5, new=3, diff=2 (restore 2)
+	// Adjust stock: changed from no→yes (restore), or from yes→no (deduct)
+	if oldIsAvailable != isAvailable {
+		if isAvailable == "yes" {
+			// Was 'no' (stock deducted), now 'yes' → restore
+			_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, newQuantity, deviceID)
+		} else {
+			// Was 'yes', now 'no' → deduct stock
+			var qtyAvail int
+			tx.QueryRow(`SELECT quantity_available FROM devices WHERE id = ?`, deviceID).Scan(&qtyAvail)
+			if qtyAvail < newQuantity {
+				tx.Rollback()
+				c.HTML(http.StatusBadRequest, "error.html", gin.H{
+					"title": "Error", "message": fmt.Sprintf("Stok tidak cukup. Tersedia: %d", qtyAvail),
+				})
+				return
+			}
+			_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, newQuantity, deviceID)
+		}
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"title": "Error", "message": "Gagal mengupdate stok perangkat",
+			})
+			return
+		}
+	} else if newQuantity != oldQuantity {
+		// Only quantity changed, adjust stock accordingly
+		quantityDiff := oldQuantity - newQuantity
 		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantityDiff, deviceID)
 		if err != nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-				"title":   "Error",
-				"message": "Gagal mengupdate stok perangkat",
+				"title": "Error", "message": "Gagal mengupdate stok perangkat",
 			})
 			return
 		}
@@ -371,7 +460,6 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 		return
 	}
 
-	// Log
 	userID, username, role, ok := middleware.GetCurrentUser(c)
 	if ok {
 		ipAddress, userAgent := getRequestContext(c)
@@ -392,10 +480,9 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 func (h *Handler) DeviceUsageDelete(c *gin.Context) {
 	id := c.Param("id")
 
-	// Get usage data
 	var usageID, deviceID, quantity int
-	var userName string
-	err := h.db.QueryRow(`SELECT id, device_id, quantity, user_name FROM device_usages WHERE id = ?`, id).Scan(&usageID, &deviceID, &quantity, &userName)
+	var userName, isAvailable string
+	err := h.db.QueryRow(`SELECT id, device_id, quantity, is_available, user_name FROM device_usages WHERE id = ?`, id).Scan(&usageID, &deviceID, &quantity, &isAvailable, &userName)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Gagal mengambil data pemakaian",
@@ -413,13 +500,15 @@ func (h *Handler) DeviceUsageDelete(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	// Restore quantity
-	_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, deviceID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal mengupdate stok perangkat",
-		})
-		return
+	// Restore quantity only if stock was deducted
+	if isAvailable == "no" {
+		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, deviceID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Gagal mengupdate stok perangkat",
+			})
+			return
+		}
 	}
 
 	// Delete usage

@@ -112,15 +112,16 @@ type DeviceLoan struct {
 
 // DeviceUsage represents a device usage/consumption record
 type DeviceUsage struct {
-	ID        int       `json:"id"`
-	DeviceID  int       `json:"device_id"`
-	UserName  string    `json:"user_name"`
-	UserType  string    `json:"user_type"`  // "dosen", "mahasiswa", "staff", "lainnya"
-	UsageDate time.Time `json:"usage_date"`
-	Quantity  int       `json:"quantity"`
-	Purpose   string    `json:"purpose"`
-	Notes     string    `json:"notes"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          int       `json:"id"`
+	DeviceID    int       `json:"device_id"`
+	UserName    string    `json:"user_name"`
+	UserType    string    `json:"user_type"`     // "dosen", "mahasiswa", "staff", "lainnya"
+	UsageDate   time.Time `json:"usage_date"`
+	Quantity    int       `json:"quantity"`
+	IsAvailable string    `json:"is_available"` // "yes" (masih ada) or "no" (habis)
+	Purpose     string    `json:"purpose"`
+	Notes       string    `json:"notes"`
+	CreatedAt   time.Time `json:"created_at"`
 	// Display fields (not in database)
 	DeviceAssetCode string `json:"device_asset_code,omitempty"`
 	DeviceName      string `json:"device_name,omitempty"`

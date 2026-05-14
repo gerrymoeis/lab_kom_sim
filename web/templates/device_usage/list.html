@@ -49,8 +49,9 @@
                             <th>Perangkat</th>
                             <th>Asset Code</th>
                             <th>Pengguna</th>
-                            <th>Tipe</th>
+                            <th>Kategori</th>
                             <th>Tanggal Pemakaian</th>
+                            <th>Masih Ada?</th>
                             <th>Jumlah</th>
                             <th>Keperluan</th>
                             <th>Aksi</th>
@@ -64,6 +65,12 @@
                             <td>{{ .UserName }}</td>
                             <td><span class="badge bg-secondary">{{ .UserType }}</span></td>
                             <td>{{ .UsageDate }}</td>
+                            <td>
+                                <select class="form-select form-select-sm availability-select" data-usage-id="{{ .ID }}" style="width:auto;">
+                                    <option value="yes" {{ if eq .IsAvailable "yes" }}selected{{ end }}>Ada</option>
+                                    <option value="no" {{ if eq .IsAvailable "no" }}selected{{ end }}>Habis</option>
+                                </select>
+                            </td>
                             <td><span class="badge bg-warning">{{ .Quantity }}</span></td>
                             <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>
                             <td>
@@ -71,7 +78,7 @@
                                 <a href="/device-usages/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/device-usages/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini? Stok akan dikembalikan.')">
+                                <form method="POST" action="/device-usages/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -81,7 +88,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="8" class="text-center text-muted">Belum ada data pemakaian</td>
+                            <td colspan="9" class="text-center text-muted">Belum ada data pemakaian</td>
                         </tr>
                         {{ end }}
                     </tbody>
@@ -93,6 +100,22 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js"></script>
+    <script>
+    document.querySelectorAll('.availability-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+            const usageId = this.dataset.usageId;
+            const formData = new FormData();
+            formData.append('is_available', this.value);
+
+            fetch('/device-usages/' + usageId + '/availability', {
+                method: 'POST',
+                body: formData
+            }).then(r => r.json()).then(d => {
+                if (!d.success) alert('Error: ' + (d.error || 'Gagal'));
+            }).catch(() => alert('Gagal menyimpan'));
+        });
+    });
+    </script>
 </body>
 </html>
 {{ end }}

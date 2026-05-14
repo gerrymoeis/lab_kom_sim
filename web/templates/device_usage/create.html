@@ -24,11 +24,6 @@
                     <div class="alert alert-danger">{{ .error }}</div>
                     {{ end }}
 
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> <strong>Catatan:</strong> 
-                        Pemakaian adalah untuk barang habis pakai. Stok akan berkurang secara permanen.
-                    </div>
-
                     <form method="POST" action="/device-usages/create">
                         <div class="mb-3">
                             <label for="device_id" class="form-label">Perangkat *</label>
@@ -52,13 +47,13 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="user_type" class="form-label">Tipe Pengguna *</label>
+                            <label for="user_type" class="form-label">Kategori Pengguna *</label>
                             <select class="form-select" id="user_type" name="user_type" required>
-                                <option value="">Pilih tipe...</option>
+                                <option value="">Pilih kategori...</option>
                                 <option value="mahasiswa">Mahasiswa</option>
                                 <option value="dosen">Dosen</option>
                                 <option value="staff">Staff</option>
-                                <option value="external">External</option>
+                                <option value="lainnya">Lainnya</option>
                             </select>
                         </div>
 
@@ -67,10 +62,19 @@
                             <input type="date" class="form-control" id="usage_date" name="usage_date" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="quantity" class="form-label">Jumlah *</label>
-                            <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="1" required>
-                            <small class="text-muted">Jumlah unit yang digunakan (akan mengurangi stok)</small>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="quantity" class="form-label">Jumlah *</label>
+                                <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="1" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="is_available" class="form-label">Masih Ada? *</label>
+                                <select class="form-select" id="is_available" name="is_available" required>
+                                    <option value="yes" selected>Ada</option>
+                                    <option value="no">Habis</option>
+                                </select>
+                                <small class="text-muted">Pilih "Habis" jika barang benar-benar habis, stok akan dikurangi.</small>
+                            </div>
                         </div>
 
                         <div class="mb-3">

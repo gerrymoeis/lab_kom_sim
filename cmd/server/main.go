@@ -195,6 +195,7 @@ func main() {
 		protected.GET("/device-usages/:id/edit", h.DeviceUsageEditPage)
 		protected.POST("/device-usages/:id/edit", h.DeviceUsageEdit)
 		protected.POST("/device-usages/:id/delete", h.DeviceUsageDelete)
+		protected.POST("/device-usages/:id/availability", h.DeviceUsageUpdateAvailability)
 
 		// Course Schedules
 		protected.GET("/schedules", h.ScheduleList)
