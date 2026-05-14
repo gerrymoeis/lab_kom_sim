@@ -31,6 +31,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {{ if eq .currentPage "schedules" }}active{{ end }}" href="/schedules">
+                        <i class="bi bi-calendar-event" aria-hidden="true"></i> Jadwal
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {{ if eq .currentPage "logbook" }}active{{ end }}" href="/logbook">
                         <i class="bi bi-journal-text" aria-hidden="true"></i> Logbook
                     </a>

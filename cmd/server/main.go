@@ -196,6 +196,14 @@ func main() {
 		protected.POST("/device-usages/:id/edit", h.DeviceUsageEdit)
 		protected.POST("/device-usages/:id/delete", h.DeviceUsageDelete)
 
+		// Course Schedules
+		protected.GET("/schedules", h.ScheduleList)
+		protected.GET("/schedules/create", h.ScheduleCreatePage)
+		protected.POST("/schedules/create", h.ScheduleCreate)
+		protected.GET("/schedules/:id/edit", h.ScheduleEditPage)
+		protected.POST("/schedules/:id/edit", h.ScheduleEdit)
+		protected.POST("/schedules/:id/delete", h.ScheduleDelete)
+
 		// Software Tracking
 		protected.GET("/software", h.SoftwareList)
 		protected.POST("/software/create", h.SoftwareCreate)

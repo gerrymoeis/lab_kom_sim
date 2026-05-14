@@ -148,6 +148,20 @@ type PCSoftware struct {
 	Description  string `json:"description,omitempty"`
 }
 
+// CourseSchedule represents a course schedule in the lab
+type CourseSchedule struct {
+	ID         int       `json:"id"`
+	CourseName string    `json:"course_name"`
+	Lecturer   string    `json:"lecturer"`
+	Day        string    `json:"day"`
+	Class      string    `json:"class"`
+	TimeStart  string    `json:"time_start"`
+	TimeEnd    string    `json:"time_end"`
+	Notes      string    `json:"notes"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
 // LogbookEntry represents an attendance logbook entry
 type LogbookEntry struct {
 	ID         int       `json:"id"`

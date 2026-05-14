@@ -137,6 +137,18 @@ func runSQLiteMigrations(db *DB) error {
 			FOREIGN KEY (pc_id) REFERENCES pcs(id) ON DELETE CASCADE,
 			FOREIGN KEY (software_id) REFERENCES software_catalog(id) ON DELETE CASCADE
 		)`,
+		`CREATE TABLE IF NOT EXISTS course_schedules (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			course_name TEXT NOT NULL,
+			lecturer TEXT NOT NULL,
+			day TEXT NOT NULL,
+			class TEXT NOT NULL,
+			time_start TEXT NOT NULL,
+			time_end TEXT NOT NULL,
+			notes TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`,
 		`CREATE TABLE IF NOT EXISTS logbook_entries (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			date DATE NOT NULL,

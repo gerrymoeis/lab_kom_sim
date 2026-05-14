@@ -118,6 +118,18 @@ func runPostgresMigrations(db *DB) error {
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (pc_id, software_id)
 		)`,
+		`CREATE TABLE IF NOT EXISTS course_schedules (
+			id SERIAL PRIMARY KEY,
+			course_name TEXT NOT NULL,
+			lecturer TEXT NOT NULL,
+			day TEXT NOT NULL,
+			class TEXT NOT NULL,
+			time_start TEXT NOT NULL,
+			time_end TEXT NOT NULL,
+			notes TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		)`,
 		`CREATE TABLE IF NOT EXISTS logbook_entries (
 			id SERIAL PRIMARY KEY,
 			date DATE NOT NULL,
