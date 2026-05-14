@@ -218,10 +218,6 @@ func main() {
 		protected.POST("/logbook/:id/edit", h.LogbookEdit)
 		protected.POST("/logbook/:id/delete", h.LogbookDelete)
 
-		// Experiment: OCR Finance Table (Testing only)
-		protected.GET("/experiment/ocr", h.ExperimentOCRPage)
-		protected.POST("/experiment/ocr/upload", h.ExperimentOCRUpload)
-
 		// User Management (Admin only)
 		admin := protected.Group("/admin")
 		admin.Use(middleware.AdminRequired())
