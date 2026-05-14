@@ -160,7 +160,7 @@ func runPostgresMigrations(db *DB) error {
 		// Indexes
 		`CREATE INDEX IF NOT EXISTS idx_pcs_status ON pcs(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_number ON pcs(pc_number)`,
-		`CREATE INDEX IF NOT EXISTS idx_software_pc_id ON software(pc_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_pc_software_pc_id ON pc_software(pc_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_date ON logbook_entries(date)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,
 		`CREATE INDEX IF NOT EXISTS idx_maintenance_pc_id ON maintenance_logs(pc_id)`,
