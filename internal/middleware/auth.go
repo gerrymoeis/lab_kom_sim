@@ -1,27 +1,47 @@
 package middleware
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
-// AuthRequired middleware checks if user is authenticated
-func AuthRequired() gin.HandlerFunc {
+// AuthRequired middleware checks if user is authenticated and session is valid
+// db is used to validate session_token for single-session enforcement
+func AuthRequired(db interface{}) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
+		sessionToken := session.Get("session_token")
 
-		if userID == nil {
+		if userID == nil || sessionToken == nil {
 			c.Redirect(http.StatusFound, "/login")
 			c.Abort()
 			return
 		}
 
+		queryDB, ok := db.(interface {
+			QueryRow(query string, args ...interface{}) *sql.Row
+		})
+		if ok {
+			var dbToken string
+			err := queryDB.QueryRow(`SELECT session_token FROM users WHERE id = ?`, userID.(int)).Scan(&dbToken)
+			if err != nil || dbToken == "" || dbToken != sessionToken.(string) {
+				session.Clear()
+				session.Save()
+				c.Redirect(http.StatusFound, "/login")
+				c.Abort()
+				return
+			}
+		}
+
 		c.Next()
 	}
 }
+
+// AdminRequired middleware checks if user is admin
 
 // AdminRequired middleware checks if user is admin
 func AdminRequired() gin.HandlerFunc {

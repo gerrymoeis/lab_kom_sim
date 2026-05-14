@@ -23,6 +23,7 @@ func runPostgresMigrations(db *DB) error {
 			password TEXT NOT NULL,
 			full_name TEXT NOT NULL,
 			role TEXT NOT NULL CHECK(role IN ('admin', 'dosen')),
+			session_token TEXT,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,

@@ -146,7 +146,7 @@ func main() {
 
 	// Protected routes (require authentication)
 	protected := router.Group("/")
-	protected.Use(middleware.AuthRequired())
+	protected.Use(middleware.AuthRequired(db))
 	{
 		// Dashboard
 		protected.GET("/dashboard", h.Dashboard)
@@ -249,7 +249,7 @@ func main() {
 
 	// API routes (for HTMX/AJAX)
 	api := router.Group("/api")
-	api.Use(middleware.AuthRequired())
+	api.Use(middleware.AuthRequired(db))
 	{
 		api.GET("/pc/status", h.PCStatusAPI)
 		api.POST("/pc/:id/status", h.UpdatePCStatusAPI)

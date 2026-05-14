@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/models"
@@ -111,19 +112,39 @@ func (h *Handler) UserCreate(c *gin.Context) {
 
 // UserDelete handles user deletion
 func (h *Handler) UserDelete(c *gin.Context) {
-	id := c.Param("id")
-	
-	// Prevent deleting own account
+	idStr := c.Param("id")
+	targetID, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+
 	session := sessions.Default(c)
-	currentUserID := session.Get("user_id")
-	if currentUserID == id {
+	currentUserID, _ := session.Get("user_id").(int)
+
+	// Layer 1: Cannot delete self
+	if currentUserID == targetID {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Tidak dapat menghapus akun sendiri",
 		})
 		return
 	}
 
-	_, err := h.db.Exec("DELETE FROM users WHERE id = ?", id)
+	// Layer 2: Cannot delete primary admin accounts
+	var username string
+	err = h.db.QueryRow(`SELECT username FROM users WHERE id = ?`, targetID).Scan(&username)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan"})
+		return
+	}
+	if username == "admin" || username == "rekan" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Tidak dapat menghapus akun admin utama",
+		})
+		return
+	}
+
+	_, err = h.db.Exec("DELETE FROM users WHERE id = ?", targetID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Gagal menghapus user",

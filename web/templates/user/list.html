@@ -50,11 +50,15 @@
                             </td>
                             <td>{{ .CreatedAt.Format "02/01/2006" }}</td>
                             <td>
+                                {{ if and (ne .Username "admin") (ne .Username "rekan") }}
                                 <form method="POST" action="/admin/users/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger">
                                         <i class="bi bi-trash"></i> Hapus
                                     </button>
                                 </form>
+                                {{ else }}
+                                <span class="text-muted small">Akun utama</span>
+                                {{ end }}
                             </td>
                         </tr>
                         {{ else }}

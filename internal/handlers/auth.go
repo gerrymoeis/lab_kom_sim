@@ -1,13 +1,23 @@
 package handlers
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
+
+func generateSessionToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
 
 // LoginPage renders login page
 func (h *Handler) LoginPage(c *gin.Context) {
@@ -78,12 +88,31 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	// Set session
+	// Generate and store session token (single session enforcement)
+	token, err := generateSessionToken()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
+			"title": "Login - Sistem Inventaris Lab",
+			"error": "Gagal generate token",
+		})
+		return
+	}
+
+	_, err = h.db.Exec(`UPDATE users SET session_token = ? WHERE id = ?`, token, userID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
+			"title": "Login - Sistem Inventaris Lab",
+			"error": "Gagal menyimpan token",
+		})
+		return
+	}
+
 	session := sessions.Default(c)
 	session.Set("user_id", userID)
 	session.Set("username", username)
 	session.Set("full_name", fullName)
 	session.Set("role", role)
+	session.Set("session_token", token)
 	if err := session.Save(); err != nil {
 		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
 			"title": "Login - Sistem Inventaris Lab",
@@ -91,8 +120,6 @@ func (h *Handler) Login(c *gin.Context) {
 		})
 		return
 	}
-
-	// Log successful login
 	ipAddress, userAgent := getRequestContext(c)
 	h.activityLogService.LogAuth(
 		userID, username, role, "login", true,
@@ -104,21 +131,24 @@ func (h *Handler) Login(c *gin.Context) {
 
 // Logout handles logout
 func (h *Handler) Logout(c *gin.Context) {
-	// Get user info before clearing session
 	session := sessions.Default(c)
 	userID := session.Get("user_id")
 	username := session.Get("username")
 	role := session.Get("role")
-	
-	// Log logout
-	if userID != nil && username != nil && role != nil {
+
+	if userID != nil {
+		// Clear session token from DB so other login sessions are invalidated
+		h.db.Exec(`UPDATE users SET session_token = NULL WHERE id = ?`, userID.(int))
+
 		ipAddress, userAgent := getRequestContext(c)
-		h.activityLogService.LogAuth(
-			userID.(int), username.(string), role.(string), "logout", true,
-			ipAddress, userAgent, "",
-		)
+		if username != nil && role != nil {
+			h.activityLogService.LogAuth(
+				userID.(int), username.(string), role.(string), "logout", true,
+				ipAddress, userAgent, "",
+			)
+		}
 	}
-	
+
 	session.Clear()
 	session.Save()
 	c.Redirect(http.StatusFound, "/login")
