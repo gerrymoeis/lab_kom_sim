@@ -51,6 +51,7 @@ func (h *Handler) UserList(c *gin.Context) {
 		"username":    username,
 		"role":        role,
 		"users":       users,
+		"error":       c.Query("error"),
 	})
 }
 
@@ -116,40 +117,32 @@ func (h *Handler) UserDelete(c *gin.Context) {
 	idStr := c.Param("id")
 	targetID, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		c.Redirect(http.StatusFound, "/admin/users?error=ID tidak valid")
 		return
 	}
 
 	session := sessions.Default(c)
 	currentUserID, _ := session.Get("user_id").(int)
 
-	// Layer 1: Cannot delete self
 	if currentUserID == targetID {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Tidak dapat menghapus akun sendiri",
-		})
+		c.Redirect(http.StatusFound, "/admin/users?error=Tidak dapat menghapus akun sendiri")
 		return
 	}
 
-	// Layer 2: Cannot delete primary admin accounts
 	var username string
 	err = h.db.QueryRow(`SELECT username FROM users WHERE id = ?`, targetID).Scan(&username)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User tidak ditemukan"})
+		c.Redirect(http.StatusFound, "/admin/users?error=User tidak ditemukan")
 		return
 	}
 	if username == "admin" || username == "rekan" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Tidak dapat menghapus akun admin utama",
-		})
+		c.Redirect(http.StatusFound, "/admin/users?error=Tidak dapat menghapus akun admin utama")
 		return
 	}
 
 	_, err = h.db.Exec("DELETE FROM users WHERE id = ?", targetID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal menghapus user",
-		})
+		c.Redirect(http.StatusFound, "/admin/users?error=Gagal menghapus user")
 		return
 	}
 
@@ -246,47 +239,33 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	confirmPassword := c.PostForm("confirm_password")
 
 	if oldPassword == "" || newPassword == "" || confirmPassword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Semua field harus diisi",
-		})
+		c.Redirect(http.StatusFound, "/profile?error=Semua field harus diisi")
 		return
 	}
 
 	if newPassword != confirmPassword {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Password baru dan konfirmasi tidak cocok",
-		})
+		c.Redirect(http.StatusFound, "/profile?error=Password baru dan konfirmasi tidak cocok")
 		return
 	}
 
-	// Get current password hash
 	var currentHash string
 	err := h.db.QueryRow("SELECT password FROM users WHERE id = ?", userID).Scan(&currentHash)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal mengambil data user",
-		})
+		c.Redirect(http.StatusFound, "/profile?error=Gagal mengambil data user")
 		return
 	}
 
-	// Verify old password
 	if err := bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(oldPassword)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Password lama salah",
-		})
+		c.Redirect(http.StatusFound, "/profile?error=Password lama salah")
 		return
 	}
 
-	// Hash new password
 	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal mengenkripsi password baru",
-		})
+		c.Redirect(http.StatusFound, "/profile?error=Gagal mengenkripsi password baru")
 		return
 	}
 
-	// Update password
 	_, err = h.db.Exec(`
 		UPDATE users 
 		SET password = ?, updated_at = CURRENT_TIMESTAMP
@@ -294,14 +273,9 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	`, string(newHash), userID)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal mengupdate password",
-		})
+		c.Redirect(http.StatusFound, "/profile?error=Gagal mengupdate password")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Password berhasil diubah",
-	})
+	c.Redirect(http.StatusFound, "/profile?success=Password berhasil diubah")
 }

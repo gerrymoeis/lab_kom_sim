@@ -87,6 +87,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 		"catalog":     stats,
 		"search":      search,
 		"filterCat":   filterCategory,
+		"error":       c.Query("error"),
 	})
 }
 
@@ -246,21 +247,19 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 func (h *Handler) SoftwareDelete(c *gin.Context) {
 	id := c.Param("id")
 
-	// Get name for logging
 	var name string
 	err := h.db.QueryRow(`SELECT name FROM software_catalog WHERE id = ?`, id).Scan(&name)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Software tidak ditemukan"})
+		c.Redirect(http.StatusFound, "/software?error=Software tidak ditemukan")
 		return
 	}
 
 	_, err = h.db.Exec(`DELETE FROM software_catalog WHERE id = ?`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus software"})
+		c.Redirect(http.StatusFound, "/software?error=Gagal menghapus software")
 		return
 	}
 
-	// Log the deletion
 	userID, username, role, ok := middleware.GetCurrentUser(c)
 	if ok {
 		ipAddress, userAgent := getRequestContext(c)
@@ -281,7 +280,7 @@ func (h *Handler) SoftwareCreate(c *gin.Context) {
 	description := strings.TrimSpace(c.PostForm("description"))
 
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Nama software harus diisi"})
+		c.Redirect(http.StatusFound, "/software?error=Nama software harus diisi")
 		return
 	}
 	if category != "required" && category != "other" {
@@ -298,7 +297,7 @@ func (h *Handler) SoftwareCreate(c *gin.Context) {
 					map[string]interface{}{"name": name, "category": category},
 					ipAddress, userAgent, "Duplicate software name: "+name)
 			}
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Software dengan nama tersebut sudah ada"})
+			c.Redirect(http.StatusFound, "/software?error=Software dengan nama tersebut sudah ada")
 			return
 		}
 		userID, username, role, ok := middleware.GetCurrentUser(c)
@@ -308,7 +307,7 @@ func (h *Handler) SoftwareCreate(c *gin.Context) {
 				map[string]interface{}{"name": name, "category": category},
 				ipAddress, userAgent, err.Error())
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan software"})
+		c.Redirect(http.StatusFound, "/software?error=Gagal menyimpan software")
 		return
 	}
 

@@ -72,6 +72,7 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 		"dayFilter":   dayFilter,
 		"search":      search,
 		"days":        []string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"},
+		"error":       c.Query("error"),
 	})
 }
 
@@ -210,7 +211,7 @@ func (h *Handler) ScheduleDelete(c *gin.Context) {
 
 	_, err := h.db.Exec(`DELETE FROM course_schedules WHERE id = ?`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus jadwal"})
+		c.Redirect(http.StatusFound, "/schedules?error=Gagal menghapus jadwal")
 		return
 	}
 
