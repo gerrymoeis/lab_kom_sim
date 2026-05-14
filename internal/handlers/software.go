@@ -93,7 +93,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 // SoftwareCreate handles adding new software to the catalog
 // GetSoftwareCatalogJSON returns "other" catalog entries as JSON (for AJAX autocomplete)
 func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
-	rows, err := h.db.Query(`SELECT id, name, category FROM software_catalog WHERE category = 'other' ORDER BY name`)
+	rows, err := h.db.Query(`SELECT id, name, category, description FROM software_catalog WHERE category = 'other' ORDER BY name`)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"})
 		return
@@ -101,15 +101,16 @@ func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
 	defer rows.Close()
 
 	type Item struct {
-		ID       int    `json:"id"`
-		Name     string `json:"name"`
-		Category string `json:"category"`
+		ID          int    `json:"id"`
+		Name        string `json:"name"`
+		Category    string `json:"category"`
+		Description string `json:"description"`
 	}
 
 	var items []Item
 	for rows.Next() {
 		var it Item
-		if rows.Scan(&it.ID, &it.Name, &it.Category) == nil {
+		if rows.Scan(&it.ID, &it.Name, &it.Category, &it.Description) == nil {
 			items = append(items, it)
 		}
 	}

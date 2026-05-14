@@ -1444,6 +1444,9 @@ func syncPCSoftware(db *database.DB, pcID int, requiredIDs []string, otherNames 
 		desc := ""
 		if i < len(otherDescs) {
 			desc = strings.TrimSpace(otherDescs[i])
+			if desc == "-" {
+				desc = ""
+			}
 		}
 
 		var swID int

@@ -257,27 +257,62 @@
 
                         <div class="mb-4">
                             <label class="form-label fw-bold">Others — tambahkan software lain (opsional):</label>
-                            <div id="othersContainer">
-                                {{ range .otherSW }}
-                                <div class="other-row border rounded p-2 mb-1 bg-light">
-                                    <div class="d-flex gap-2 align-items-center">
-                                        <input type="text" class="form-control form-control-sm" name="other_name[]"
-                                               value="{{ .SoftwareName }}" placeholder="Nama software"
-                                               list="otherSoftwareList">
-                                        <input type="text" class="form-control form-control-sm" name="other_desc[]"
-                                               value="{{ .Description }}" placeholder="Deskripsi (opsional)" style="max-width: 250px;">
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                                onclick="this.closest('.other-row').remove()">
-                                            <i class="bi bi-x-lg"></i>
-                                        </button>
+
+                            <table class="table table-sm table-bordered mb-2">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:40px">#</th>
+                                        <th>Nama Software</th>
+                                        <th style="width:250px">Deskripsi</th>
+                                        <th style="width:50px"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="othersTableBody">
+                                    {{ range $i, $sw := .otherSW }}
+                                    <tr class="other-row">
+                                        <td class="text-center align-middle">{{ add $i 1 }}</td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm" name="other_name[]"
+                                                   value="{{ .SoftwareName }}" readonly
+                                                   style="background:#f8f9fa;cursor:default;">
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control form-control-sm" name="other_desc[]"
+                                                   value="{{ if .Description }}{{ .Description }}{{ else }}-{{ end }}">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    onclick="this.closest('tr').remove(); updateNumbers();">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {{ end }}
+                                </tbody>
+                            </table>
+
+                            <div class="card border-primary mb-2">
+                                <div class="card-body py-2">
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-5">
+                                            <label class="form-label mb-0 small">Nama Software</label>
+                                            <input type="text" class="form-control form-control-sm" id="newOtherName"
+                                                   placeholder="Ketik untuk cari...">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label mb-0 small">Deskripsi (opsional)</label>
+                                            <input type="text" class="form-control form-control-sm" id="newOtherDesc" placeholder="-">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-primary btn-sm w-100" onclick="addOtherRow()">
+                                                <i class="bi bi-plus-lg"></i> Tambah
+                                            </button>
+                                        </div>
                                     </div>
+                                    <div id="otherAutocomplete" class="list-group mt-1" style="max-height:150px;overflow-y:auto;display:none;"></div>
                                 </div>
-                                {{ end }}
                             </div>
-                            <input type="text" class="form-control mt-1" id="newOtherInput"
-                                       placeholder="Ketik nama software others lalu Enter untuk tambah...">
-                            <small class="text-muted mt-1 d-block">Autocomplete tersedia dari daftar software others yang sudah pernah ditambahkan.</small>
-                            <datalist id="otherSoftwareList"></datalist>
+                            <small class="text-muted">Ketik nama software untuk mencari dari daftar yang sudah ada. Klik "Tambah" atau Enter untuk menambah baris baru.</small>
                         </div>
 
                         <div class="d-flex gap-2">
@@ -296,45 +331,83 @@
 </div>
 
 <script>
+let catalogData = [];
+
 fetch('/software/catalog.json')
     .then(r => r.json())
-    .then(items => {
-        const list = document.getElementById('otherSoftwareList');
-        items.forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = item.name;
-            list.appendChild(opt);
-        });
-    })
+    .then(items => { catalogData = items; })
     .catch(() => {});
 
-document.getElementById('newOtherInput').addEventListener('keydown', function(e) {
+document.getElementById('newOtherName').addEventListener('input', function() {
+    const val = this.value.toLowerCase().trim();
+    const box = document.getElementById('otherAutocomplete');
+    box.innerHTML = '';
+    if (!val) { box.style.display = 'none'; return; }
+
+    const matches = catalogData.filter(item => item.name.toLowerCase().includes(val));
+    if (matches.length === 0) { box.style.display = 'none'; return; }
+
+    matches.forEach(item => {
+        const a = document.createElement('button');
+        a.type = 'button';
+        a.className = 'list-group-item list-group-item-action py-1';
+        a.textContent = item.name;
+        a.onclick = () => {
+            document.getElementById('newOtherName').value = item.name;
+            document.getElementById('newOtherDesc').value = item.description || '-';
+            box.style.display = 'none';
+            addOtherRow();
+        };
+        box.appendChild(a);
+    });
+    box.style.display = 'block';
+});
+
+document.getElementById('newOtherName').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
-        addEmptyOtherRow();
+        addOtherRow();
     }
 });
 
-function addEmptyOtherRow() {
-    const container = document.getElementById('othersContainer');
-    const div = document.createElement('div');
-    div.className = 'other-row border rounded p-2 mb-1 bg-light';
-    div.innerHTML =
-        '<div class="d-flex gap-2 align-items-center">' +
-        '<input type="text" class="form-control form-control-sm" name="other_name[]" placeholder="Nama software" list="otherSoftwareList">' +
-        '<input type="text" class="form-control form-control-sm" name="other_desc[]" placeholder="Deskripsi (opsional)" style="max-width: 250px;">' +
-        '<button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'.other-row\').remove()"><i class="bi bi-x-lg"></i></button>' +
-        '</div>';
-    container.appendChild(div);
-    const inp = div.querySelector('input[name="other_name[]"]');
-    inp.focus();
+document.addEventListener('click', function(e) {
+    const box = document.getElementById('otherAutocomplete');
+    if (box && !e.target.closest('.card')) box.style.display = 'none';
+});
+
+function addOtherRow() {
+    const name = document.getElementById('newOtherName').value.trim();
+    if (!name) return;
+
+    const desc = document.getElementById('newOtherDesc').value.trim() || '-';
+    const tbody = document.getElementById('othersTableBody');
+
+    const existing = tbody.querySelectorAll('input[name="other_name[]"]');
+    for (let inp of existing) {
+        if (inp.value.toLowerCase() === name.toLowerCase()) return;
+    }
+
+    const tr = document.createElement('tr');
+    tr.className = 'other-row';
+    tr.innerHTML =
+        '<td class="text-center align-middle">' + (tbody.children.length + 1) + '</td>' +
+        '<td><input type="text" class="form-control form-control-sm" name="other_name[]" value="' + name.replace(/"/g, '&quot;') + '" readonly style="background:#f8f9fa;cursor:default;"></td>' +
+        '<td><input type="text" class="form-control form-control-sm" name="other_desc[]" value="' + desc.replace(/"/g, '&quot;') + '"></td>' +
+        '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'tr\').remove(); updateNumbers();"><i class="bi bi-x-lg"></i></button></td>';
+    tbody.appendChild(tr);
+
+    document.getElementById('newOtherName').value = '';
+    document.getElementById('newOtherDesc').value = '';
+    document.getElementById('otherAutocomplete').style.display = 'none';
+    document.getElementById('newOtherName').focus();
 }
 
-// Auto-focus newOtherInput on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const inp = document.getElementById('newOtherInput');
-    if (!inp) addEmptyOtherRow();
-});
+function updateNumbers() {
+    const rows = document.querySelectorAll('#othersTableBody .other-row');
+    rows.forEach((row, i) => {
+        row.querySelector('td:first-child').textContent = i + 1;
+    });
+}
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
