@@ -114,8 +114,8 @@ func runPostgresMigrations(db *DB) error {
 			pc_id INTEGER NOT NULL REFERENCES pcs(id) ON DELETE CASCADE,
 			software_id INTEGER NOT NULL REFERENCES software_catalog(id) ON DELETE CASCADE,
 			installed BOOLEAN NOT NULL DEFAULT TRUE,
-			version TEXT,
-			notes TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (pc_id, software_id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS logbook_entries (

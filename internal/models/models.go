@@ -142,8 +142,6 @@ type PCSoftware struct {
 	PCID       int    `json:"pc_id"`
 	SoftwareID int    `json:"software_id"`
 	Installed  bool   `json:"installed"`
-	Version    string `json:"version"`
-	Notes      string `json:"notes"`
 	// Joined fields (not in DB)
 	SoftwareName string `json:"software_name,omitempty"`
 	Category     string `json:"category,omitempty"`

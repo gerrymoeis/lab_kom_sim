@@ -131,8 +131,8 @@ func runSQLiteMigrations(db *DB) error {
 			pc_id INTEGER NOT NULL,
 			software_id INTEGER NOT NULL,
 			installed INTEGER NOT NULL DEFAULT 1,
-			version TEXT,
-			notes TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (pc_id, software_id),
 			FOREIGN KEY (pc_id) REFERENCES pcs(id) ON DELETE CASCADE,
 			FOREIGN KEY (software_id) REFERENCES software_catalog(id) ON DELETE CASCADE

@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
+	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/services"
@@ -251,13 +253,12 @@ func (h *Handler) PCDetail(c *gin.Context) {
 
 	// Get software for this PC (via junction)
 	swRows, err := h.db.Query(`
-		SELECT sc.id, sc.name, sc.category, ps.installed, ps.version
+		SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE)
 		FROM software_catalog sc
 		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.pc_id = ?
 		ORDER BY sc.category, sc.name
 	`, pc.ID)
 
-	var catalogSoftware []models.SoftwareCatalog
 	var pcSoftware []models.PCSoftware
 	if err == nil {
 		defer swRows.Close()
@@ -265,23 +266,12 @@ func (h *Handler) PCDetail(c *gin.Context) {
 			var catID int
 			var name, category string
 			var installed bool
-			var version sql.NullString
 
-			if err := swRows.Scan(&catID, &name, &category, &installed, &version); err == nil {
-				catalogSoftware = append(catalogSoftware, models.SoftwareCatalog{
-					ID:       catID,
-					Name:     name,
-					Category: category,
-				})
-				ver := ""
-				if version.Valid {
-					ver = version.String
-				}
+			if err := swRows.Scan(&catID, &name, &category, &installed); err == nil {
 				pcSoftware = append(pcSoftware, models.PCSoftware{
 					PCID:         pc.ID,
 					SoftwareID:   catID,
 					Installed:    installed,
-					Version:      ver,
 					SoftwareName: name,
 					Category:     category,
 				})
@@ -715,7 +705,6 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		ORDER BY sc.category, sc.name
 	`, pc.ID)
 
-	var catalogSoftware []models.SoftwareCatalog
 	var requiredSW, otherSW []models.PCSoftware
 	if err == nil {
 		defer swRows.Close()
@@ -724,7 +713,6 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 			var name, category string
 			var installed bool
 			if err := swRows.Scan(&catID, &name, &category, &installed); err == nil {
-				catalogSoftware = append(catalogSoftware, models.SoftwareCatalog{ID: catID, Name: name, Category: category})
 				sw := models.PCSoftware{
 					PCID: pc.ID, SoftwareID: catID, Installed: installed,
 					SoftwareName: name, Category: category,
@@ -963,6 +951,26 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"title":   "Error",
 			"message": "Gagal mengupdate data PC",
+		})
+		return
+	}
+
+	// Sync software assignments (all or nothing via transaction)
+	requiredIDs := c.PostFormArray("required_sw[]")
+	otherNames := c.PostFormArray("other_name[]")
+
+	if err := syncPCSoftware(h.db, pcID, requiredIDs, otherNames); err != nil {
+		userID, username, role, ok := middleware.GetCurrentUser(c)
+		if ok {
+			ipAddress, userAgent := getRequestContext(c)
+			h.activityLogService.LogAuth(
+				userID, username, role, "update", false,
+				ipAddress, userAgent, fmt.Sprintf("Failed to sync software for PC #%d: %v", pcID, err),
+			)
+		}
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error",
+			"message": "Gagal menyimpan software PC",
 		})
 		return
 	}
@@ -1394,4 +1402,66 @@ func (h *Handler) PCExport(c *gin.Context) {
 		})
 		return
 	}
+}
+
+// syncPCSoftware synchronizes software assignments for a PC
+// Deletes existing entries and inserts new ones based on form data
+func syncPCSoftware(db *database.DB, pcID int, requiredIDs []string, otherNames []string) error {
+	// Build set of checked required software IDs
+	checked := make(map[int]bool)
+	for _, idStr := range requiredIDs {
+		id, err := strconv.Atoi(idStr)
+		if err == nil {
+			checked[id] = true
+		}
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete all existing pc_software entries for this PC
+	_, err = tx.Exec(`DELETE FROM pc_software WHERE pc_id = ?`, pcID)
+	if err != nil {
+		return fmt.Errorf("failed to delete existing software: %w", err)
+	}
+
+	// Insert checked required software
+	for swID := range checked {
+		_, err = tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
+		if err != nil {
+			return fmt.Errorf("failed to insert required software %d: %w", swID, err)
+		}
+	}
+
+	// Process other software names
+	for _, name := range otherNames {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+
+		// Find or create in catalog
+		var swID int
+		err := db.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID)
+		if err != nil {
+			// Create new catalog entry as "other"
+			res, execErr := tx.Exec(`INSERT INTO software_catalog (name, category) VALUES (?, 'other')`, name)
+			if execErr != nil {
+				return fmt.Errorf("failed to create catalog entry for %s: %w", name, execErr)
+			}
+			lastID, _ := res.LastInsertId()
+			swID = int(lastID)
+		}
+
+		// Insert into pc_software
+		_, err = tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
+		if err != nil {
+			return fmt.Errorf("failed to insert other software %s: %w", name, err)
+		}
+	}
+
+	return tx.Commit()
 }
