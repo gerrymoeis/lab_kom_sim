@@ -1,4 +1,4 @@
-{{ template "layout/base.html" . }}{{ define "page-content" }}
+{{ template "layout/header.html" . }}
 
 <div class="container mt-4">
     <div class="row justify-content-center">
@@ -165,4 +165,4 @@
                 }
             }
         });
-    </script>{{ end }}
+    </script>{{ template "layout/footer.html" . }}

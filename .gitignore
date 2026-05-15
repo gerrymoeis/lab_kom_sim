@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+bin/
 inventaris-lab-kom
 inventaris-lab-kom.exe
 

@@ -42,7 +42,6 @@ func cleanupTempFiles() {
 
 // loadTemplates loads all HTML templates from the templates directory
 func loadTemplates(templatesDir string) (*template.Template, error) {
-	// Create template with custom functions
 	templ := template.New("").Funcs(template.FuncMap{
 		"add": func(a, b int) int {
 			return a + b
@@ -63,18 +62,27 @@ func loadTemplates(templatesDir string) (*template.Template, error) {
 		if err != nil {
 			return err
 		}
-		
-		// Skip directories
 		if info.IsDir() {
 			return nil
 		}
+		if filepath.Ext(path) != ".html" {
+			return nil
+		}
 		
-		// Only process .html files
-		if filepath.Ext(path) == ".html" {
-			_, err = templ.ParseFiles(path)
-			if err != nil {
-				return err
-			}
+		relPath, err := filepath.Rel(templatesDir, path)
+		if err != nil {
+			return err
+		}
+		templateName := filepath.ToSlash(relPath)
+		
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		
+		_, err = templ.New(templateName).Parse(string(content))
+		if err != nil {
+			return err
 		}
 		
 		return nil

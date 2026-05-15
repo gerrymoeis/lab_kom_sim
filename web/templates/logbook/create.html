@@ -1,4 +1,4 @@
-{{ template "layout/base.html" . }}{{ define "page-content" }}
+{{ template "layout/header.html" . }}
     <!-- Navbar -->
     {{ template "layout/navbar.html" . }}
 
@@ -81,4 +81,4 @@
     <script>
         // Set default date to today
         document.getElementById('date').valueAsDate = new Date();
-    </script>{{ end }}
+    </script>{{ template "layout/footer.html" . }}

@@ -1,5 +1,4 @@
-{{ template "layout/base.html" . }}
-{{ define "page-content" }}
+{{ template "layout/header.html" . }}
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <!-- Main Content -->
@@ -381,4 +380,4 @@
         });
     });
     </script>
-{{ end }}
+{{ template "layout/footer.html" . }}

@@ -1,4 +1,4 @@
-{{ template "layout/base.html" . }}{{ define "page-content" }}
+{{ template "layout/header.html" . }}
     <!-- Navbar -->
     {{ template "layout/navbar.html" . }}
 
@@ -81,4 +81,4 @@
         </div>
     </div>
 
-    {{ end }}
+    {{ template "layout/footer.html" . }}

@@ -1,4 +1,4 @@
-{{ template "layout/base.html" . }}{{ define "page-content" }}
+{{ template "layout/header.html" . }}
 
 <div class="container mt-4">
     <div class="row justify-content-center">
@@ -84,4 +84,4 @@
                 document.getElementById('actual_return_date').valueAsDate = new Date();
             }
         });
-    </script>{{ end }}
+    </script>{{ template "layout/footer.html" . }}

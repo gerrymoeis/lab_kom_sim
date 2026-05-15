@@ -1,5 +1,4 @@
-{{ template "layout/base.html" . }}
-{{ define "page-content" }}
+{{ template "layout/header.html" . }}
 <div class="row mb-4">
     <div class="col-md-6">
         <h2><i class="bi bi-app-indicator"></i> Software Catalog</h2>
@@ -72,4 +71,4 @@
         </div>
     </div>
 </div>
-{{ end }}
+{{ template "layout/footer.html" . }}

@@ -1,4 +1,4 @@
-{{ template "layout/base.html" . }} {{ define "page-content" }}
+{{ template "layout/header.html" . }} 
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card shadow-sm">
@@ -441,7 +441,7 @@
     </div>
 </div>
 
-{{ end }} {{ define "page-scripts" }}
+{{ define "page-scripts" }}
 <script src="https://cdn.jsdelivr.net/npm/heic-to@1.4.2/dist/iife/heic-to.js"></script>
 <script>
     // File references for form submission
@@ -713,3 +713,4 @@
     }
 </script>
 {{ end }}
+{{ template "layout/footer.html" . }}

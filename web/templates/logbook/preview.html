@@ -1,4 +1,4 @@
-{{ template "layout/base.html" . }}{{ define "page-content" }}
+{{ template "layout/header.html" . }}
     <!-- Navbar -->
     {{ template "layout/navbar.html" . }}
 
@@ -494,4 +494,4 @@
             submitBtn.innerHTML = originalText;
         });
     });
-    </script>{{ end }}
+    </script>{{ template "layout/footer.html" . }}

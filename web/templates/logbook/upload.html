@@ -1,4 +1,4 @@
-{{ template "layout/base.html" . }}{{ define "page-content" }}
+{{ template "layout/header.html" . }}
     <!-- Navbar -->
     {{ template "layout/navbar.html" . }}
 
@@ -179,4 +179,4 @@
         document.getElementById('submitBtn').disabled = true;
         document.getElementById('loadingIndicator').classList.remove('d-none');
     });
-    </script>{{ end }}
+    </script>{{ template "layout/footer.html" . }}
