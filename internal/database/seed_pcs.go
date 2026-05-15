@@ -97,82 +97,84 @@ func seedPCs(db *DB) error {
 
 	// Default values
 	const (
-		defDeviceType     = "PC All-in-one"
-		defBrandModel     = "Axioo Mypc One Pro K7-24 (16N9)"
-		defProcessor      = "Intel Core i7"
-		defRAM            = "16GB DDR4"
-		defStorage        = "1TB NVMe"
-		defAccessories    = "Keyboard & Mouse Axioo (Wired Set)"
-		defStatus         = "normal"
-		defCondition      = "baik"
+		defDeviceType  = "PC All-in-one"
+		defBrandModel  = "Axioo Mypc One Pro K7-24 (16N9)"
+		defProcessor   = "Intel Core i7"
+		defRAM         = "16GB DDR4"
+		defStorage     = "1TB NVMe"
+		defAccessories = "Keyboard & Mouse Axioo (Wired Set)"
+		defStatus      = "normal"
+		defCondition   = "baik"
 	)
 
-	// Assign row/column based on position in grid (8 columns)
 	rowFor := func(n int) int { return ((n - 1) / 8) + 1 }
 	colFor := func(n int) int { return ((n - 1) % 8) + 1 }
 
-	for _, pc := range pcs {
-		if pc.Number == 22 {
-			continue
+	// Pre-resolve all software IDs from catalog
+	swByName := map[string]int{}
+	catalogRows, _ := db.Query(`SELECT id, name FROM software_catalog`)
+	if catalogRows != nil {
+		defer catalogRows.Close()
+		for catalogRows.Next() {
+			var id int; var name string
+			catalogRows.Scan(&id, &name)
+			swByName[name] = id
 		}
+	}
 
-		_, err := db.Exec(`
-			INSERT INTO pcs (pc_number, "row", "column", status, processor, ram, storage,
-				serial_number, operating_system, device_type, brand_model, accessories,
-				physical_condition, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	insertSW := func(tx *Tx, pcID int, names []string, skipMissing bool) {
+		for _, name := range names {
+			swID, ok := swByName[name]
+			if !ok {
+				if skipMissing { continue }
+				var insertedID int
+				pgErr := tx.QueryRow(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '') RETURNING id`, name).Scan(&insertedID)
+				if pgErr != nil {
+					tx.Exec(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '')`, name)
+					tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&insertedID)
+				}
+				if insertedID > 0 { swByName[name] = insertedID; swID = insertedID }
+			}
+			if swID > 0 {
+				tx.Exec(`INSERT OR IGNORE INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
+			}
+		}
+	}
+
+	for _, pc := range pcs {
+		if pc.Number == 22 { continue }
+
+		_, execErr := tx.Exec(`INSERT INTO pcs (pc_number, "row", "column", status, processor, ram, storage,
+			serial_number, operating_system, device_type, brand_model, accessories,
+			physical_condition, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 			pc.Number, rowFor(pc.Number), colFor(pc.Number),
 			defStatus, defProcessor, defRAM, defStorage,
 			pc.SN, pc.OS, defDeviceType, defBrandModel, defAccessories, defCondition)
-		if err != nil {
-			return fmt.Errorf("failed to seed PC-%d: %w", pc.Number, err)
+		if execErr != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to seed PC-%d: %w", pc.Number, execErr)
 		}
 
-		// Get PC ID
 		var pcID int
-		err = db.QueryRow(`SELECT id FROM pcs WHERE pc_number = ?`, pc.Number).Scan(&pcID)
-		if err != nil {
-			return fmt.Errorf("failed to get PC-%d ID: %w", pc.Number, err)
-		}
+		tx.QueryRow(`SELECT id FROM pcs WHERE pc_number = ?`, pc.Number).Scan(&pcID)
+		if pcID == 0 { continue }
 
-		for _, swName := range pc.RequiredSW {
-			var swID int
-			err := db.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, swName).Scan(&swID)
-			if err != nil || swID == 0 {
-				continue
-			}
-			var exists int
-			db.QueryRow(`SELECT COUNT(*) FROM pc_software WHERE pc_id = ? AND software_id = ?`, pcID, swID).Scan(&exists)
-			if exists == 0 {
-				db.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
-			}
-		}
+		insertSW(tx, pcID, pc.RequiredSW, true)
+		insertSW(tx, pcID, pc.OtherSW, false)
+	}
 
-		for _, swName := range pc.OtherSW {
-			var swID int
-			err := db.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, swName).Scan(&swID)
-			if err != nil {
-				pgErr := db.QueryRow(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '') RETURNING id`, swName).Scan(&swID)
-				if pgErr != nil {
-					_, execErr := db.Exec(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '')`, swName)
-					if execErr != nil {
-						continue
-					}
-					db.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, swName).Scan(&swID)
-					if swID == 0 {
-						continue
-					}
-				}
-			}
-			if swID == 0 {
-				continue
-			}
-			var exists int
-			db.QueryRow(`SELECT COUNT(*) FROM pc_software WHERE pc_id = ? AND software_id = ?`, pcID, swID).Scan(&exists)
-			if exists == 0 {
-				db.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
-			}
-		}
+	// Clean up PC 22 if it was accidentally inserted (should not happen now)
+	tx.Exec("DELETE FROM pcs WHERE pc_number = 22")
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit: %w", err)
 	}
 
 	fmt.Printf("Seeded %d PCs with software data\n", len(pcs))

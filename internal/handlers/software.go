@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"inventaris-lab-kom/internal/models"
@@ -123,33 +124,24 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 func (h *Handler) SoftwareEdit(c *gin.Context) {
 	id := c.Param("id")
 	pcIDs := c.PostFormArray("pc_ids[]")
-	checked := make(map[string]bool)
-	for _, pid := range pcIDs { checked[pid] = true }
 
-	rows, _ := h.db.Query(`SELECT id FROM pcs ORDER BY id`)
-	defer rows.Close()
-
-	var allIDs []int
-	for rows.Next() { var pid int; rows.Scan(&pid); allIDs = append(allIDs, pid) }
-	rows.Close()
-
-	tx, _ := h.db.Begin()
+	tx, err := h.db.Begin()
+	if err != nil { h.redirectWithError(c, "/software", "Gagal memulai transaksi"); return }
 	defer tx.Rollback()
 
-	for _, pid := range allIDs {
-		pidStr := fmt.Sprintf("%d", pid)
-		if checked[pidStr] {
-			var exists bool
-			tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM pc_software WHERE pc_id = ? AND software_id = ?)`, pid, id).Scan(&exists)
-			if exists {
-				tx.Exec(`UPDATE pc_software SET installed = TRUE WHERE pc_id = ? AND software_id = ?`, pid, id)
-			} else {
-				tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pid, id)
-			}
-		} else {
-			tx.Exec(`DELETE FROM pc_software WHERE pc_id = ? AND software_id = ?`, pid, id)
+	tx.Exec(`DELETE FROM pc_software WHERE software_id = ?`, id)
+	for _, pidStr := range pcIDs {
+		pid, _ := strconv.Atoi(pidStr)
+		if pid > 0 {
+			tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pid, id)
 		}
 	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	h.activityLogService.LogUpdate(uid, u, r, "software", 0,
+		map[string]interface{}{"software_id": id},
+		map[string]interface{}{"pc_ids": pcIDs}, ip, ua)
 	tx.Commit()
 
 	c.Redirect(http.StatusFound, "/software")
