@@ -93,25 +93,25 @@
                         <!-- Photo Serial Number -->
                         <div class="mb-4">
                             <label class="form-label fw-bold mb-3">Foto Serial Number + Barcode</label>
-                            
+
                             {{ if .pc.PhotoSerial }}
                             <div class="mb-3">
                                 <img src="/uploads/pc/{{ .pc.PhotoSerial }}" alt="Foto Serial" class="img-thumbnail" style="max-width: 300px;">
                                 <p class="text-muted small mb-0 mt-2">Foto saat ini: {{ .pc.PhotoSerial }}</p>
                             </div>
                             {{ end }}
-                            
+
                             <p class="text-muted mb-3">{{ if .pc.PhotoSerial }}Upload foto baru untuk mengganti foto lama{{ else }}Close-up foto S/N dan barcode (biasanya di belakang monitor){{ end }}. Max 5MB, format JPEG/PNG/HEIC</p>
-                            
+
                             <div class="row g-3">
                                 <div class="col-6">
                                     <div class="d-flex align-items-center mb-2">
                                         <i class="bi bi-camera-fill text-primary me-2"></i>
                                         <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
                                     </div>
-                                    <input type="file" 
-                                           id="photo_serial_camera" 
-                                           accept="image/*" 
+                                    <input type="file"
+                                           id="photo_serial_camera"
+                                           accept="image/*"
                                            capture="environment"
                                            class="form-control">
                                 </div>
@@ -120,13 +120,13 @@
                                         <i class="bi bi-images text-secondary me-2"></i>
                                         <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
                                     </div>
-                                    <input type="file" 
-                                           id="photo_serial_gallery" 
-                                           accept="image/jpeg,image/png,image/heic,image/heif" 
+                                    <input type="file"
+                                           id="photo_serial_gallery"
+                                           accept="image/jpeg,image/png,image/heic,image/heif"
                                            class="form-control">
                                 </div>
                             </div>
-                            
+
                             <!-- Preview area -->
                             <div id="previewSerial" class="mt-3 d-none">
                                 <div class="border rounded-3 p-3 bg-light">
@@ -143,25 +143,25 @@
                         <!-- Photo Front -->
                         <div class="mb-4">
                             <label class="form-label fw-bold mb-3">Foto Tampilan Depan</label>
-                            
+
                             {{ if .pc.PhotoFront }}
                             <div class="mb-3">
                                 <img src="/uploads/pc/{{ .pc.PhotoFront }}" alt="Foto Tampilan Depan" class="img-thumbnail" style="max-width: 300px;">
                                 <p class="text-muted small mb-0 mt-2">Foto saat ini: {{ .pc.PhotoFront }}</p>
                             </div>
                             {{ end }}
-                            
+
                             <p class="text-muted mb-3">{{ if .pc.PhotoFront }}Upload foto baru untuk mengganti foto lama{{ else }}Full view PC menyala dengan monitor, keyboard, dan mouse terlihat{{ end }}. Max 5MB, format JPEG/PNG/HEIC</p>
-                            
+
                             <div class="row g-3">
                                 <div class="col-6">
                                     <div class="d-flex align-items-center mb-2">
                                         <i class="bi bi-camera-fill text-primary me-2"></i>
                                         <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
                                     </div>
-                                    <input type="file" 
-                                           id="photo_front_camera" 
-                                           accept="image/*" 
+                                    <input type="file"
+                                           id="photo_front_camera"
+                                           accept="image/*"
                                            capture="environment"
                                            class="form-control">
                                 </div>
@@ -170,13 +170,13 @@
                                         <i class="bi bi-images text-secondary me-2"></i>
                                         <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
                                     </div>
-                                    <input type="file" 
-                                           id="photo_front_gallery" 
-                                           accept="image/jpeg,image/png,image/heic,image/heif" 
+                                    <input type="file"
+                                           id="photo_front_gallery"
+                                           accept="image/jpeg,image/png,image/heic,image/heif"
                                            class="form-control">
                                 </div>
                             </div>
-                            
+
                             <!-- Preview area -->
                             <div id="previewFront" class="mt-3 d-none">
                                 <div class="border rounded-3 p-3 bg-light">
@@ -462,32 +462,24 @@ async function heicToJpeg(file) {
 
 document.addEventListener('DOMContentLoaded', function() {
     setupFileHandlers();
-    setupPageLeaveCleanup();
 });
-
-function setupPageLeaveCleanup() {
-    // Note: Removed automatic cleanup on page unload and tab switch
-    // to prevent files being deleted before form submission completes.
-    // Only manual cleanup via "Hapus" button is now active.
-    // Background cleanup process will handle orphaned files.
-}
 
 function setupFileHandlers() {
     // Serial photo handlers
     const serialCamera = document.getElementById('photo_serial_camera');
     const serialGallery = document.getElementById('photo_serial_gallery');
-    
+
     if (serialCamera) {
         serialCamera.addEventListener('change', (e) => handleFileSelect(e.target.files[0], 'serial', 'camera'));
     }
     if (serialGallery) {
         serialGallery.addEventListener('change', (e) => handleFileSelect(e.target.files[0], 'serial', 'gallery'));
     }
-    
+
     // Front photo handlers
     const frontCamera = document.getElementById('photo_front_camera');
     const frontGallery = document.getElementById('photo_front_gallery');
-    
+
     if (frontCamera) {
         frontCamera.addEventListener('change', (e) => handleFileSelect(e.target.files[0], 'front', 'camera'));
     }
@@ -506,7 +498,7 @@ async function handleFileSelect(file, type, source) {
     try {
         file = await heicToJpeg(file);
         const result = await uploadForProcessing(file, type);
-        
+
         if (result.success) {
             showPreview(result.preview_url, type);
             storeFileReference(result.file_ref, type);
@@ -523,33 +515,33 @@ async function uploadForProcessing(file, type) {
     const formData = new FormData();
     formData.append('image', file);
     formData.append('type', type);
-    
+
     // Get PC number from URL path (edit mode)
     const pathParts = window.location.pathname.split('/');
     const pcNumber = pathParts[2]; // /pc/{pc_number}/edit
     if (pcNumber) {
         formData.append('pc_number', pcNumber);
     }
-    
+
     const response = await fetch('/api/upload-image', {
         method: 'POST',
         body: formData
     });
-    
+
     return await response.json();
 }
 
 function showPreview(previewUrl, type) {
     const area = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    
+
     if (area) {
         // Replace loading state with proper preview structure
         area.innerHTML = `
             <div class="border rounded-3 p-4 bg-light text-center">
-                <img id="imagePreview${type === 'serial' ? 'Serial' : 'Front'}" 
-                     src="${previewUrl}" 
-                     alt="Preview" 
-                     class="img-fluid rounded shadow-sm" 
+                <img id="imagePreview${type === 'serial' ? 'Serial' : 'Front'}"
+                     src="${previewUrl}"
+                     alt="Preview"
+                     class="img-fluid rounded shadow-sm"
                      style="max-width: 100%; max-height: 400px; object-fit: contain; display: block; margin: 0 auto;">
                 <div class="mt-3">
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearImage('${type}')">
@@ -646,7 +638,7 @@ function clearOtherInput(type, source) {
 async function clearImage(type) {
     // Get file reference before clearing
     const fileRef = type === 'serial' ? serialFileRef : frontFileRef;
-    
+
     // Clear file references
     if (type === 'serial') {
         serialFileRef = null;
@@ -657,16 +649,16 @@ async function clearImage(type) {
         const hiddenInput = document.getElementById('front_file_ref');
         if (hiddenInput) hiddenInput.remove();
     }
-    
+
     // Clear inputs and preview
     const cameraInput = document.getElementById(`photo_${type}_camera`);
     const galleryInput = document.getElementById(`photo_${type}_gallery`);
     const previewArea = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    
+
     if (cameraInput) cameraInput.value = '';
     if (galleryInput) galleryInput.value = '';
     if (previewArea) previewArea.classList.add('d-none');
-    
+
     // Delete file from server temp folder
     if (fileRef) {
         try {
@@ -683,5 +675,4 @@ async function clearImage(type) {
     }
 }
 </script>
-{{ end }}
 {{ end }}
