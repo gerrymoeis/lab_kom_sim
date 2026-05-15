@@ -1,140 +1,75 @@
-{{ define "software/list.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
-
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <h2><i class="bi bi-app-indicator"></i> Software Catalog</h2>
-            <p class="text-muted">Master daftar software — atur software required dan others</p>
-            {{ if .error }}
-            <div class="alert alert-danger">{{ .error }}</div>
-            {{ end }}
-        </div>
-        <div class="col-md-6 text-end">
-            {{ if eq .role "admin" }}
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSoftwareModal">
-                <i class="bi bi-plus-circle"></i> Tambah Software
-            </button>
-            <a href="/software/export" class="btn btn-success">
-                <i class="bi bi-file-earmark-excel"></i> Export Excel
-            </a>
-            {{ end }}
-        </div>
+{{ template "layout/base.html" . }}
+{{ define "page-content" }}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2><i class="bi bi-app-indicator"></i> Software Catalog</h2>
+        <p class="text-muted">Master daftar software — atur software required dan others</p>
     </div>
+    <div class="col-md-6 text-end">
+        {{ if eq .role "admin" }}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSoftwareModal"><i class="bi bi-plus-circle"></i> Tambah Software</button>
+        <a href="/software/export" class="btn btn-success"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
+        {{ end }}
+    </div>
+</div>
+{{ if .error }}<div class="alert alert-danger">{{ .error }}</div>{{ end }}
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <form method="GET" action="/software" class="d-flex gap-2">
-                        <input type="text" name="search" class="form-control" placeholder="Cari software..." value="{{ .search }}">
-                        <select name="category" class="form-select" style="width: auto;">
-                            <option value="">Semua</option>
-                            <option value="required" {{ if eq .filterCat "required" }}selected{{ end }}>Required</option>
-                            <option value="other" {{ if eq .filterCat "other" }}selected{{ end }}>Other</option>
-                        </select>
-                        <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
-                    </form>
-                </div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <form method="GET" action="/software" class="d-flex gap-2">
+                    <input type="text" name="search" class="form-control" placeholder="Cari software..." value="{{ .search }}">
+                    <select name="category" class="form-select" style="width:auto;">
+                        <option value="">Semua</option>
+                        <option value="required" {{ if eq .filterCat "required" }}selected{{ end }}>Required</option>
+                        <option value="other" {{ if eq .filterCat "other" }}selected{{ end }}>Other</option>
+                    </select>
+                    <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+                </form>
             </div>
-
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>#</th>
-                            <th>Nama Software</th>
-                            <th>Kategori</th>
-                            <th>Deskripsi</th>
-                            <th>PC Terinstall</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{ range $i, $s := .catalog }}
-                        <tr>
-                            <td>{{ add $i 1 }}</td>
-                            <td><strong>{{ .Name }}</strong></td>
-                            <td>
-                                {{ if eq .Category "required" }}
-                                <span class="badge bg-primary">Required</span>
-                                {{ else }}
-                                <span class="badge bg-secondary">Other</span>
-                                {{ end }}
-                            </td>
-                            <td>{{ .Description }}</td>
-                            <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
-                            <td>
-                                <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                        onclick="if(confirm('Hapus software {{ .Name }}? Semua relasi PC akan ikut terhapus.')){ document.getElementById('del-{{ .ID }}').submit(); }">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                                <form id="del-{{ .ID }}" method="POST" action="/software/{{ .ID }}/delete" style="display:none;"></form>
-                            </td>
-                        </tr>
-                        {{ else }}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted">Belum ada data software</td>
-                        </tr>
-                        {{ end }}
-                    </tbody>
-                </table>
-            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr><th>#</th><th>Nama Software</th><th>Kategori</th><th>Deskripsi</th><th>PC Terinstall</th><th>Aksi</th></tr>
+                </thead>
+                <tbody>
+                    {{ range $i, $s := .catalog }}
+                    <tr>
+                        <td>{{ add $i 1 }}</td>
+                        <td><strong>{{ .Name }}</strong></td>
+                        <td>{{ if eq .Category "required" }}<span class="badge bg-primary">Required</span>{{ else }}<span class="badge bg-secondary">Other</span>{{ end }}</td>
+                        <td>{{ .Description }}</td>
+                        <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
+                        <td>
+                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="if(confirm('Hapus {{ .Name }}?')){ document.getElementById('del-{{ .ID }}').submit(); }"><i class="bi bi-trash"></i></button>
+                            <form id="del-{{ .ID }}" method="POST" action="/software/{{ .ID }}/delete" style="display:none;"></form>
+                        </td>
+                    </tr>
+                    {{ else }}
+                    <tr><td colspan="6" class="text-center text-muted">Belum ada data software</td></tr>
+                    {{ end }}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<!-- Add Software Modal -->
 <div class="modal fade" id="addSoftwareModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="/software/create">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Tambah Software</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
+                <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle"></i> Tambah Software</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Nama Software *</label>
-                        <input type="text" class="form-control" id="name" name="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="category" class="form-label">Kategori *</label>
-                        <select class="form-select" id="category" name="category" required>
-                            <option value="required">Required</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Deskripsi</label>
-                        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
-                    </div>
+                    <div class="mb-3"><label for="name" class="form-label">Nama Software *</label><input type="text" class="form-control" id="name" name="name" required></div>
+                    <div class="mb-3"><label for="category" class="form-label">Kategori *</label><select class="form-select" id="category" name="category" required><option value="required">Required</option><option value="other">Other</option></select></div>
+                    <div class="mb-3"><label for="description" class="form-label">Deskripsi</label><textarea class="form-control" id="description" name="description" rows="2"></textarea></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Simpan</button>
-                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Simpan</button></div>
             </form>
         </div>
     </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/static/js/main.js"></script>
-</body>
-</html>
 {{ end }}

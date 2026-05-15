@@ -24,21 +24,26 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	search := c.Query("search")
 	filterCategory := c.Query("category")
 
-	query := `SELECT id, name, category, description FROM software_catalog WHERE 1=1`
+	query := `
+		SELECT sc.id, sc.name, sc.category, sc.description, COUNT(ps.software_id)
+		FROM software_catalog sc
+		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE
+		WHERE 1=1`
 	args := []interface{}{}
 
 	if search != "" {
-		query += ` AND (name LIKE ? OR description LIKE ?)`
+		query += ` AND (sc.name LIKE ? OR sc.description LIKE ?)`
 		s := "%" + search + "%"
 		args = append(args, s, s)
 	}
 
 	if filterCategory == "required" || filterCategory == "other" {
-		query += ` AND category = ?`
+		query += ` AND sc.category = ?`
 		args = append(args, filterCategory)
 	}
 
-	query += ` ORDER BY CASE WHEN category = 'required' THEN 0 ELSE 1 END, name`
+	query += ` GROUP BY sc.id, sc.name, sc.category, sc.description`
+	query += ` ORDER BY CASE WHEN sc.category = 'required' THEN 0 ELSE 1 END, sc.name`
 
 	rows, err := h.db.Query(query, args...)
 	if err != nil {
@@ -50,15 +55,6 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var catalog []models.SoftwareCatalog
-	for rows.Next() {
-		var s models.SoftwareCatalog
-		if err := rows.Scan(&s.ID, &s.Name, &s.Category, &s.Description); err == nil {
-			catalog = append(catalog, s)
-		}
-	}
-
-	// Count per-PC stats
 	type SoftwareStat struct {
 		models.SoftwareCatalog
 		InstalledCount int `json:"installed_count"`
@@ -69,14 +65,12 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	h.db.QueryRow(`SELECT COUNT(*) FROM pcs`).Scan(&totalPCs)
 
 	var stats []SoftwareStat
-	for _, s := range catalog {
-		var installed int
-		h.db.QueryRow(`SELECT COUNT(*) FROM pc_software WHERE software_id = ? AND installed = TRUE`, s.ID).Scan(&installed)
-		stats = append(stats, SoftwareStat{
-			SoftwareCatalog: s,
-			InstalledCount: installed,
-			TotalPCs:       totalPCs,
-		})
+	for rows.Next() {
+		var st SoftwareStat
+		if err := rows.Scan(&st.ID, &st.Name, &st.Category, &st.Description, &st.InstalledCount); err == nil {
+			st.TotalPCs = totalPCs
+			stats = append(stats, st)
+		}
 	}
 
 	c.HTML(http.StatusOK, "software/list.html", gin.H{

@@ -90,9 +90,8 @@ func (h *Handler) Dashboard(c *gin.Context) {
 	var totalDevices int
 	h.db.QueryRow("SELECT COUNT(*) FROM devices").Scan(&totalDevices)
 
-	// Get total software count
 	var totalSoftware int
-	h.db.QueryRow("SELECT COUNT(*) FROM software").Scan(&totalSoftware)
+	h.db.QueryRow("SELECT COUNT(*) FROM software_catalog").Scan(&totalSoftware)
 
 	// Organize PCs into grid (5 rows x 8 columns)
 	grid := make([][]models.PC, 5)
