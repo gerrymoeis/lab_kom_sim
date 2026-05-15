@@ -475,15 +475,7 @@
 
     document.addEventListener("DOMContentLoaded", function () {
         setupFileHandlers();
-        setupPageLeaveCleanup();
     });
-
-    function setupPageLeaveCleanup() {
-        // Note: Removed automatic cleanup on page unload and tab switch
-        // to prevent files being deleted before form submission completes.
-        // Only manual cleanup via "Hapus" button is now active.
-        // Background cleanup process will handle orphaned files.
-    }
 
     function setupFileHandlers() {
         // Serial photo handlers
@@ -720,4 +712,4 @@
         }
     }
 </script>
-{{ end }} {{ end }}
+{{ end }}
