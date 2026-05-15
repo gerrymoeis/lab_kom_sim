@@ -177,24 +177,6 @@ type LogbookEntry struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
-// MaintenanceLog represents maintenance history for PCs
-type MaintenanceLog struct {
-	ID          int       `json:"id"`
-	PCID        int       `json:"pc_id"`
-	Date        time.Time `json:"date"`
-	Type        string    `json:"type"` // "repair", "upgrade", "cleaning", "check"
-	Description string    `json:"description"`
-	Technician  string    `json:"technician"`
-	Cost        float64   `json:"cost"`
-	CreatedAt   time.Time `json:"created_at"`
-}
-
-// StatusCount represents count of PCs by status
-type StatusCount struct {
-	Status string `json:"status"`
-	Count  int    `json:"count"`
-}
-
 // ActivityLog represents an audit trail entry
 type ActivityLog struct {
 	ID           int       `json:"id"`

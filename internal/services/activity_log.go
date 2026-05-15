@@ -21,247 +21,84 @@ func NewActivityLogService(db *database.DB) *ActivityLogService {
 
 // Log creates a new activity log entry
 func (s *ActivityLogService) Log(log *models.ActivityLog) error {
-	query := `
+	_, err := s.db.Exec(`
 		INSERT INTO activity_logs (
 			user_id, username, user_role, action, entity_type, entity_id,
 			description, old_values, new_values, created_at, ip_address,
 			user_agent, status, error_message
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
-
-	_, err := s.db.Exec(
-		query,
-		log.UserID,
-		log.Username,
-		log.UserRole,
-		log.Action,
-		log.EntityType,
-		log.EntityID,
-		log.Description,
-		log.OldValues,
-		log.NewValues,
-		log.CreatedAt,
-		log.IPAddress,
-		log.UserAgent,
-		log.Status,
-		log.ErrorMessage,
-	)
-
-	if err != nil {
-		return fmt.Errorf("failed to insert activity log: %w", err)
-	}
-
+	`, log.UserID, log.Username, log.UserRole, log.Action, log.EntityType,
+		log.EntityID, log.Description, log.OldValues, log.NewValues,
+		log.CreatedAt, log.IPAddress, log.UserAgent, log.Status, log.ErrorMessage)
+	if err != nil { return fmt.Errorf("failed to insert activity log: %w", err) }
 	return nil
 }
 
-// LogCreate logs a create action
+type logParams struct {
+	userID, entityID int
+	username, role, action, entityType string
+	oldValues, newValues interface{}
+	fileNewValues map[string]string
+	errMsg string
+	ipAddress, userAgent string
+}
+
+func (s *ActivityLogService) logAction(p logParams) error {
+	status, errText := "success", p.errMsg
+	if errText != "" { status = "failed" }
+
+	var oldJSON, newJSON string
+	if p.oldValues != nil { if b, e := json.Marshal(p.oldValues); e == nil { oldJSON = string(b) } }
+	if p.newValues != nil { if b, e := json.Marshal(p.newValues); e == nil { newJSON = string(b) } }
+	if p.fileNewValues != nil { if b, e := json.Marshal(p.fileNewValues); e == nil { newJSON = string(b) } }
+
+	actionLabel := map[string]string{"create": "Created", "update": "Updated", "delete": "Deleted", "upload": "Uploaded"}
+	desc := fmt.Sprintf("%s %s #%d", actionLabel[p.action], p.entityType, p.entityID)
+	if p.action == "upload" && p.fileNewValues != nil {
+		if ft, ok := p.fileNewValues["file_type"]; ok { desc = fmt.Sprintf("Uploaded %s for %s #%d: %s", ft, p.entityType, p.entityID, p.fileNewValues["filename"]) }
+	}
+	if errText != "" { desc = fmt.Sprintf("Failed to %s %s #%d: %s", p.action, p.entityType, p.entityID, errText) }
+
+	return s.Log(&models.ActivityLog{
+		UserID: p.userID, Username: p.username, UserRole: p.role,
+		Action: p.action, EntityType: p.entityType, EntityID: &p.entityID,
+		Description: desc, OldValues: oldJSON, NewValues: newJSON,
+		CreatedAt: time.Now(), IPAddress: p.ipAddress, UserAgent: p.userAgent,
+		Status: status, ErrorMessage: errText,
+	})
+}
+
 func (s *ActivityLogService) LogCreate(userID int, username, role, entityType string, entityID int, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
-	newValuesJSON, err := json.Marshal(newValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal new values: %w", err)
-	}
-
-	errText := ""
-	if len(errorMsg) > 0 {
-		errText = errorMsg[0]
-	}
-
-	status := "success"
-	if errText != "" {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("Created %s #%d", entityType, entityID)
-	if errText != "" {
-		description = fmt.Sprintf("Failed to create %s #%d: %s", entityType, entityID, errText)
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       "create",
-		EntityType:   entityType,
-		EntityID:     &entityID,
-		Description:  description,
-		OldValues:    "",
-		NewValues:    string(newValuesJSON),
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errText,
-	}
-
-	return s.Log(log)
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: "create", entityType: entityType, entityID: entityID, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-// LogUpdate logs an update action
 func (s *ActivityLogService) LogUpdate(userID int, username, role, entityType string, entityID int, oldValues, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
-	oldValuesJSON, err := json.Marshal(oldValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal old values: %w", err)
-	}
-
-	newValuesJSON, err := json.Marshal(newValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal new values: %w", err)
-	}
-
-	errText := ""
-	if len(errorMsg) > 0 {
-		errText = errorMsg[0]
-	}
-
-	status := "success"
-	if errText != "" {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("Updated %s #%d", entityType, entityID)
-	if errText != "" {
-		description = fmt.Sprintf("Failed to update %s #%d: %s", entityType, entityID, errText)
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       "update",
-		EntityType:   entityType,
-		EntityID:     &entityID,
-		Description:  description,
-		OldValues:    string(oldValuesJSON),
-		NewValues:    string(newValuesJSON),
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errText,
-	}
-
-	return s.Log(log)
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: "update", entityType: entityType, entityID: entityID, oldValues: oldValues, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-// LogDelete logs a delete action
 func (s *ActivityLogService) LogDelete(userID int, username, role, entityType string, entityID int, oldValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
-	oldValuesJSON, err := json.Marshal(oldValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal old values: %w", err)
-	}
-
-	errText := ""
-	if len(errorMsg) > 0 {
-		errText = errorMsg[0]
-	}
-
-	status := "success"
-	if errText != "" {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("Deleted %s #%d", entityType, entityID)
-	if errText != "" {
-		description = fmt.Sprintf("Failed to delete %s #%d: %s", entityType, entityID, errText)
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       "delete",
-		EntityType:   entityType,
-		EntityID:     &entityID,
-		Description:  description,
-		OldValues:    string(oldValuesJSON),
-		NewValues:    "",
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errText,
-	}
-
-	return s.Log(log)
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: "delete", entityType: entityType, entityID: entityID, oldValues: oldValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-// LogUpload logs a file upload action
 func (s *ActivityLogService) LogUpload(userID int, username, role, entityType string, entityID int, filename, fileType string, ipAddress, userAgent string, errorMsg ...string) error {
-	errText := ""
-	if len(errorMsg) > 0 {
-		errText = errorMsg[0]
-	}
-
-	status := "success"
-	if errText != "" {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("Uploaded %s for %s #%d: %s", fileType, entityType, entityID, filename)
-	if errText != "" {
-		description = fmt.Sprintf("Failed to upload %s for %s #%d: %s", fileType, entityType, entityID, errText)
-	}
-
-	newValues := map[string]string{
-		"filename":  filename,
-		"file_type": fileType,
-	}
-
-	newValuesJSON, err := json.Marshal(newValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal new values: %w", err)
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       "upload",
-		EntityType:   entityType,
-		EntityID:     &entityID,
-		Description:  description,
-		OldValues:    "",
-		NewValues:    string(newValuesJSON),
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errText,
-	}
-
-	return s.Log(log)
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: "upload", entityType: entityType, entityID: entityID, fileNewValues: map[string]string{"filename": filename, "file_type": fileType}, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-// LogAuth logs authentication events (login, logout)
 func (s *ActivityLogService) LogAuth(userID int, username, role, action string, success bool, ipAddress, userAgent string, errorMsg string) error {
-	status := "success"
-	if !success {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("User '%s' %s", username, action)
-	if !success {
-		description += " (failed)"
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       action,
-		EntityType:   "auth",
-		EntityID:     nil,
-		Description:  description,
-		OldValues:    "",
-		NewValues:    "",
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errorMsg,
-	}
-
-	return s.Log(log)
+	status := "success"; if !success { status = "failed" }
+	desc := fmt.Sprintf("User '%s' %s", username, action)
+	if !success { desc += " (failed)" }
+	return s.Log(&models.ActivityLog{
+		UserID: userID, Username: username, UserRole: role,
+		Action: action, EntityType: "auth", EntityID: nil,
+		Description: desc, OldValues: "", NewValues: "",
+		CreatedAt: time.Now(), IPAddress: ipAddress, UserAgent: userAgent,
+		Status: status, ErrorMessage: errorMsg,
+	})
 }
 
 // ActivityLogFilters represents filters for querying activity logs
