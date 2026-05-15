@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -116,198 +117,73 @@ type ActivityLogFilters struct {
 
 // GetLogs retrieves activity logs with filters
 func (s *ActivityLogService) GetLogs(filters ActivityLogFilters) ([]models.ActivityLog, int, error) {
-	// Build query with filters
-	query := `
-		SELECT 
-			id, user_id, username, user_role, action, entity_type, entity_id,
+	baseQuery := `
+		SELECT id, user_id, username, user_role, action, entity_type, entity_id,
 			description, old_values, new_values, created_at, ip_address,
-			user_agent, status, error_message
-		FROM activity_logs
-		WHERE 1=1
-	`
-
-	countQuery := "SELECT COUNT(*) FROM activity_logs WHERE 1=1"
-
+			user_agent, status, error_message FROM activity_logs WHERE 1=1`
+	countQ := "SELECT COUNT(*) FROM activity_logs WHERE 1=1"
 	args := []interface{}{}
-	countArgs := []interface{}{}
 
-	// Apply filters
-	if filters.DateFrom != nil {
-		query += " AND created_at >= ?"
-		countQuery += " AND created_at >= ?"
-		args = append(args, filters.DateFrom)
-		countArgs = append(countArgs, filters.DateFrom)
+	addCond := func(cond string, val interface{}) {
+		baseQuery += cond; countQ += cond; args = append(args, val)
 	}
 
-	if filters.DateTo != nil {
-		query += " AND created_at <= ?"
-		countQuery += " AND created_at <= ?"
-		args = append(args, filters.DateTo)
-		countArgs = append(countArgs, filters.DateTo)
-	}
+	if filters.DateFrom != nil { addCond(" AND created_at >= ?", filters.DateFrom) }
+	if filters.DateTo != nil { addCond(" AND created_at <= ?", filters.DateTo) }
+	if filters.Action != "" { addCond(" AND action = ?", filters.Action) }
+	if filters.EntityType != "" { addCond(" AND entity_type = ?", filters.EntityType) }
+	if filters.UserID != nil { addCond(" AND user_id = ?", *filters.UserID) }
+	if filters.Username != "" { addCond(" AND username LIKE ?", "%"+filters.Username+"%") }
+	if filters.Status != "" { addCond(" AND status = ?", filters.Status) }
 
-	if filters.Action != "" {
-		query += " AND action = ?"
-		countQuery += " AND action = ?"
-		args = append(args, filters.Action)
-		countArgs = append(countArgs, filters.Action)
-	}
-
-	if filters.EntityType != "" {
-		query += " AND entity_type = ?"
-		countQuery += " AND entity_type = ?"
-		args = append(args, filters.EntityType)
-		countArgs = append(countArgs, filters.EntityType)
-	}
-
-	if filters.UserID != nil {
-		query += " AND user_id = ?"
-		countQuery += " AND user_id = ?"
-		args = append(args, *filters.UserID)
-		countArgs = append(countArgs, *filters.UserID)
-	}
-
-	if filters.Username != "" {
-		query += " AND username LIKE ?"
-		countQuery += " AND username LIKE ?"
-		searchTerm := "%" + filters.Username + "%"
-		args = append(args, searchTerm)
-		countArgs = append(countArgs, searchTerm)
-	}
-
-	if filters.Status != "" {
-		query += " AND status = ?"
-		countQuery += " AND status = ?"
-		args = append(args, filters.Status)
-		countArgs = append(countArgs, filters.Status)
-	}
-
-	// Get total count
 	var totalCount int
-	err := s.db.QueryRow(countQuery, countArgs...).Scan(&totalCount)
-	if err != nil {
+	if err := s.db.QueryRow(countQ, args...).Scan(&totalCount); err != nil {
 		return nil, 0, fmt.Errorf("failed to count logs: %w", err)
 	}
 
-	// Order by created_at DESC (newest first)
-	query += " ORDER BY created_at DESC"
+	baseQuery += " ORDER BY created_at DESC"
+	if filters.Limit > 0 { baseQuery += " LIMIT ?"; args = append(args, filters.Limit) }
+	if filters.Offset > 0 { baseQuery += " OFFSET ?"; args = append(args, filters.Offset) }
 
-	// Apply pagination
-	if filters.Limit > 0 {
-		query += " LIMIT ?"
-		args = append(args, filters.Limit)
-	}
-
-	if filters.Offset > 0 {
-		query += " OFFSET ?"
-		args = append(args, filters.Offset)
-	}
-
-	// Execute query
-	rows, err := s.db.Query(query, args...)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to query logs: %w", err)
-	}
+	rows, err := s.db.Query(baseQuery, args...)
+	if err != nil { return nil, 0, fmt.Errorf("failed to query logs: %w", err) }
 	defer rows.Close()
 
-	logs := []models.ActivityLog{}
-
-	for rows.Next() {
-		var log models.ActivityLog
-		err := rows.Scan(
-			&log.ID,
-			&log.UserID,
-			&log.Username,
-			&log.UserRole,
-			&log.Action,
-			&log.EntityType,
-			&log.EntityID,
-			&log.Description,
-			&log.OldValues,
-			&log.NewValues,
-			&log.CreatedAt,
-			&log.IPAddress,
-			&log.UserAgent,
-			&log.Status,
-			&log.ErrorMessage,
-		)
-		if err != nil {
-			return nil, 0, fmt.Errorf("failed to scan log: %w", err)
-		}
-
-		logs = append(logs, log)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("rows error: %w", err)
-	}
-
-	return logs, totalCount, nil
+	return scanLogs(rows, totalCount)
 }
 
 // SearchLogs searches activity logs by keyword
 func (s *ActivityLogService) SearchLogs(keyword string, limit, offset int) ([]models.ActivityLog, int, error) {
 	searchTerm := "%" + keyword + "%"
-
-	countQuery := `
-		SELECT COUNT(*) FROM activity_logs
-		WHERE description LIKE ? OR username LIKE ? OR entity_type LIKE ?
-	`
-
 	var totalCount int
-	err := s.db.QueryRow(countQuery, searchTerm, searchTerm, searchTerm).Scan(&totalCount)
-	if err != nil {
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM activity_logs WHERE description LIKE ? OR username LIKE ? OR entity_type LIKE ?`,
+		searchTerm, searchTerm, searchTerm).Scan(&totalCount); err != nil {
 		return nil, 0, fmt.Errorf("failed to count search results: %w", err)
 	}
 
-	query := `
-		SELECT 
-			id, user_id, username, user_role, action, entity_type, entity_id,
-			description, old_values, new_values, created_at, ip_address,
-			user_agent, status, error_message
-		FROM activity_logs
+	rows, err := s.db.Query(`SELECT id, user_id, username, user_role, action, entity_type, entity_id,
+		description, old_values, new_values, created_at, ip_address,
+		user_agent, status, error_message FROM activity_logs
 		WHERE description LIKE ? OR username LIKE ? OR entity_type LIKE ?
-		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?
-	`
-
-	rows, err := s.db.Query(query, searchTerm, searchTerm, searchTerm, limit, offset)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to search logs: %w", err)
-	}
+		ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+		searchTerm, searchTerm, searchTerm, limit, offset)
+	if err != nil { return nil, 0, fmt.Errorf("failed to search logs: %w", err) }
 	defer rows.Close()
 
-	logs := []models.ActivityLog{}
+	return scanLogs(rows, totalCount)
+}
 
+func scanLogs(rows *sql.Rows, totalCount int) ([]models.ActivityLog, int, error) {
+	logs := []models.ActivityLog{}
 	for rows.Next() {
 		var log models.ActivityLog
-		err := rows.Scan(
-			&log.ID,
-			&log.UserID,
-			&log.Username,
-			&log.UserRole,
-			&log.Action,
-			&log.EntityType,
-			&log.EntityID,
-			&log.Description,
-			&log.OldValues,
-			&log.NewValues,
-			&log.CreatedAt,
-			&log.IPAddress,
-			&log.UserAgent,
-			&log.Status,
-			&log.ErrorMessage,
-		)
-		if err != nil {
+		if err := rows.Scan(&log.ID, &log.UserID, &log.Username, &log.UserRole, &log.Action,
+			&log.EntityType, &log.EntityID, &log.Description, &log.OldValues, &log.NewValues,
+			&log.CreatedAt, &log.IPAddress, &log.UserAgent, &log.Status, &log.ErrorMessage); err != nil {
 			return nil, 0, fmt.Errorf("failed to scan log: %w", err)
 		}
-
 		logs = append(logs, log)
 	}
-
-	if err = rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("rows error: %w", err)
-	}
-
+	if err := rows.Err(); err != nil { return nil, 0, fmt.Errorf("rows error: %w", err) }
 	return logs, totalCount, nil
 }

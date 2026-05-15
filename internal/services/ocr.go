@@ -214,55 +214,22 @@ func (s *OCRService) parseOCRResponse(responseText string) (*OCRResult, error) {
 // callGemini sends image to Gemini API and returns response text
 func (s *OCRService) callGemini(base64Image, mimeType string) (string, error) {
 	prompt := buildOCRPrompt()
-
 	reqBody := GeminiRequest{
-		Contents: []GeminiContent{
-			{
-				Parts: []GeminiPart{
-					{Text: prompt},
-					{InlineData: &GeminiInlineData{MimeType: mimeType, Data: base64Image}},
-				},
-			},
-		},
+		Contents: []GeminiContent{{Parts: []GeminiPart{
+			{Text: prompt},
+			{InlineData: &GeminiInlineData{MimeType: mimeType, Data: base64Image}},
+		}}},
 	}
-
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
-	}
-
+	jsonData, _ := json.Marshal(reqBody)
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=%s", s.geminiKey)
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to call Gemini API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Gemini API error (status %d): %s", resp.StatusCode, string(body))
-	}
+	body, err := s.doAPIRequest("POST", url, jsonData, nil)
+	if err != nil { return "", err }
 
 	var geminiResp GeminiResponse
-	if err := json.Unmarshal(body, &geminiResp); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
-	}
-
+	if err := json.Unmarshal(body, &geminiResp); err != nil { return "", fmt.Errorf("failed to parse response: %w", err) }
 	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
 		return "", fmt.Errorf("no response from Gemini API")
 	}
-
 	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
 }
 
@@ -275,63 +242,46 @@ type OpenRouterResponse struct {
 	} `json:"choices"`
 }
 
-// callOpenRouter sends image to OpenRouter (openrouter/free) and returns response text
+// callOpenRouter sends image to OpenRouter API and returns response text
 func (s *OCRService) callOpenRouter(base64Image, mimeType string) (string, error) {
 	prompt := buildOCRPrompt()
-
 	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image)
-
 	reqBody := map[string]interface{}{
 		"model": "openrouter/free",
-		"messages": []map[string]interface{}{
-			{
-				"role": "user",
-				"content": []map[string]interface{}{
-					{"type": "text", "text": prompt},
-					{"type": "image_url", "image_url": map[string]string{"url": dataURL}},
-				},
+		"messages": []map[string]interface{}{{
+			"role": "user",
+			"content": []map[string]interface{}{
+				{"type": "text", "text": prompt},
+				{"type": "image_url", "image_url": map[string]string{"url": dataURL}},
 			},
-		},
+		}},
 	}
+	jsonData, _ := json.Marshal(reqBody)
+	body, err := s.doAPIRequest("POST", "https://openrouter.ai/api/v1/chat/completions", jsonData, map[string]string{"Authorization": "Bearer " + s.openRouterKey})
+	if err != nil { return "", err }
 
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
-	}
+	var orResp OpenRouterResponse
+	if err := json.Unmarshal(body, &orResp); err != nil { return "", fmt.Errorf("failed to parse response: %w", err) }
+	if len(orResp.Choices) == 0 { return "", fmt.Errorf("no response from OpenRouter") }
+	return orResp.Choices[0].Message.Content, nil
+}
 
-	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
+func (s *OCRService) doAPIRequest(method, url string, jsonData []byte, extraHeaders map[string]string) ([]byte, error) {
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
+	if err != nil { return nil, fmt.Errorf("failed to create request: %w", err) }
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.openRouterKey)
+	for k, v := range extraHeaders { req.Header.Set(k, v) }
 
 	resp, err := s.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to call OpenRouter: %w", err)
-	}
+	if err != nil { return nil, fmt.Errorf("failed to call API: %w", err) }
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
-	}
-
+	if err != nil { return nil, fmt.Errorf("failed to read response: %w", err) }
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("OpenRouter API error (status %d): %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
-
-	var orResp OpenRouterResponse
-	if err := json.Unmarshal(body, &orResp); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if len(orResp.Choices) == 0 {
-		return "", fmt.Errorf("no response from OpenRouter")
-	}
-
-	return orResp.Choices[0].Message.Content, nil
+	return body, nil
 }
 
 func buildOCRPrompt() string {

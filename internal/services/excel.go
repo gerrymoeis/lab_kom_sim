@@ -35,48 +35,35 @@ type ConditionalFormat struct {
 
 // GenerateExcel creates an Excel file based on the provided configuration
 func (s *ExcelService) GenerateExcel(config ExcelExportConfig) (*excelize.File, error) {
-	// Create new Excel file
 	f := excelize.NewFile()
-
-	// Create sheet
 	index, err := f.NewSheet(config.SheetName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create sheet: %w", err)
-	}
-
-	// Set headers
-	if err := s.setHeaders(f, config.SheetName, config.Headers); err != nil {
-		return nil, fmt.Errorf("failed to set headers: %w", err)
-	}
-
-	// Apply header style
-	lastCol := string(rune('A' + len(config.Headers) - 1))
-	if err := s.applyHeaderStyle(f, config.SheetName, lastCol); err != nil {
-		return nil, fmt.Errorf("failed to apply header style: %w", err)
-	}
-
-	// Fill data
-	if err := s.fillData(f, config.SheetName, config.Data); err != nil {
-		return nil, fmt.Errorf("failed to fill data: %w", err)
-	}
-
-	// Set column widths
-	if err := s.setColumnWidths(f, config.SheetName, config.ColumnWidths); err != nil {
-		return nil, fmt.Errorf("failed to set column widths: %w", err)
-	}
-
-	// Apply conditional formatting
-	if len(config.ConditionalFormats) > 0 {
-		if err := s.applyConditionalFormatting(f, config.SheetName, config.ConditionalFormats); err != nil {
-			return nil, fmt.Errorf("failed to apply conditional formatting: %w", err)
-		}
-	}
-
-	// Set active sheet and delete default Sheet1
+	if err != nil { return nil, fmt.Errorf("failed to create sheet: %w", err) }
+	if err := s.populateSheet(f, config); err != nil { return nil, err }
 	f.SetActiveSheet(index)
 	f.DeleteSheet("Sheet1")
-
 	return f, nil
+}
+
+func (s *ExcelService) populateSheet(f *excelize.File, config ExcelExportConfig) error {
+	if err := s.setHeaders(f, config.SheetName, config.Headers); err != nil {
+		return fmt.Errorf("failed to set headers: %w", err)
+	}
+	lastCol := string(rune('A' + len(config.Headers) - 1))
+	if err := s.applyHeaderStyle(f, config.SheetName, lastCol); err != nil {
+		return fmt.Errorf("failed to apply header style: %w", err)
+	}
+	if err := s.fillData(f, config.SheetName, config.Data); err != nil {
+		return fmt.Errorf("failed to fill data: %w", err)
+	}
+	if err := s.setColumnWidths(f, config.SheetName, config.ColumnWidths); err != nil {
+		return fmt.Errorf("failed to set column widths: %w", err)
+	}
+	if len(config.ConditionalFormats) > 0 {
+		if err := s.applyConditionalFormatting(f, config.SheetName, config.ConditionalFormats); err != nil {
+			return fmt.Errorf("failed to apply conditional formatting: %w", err)
+		}
+	}
+	return nil
 }
 
 // setHeaders sets the header row
@@ -183,79 +170,26 @@ func (s *ExcelService) GenerateFilename(prefix string) string {
 
 // GenerateMultiSheetExcel creates an Excel file with multiple sheets
 func (s *ExcelService) GenerateMultiSheetExcel(configs []ExcelExportConfig) (*excelize.File, error) {
-	if len(configs) == 0 {
-		return nil, fmt.Errorf("no sheet configurations provided")
-	}
+	if len(configs) == 0 { return nil, fmt.Errorf("no sheet configurations provided") }
 
-	// Create new Excel file
 	f := excelize.NewFile()
-	
-	// Track if we need to delete default Sheet1
 	deleteDefaultSheet := true
 	firstSheetIndex := -1
 
-	// Create each sheet
 	for i, config := range configs {
-		var sheetIndex int
-		var err error
-
+		var sheetIndex int; var err error
 		if i == 0 {
-			// Rename default Sheet1 to first sheet name
-			if err := f.SetSheetName("Sheet1", config.SheetName); err != nil {
-				return nil, fmt.Errorf("failed to rename default sheet: %w", err)
-			}
-			sheetIndex = 0
-			deleteDefaultSheet = false
+			if err := f.SetSheetName("Sheet1", config.SheetName); err != nil { return nil, fmt.Errorf("failed to rename default sheet: %w", err) }
+			sheetIndex, deleteDefaultSheet = 0, false
 		} else {
-			// Create new sheet
 			sheetIndex, err = f.NewSheet(config.SheetName)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create sheet %s: %w", config.SheetName, err)
-			}
+			if err != nil { return nil, fmt.Errorf("failed to create sheet %s: %w", config.SheetName, err) }
 		}
-
-		if firstSheetIndex == -1 {
-			firstSheetIndex = sheetIndex
-		}
-
-		// Set headers
-		if err := s.setHeaders(f, config.SheetName, config.Headers); err != nil {
-			return nil, fmt.Errorf("failed to set headers for sheet %s: %w", config.SheetName, err)
-		}
-
-		// Apply header style
-		lastCol := string(rune('A' + len(config.Headers) - 1))
-		if err := s.applyHeaderStyle(f, config.SheetName, lastCol); err != nil {
-			return nil, fmt.Errorf("failed to apply header style for sheet %s: %w", config.SheetName, err)
-		}
-
-		// Fill data
-		if err := s.fillData(f, config.SheetName, config.Data); err != nil {
-			return nil, fmt.Errorf("failed to fill data for sheet %s: %w", config.SheetName, err)
-		}
-
-		// Set column widths
-		if err := s.setColumnWidths(f, config.SheetName, config.ColumnWidths); err != nil {
-			return nil, fmt.Errorf("failed to set column widths for sheet %s: %w", config.SheetName, err)
-		}
-
-		// Apply conditional formatting
-		if len(config.ConditionalFormats) > 0 {
-			if err := s.applyConditionalFormatting(f, config.SheetName, config.ConditionalFormats); err != nil {
-				return nil, fmt.Errorf("failed to apply conditional formatting for sheet %s: %w", config.SheetName, err)
-			}
-		}
+		if firstSheetIndex == -1 { firstSheetIndex = sheetIndex }
+		if err := s.populateSheet(f, config); err != nil { return nil, err }
 	}
 
-	// Set first sheet as active
-	if firstSheetIndex >= 0 {
-		f.SetActiveSheet(firstSheetIndex)
-	}
-
-	// Delete default Sheet1 if we created new sheets
-	if deleteDefaultSheet {
-		f.DeleteSheet("Sheet1")
-	}
-
+	if firstSheetIndex >= 0 { f.SetActiveSheet(firstSheetIndex) }
+	if deleteDefaultSheet { f.DeleteSheet("Sheet1") }
 	return f, nil
 }
