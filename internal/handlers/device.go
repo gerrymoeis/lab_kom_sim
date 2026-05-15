@@ -37,13 +37,13 @@ func (h *Handler) DeviceList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	tab := c.DefaultQuery("tab", "devices")
+	tab := c.DefaultQuery("tab", "list")
 	search := c.Query("search")
 	category := c.Query("category")
 
 	switch tab {
 
-	case "devices":
+	case "list":
 		query := `SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
 			d.item_type, d.quantity_total, d.quantity_available, d.condition, d.location, d.created_at
 			FROM devices d JOIN device_types dt ON d.device_type_id = dt.id WHERE 1=1`
@@ -71,7 +71,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		c.HTML(http.StatusOK, "device/list.html", gin.H{
 			"title": "Manajemen Perangkat", "currentPage": "devices",
 			"username": username, "role": role,
-			"activeTab": "devices", "devices": devices,
+			"activeTab": "list", "devices": devices,
 			"deviceTypes": h.fetchDeviceTypes(),
 			"filters": gin.H{"search": search, "category": category},
 		})
