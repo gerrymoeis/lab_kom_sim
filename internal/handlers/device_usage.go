@@ -13,110 +13,64 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DeviceUsageList renders list of device usages with filter/sort/search
 func (h *Handler) DeviceUsageList(c *gin.Context) {
-	_, username, role, ok := middleware.GetCurrentUser(c)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
+	_, username, role, ok := h.user(c)
+	if !ok { return }
 
-	// Parse filters
 	search := c.Query("search")
 	sortBy := c.DefaultQuery("sort_by", "usage_date")
 	sortOrder := c.DefaultQuery("sort_order", "DESC")
 
-	// Build query with JOIN to get device name
-	query := `
-		SELECT u.id, u.device_id, d.name as device_name, d.asset_code, u.user_name, u.user_type,
-		       u.usage_date, u.quantity, u.is_available, u.purpose
-		FROM device_usages u
-		JOIN devices d ON u.device_id = d.id
-		WHERE 1=1
-	`
-	args := []interface{}{}
+	query := `SELECT u.id, u.device_id, d.name, d.asset_code, u.user_name, u.user_type,
+		u.usage_date, u.quantity, u.is_available, u.purpose
+		FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1`
+	var args []interface{}
 
 	if search != "" {
 		query += ` AND (u.user_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
-		searchTerm := "%" + search + "%"
-		args = append(args, searchTerm, searchTerm, searchTerm)
+		s := "%" + search + "%"
+		args = append(args, s, s, s)
 	}
 
-	// Sorting
-	validSortColumns := map[string]bool{
-		"usage_date": true, "user_name": true, "quantity": true,
-	}
-	if !validSortColumns[sortBy] {
-		sortBy = "usage_date"
-	}
-	if sortOrder != "ASC" && sortOrder != "DESC" {
-		sortOrder = "DESC"
-	}
-	query += fmt.Sprintf(" ORDER BY u.%s %s", sortBy, sortOrder)
+	validSort := map[string]bool{"usage_date": true, "user_name": true, "quantity": true}
+	if !validSort[sortBy] { sortBy = "usage_date" }
+	if sortOrder != "ASC" { sortOrder = "DESC" }
 
-	rows, err := h.db.Query(query, args...)
+	type UsageWithDevice struct {
+		models.DeviceUsage
+		DeviceName, AssetCode string
+	}
+
+	rows, err := h.db.Query(query+fmt.Sprintf(" ORDER BY u.%s %s", sortBy, sortOrder), args...)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengambil data pemakaian",
-		})
+		h.errHTML(c, "Gagal mengambil data pemakaian")
 		return
 	}
 	defer rows.Close()
 
-	type UsageWithDevice struct {
-		models.DeviceUsage
-		DeviceName string
-		AssetCode  string
-	}
-
 	var usages []UsageWithDevice
 	for rows.Next() {
-		var usage UsageWithDevice
-		err := rows.Scan(&usage.ID, &usage.DeviceID, &usage.DeviceName, &usage.AssetCode, &usage.UserName,
-			&usage.UserType, &usage.UsageDate, &usage.Quantity, &usage.IsAvailable, &usage.Purpose)
-		if err != nil {
-			continue
+		var u UsageWithDevice
+		if rows.Scan(&u.ID, &u.DeviceID, &u.DeviceName, &u.AssetCode, &u.UserName, &u.UserType,
+			&u.UsageDate, &u.Quantity, &u.IsAvailable, &u.Purpose) == nil {
+			usages = append(usages, u)
 		}
-		usages = append(usages, usage)
 	}
 
 	c.HTML(http.StatusOK, "device_usage/list.html", gin.H{
-		"title":       "Pemakaian Perangkat - Sistem Inventaris Lab",
-		"currentPage": "devices",
-		"username":    username,
-		"role":        role,
-		"usages":      usages,
-		"filters": gin.H{
-			"search":     search,
-			"sort_by":    sortBy,
-			"sort_order": sortOrder,
-		},
+		"title": "Pemakaian Perangkat", "currentPage": "devices",
+		"username": username, "role": role, "usages": usages,
+		"filters": gin.H{"search": search, "sort_by": sortBy, "sort_order": sortOrder},
 	})
 }
 
-// DeviceUsageCreatePage renders device usage creation form
 func (h *Handler) DeviceUsageCreatePage(c *gin.Context) {
-	_, username, role, ok := middleware.GetCurrentUser(c)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
+	_, username, role, ok := h.user(c)
+	if !ok { return }
 
-	deviceID := c.Query("device_id")
-
-	// Get consumable devices
-	rows, err := h.db.Query(`
-		SELECT id, asset_code, name, item_type, quantity_available, is_consumable
-		FROM devices
-		WHERE is_consumable = TRUE AND quantity_available > 0
-		ORDER BY name
-	`)
+	rows, err := h.db.Query(`SELECT id, asset_code, name, item_type, quantity_available, is_consumable FROM devices WHERE is_consumable = TRUE AND quantity_available > 0 ORDER BY name`)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengambil data perangkat",
-		})
+		h.errHTML(c, "Gagal mengambil data perangkat")
 		return
 	}
 	defer rows.Close()
@@ -124,259 +78,91 @@ func (h *Handler) DeviceUsageCreatePage(c *gin.Context) {
 	var devices []models.Device
 	for rows.Next() {
 		var d models.Device
-		rows.Scan(&d.ID, &d.AssetCode, &d.Name, &d.ItemType, &d.QuantityAvailable, &d.IsConsumable)
-		devices = append(devices, d)
+		if rows.Scan(&d.ID, &d.AssetCode, &d.Name, &d.ItemType, &d.QuantityAvailable, &d.IsConsumable) == nil {
+			devices = append(devices, d)
+		}
 	}
 
 	c.HTML(http.StatusOK, "device_usage/create.html", gin.H{
-		"title":       "Catat Pemakaian - Sistem Inventaris Lab",
-		"currentPage": "devices",
-		"username":    username,
-		"role":        role,
-		"devices":     devices,
-		"deviceID":    deviceID,
+		"title": "Catat Pemakaian", "currentPage": "devices",
+		"username": username, "role": role, "devices": devices,
+		"deviceID": c.Query("device_id"),
 	})
 }
 
-// DeviceUsageCreate handles device usage creation
 func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	deviceID := c.PostForm("device_id")
 	userName := c.PostForm("user_name")
 	userType := c.PostForm("user_type")
 	usageDateStr := c.PostForm("usage_date")
 	quantityStr := c.PostForm("quantity")
+	isAvailable := c.PostForm("is_available")
 	purpose := c.PostForm("purpose")
 
-	// Validate
-	if deviceID == "" || userName == "" || usageDateStr == "" || quantityStr == "" {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Perangkat, nama pengguna, tanggal, dan jumlah harus diisi",
-		})
-		return
-	}
-
 	quantity, _ := strconv.Atoi(quantityStr)
-	if quantity <= 0 {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Jumlah harus lebih dari 0",
-		})
+	if deviceID == "" || userName == "" || usageDateStr == "" || quantity <= 0 {
+		h.errHTML(c, "Perangkat, nama pengguna, tanggal, dan jumlah harus diisi")
 		return
 	}
+	if isAvailable != "no" { isAvailable = "yes" }
 
-	isAvailable := c.PostForm("is_available")
-	if isAvailable != "no" {
-		isAvailable = "yes"
-	}
-
-	// Parse date
 	usageDate, _ := time.Parse("2006-01-02", usageDateStr)
 
-	tx, err := h.db.Begin()
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal memulai transaksi",
-		})
-		return
-	}
+	tx, _ := h.db.Begin()
 	defer tx.Rollback()
 
-	result, err := tx.Exec(`
-		INSERT INTO device_usages (device_id, user_name, user_type, usage_date, quantity, is_available, purpose)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, deviceID, userName, userType, usageDate, quantity, isAvailable, purpose)
-
+	result, err := tx.Exec(`INSERT INTO device_usages (device_id, user_name, user_type, usage_date, quantity, is_available, purpose) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		deviceID, userName, userType, usageDate, quantity, isAvailable, purpose)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal menyimpan data pemakaian",
-		})
+		h.errHTML(c, "Gagal menyimpan data pemakaian")
 		return
 	}
 
-	// Only deduct stock if item is marked as habis (not available)
 	if isAvailable == "no" {
-		var quantityAvailable int
-		err = tx.QueryRow(`SELECT quantity_available FROM devices WHERE id = ?`, deviceID).Scan(&quantityAvailable)
-		if err != nil || quantityAvailable < quantity {
-			tx.Rollback()
-			c.HTML(http.StatusBadRequest, "error.html", gin.H{
-				"title":   "Error",
-				"message": fmt.Sprintf("Stok tidak cukup. Tersedia: %d", quantityAvailable),
-			})
-			return
-		}
-		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, deviceID)
-		if err != nil {
-			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-				"title":   "Error",
-				"message": "Gagal mengupdate stok perangkat",
-			})
-			return
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal menyimpan data",
-		})
-		return
-	}
-
-	usageID, _ := result.LastInsertId()
-	userID, username, role, ok := middleware.GetCurrentUser(c)
-	if ok {
-		ipAddress, userAgent := getRequestContext(c)
-		h.activityLogService.LogCreate(
-			userID, username, role,
-			"device_usage", int(usageID),
-			map[string]interface{}{
-				"device_id": deviceID,
-				"user_name": userName,
-				"quantity":  quantity,
-			},
-			ipAddress, userAgent,
-		)
-	}
-
-	c.Redirect(http.StatusFound, "/devices?tab=usages")
-}
-
-// DeviceUsageUpdateAvailability handles inline is_available toggle from list
-func (h *Handler) DeviceUsageUpdateAvailability(c *gin.Context) {
-	id := c.Param("id")
-	isAvailable := c.PostForm("is_available")
-	if isAvailable != "yes" && isAvailable != "no" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Nilai tidak valid"})
-		return
-	}
-
-	var deviceID, quantity int
-	var oldIsAvailable string
-	err := h.db.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &quantity, &oldIsAvailable)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Data tidak ditemukan"})
-		return
-	}
-
-	if oldIsAvailable == isAvailable {
-		c.JSON(http.StatusOK, gin.H{"success": true})
-		return
-	}
-
-	tx, err := h.db.Begin()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal memulai transaksi"})
-		return
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec(`UPDATE device_usages SET is_available = ? WHERE id = ?`, isAvailable, id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal mengupdate"})
-		return
-	}
-
-	if isAvailable == "yes" {
-		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, deviceID)
-	} else {
 		var qtyAvail int
 		tx.QueryRow(`SELECT quantity_available FROM devices WHERE id = ?`, deviceID).Scan(&qtyAvail)
 		if qtyAvail < quantity {
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": fmt.Sprintf("Stok tidak cukup. Tersedia: %d", qtyAvail)})
+			h.errHTML(c, fmt.Sprintf("Stok tidak cukup. Tersedia: %d", qtyAvail))
 			return
 		}
-		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, deviceID)
+		tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, deviceID)
 	}
+	tx.Commit()
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal mengupdate stok"})
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Gagal menyimpan"})
-		return
-	}
-
-	// Log
-	userID, username, role, ok := middleware.GetCurrentUser(c)
-	if ok {
-		ipAddress, userAgent := getRequestContext(c)
-		status := "yes"
-		if isAvailable == "no" {
-			status = "no"
-		}
-		h.activityLogService.LogUpdate(userID, username, role, "device_usage", 0,
-			map[string]interface{}{"id": id, "old_is_available": oldIsAvailable},
-			map[string]interface{}{"id": id, "is_available": status},
-			ipAddress, userAgent)
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	id, _ := result.LastInsertId()
+	h.logCreate(c, "device_usage", int(id), map[string]interface{}{
+		"device_id": deviceID, "user_name": userName, "quantity": quantity,
+	})
+	c.Redirect(http.StatusFound, "/devices?tab=usages")
 }
 
-// DeviceUsageEditPage renders device usage edit form
 func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
-	_, username, role, ok := middleware.GetCurrentUser(c)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
+	_, username, role, ok := h.user(c)
+	if !ok { return }
 
 	id := c.Param("id")
-
 	var usage models.DeviceUsage
 	var deviceName, assetCode string
 	var purpose, notes sql.NullString
-	err := h.db.QueryRow(`
-		SELECT u.id, u.device_id, d.name, d.asset_code, u.user_name, u.user_type,
-		       u.usage_date, u.quantity, u.is_available, u.purpose, u.notes
-		FROM device_usages u
-		JOIN devices d ON u.device_id = d.id
-		WHERE u.id = ?
-	`, id).Scan(&usage.ID, &usage.DeviceID, &deviceName, &assetCode, &usage.UserName, &usage.UserType,
-		&usage.UsageDate, &usage.Quantity, &usage.IsAvailable, &purpose, &notes)
-	
-	// Convert NullString to string
-	if purpose.Valid {
-		usage.Purpose = purpose.String
-	}
-	if notes.Valid {
-		usage.Notes = notes.String
-	}
-
-	if err == sql.ErrNoRows {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"title":   "Pemakaian Tidak Ditemukan",
-			"message": "Data pemakaian tidak ditemukan",
-		})
-		return
-	}
-
+	err := h.db.QueryRow(`SELECT u.id, u.device_id, d.name, d.asset_code, u.user_name, u.user_type,
+		u.usage_date, u.quantity, u.is_available, u.purpose, u.notes
+		FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE u.id = ?`, id).
+		Scan(&usage.ID, &usage.DeviceID, &deviceName, &assetCode, &usage.UserName, &usage.UserType,
+			&usage.UsageDate, &usage.Quantity, &usage.IsAvailable, &purpose, &notes)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengambil data pemakaian",
-		})
+		h.errHTML(c, "Data pemakaian tidak ditemukan")
 		return
 	}
+	if purpose.Valid { usage.Purpose = purpose.String }
+	if notes.Valid { usage.Notes = notes.String }
 
 	c.HTML(http.StatusOK, "device_usage/edit.html", gin.H{
-		"title":       "Edit Pemakaian - Sistem Inventaris Lab",
-		"currentPage": "devices",
-		"username":    username,
-		"role":        role,
-		"usage":       usage,
-		"deviceName":  deviceName,
-		"assetCode":   assetCode,
+		"title": "Edit Pemakaian", "currentPage": "devices",
+		"username": username, "role": role,
+		"usage": usage, "deviceName": deviceName, "assetCode": assetCode,
 	})
 }
 
-// DeviceUsageEdit handles device usage update
 func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	id := c.Param("id")
 	userName := c.PostForm("user_name")
@@ -386,175 +172,92 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	isAvailable := c.PostForm("is_available")
 	purpose := c.PostForm("purpose")
 	notes := c.PostForm("notes")
+	if isAvailable != "no" { isAvailable = "yes" }
 
-	if isAvailable != "no" {
-		isAvailable = "yes"
-	}
+	var oldID, oldQty int
+	var oldAvail string
+	h.db.QueryRow(`SELECT id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&oldID, &oldQty, &oldAvail)
+	qty, _ := strconv.Atoi(quantityStr)
+	date, _ := time.Parse("2006-01-02", usageDateStr)
 
-	var oldQuantity int
-	var oldIsAvailable string
-	var deviceID int
-	err := h.db.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &oldQuantity, &oldIsAvailable)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengambil data pemakaian",
-		})
-		return
-	}
-
-	newQuantity, _ := strconv.Atoi(quantityStr)
-	usageDate, _ := time.Parse("2006-01-02", usageDateStr)
-
-	tx, err := h.db.Begin()
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal memulai transaksi",
-		})
-		return
-	}
+	tx, _ := h.db.Begin()
 	defer tx.Rollback()
 
-	_, err = tx.Exec(`
-		UPDATE device_usages 
-		SET user_name = ?, user_type = ?, usage_date = ?, quantity = ?, is_available = ?, purpose = ?, notes = ?
-		WHERE id = ?
-	`, userName, userType, usageDate, newQuantity, isAvailable, purpose, notes, id)
+	tx.Exec(`UPDATE device_usages SET user_name=?, user_type=?, usage_date=?, quantity=?, is_available=?, purpose=?, notes=? WHERE id=?`,
+		userName, userType, date, qty, isAvailable, purpose, notes, id)
 
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengupdate data pemakaian",
-		})
-		return
-	}
-
-	// Adjust stock: changed from no→yes (restore), or from yes→no (deduct)
-	if oldIsAvailable != isAvailable {
+	if oldAvail != isAvailable {
 		if isAvailable == "yes" {
-			// Was 'no' (stock deducted), now 'yes' → restore
-			_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, newQuantity, deviceID)
+			tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, qty, oldID)
 		} else {
-			// Was 'yes', now 'no' → deduct stock
-			var qtyAvail int
-			tx.QueryRow(`SELECT quantity_available FROM devices WHERE id = ?`, deviceID).Scan(&qtyAvail)
-			if qtyAvail < newQuantity {
-				tx.Rollback()
-				c.HTML(http.StatusBadRequest, "error.html", gin.H{
-					"title": "Error", "message": fmt.Sprintf("Stok tidak cukup. Tersedia: %d", qtyAvail),
-				})
-				return
-			}
-			_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, newQuantity, deviceID)
+			tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, qty, oldID)
 		}
-		if err != nil {
-			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-				"title": "Error", "message": "Gagal mengupdate stok perangkat",
-			})
-			return
-		}
-	} else if newQuantity != oldQuantity {
-		// Only quantity changed, adjust stock accordingly
-		quantityDiff := oldQuantity - newQuantity
-		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantityDiff, deviceID)
-		if err != nil {
-			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-				"title": "Error", "message": "Gagal mengupdate stok perangkat",
-			})
-			return
-		}
+	} else if qty != oldQty {
+		tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, oldQty-qty, oldID)
 	}
+	tx.Commit()
 
-	if err := tx.Commit(); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal menyimpan data",
-		})
-		return
-	}
-
-	userID, username, role, ok := middleware.GetCurrentUser(c)
-	if ok {
-		ipAddress, userAgent := getRequestContext(c)
-		usageIDInt, _ := strconv.Atoi(id)
-		h.activityLogService.LogUpdate(
-			userID, username, role,
-			"device_usage", usageIDInt,
-			map[string]interface{}{"quantity": oldQuantity},
-			map[string]interface{}{"quantity": newQuantity},
-			ipAddress, userAgent,
-		)
-	}
-
+	h.logUpdate(c, "device_usage", 0,
+		map[string]interface{}{"id": id, "quantity": oldQty},
+		map[string]interface{}{"quantity": qty, "is_available": isAvailable},
+	)
 	c.Redirect(http.StatusFound, "/devices?tab=usages")
 }
 
-// DeviceUsageDelete handles device usage deletion
 func (h *Handler) DeviceUsageDelete(c *gin.Context) {
 	id := c.Param("id")
 
-	var usageID, deviceID, quantity int
-	var userName, isAvailable string
-	err := h.db.QueryRow(`SELECT id, device_id, quantity, is_available, user_name FROM device_usages WHERE id = ?`, id).Scan(&usageID, &deviceID, &quantity, &isAvailable, &userName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal mengambil data pemakaian",
-		})
-		return
-	}
+	var deviceID, quantity int
+	var isAvailable string
+	h.db.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &quantity, &isAvailable)
 
-	// Begin transaction
-	tx, err := h.db.Begin()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal memulai transaksi",
-		})
-		return
-	}
+	tx, _ := h.db.Begin()
 	defer tx.Rollback()
 
-	// Restore quantity only if stock was deducted
 	if isAvailable == "no" {
-		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, deviceID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Gagal mengupdate stok perangkat",
-			})
-			return
-		}
+		tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, deviceID)
 	}
+	tx.Exec(`DELETE FROM device_usages WHERE id = ?`, id)
+	tx.Commit()
 
-	// Delete usage
-	_, err = tx.Exec("DELETE FROM device_usages WHERE id = ?", id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal menghapus data pemakaian",
-		})
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal menyimpan data",
-		})
-		return
-	}
-
-	// Log
-	userID, username, role, ok := middleware.GetCurrentUser(c)
-	if ok {
-		ipAddress, userAgent := getRequestContext(c)
-		h.activityLogService.LogDelete(
-			userID, username, role,
-			"device_usage", usageID,
-			map[string]interface{}{
-				"user_name": userName,
-				"quantity":  quantity,
-			},
-			ipAddress, userAgent,
-		)
-	}
-
+	h.logDelete(c, "device_usage", 0, map[string]interface{}{"id": id})
 	c.Redirect(http.StatusFound, "/devices?tab=usages")
+}
+
+func (h *Handler) DeviceUsageUpdateAvailability(c *gin.Context) {
+	id := c.Param("id")
+	isAvailable := c.PostForm("is_available")
+	if isAvailable != "yes" && isAvailable != "no" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Nilai tidak valid"})
+		return
+	}
+
+	var deviceID, quantity int
+	var oldAvail string
+	if err := h.db.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &quantity, &oldAvail); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Data tidak ditemukan"})
+		return
+	}
+	if oldAvail == isAvailable {
+		c.JSON(http.StatusOK, gin.H{"success": true})
+		return
+	}
+
+	tx, _ := h.db.Begin()
+	defer tx.Rollback()
+	tx.Exec(`UPDATE device_usages SET is_available = ? WHERE id = ?`, isAvailable, id)
+	if isAvailable == "yes" {
+		tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, deviceID)
+	} else {
+		tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, deviceID)
+	}
+	tx.Commit()
+
+	if uid, u, r, ok := middleware.GetCurrentUser(c); ok {
+		ip, ua := getRequestContext(c)
+		h.activityLogService.LogUpdate(uid, u, r, "device_usage", 0,
+			map[string]interface{}{"id": id},
+			map[string]interface{}{"is_available": isAvailable}, ip, ua)
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
