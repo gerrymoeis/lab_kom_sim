@@ -55,7 +55,7 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	var total int
 	h.db.QueryRow(countQ+cond, args...).Scan(&total)
 
-	order := " ORDER BY date DESC"
+	order := " ORDER BY date"
 	switch f.SortBy {
 	case "student_name": order = " ORDER BY student_name"
 	case "nim": order = " ORDER BY nim"

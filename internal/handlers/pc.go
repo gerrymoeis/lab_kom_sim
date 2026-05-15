@@ -31,7 +31,7 @@ func (h *Handler) PCList(c *gin.Context) {
 
 	if status != "" { query += ` AND status = ?`; args = append(args, status) }
 	if search != "" {
-		query += ` AND (pc_number::TEXT LIKE ? OR serial_number LIKE ? OR brand_model LIKE ?)`
+		query += ` AND (CAST(pc_number AS TEXT) LIKE ? OR serial_number LIKE ? OR brand_model LIKE ?)`
 		s := "%" + search + "%"; args = append(args, s, s, s)
 	}
 
@@ -40,9 +40,6 @@ func (h *Handler) PCList(c *gin.Context) {
 	if sortOrder != "DESC" { sortOrder = "ASC" }
 
 	pcs := []models.PC{}
-	if err := h.db.QueryRow(`SELECT COUNT(*) FROM pcs`); err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
-	// ... (list query would go here)
-	_ = pcs
 
 	rows, err := h.db.Query(query+fmt.Sprintf(` ORDER BY %s %s`, sortBy, sortOrder), args...)
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
