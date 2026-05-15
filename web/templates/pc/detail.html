@@ -53,7 +53,7 @@
         </div>
         <div class="card shadow-sm">
             <div class="card-header bg-secondary text-white"><h6 class="mb-0"><i class="bi bi-box"></i> Software Others</h6></div>
-            <div class="card-body py-2">{{ if .otherSW }}{{ range .otherSW }}<span class="badge bg-secondary me-1 mb-1">{{ .SoftwareName }}{{ if .Description }} · {{ .Description }}{{ else }} · -{{ end }}</span>{{ end }}{{ else }}<p class="text-muted text-center small my-2">Tidak ada</p>{{ end }}</div>
+            <div class="card-body py-2">{{ if .otherSW }}{{ range .otherSW }}<span class="badge bg-secondary me-1 mb-1">{{ .SoftwareName }}</span>{{ end }}{{ else }}<p class="text-muted text-center small my-2">Tidak ada</p>{{ end }}</div>
         </div>
     </div>
 </div>
