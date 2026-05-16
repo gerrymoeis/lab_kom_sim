@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
@@ -39,11 +40,13 @@ func (h *Handler) DeviceTypeList(c *gin.Context) {
 	var types []models.DeviceType
 	for rows.Next() {
 		var dt models.DeviceType
-		var n dtNulls
-		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &n.Brand, &n.Model,
-			&dt.ItemType, &dt.IsLoanable, &dt.IsConsumable,
-			&n.Prefix, &n.Location, &n.Notes, &dt.CreatedAt) != nil { continue }
-		n.fill(&dt)
+		var brand, model, prefix, location, notes sql.NullString
+		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &prefix, &location, &notes, &dt.CreatedAt) != nil {
+			continue
+		}
+		dt.Brand = valStr(brand); dt.Model = valStr(model)
+		dt.AssetCodePrefix = valStr(prefix); dt.DefaultLocation = valStr(location)
+		dt.NotesTemplate = valStr(notes)
 		types = append(types, dt)
 	}
 
@@ -60,16 +63,16 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 
 	id := c.Param("id")
 	var dt models.DeviceType
-	var n dtNulls
+	var brand, model, prefix, location, notes sql.NullString
 	err := h.db.QueryRow(`SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template, created_at FROM device_types WHERE id = ?`, id).
-		Scan(&dt.ID, &dt.Name, &dt.Category, &n.Brand, &n.Model,
-			&dt.ItemType, &dt.IsLoanable, &dt.IsConsumable,
-			&n.Prefix, &n.Location, &n.Notes, &dt.CreatedAt)
+		Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &prefix, &location, &notes, &dt.CreatedAt)
 	if err != nil {
 		h.errHTML(c, "Jenis barang tidak ditemukan")
 		return
 	}
-	n.fill(&dt)
+	dt.Brand = valStr(brand); dt.Model = valStr(model)
+	dt.AssetCodePrefix = valStr(prefix); dt.DefaultLocation = valStr(location)
+	dt.NotesTemplate = valStr(notes)
 
 	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
 		"title": "Detail Jenis Barang", "currentPage": "devices",
@@ -136,16 +139,16 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 	if !ok { return }
 
 	id := c.Param("id")
+	rows := h.db.QueryRow(`SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template FROM device_types WHERE id = ?`, id)
 	var dt models.DeviceType
-	var n dtNulls
-	if err := h.db.QueryRow(`SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template FROM device_types WHERE id = ?`, id).
-		Scan(&dt.ID, &dt.Name, &dt.Category, &n.Brand, &n.Model,
-			&dt.ItemType, &dt.IsLoanable, &dt.IsConsumable,
-			&n.Prefix, &n.Location, &n.Notes); err != nil {
+	var brand, model, prefix, location, notes sql.NullString
+	if err := rows.Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &prefix, &location, &notes); err != nil {
 		h.errHTML(c, "Jenis barang tidak ditemukan")
 		return
 	}
-	n.fill(&dt)
+	dt.Brand = valStr(brand); dt.Model = valStr(model)
+	dt.AssetCodePrefix = valStr(prefix); dt.DefaultLocation = valStr(location)
+	dt.NotesTemplate = valStr(notes)
 
 	c.HTML(http.StatusOK, "device_type/edit.html", gin.H{
 		"title": "Edit Jenis Barang", "currentPage": "devices",

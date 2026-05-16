@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 
 	"inventaris-lab-kom/internal/models"
@@ -24,10 +25,13 @@ func (h *Handler) Dashboard(c *gin.Context) {
 	var pcs []models.PC
 	for rows.Next() {
 		var pc models.PC
-		var n pcNulls
-		if rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
-			&n.Processor, &n.RAM, &n.Storage, &n.OS, &n.Notes, &n.LastChecked) != nil { continue }
-		n.fill(&pc)
+		var processor, ram, storage, os, notes sql.NullString
+		var lastChecked sql.NullTime
+		if rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &processor, &ram, &storage, &os, &notes, &lastChecked) != nil {
+			continue
+		}
+		pc.Processor = valStr(processor); pc.RAM = valStr(ram); pc.Storage = valStr(storage)
+		pc.OperatingSystem = valStr(os); pc.Notes = valStr(notes); pc.LastChecked = valTimePtr(lastChecked)
 		pcs = append(pcs, pc)
 	}
 

@@ -62,22 +62,15 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 }
 
 func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
-	rows, err := h.db.Query(`SELECT id, name, category, description FROM software_catalog WHERE category = 'other' ORDER BY name`)
-	if err != nil {
+	var items []struct {
+		ID          int    `json:"id"`
+		Name        string `json:"name"`
+		Category    string `json:"category"`
+		Description string `json:"description"`
+	}
+	if err := h.db.X.Select(&items, `SELECT id, name, category, COALESCE(description, '') AS description FROM software_catalog WHERE category = 'other' ORDER BY name`); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"})
 		return
-	}
-	defer rows.Close()
-
-	type Item struct {
-		ID int `json:"id"`; Name string `json:"name"`; Category string `json:"category"`; Description string `json:"description"`
-	}
-	var items []Item
-	for rows.Next() {
-		var it Item
-		if rows.Scan(&it.ID, &it.Name, &it.Category, &it.Description) == nil {
-			items = append(items, it)
-		}
 	}
 	c.JSON(http.StatusOK, items)
 }
@@ -94,20 +87,14 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 		return
 	}
 
-	rows, err := h.db.Query(`SELECT p.id, p.pc_number, COALESCE(ps.installed, FALSE) FROM pcs p LEFT JOIN pc_software ps ON p.id = ps.pc_id AND ps.software_id = ? ORDER BY p.pc_number`, id)
-	if err != nil {
+	var pcList []struct {
+		PCID      int  `json:"id"`
+		PCNumber  int  `json:"pc_number"`
+		Installed bool `json:"installed"`
+	}
+	if err := h.db.X.Select(&pcList, `SELECT p.id, p.pc_number, COALESCE(ps.installed, FALSE) AS installed FROM pcs p LEFT JOIN pc_software ps ON p.id = ps.pc_id AND ps.software_id = ? ORDER BY p.pc_number`, id); err != nil {
 		h.errHTML(c, "Gagal mengambil data PC")
 		return
-	}
-	defer rows.Close()
-
-	type PCWithSoftware struct{ PCID, PCNumber int; Installed bool }
-	var pcList []PCWithSoftware
-	for rows.Next() {
-		var p PCWithSoftware
-		if rows.Scan(&p.PCID, &p.PCNumber, &p.Installed) == nil {
-			pcList = append(pcList, p)
-		}
 	}
 
 	c.HTML(http.StatusOK, "software/edit.html", gin.H{

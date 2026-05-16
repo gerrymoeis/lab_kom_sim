@@ -81,19 +81,10 @@ func (h *Handler) DeviceLoanCreatePage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	rows, err := h.db.Query(`SELECT id, asset_code, name, item_type, quantity_available, is_loanable FROM devices WHERE is_loanable = TRUE AND quantity_available > 0 ORDER BY name`)
-	if err != nil {
+	var devices []models.Device
+	if err := h.db.X.Select(&devices, `SELECT id, asset_code, name, item_type, quantity_available, is_loanable FROM devices WHERE is_loanable = TRUE AND quantity_available > 0 ORDER BY name`); err != nil {
 		h.errHTML(c, "Gagal mengambil data perangkat")
 		return
-	}
-	defer rows.Close()
-
-	var devices []models.Device
-	for rows.Next() {
-		var d models.Device
-		if rows.Scan(&d.ID, &d.AssetCode, &d.Name, &d.ItemType, &d.QuantityAvailable, &d.IsLoanable) == nil {
-			devices = append(devices, d)
-		}
 	}
 
 	c.HTML(http.StatusOK, "device_loan/create.html", gin.H{
