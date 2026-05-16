@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,6 +29,17 @@ func (h *Handler) fetchDeviceTypes() []models.DeviceType {
 		dts = append(dts, dt)
 	}
 	return dts
+}
+
+func scanRows(rows *sql.Rows, fn func(*sql.Rows) []interface{}) (data [][]interface{}) {
+	if rows == nil { return }
+	defer rows.Close()
+	for rows.Next() {
+		if row := fn(rows); row != nil {
+			data = append(data, row)
+		}
+	}
+	return
 }
 
 // ─── List ─────────────────────────────────────────────────────────
@@ -367,20 +379,75 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 	if !ok { return }
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data"); return }
 
-	pcs, _ := h.db.Query(`SELECT pc_number, "row", "column", status, device_type, serial_number, brand_model,
-		processor, ram, storage, operating_system, accessories, purchase_date, last_checked, notes, action_notes
-		FROM pcs ORDER BY pc_number`)
-	if pcs != nil {
-		defer pcs.Close()
-	}
-	devs, _ := h.db.Query(`SELECT d.asset_code, d.name, dt.category, d.brand, d.model, d.serial_number, d.quantity_total, d.quantity_available, d.condition, d.location FROM devices d JOIN device_types dt ON d.device_type_id = dt.id ORDER BY d.asset_code`)
-	if devs != nil {
-		defer devs.Close()
-	}
-	usages, _ := h.db.Query(`SELECT d.asset_code, d.name, u.user_name, u.user_type, u.usage_date, u.quantity, u.purpose FROM device_usages u JOIN devices d ON u.device_id = d.id ORDER BY u.usage_date DESC`)
-	if usages != nil {
-		defer usages.Close()
-	}
+	svc := services.NewExcelService()
+	yn := map[bool]string{true: "Ya", false: "Tidak"}
 
-	h.errHTML(c, "Fitur export akan diperbaiki")
+	dRows, _ := h.db.Query(`SELECT d.asset_code,d.name,dt.category,d.brand,d.model,d.serial_number,
+		d.item_type,d.quantity_total,d.quantity_available,d.condition,d.location
+		FROM devices d JOIN device_types dt ON d.device_type_id=dt.id ORDER BY d.asset_code`)
+	dData := scanRows(dRows, func(r *sql.Rows) []interface{} {
+		var ac, n, cat, b, m, sn, it, cond, loc string; var qt, qa int
+		if r.Scan(&ac, &n, &cat, &b, &m, &sn, &it, &qt, &qa, &cond, &loc) != nil { return nil }
+		return []interface{}{ac, n, cat, b, m, sn, it, qt, qa, cond, loc}
+	})
+
+	tRows, _ := h.db.Query(`SELECT name,category,COALESCE(brand,'-'),COALESCE(model,'-'),
+		item_type,is_loanable,is_consumable,COALESCE(asset_code_prefix,'-'),COALESCE(default_location,'-')
+		FROM device_types ORDER BY category,name`)
+	tData := scanRows(tRows, func(r *sql.Rows) []interface{} {
+		var n, cat, b, m, it, pref, loc string; var ln, cb bool
+		if r.Scan(&n, &cat, &b, &m, &it, &ln, &cb, &pref, &loc) != nil { return nil }
+		return []interface{}{n, cat, b, m, it, yn[ln], yn[cb], pref, loc}
+	})
+
+	lRows, _ := h.db.Query(`SELECT d.asset_code,d.name,l.borrower_name,l.borrower_type,
+		l.loan_date,l.expected_return_date,l.actual_return_date,l.quantity,l.status,l.purpose
+		FROM device_loans l JOIN devices d ON l.device_id=d.id ORDER BY l.loan_date DESC`)
+	lData := scanRows(lRows, func(r *sql.Rows) []interface{} {
+		var ac, n, bn, bt, st, pu string; var ld time.Time; var erd, ard sql.NullTime; var q int
+		if r.Scan(&ac, &n, &bn, &bt, &ld, &erd, &ard, &q, &st, &pu) != nil { return nil }
+		fd := func(t sql.NullTime) string { if t.Valid { return t.Time.Format("2006-01-02") }; return "-" }
+		return []interface{}{ac, n, bn, bt, ld.Format("2006-01-02"), fd(erd), fd(ard), q, st, pu}
+	})
+
+	uRows, _ := h.db.Query(`SELECT d.asset_code,d.name,u.user_name,u.user_type,u.usage_date,u.quantity,u.purpose
+		FROM device_usages u JOIN devices d ON u.device_id=d.id ORDER BY u.usage_date DESC`)
+	uData := scanRows(uRows, func(r *sql.Rows) []interface{} {
+		var ac, n, un, ut, pu string; var ud time.Time; var q int
+		if r.Scan(&ac, &n, &un, &ut, &ud, &q, &pu) != nil { return nil }
+		return []interface{}{ac, n, un, ut, ud.Format("2006-01-02"), q, pu}
+	})
+
+	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
+		{
+			SheetName: "Perangkat",
+			Headers:   []string{"Kode Aset", "Nama", "Kategori", "Brand", "Model", "Serial Number", "Tipe Item", "Total", "Tersedia", "Kondisi", "Lokasi"},
+			Data:      dData,
+			ColumnWidths: map[string]float64{"A": 14, "B": 28, "C": 18, "D": 16, "E": 20, "F": 18, "G": 14, "H": 10, "I": 12, "J": 14, "K": 22},
+		},
+		{
+			SheetName: "Jenis Barang",
+			Headers:   []string{"Nama", "Kategori", "Brand", "Model", "Tipe Item", "Bisa Dipinjam", "Habis Pakai", "Prefix Aset", "Lokasi Default"},
+			Data:      tData,
+			ColumnWidths: map[string]float64{"A": 24, "B": 16, "C": 16, "D": 20, "E": 14, "F": 14, "G": 14, "H": 14, "I": 22},
+		},
+		{
+			SheetName: "Peminjaman",
+			Headers:   []string{"Kode Aset", "Nama", "Peminjam", "Tipe", "Tgl Pinjam", "Tgl Kembali (Rencana)", "Tgl Kembali (Aktual)", "Qty", "Status", "Tujuan"},
+			Data:      lData,
+			ColumnWidths: map[string]float64{"A": 14, "B": 26, "C": 24, "D": 14, "E": 16, "F": 22, "G": 22, "H": 8, "I": 14, "J": 28},
+		},
+		{
+			SheetName: "Pemakaian",
+			Headers:   []string{"Kode Aset", "Nama", "Pengguna", "Tipe", "Tanggal", "Qty", "Tujuan"},
+			Data:      uData,
+			ColumnWidths: map[string]float64{"A": 14, "B": 26, "C": 24, "D": 14, "E": 16, "F": 8, "G": 28},
+		},
+	})
+	defer f.Close()
+
+	fn := svc.GenerateFilename("devices_export")
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename="+fn)
+	f.Write(c.Writer)
 }
