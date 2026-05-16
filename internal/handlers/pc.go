@@ -313,12 +313,23 @@ func (h *Handler) PCDelete(c *gin.Context) {
 // ─── API ──────────────────────────────────────────────────────────
 
 func (h *Handler) PCStatusAPI(c *gin.Context) {
+	rows, err := h.db.Query(`SELECT id, pc_number, status FROM pcs ORDER BY pc_number`)
+	if err != nil { h.errJSON(c, 500, "Gagal mengambil data"); return }
+	defer rows.Close()
+
 	var pcs []struct {
 		ID       int    `json:"id"`
 		PCNumber int    `json:"pc_number"`
 		Status   string `json:"status"`
 	}
-	h.db.X.Select(&pcs, `SELECT id, pc_number, status FROM pcs ORDER BY pc_number`)
+	for rows.Next() {
+		var p struct {
+			ID       int    `json:"id"`
+			PCNumber int    `json:"pc_number"`
+			Status   string `json:"status"`
+		}
+		if rows.Scan(&p.ID, &p.PCNumber, &p.Status) == nil { pcs = append(pcs, p) }
+	}
 	c.JSON(http.StatusOK, pcs)
 }
 

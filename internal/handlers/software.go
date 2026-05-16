@@ -62,15 +62,24 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 }
 
 func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
+	rows2, err := h.db.Query(`SELECT id, name, category, COALESCE(description, '') AS description FROM software_catalog WHERE category = 'other' ORDER BY name`)
+	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"}); return }
+	defer rows2.Close()
+
 	var items []struct {
 		ID          int    `json:"id"`
 		Name        string `json:"name"`
 		Category    string `json:"category"`
 		Description string `json:"description"`
 	}
-	if err := h.db.X.Select(&items, `SELECT id, name, category, COALESCE(description, '') AS description FROM software_catalog WHERE category = 'other' ORDER BY name`); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"})
-		return
+	for rows2.Next() {
+		var it struct {
+			ID          int    `json:"id"`
+			Name        string `json:"name"`
+			Category    string `json:"category"`
+			Description string `json:"description"`
+		}
+		if rows2.Scan(&it.ID, &it.Name, &it.Category, &it.Description) == nil { items = append(items, it) }
 	}
 	c.JSON(http.StatusOK, items)
 }
@@ -92,9 +101,16 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 		PCNumber  int  `json:"pc_number"`
 		Installed bool `json:"installed"`
 	}
-	if err := h.db.X.Select(&pcList, `SELECT p.id, p.pc_number, COALESCE(ps.installed, FALSE) AS installed FROM pcs p LEFT JOIN pc_software ps ON p.id = ps.pc_id AND ps.software_id = ? ORDER BY p.pc_number`, id); err != nil {
-		h.errHTML(c, "Gagal mengambil data PC")
-		return
+	rows3, err := h.db.Query(`SELECT p.id, p.pc_number, COALESCE(ps.installed, FALSE) AS installed FROM pcs p LEFT JOIN pc_software ps ON p.id = ps.pc_id AND ps.software_id = ? ORDER BY p.pc_number`, id)
+	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
+	defer rows3.Close()
+	for rows3.Next() {
+		var p struct {
+			PCID      int  `json:"id"`
+			PCNumber  int  `json:"pc_number"`
+			Installed bool `json:"installed"`
+		}
+		if rows3.Scan(&p.PCID, &p.PCNumber, &p.Installed) == nil { pcList = append(pcList, p) }
 	}
 
 	c.HTML(http.StatusOK, "software/edit.html", gin.H{

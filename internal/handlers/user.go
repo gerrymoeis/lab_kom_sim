@@ -16,10 +16,14 @@ func (h *Handler) UserList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
+	rows, err := h.db.Query(`SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at DESC`)
+	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
+	defer rows.Close()
+
 	var users []models.User
-	if err := h.db.X.Select(&users, `SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at DESC`); err != nil {
-		h.errHTML(c, "Gagal mengambil data user")
-		return
+	for rows.Next() {
+		var u models.User
+		if rows.Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.CreatedAt) == nil { users = append(users, u) }
 	}
 
 	c.HTML(http.StatusOK, "user/list.html", gin.H{
@@ -102,7 +106,7 @@ func (h *Handler) Profile(c *gin.Context) {
 	if !ok { return }
 
 	var user models.User
-	h.db.X.Get(&user, `SELECT id, username, full_name, role, created_at FROM users WHERE id = ?`, userID)
+	h.db.QueryRow(`SELECT id, username, full_name, role, created_at FROM users WHERE id = ?`, userID).Scan(&user.ID, &user.Username, &user.FullName, &user.Role, &user.CreatedAt)
 
 	c.HTML(http.StatusOK, "user/profile.html", gin.H{
 		"title": "Profil", "currentPage": "profile",

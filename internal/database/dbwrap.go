@@ -4,27 +4,19 @@ import (
 	"database/sql"
 	"strconv"
 	"strings"
-
-	"github.com/jmoiron/sqlx"
-	"github.com/jmoiron/sqlx/reflectx"
 )
 
 type DB struct {
 	*sql.DB
-	X *sqlx.DB
 	rewrite bool
 }
 
 func wrapPG(db *sql.DB) *DB {
-	xdb := sqlx.NewDb(db, "pgx")
-	xdb.Mapper = reflectx.NewMapperFunc("json", strings.ToLower)
-	return &DB{DB: db, X: xdb, rewrite: true}
+	return &DB{DB: db, rewrite: true}
 }
 
 func wrapSQLite(db *sql.DB) *DB {
-	xdb := sqlx.NewDb(db, "sqlite3")
-	xdb.Mapper = reflectx.NewMapperFunc("json", strings.ToLower)
-	return &DB{DB: db, X: xdb, rewrite: false}
+	return &DB{DB: db, rewrite: false}
 }
 
 func (db *DB) maybeRewrite(query string) string {

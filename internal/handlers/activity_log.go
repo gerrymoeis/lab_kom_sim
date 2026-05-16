@@ -48,7 +48,10 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 	if totalPages < 1 { totalPages = 1 }
 
 	var usernames []string
-	h.db.X.Select(&usernames, `SELECT DISTINCT username FROM activity_logs ORDER BY username`)
+	if ur, _ := h.db.Query(`SELECT DISTINCT username FROM activity_logs ORDER BY username`); ur != nil {
+		for ur.Next() { var u string; ur.Scan(&u); usernames = append(usernames, u) }
+		ur.Close()
+	}
 
 	c.HTML(http.StatusOK, "activity_log/list.html", gin.H{
 		"title": "Activity Logs", "currentPage": "activity_logs",
