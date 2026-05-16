@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 echo "================================================"
 echo "  Step 1: Running integration tests..."
 echo "================================================"
-go test -count=1 -v ./cmd/server/ -run TestFullIntegration 2>&1
+go test -count=1 -v ./tests/ -run TestFullIntegration 2>&1
 echo ""
 echo "  Tests passed!"
 
