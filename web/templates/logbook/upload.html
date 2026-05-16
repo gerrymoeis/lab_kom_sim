@@ -146,11 +146,6 @@
     async function handleFileSelect(file) {
         if (!file) return;
 
-        if (!file.type.match('image.*')) {
-            alert('File harus berupa gambar (JPG atau PNG)');
-            return;
-        }
-
         showLoadingState();
 
         try {
@@ -170,8 +165,14 @@
                 throw new Error(result.message || 'Gagal memproses gambar');
             }
         } catch (error) {
-            alert('Error: ' + error.message);
+            showPreviewError(error.message);
         }
+    }
+
+    function showPreviewError(msg) {
+        const area = document.getElementById('previewArea');
+        area.classList.remove('d-none');
+        area.innerHTML = '<div class="alert alert-danger text-center mb-0"><i class="bi bi-exclamation-triangle"></i> <span id="errorMsg">' + msg + '</span></div>';
     }
 
     function showLoadingState() {
