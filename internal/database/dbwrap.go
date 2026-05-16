@@ -2,7 +2,7 @@ package database
 
 import (
 	"database/sql"
-	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -62,7 +62,7 @@ func (tx *Tx) Query(query string, args ...interface{}) (*sql.Rows, error) {
 func (tx *Tx) QueryRow(query string, args ...interface{}) *sql.Row {
 	return tx.Tx.QueryRow(tx.maybeRewrite(query), args...)
 }
-func (tx *Tx) Prepare(query string, args ...interface{}) (*sql.Stmt, error) {
+func (tx *Tx) Prepare(query string) (*sql.Stmt, error) {
 	return tx.Tx.Prepare(tx.maybeRewrite(query))
 }
 
@@ -71,7 +71,7 @@ func rewriteQM(query string) string {
 	var buf strings.Builder
 	n := 0
 	for _, ch := range query {
-		if ch == '?' { n++; buf.WriteString(fmt.Sprintf("$%d", n)) } else { buf.WriteRune(ch) }
+		if ch == '?' { n++; buf.WriteString("$"); buf.WriteString(strconv.Itoa(n)) } else { buf.WriteRune(ch) }
 	}
 	return buf.String()
 }
