@@ -117,15 +117,22 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		}
 		os.Remove(tempPath)
 	} else {
-		// Fallback: direct file upload
 		file, err := c.FormFile("logbook_image")
 		if err != nil { h.errHTML(c, "Gagal mengambil file"); return }
 		ext := strings.ToLower(filepath.Ext(file.Filename))
-		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" { h.errHTML(c, "Format file tidak didukung"); return }
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".heic" && ext != ".heif" {
+			h.errHTML(c, "Format file tidak didukung"); return
+		}
 		fn = fmt.Sprintf("logbook_%d%s", time.Now().Unix(), ext)
+		tempPath := filepath.Join("uploads", "temp", fn)
+		os.MkdirAll(filepath.Dir(tempPath), 0755)
+		if err := c.SaveUploadedFile(file, tempPath); err != nil { h.errHTML(c, "Gagal menyimpan file"); return }
+		fn = strings.TrimSuffix(fn, ext) + ".jpeg"
 		path = filepath.Join("uploads", "logbook", fn)
-		os.MkdirAll(filepath.Dir(path), 0755)
-		if err := c.SaveUploadedFile(file, path); err != nil { h.errHTML(c, "Gagal menyimpan file"); return }
+		if err := h.imageService.CompressAndSave(tempPath, path, 1280); err != nil {
+			os.Remove(tempPath); h.errHTML(c, "Gagal memproses gambar"); return
+		}
+		os.Remove(tempPath)
 	}
 
 	apiKey := h.cfg.GeminiAPIKey

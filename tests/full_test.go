@@ -211,25 +211,18 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 6b. LOGBOOK UPLOAD ===")
 	photoBuf.Reset()
 	mw = multipart.NewWriter(&photoBuf)
-	fw, _ = mw.CreateFormFile("image", "logbook.jpeg")
+	fw, _ = mw.CreateFormFile("logbook_image", "logbook.jpeg")
 	fw.Write(photoData)
-	mw.WriteField("type", "logbook")
 	mw.Close()
 
-	req, _ = http.NewRequest("POST", ts.URL+"/api/upload-image", &photoBuf)
+	req, _ = http.NewRequest("POST", ts.URL+"/logbook/upload", &photoBuf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	addCookies(req)
 	resp, err = client.Do(req)
-	assert(err == nil, "upload logbook image")
-	json.NewDecoder(resp.Body).Decode(&uploadRes)
+	assert(err == nil, "logbook upload")
 	resp.Body.Close()
-	assert(uploadRes.Success && uploadRes.FileRef != "", "logbook file_ref: %s", uploadRes.FileRef)
-
-	resp, _ = post("/logbook/upload", "file_ref="+uploadRes.FileRef)
-	// 500 expected: no Gemini API key configured in test, but file was moved before the check
-	_, logbookFileErr := os.Stat(filepath.Join("uploads", "logbook", uploadRes.FileRef))
-	assert(logbookFileErr == nil, "logbook file moved to uploads/logbook/")
-	resp.Body.Close()
+	logbookFiles, _ := os.ReadDir("uploads/logbook")
+	assert(len(logbookFiles) > 0, "logbook file saved to uploads/logbook/")
 
 	// ── 7. User management ───────────────────────────────────────
 	t.Log("\n=== 7. USER ===")

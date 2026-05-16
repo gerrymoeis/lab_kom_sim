@@ -28,8 +28,6 @@
                         </div>
 
                         <form id="uploadForm" action="/logbook/upload" method="POST" enctype="multipart/form-data">
-                            <!-- Hidden file ref (set after server upload) -->
-                            <input type="hidden" id="logbookFileRef" name="file_ref" value="">
 
                             <div class="mb-4">
                                 <label class="form-label fw-bold">Pilih Foto Logbook</label>
@@ -57,8 +55,8 @@
                                 </div>
 
                                 <!-- Hidden file inputs -->
-                                <input type="file" id="logbookImage" accept="image/*" capture="environment" class="d-none">
-                                <input type="file" id="galleryInput" accept="image/*" class="d-none">
+                                <input type="file" id="logbookImage" name="logbook_image" accept="image/*" capture="environment" class="d-none">
+                                <input type="file" id="galleryInput" name="logbook_image" accept="image/*" class="d-none">
                             </div>
 
                             <!-- Preview area -->
@@ -123,110 +121,36 @@
     </div>
 
     <script>
-    let logbookFileRef = null;
+    let previewUrl = null;
 
     function selectPhoto(source) {
-        if (source === 'camera') {
-            document.getElementById('logbookImage').click();
-        } else {
-            document.getElementById('galleryInput').click();
-        }
+        document.getElementById(source === 'camera' ? 'logbookImage' : 'galleryInput').click();
     }
 
-    // Handle camera file selection
-    document.getElementById('logbookImage').addEventListener('change', function(e) {
-        if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
-    });
+    document.getElementById('logbookImage').addEventListener('change', onFileChange);
+    document.getElementById('galleryInput').addEventListener('change', onFileChange);
 
-    // Handle gallery file selection
-    document.getElementById('galleryInput').addEventListener('change', function(e) {
-        if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
-    });
-
-    async function handleFileSelect(file) {
+    function onFileChange(e) {
+        const file = e.target.files[0];
         if (!file) return;
-
-        showLoadingState();
-
-        try {
-            const formData = new FormData();
-            formData.append('image', file);
-            formData.append('type', 'logbook');
-
-            const response = await fetch('/api/upload-image', { method: 'POST', body: formData });
-            const result = await response.json();
-
-            if (result.success) {
-                logbookFileRef = result.file_ref;
-                document.getElementById('logbookFileRef').value = result.file_ref;
-                showPreview(result.preview_url);
-                document.getElementById('submitBtn').disabled = false;
-            } else {
-                throw new Error(result.message || 'Gagal memproses gambar');
-            }
-        } catch (error) {
-            showPreviewError(error.message);
-        }
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = URL.createObjectURL(file);
+        document.getElementById('imagePreview').src = previewUrl;
+        document.getElementById('previewArea').classList.remove('d-none');
+        document.getElementById('submitBtn').disabled = false;
     }
 
-    function showPreviewError(msg) {
-        const area = document.getElementById('previewArea');
-        area.classList.remove('d-none');
-        area.innerHTML = '<div class="alert alert-danger text-center mb-0"><i class="bi bi-exclamation-triangle"></i> <span id="errorMsg">' + msg + '</span></div>';
-    }
-
-    function showLoadingState() {
-        const area = document.getElementById('previewArea');
-        area.classList.remove('d-none');
-        area.innerHTML = `
-            <label class="form-label fw-bold">Memproses...</label>
-            <div class="text-center p-4 border rounded bg-light">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <div class="mt-2 small text-muted">Mengupload dan memproses gambar...</div>
-            </div>
-        `;
-        document.getElementById('submitBtn').disabled = true;
-    }
-
-    function showPreview(url) {
-        const area = document.getElementById('previewArea');
-        area.classList.remove('d-none');
-        area.innerHTML = `
-            <label class="form-label fw-bold">Preview Foto</label>
-            <div class="text-center border rounded p-3 bg-light">
-                <img id="imagePreview" src="${url}" alt="Preview" class="img-fluid" style="max-height: 400px;">
-                <div class="mt-2">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="clearImage()">
-                        <i class="bi bi-x-circle"></i> Hapus
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    async function clearImage() {
-        if (logbookFileRef) {
-            try {
-                await fetch('/api/delete-temp-file', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ file_ref: logbookFileRef })
-                });
-            } catch (e) {}
-            logbookFileRef = null;
-        }
-        document.getElementById('logbookFileRef').value = '';
+    function clearImage() {
+        if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+        document.getElementById('imagePreview').src = '';
         document.getElementById('logbookImage').value = '';
         document.getElementById('galleryInput').value = '';
         document.getElementById('previewArea').classList.add('d-none');
         document.getElementById('submitBtn').disabled = true;
     }
 
-    // Handle form submission
     document.getElementById('uploadForm').addEventListener('submit', function(e) {
-        if (!logbookFileRef) {
+        if (!document.getElementById('logbookImage').files.length && !document.getElementById('galleryInput').files.length) {
             e.preventDefault();
             alert('Pilih foto terlebih dahulu');
             return;
