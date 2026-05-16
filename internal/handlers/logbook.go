@@ -102,16 +102,31 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 	if !ok { return }
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat mengupload"); return }
 
-	file, err := c.FormFile("logbook_image")
-	if err != nil { h.errHTML(c, "Gagal mengambil file"); return }
+	var path, fn string
 
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" { h.errHTML(c, "Format file tidak didukung"); return }
-
-	fn := fmt.Sprintf("logbook_%d%s", time.Now().Unix(), ext)
-	path := filepath.Join("uploads", "logbook", fn)
-	os.MkdirAll(filepath.Dir(path), 0755)
-	if err := c.SaveUploadedFile(file, path); err != nil { h.errHTML(c, "Gagal menyimpan file"); return }
+	fileRef := strings.TrimSpace(c.PostForm("file_ref"))
+	if fileRef != "" {
+		// File was pre-uploaded via /api/upload-image, move from temp
+		fn = fileRef
+		tempPath := filepath.Join("uploads", "temp", fn)
+		path = filepath.Join("uploads", "logbook", fn)
+		os.MkdirAll(filepath.Dir(path), 0755)
+		if err := copyFile(tempPath, path); err != nil {
+			h.errHTML(c, "Gagal memproses file: file tidak ditemukan")
+			return
+		}
+		os.Remove(tempPath)
+	} else {
+		// Fallback: direct file upload
+		file, err := c.FormFile("logbook_image")
+		if err != nil { h.errHTML(c, "Gagal mengambil file"); return }
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" { h.errHTML(c, "Format file tidak didukung"); return }
+		fn = fmt.Sprintf("logbook_%d%s", time.Now().Unix(), ext)
+		path = filepath.Join("uploads", "logbook", fn)
+		os.MkdirAll(filepath.Dir(path), 0755)
+		if err := c.SaveUploadedFile(file, path); err != nil { h.errHTML(c, "Gagal menyimpan file"); return }
+	}
 
 	apiKey := h.cfg.GeminiAPIKey
 	if apiKey == "" { h.errHTML(c, "GEMINI_API_KEY tidak dikonfigurasi"); return }

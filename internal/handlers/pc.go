@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -154,10 +155,13 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		return
 	}
 
+	photoSerial, photoFront := processPhotoRefs(c)
+
 	_, err := h.db.Exec(`INSERT INTO pcs (pc_number, "row", "column", status, processor, ram, storage,
-		serial_number, operating_system, device_type, brand_model, accessories, physical_condition)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'baik')`,
-		num, row, col, status, processor, ram, storage, sn, os, dt, bm, acc)
+		serial_number, operating_system, device_type, brand_model, accessories, physical_condition,
+		photo_serial, photo_front)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'baik', ?, ?)`,
+		num, row, col, status, processor, ram, storage, sn, os, dt, bm, acc, photoSerial, photoFront)
 	if err != nil {
 		h.logCreateError(c, "pc", map[string]interface{}{"pc_number": num, "serial_number": sn}, err.Error())
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
@@ -251,9 +255,16 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	var pcID, oldNum int
 	h.db.QueryRow(`SELECT id, pc_number FROM pcs WHERE pc_number = ?`, num).Scan(&pcID, &oldNum)
 
+	photoSerial, photoFront := processPhotoRefs(c)
+
 	_, err := h.db.Exec(`UPDATE pcs SET status=?, device_type=?, serial_number=?, brand_model=?, accessories=?,
-		processor=?, ram=?, storage=?, operating_system=?, notes=?, action_notes=?, updated_at=CURRENT_TIMESTAMP
-		WHERE pc_number=?`, status, dt, sn, bm, acc, processor, ram, storage, os, notes, an, num)
+		processor=?, ram=?, storage=?, operating_system=?, notes=?, action_notes=?,
+		photo_serial=COALESCE(NULLIF(?, ''), photo_serial),
+		photo_front=COALESCE(NULLIF(?, ''), photo_front),
+		updated_at=CURRENT_TIMESTAMP
+		WHERE pc_number=?`,
+		status, dt, sn, bm, acc, processor, ram, storage, os, notes, an,
+		photoSerial, photoFront, num)
 	if err != nil {
 		h.logUpdateError(c, "pc", pcID, map[string]interface{}{"pc_number": num}, err.Error())
 		h.errHTML(c, "Gagal mengupdate PC")
@@ -419,4 +430,20 @@ func copyFile(src, dst string) error {
 	s, err := os.Open(src); if err != nil { return err }; defer s.Close()
 	d, err := os.Create(dst); if err != nil { return err }; defer d.Close()
 	_, err = io.Copy(d, s); return err
+}
+
+func processPhotoRefs(c *gin.Context) (serial, front string) {
+	for _, p := range []struct{ field string; result *string }{
+		{"serial_file_ref", &serial}, {"front_file_ref", &front},
+	} {
+		ref := strings.TrimSpace(c.PostForm(p.field))
+		if ref == "" { continue }
+		src := filepath.Join("uploads", "temp", ref)
+		dst := filepath.Join("uploads", "pc", ref)
+		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil { continue }
+		if err := copyFile(src, dst); err != nil { continue }
+		os.Remove(src)
+		*p.result = ref
+	}
+	return
 }

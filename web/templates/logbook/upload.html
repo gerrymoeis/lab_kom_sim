@@ -28,24 +28,18 @@
                         </div>
 
                         <form id="uploadForm" action="/logbook/upload" method="POST" enctype="multipart/form-data">
+                            <!-- Hidden file ref (set after server upload) -->
+                            <input type="hidden" id="logbookFileRef" name="file_ref" value="">
+
                             <div class="mb-4">
                                 <label class="form-label fw-bold">Pilih Foto Logbook</label>
-                                
-                                <!-- Hidden file input -->
-                                <input type="file" 
-                                       id="logbookImage" 
-                                       name="logbook_image" 
-                                       accept="image/*" 
-                                       capture="environment"
-                                       class="d-none"
-                                       required>
                                 
                                 <!-- Custom buttons -->
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <button type="button" 
                                                 class="btn btn-lg btn-outline-primary w-100 py-4"
-                                                onclick="document.getElementById('logbookImage').click()">
+                                                onclick="selectPhoto('camera')">
                                             <i class="bi bi-camera-fill" style="font-size: 2rem;"></i>
                                             <div class="mt-2">Ambil Foto</div>
                                             <small class="text-muted">Gunakan kamera HP</small>
@@ -54,17 +48,17 @@
                                     <div class="col-md-6">
                                         <button type="button" 
                                                 class="btn btn-lg btn-outline-secondary w-100 py-4"
-                                                onclick="document.getElementById('galleryInput').click()">
+                                                onclick="selectPhoto('gallery')">
                                             <i class="bi bi-images" style="font-size: 2rem;"></i>
                                             <div class="mt-2">Pilih dari Galeri</div>
                                             <small class="text-muted">Upload foto yang ada</small>
                                         </button>
-                                        <input type="file" 
-                                               id="galleryInput" 
-                                               accept="image/*" 
-                                               class="d-none">
                                     </div>
                                 </div>
+
+                                <!-- Hidden file inputs -->
+                                <input type="file" id="logbookImage" accept="image/*" capture="environment" class="d-none">
+                                <input type="file" id="galleryInput" accept="image/*" class="d-none">
                             </div>
 
                             <!-- Preview area -->
@@ -129,43 +123,100 @@
     </div>
 
     <script>
-    // Handle file selection from camera
-    document.getElementById('logbookImage').addEventListener('change', function(e) {
-        handleFileSelect(e.target.files[0]);
-    });
+    let logbookFileRef = null;
 
-    // Handle file selection from gallery
-    document.getElementById('galleryInput').addEventListener('change', function(e) {
-        if (e.target.files.length > 0) {
-            // Copy file to main input
-            const dt = new DataTransfer();
-            dt.items.add(e.target.files[0]);
-            document.getElementById('logbookImage').files = dt.files;
-            
-            handleFileSelect(e.target.files[0]);
+    function selectPhoto(source) {
+        if (source === 'camera') {
+            document.getElementById('logbookImage').click();
+        } else {
+            document.getElementById('galleryInput').click();
         }
+    }
+
+    // Handle camera file selection
+    document.getElementById('logbookImage').addEventListener('change', function(e) {
+        if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
     });
 
-    function handleFileSelect(file) {
+    // Handle gallery file selection
+    document.getElementById('galleryInput').addEventListener('change', function(e) {
+        if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+    });
+
+    async function handleFileSelect(file) {
         if (!file) return;
-        
-        // Validate file type
+
         if (!file.type.match('image.*')) {
             alert('File harus berupa gambar (JPG atau PNG)');
             return;
         }
-        
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('imagePreview').src = e.target.result;
-            document.getElementById('previewArea').classList.remove('d-none');
-            document.getElementById('submitBtn').disabled = false;
-        };
-        reader.readAsDataURL(file);
+
+        showLoadingState();
+
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('type', 'logbook');
+
+            const response = await fetch('/api/upload-image', { method: 'POST', body: formData });
+            const result = await response.json();
+
+            if (result.success) {
+                logbookFileRef = result.file_ref;
+                document.getElementById('logbookFileRef').value = result.file_ref;
+                showPreview(result.preview_url);
+                document.getElementById('submitBtn').disabled = false;
+            } else {
+                throw new Error(result.message || 'Gagal memproses gambar');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
     }
 
-    function clearImage() {
+    function showLoadingState() {
+        const area = document.getElementById('previewArea');
+        area.classList.remove('d-none');
+        area.innerHTML = `
+            <label class="form-label fw-bold">Memproses...</label>
+            <div class="text-center p-4 border rounded bg-light">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-2 small text-muted">Mengupload dan memproses gambar...</div>
+            </div>
+        `;
+        document.getElementById('submitBtn').disabled = true;
+    }
+
+    function showPreview(url) {
+        const area = document.getElementById('previewArea');
+        area.classList.remove('d-none');
+        area.innerHTML = `
+            <label class="form-label fw-bold">Preview Foto</label>
+            <div class="text-center border rounded p-3 bg-light">
+                <img id="imagePreview" src="${url}" alt="Preview" class="img-fluid" style="max-height: 400px;">
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="clearImage()">
+                        <i class="bi bi-x-circle"></i> Hapus
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    async function clearImage() {
+        if (logbookFileRef) {
+            try {
+                await fetch('/api/delete-temp-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_ref: logbookFileRef })
+                });
+            } catch (e) {}
+            logbookFileRef = null;
+        }
+        document.getElementById('logbookFileRef').value = '';
         document.getElementById('logbookImage').value = '';
         document.getElementById('galleryInput').value = '';
         document.getElementById('previewArea').classList.add('d-none');
@@ -174,6 +225,11 @@
 
     // Handle form submission
     document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        if (!logbookFileRef) {
+            e.preventDefault();
+            alert('Pilih foto terlebih dahulu');
+            return;
+        }
         document.getElementById('submitBtn').disabled = true;
         document.getElementById('loadingIndicator').classList.remove('d-none');
     });
