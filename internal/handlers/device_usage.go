@@ -108,6 +108,18 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	tx, _ := h.db.Begin()
 	defer tx.Rollback()
 
+	if isAvailable == "no" {
+		res, err := tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, quantity, deviceID, quantity)
+		if err != nil {
+			h.errHTML(c, "Gagal cek stok")
+			return
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			h.errHTML(c, "Stok tidak cukup")
+			return
+		}
+	}
+
 	result, err := tx.Exec(`INSERT INTO device_usages (device_id, user_name, user_type, usage_date, quantity, is_available, purpose) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		deviceID, userName, userType, usageDate, quantity, isAvailable, purpose)
 	if err != nil {
@@ -115,15 +127,6 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 		return
 	}
 
-	if isAvailable == "no" {
-		var qtyAvail int
-		tx.QueryRow(`SELECT quantity_available FROM devices WHERE id = ?`, deviceID).Scan(&qtyAvail)
-		if qtyAvail < quantity {
-			h.errHTML(c, fmt.Sprintf("Stok tidak cukup. Tersedia: %d", qtyAvail))
-			return
-		}
-		tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, deviceID)
-	}
 	tx.Commit()
 
 	id, _ := result.LastInsertId()
@@ -171,26 +174,27 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	notes := c.PostForm("notes")
 	if isAvailable != "no" { isAvailable = "yes" }
 
-	var oldID, oldQty int
-	var oldAvail string
-	h.db.QueryRow(`SELECT id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&oldID, &oldQty, &oldAvail)
 	qty, _ := strconv.Atoi(quantityStr)
 	date, _ := time.Parse("2006-01-02", usageDateStr)
 
 	tx, _ := h.db.Begin()
 	defer tx.Rollback()
 
+	var devID, oldQty int
+	var oldAvail string
+	tx.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&devID, &oldQty, &oldAvail)
+
 	tx.Exec(`UPDATE device_usages SET user_name=?, user_type=?, usage_date=?, quantity=?, is_available=?, purpose=?, notes=? WHERE id=?`,
 		userName, userType, date, qty, isAvailable, purpose, notes, id)
 
 	if oldAvail != isAvailable {
 		if isAvailable == "yes" {
-			tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, qty, oldID)
+			tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, qty, devID)
 		} else {
-			tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, qty, oldID)
+			tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, qty, devID)
 		}
 	} else if qty != oldQty {
-		tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, oldQty-qty, oldID)
+		tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, oldQty-qty, devID)
 	}
 	tx.Commit()
 

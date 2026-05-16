@@ -123,15 +123,18 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 		}
 	}
 
-	var qtyAvail int
-	h.db.QueryRow(`SELECT quantity_available FROM devices WHERE id = ?`, deviceID).Scan(&qtyAvail)
-	if qtyAvail < quantity {
-		h.errHTML(c, fmt.Sprintf("Stok tidak cukup. Tersedia: %d", qtyAvail))
-		return
-	}
-
 	tx, _ := h.db.Begin()
 	defer tx.Rollback()
+
+	res, err := tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, quantity, deviceID, quantity)
+	if err != nil {
+		h.errHTML(c, "Gagal cek stok")
+		return
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		h.errHTML(c, "Stok tidak cukup")
+		return
+	}
 
 	result, err := tx.Exec(`INSERT INTO device_loans (device_id, borrower_name, borrower_type, loan_date, expected_return_date, quantity, status, purpose) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`,
 		deviceID, borrowerName, borrowerType, loanDate, expectedReturnDate, quantity, purpose)
@@ -140,7 +143,6 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 		return
 	}
 
-	tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, deviceID)
 	tx.Commit()
 
 	loanID, _ := result.LastInsertId()

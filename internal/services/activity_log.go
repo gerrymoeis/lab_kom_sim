@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"inventaris-lab-kom/internal/database"
@@ -12,25 +13,47 @@ import (
 
 // ActivityLogService handles activity logging operations
 type ActivityLogService struct {
-	db *database.DB
+	db      *database.DB
+	logChan chan *models.ActivityLog
 }
 
 // NewActivityLogService creates a new activity log service
 func NewActivityLogService(db *database.DB) *ActivityLogService {
-	return &ActivityLogService{db: db}
+	s := &ActivityLogService{
+		db:      db,
+		logChan: make(chan *models.ActivityLog, 64),
+	}
+	go s.logWriter()
+	return s
 }
 
-// Log creates a new activity log entry
-func (s *ActivityLogService) Log(log *models.ActivityLog) error {
+func (s *ActivityLogService) logWriter() {
+	for l := range s.logChan {
+		if err := s.Log(l); err != nil {
+			log.Printf("async log write: %v", err)
+		}
+	}
+}
+
+func (s *ActivityLogService) enqueueLog(al *models.ActivityLog) {
+	select {
+	case s.logChan <- al:
+	default:
+		log.Printf("async log channel full, dropping entry")
+	}
+}
+
+// Log creates a new activity log entry (called by the background writer goroutine)
+func (s *ActivityLogService) Log(al *models.ActivityLog) error {
 	_, err := s.db.Exec(`
 		INSERT INTO activity_logs (
 			user_id, username, user_role, action, entity_type, entity_id,
 			description, old_values, new_values, created_at, ip_address,
 			user_agent, status, error_message
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, log.UserID, log.Username, log.UserRole, log.Action, log.EntityType,
-		log.EntityID, log.Description, log.OldValues, log.NewValues,
-		log.CreatedAt, log.IPAddress, log.UserAgent, log.Status, log.ErrorMessage)
+	`, al.UserID, al.Username, al.UserRole, al.Action, al.EntityType,
+		al.EntityID, al.Description, al.OldValues, al.NewValues,
+		al.CreatedAt, al.IPAddress, al.UserAgent, al.Status, al.ErrorMessage)
 	if err != nil { return fmt.Errorf("failed to insert activity log: %w", err) }
 	return nil
 }
@@ -60,13 +83,14 @@ func (s *ActivityLogService) logAction(p logParams) error {
 	}
 	if errText != "" { desc = fmt.Sprintf("Failed to %s %s #%d: %s", p.action, p.entityType, p.entityID, errText) }
 
-	return s.Log(&models.ActivityLog{
+	s.enqueueLog(&models.ActivityLog{
 		UserID: p.userID, Username: p.username, UserRole: p.role,
 		Action: p.action, EntityType: p.entityType, EntityID: &p.entityID,
 		Description: desc, OldValues: oldJSON, NewValues: newJSON,
 		CreatedAt: time.Now(), IPAddress: p.ipAddress, UserAgent: p.userAgent,
 		Status: status, ErrorMessage: errText,
 	})
+	return nil
 }
 
 func (s *ActivityLogService) LogAction(userID int, username, role, action, entityType string, entityID int, oldValues, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
@@ -98,13 +122,14 @@ func (s *ActivityLogService) LogAuth(userID int, username, role, action string, 
 	status := "success"; if !success { status = "failed" }
 	desc := fmt.Sprintf("User '%s' %s", username, action)
 	if !success { desc += " (failed)" }
-	return s.Log(&models.ActivityLog{
+	s.enqueueLog(&models.ActivityLog{
 		UserID: userID, Username: username, UserRole: role,
 		Action: action, EntityType: "auth", EntityID: nil,
 		Description: desc, OldValues: "", NewValues: "",
 		CreatedAt: time.Now(), IPAddress: ipAddress, UserAgent: userAgent,
 		Status: status, ErrorMessage: errorMsg,
 	})
+	return nil
 }
 
 // ActivityLogFilters represents filters for querying activity logs
