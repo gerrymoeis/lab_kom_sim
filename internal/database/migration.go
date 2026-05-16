@@ -197,7 +197,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 			username TEXT NOT NULL,
 			user_role TEXT NOT NULL,
 			action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
-			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule')),
+			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule', 'device_type')),
 			entity_id INTEGER,
 			description TEXT NOT NULL,
 			old_values TEXT,
@@ -266,6 +266,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE INDEX IF NOT EXISTS idx_pc_software_software_id ON pc_software(software_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_loans_borrower ON device_loans(borrower_name)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_usages_user_name ON device_usages(user_name)`,
+		`CREATE INDEX IF NOT EXISTS idx_pcs_grid ON pcs(row, column)`,
 	}
 
 	for _, idx := range indexes {

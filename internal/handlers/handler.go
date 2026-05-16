@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
 	"time"
 
 	"inventaris-lab-kom/internal/config"
@@ -46,16 +45,6 @@ func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bo
 	return
 }
 
-// getID parses a URL param as int, rendering error.html on failure
-func (h *Handler) getID(c *gin.Context, param string) (int, bool) {
-	id, err := parseIntParam(c, param)
-	if err != nil {
-		h.errHTML(c, "Invalid ID")
-		return 0, false
-	}
-	return id, true
-}
-
 // errJSON sends a JSON error response
 func (h *Handler) errJSON(c *gin.Context, status int, msg string) {
 	c.JSON(status, gin.H{"error": msg})
@@ -88,21 +77,6 @@ func (h *Handler) logDelete(c *gin.Context, entityType string, entityID int, old
 func (h *Handler) logCreateError(c *gin.Context, entityType string, vals map[string]interface{}, errMsg string) { h.logActivity(c, "create", entityType, 0, nil, vals, errMsg) }
 func (h *Handler) logUpdateError(c *gin.Context, entityType string, id int, oldVals map[string]interface{}, errMsg string) { h.logActivity(c, "update", entityType, id, oldVals, nil, errMsg) }
 func (h *Handler) logDeleteError(c *gin.Context, entityType string, id int, oldVals map[string]interface{}, errMsg string) { h.logActivity(c, "delete", entityType, id, oldVals, nil, errMsg) }
-
-// successJSON sends a success JSON response with optional message
-func (h *Handler) successJSON(c *gin.Context, msg string) {
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": msg})
-}
-
-// parseDate parses a date string in YYYY-MM-DD format
-func parseDate(s string) (time.Time, error) {
-	return time.Parse("2006-01-02", s)
-}
-
-// parseIntParam parses an int from a gin URL param
-func parseIntParam(c *gin.Context, param string) (int, error) {
-	return strconv.Atoi(c.Param(param))
-}
 
 // valStr returns the string value from a NullString, or "" if invalid
 func valStr(ns sql.NullString) string {

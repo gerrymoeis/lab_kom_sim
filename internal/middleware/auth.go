@@ -42,8 +42,6 @@ func AuthRequired(db interface{}) gin.HandlerFunc {
 }
 
 // AdminRequired middleware checks if user is admin
-
-// AdminRequired middleware checks if user is admin
 func AdminRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)

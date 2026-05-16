@@ -430,6 +430,4 @@ func toTitleCaseWithAbbr(text string) string {
 	return strings.TrimSuffix(r, ".")
 }
 
-func normalizeStudentName(s string) string { return toTitleCaseWithAbbr(s) }
-func normalizeNIM(n string) string { return strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(n, " ", ""))) }
-func normalizePurpose(s string) string { return toTitleCaseWithAbbr(s) }
+
