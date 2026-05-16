@@ -42,19 +42,10 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 
 	query += ` ORDER BY ` + dayOrder + `, time_start`
 
-	rows, err := h.db.Query(query, args...)
-	if err != nil {
+	var schedules []models.CourseSchedule
+	if err := h.db.X.Select(&schedules, query, args...); err != nil {
 		h.errHTML(c, "Gagal mengambil data jadwal")
 		return
-	}
-	defer rows.Close()
-
-	var schedules []models.CourseSchedule
-	for rows.Next() {
-		var s models.CourseSchedule
-		if rows.Scan(&s.ID, &s.CourseName, &s.Lecturer, &s.Day, &s.Class, &s.TimeStart, &s.TimeEnd, &s.Notes) == nil {
-			schedules = append(schedules, s)
-		}
 	}
 
 	c.HTML(http.StatusOK, "schedule/list.html", gin.H{
@@ -120,9 +111,7 @@ func (h *Handler) ScheduleEditPage(c *gin.Context) {
 
 	id := c.Param("id")
 	var s models.CourseSchedule
-	err := h.db.QueryRow(`SELECT id, course_name, lecturer, day, class, time_start, time_end, notes FROM course_schedules WHERE id = ?`, id).
-		Scan(&s.ID, &s.CourseName, &s.Lecturer, &s.Day, &s.Class, &s.TimeStart, &s.TimeEnd, &s.Notes)
-	if err != nil {
+	if err := h.db.X.Get(&s, `SELECT id, course_name, lecturer, day, class, time_start, time_end, notes FROM course_schedules WHERE id = ?`, id); err != nil {
 		h.errHTML(c, "Jadwal tidak ditemukan")
 		return
 	}

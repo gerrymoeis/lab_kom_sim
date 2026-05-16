@@ -48,14 +48,11 @@ func (h *Handler) PCList(c *gin.Context) {
 
 	for rows.Next() {
 		var pc models.PC
-		var processor, ram, storage, os, sn, bm, dt, acc, notes, an sql.NullString
-		var lastChecked sql.NullTime
-		if rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &processor, &ram, &storage, &os,
-			&sn, &bm, &dt, &acc, &notes, &an, &lastChecked) != nil { continue }
-		pc.Processor = valStr(processor); pc.RAM = valStr(ram); pc.Storage = valStr(storage)
-		pc.OperatingSystem = valStr(os); pc.SerialNumber = valStr(sn); pc.BrandModel = valStr(bm)
-		pc.DeviceType = valStr(dt); pc.Accessories = valStr(acc); pc.Notes = valStr(notes)
-		pc.ActionNotes = valStr(an); pc.LastChecked = valTimePtr(lastChecked)
+		var n pcNulls
+		if rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
+			&n.Processor, &n.RAM, &n.Storage, &n.OS, &n.SerialNumber, &n.BrandModel,
+			&n.DeviceType, &n.Accessories, &n.Notes, &n.ActionNotes, &n.LastChecked) != nil { continue }
+		n.fill(&pc)
 		pcs = append(pcs, pc)
 	}
 
@@ -79,24 +76,18 @@ func (h *Handler) PCDetail(c *gin.Context) {
 
 	num := c.Param("pc_number")
 	var pc models.PC
-	var processor, ram, storage, assetID, sn, brand, model, os, cond, notes sql.NullString
-	var dt, bm, acc, an, ps, pf sql.NullString
-	var pDate, lc sql.NullTime
-
+	var n pcNulls
 	err := h.db.QueryRow(`SELECT id, pc_number, "row", "column", status, processor, ram, storage,
 		purchase_date, notes, last_checked, asset_id, serial_number, brand, model, operating_system,
 		physical_condition, device_type, brand_model, accessories, action_notes, photo_serial, photo_front,
 		created_at, updated_at FROM pcs WHERE pc_number = ?`, num).
-		Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &processor, &ram, &storage,
-			&pDate, &notes, &lc, &assetID, &sn, &brand, &model, &os, &cond, &dt, &bm, &acc, &an, &ps, &pf,
+		Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
+			&n.Processor, &n.RAM, &n.Storage, &n.PurchaseDate, &n.Notes, &n.LastChecked,
+			&n.AssetID, &n.SerialNumber, &n.Brand, &n.Model, &n.OS, &n.PhysicalCondition,
+			&n.DeviceType, &n.BrandModel, &n.Accessories, &n.ActionNotes, &n.PhotoSerial, &n.PhotoFront,
 			&pc.CreatedAt, &pc.UpdatedAt)
 	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
-
-	pc.Processor = valStr(processor); pc.RAM = valStr(ram); pc.Storage = valStr(storage)
-	pc.OperatingSystem = valStr(os); pc.SerialNumber = valStr(sn); pc.BrandModel = valStr(bm)
-	pc.DeviceType = valStr(dt); pc.Accessories = valStr(acc)
-	pc.Notes = valStr(notes); pc.PurchaseDate = valTimePtr(pDate); pc.LastChecked = valTimePtr(lc)
-	pc.PhotoSerial = valStr(ps); pc.PhotoFront = valStr(pf)
+	n.fill(&pc)
 
 	var requiredSW, otherSW []models.PCSoftware
 	if sr, _ := h.db.Query(`SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE), sc.description
@@ -200,22 +191,17 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 
 	num := c.Param("pc_number")
 	var pc models.PC
-	var processor, ram, storage, os, notes sql.NullString
-	var dt, sn, bm, acc, an, ps, pf sql.NullString
-	var pDate, lc sql.NullString
-
+	var n pcNulls
+	var pDate, lc sql.NullString // scanned but unused
 	err := h.db.QueryRow(`SELECT id, pc_number, "row", "column", status, processor, ram, storage,
 		purchase_date, last_checked, operating_system, notes, device_type, serial_number, brand_model,
 		accessories, action_notes, photo_serial, photo_front FROM pcs WHERE pc_number = ?`, num).
-		Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &processor, &ram, &storage,
-			&pDate, &lc, &os, &notes, &dt, &sn, &bm, &acc, &an, &ps, &pf)
+		Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
+			&n.Processor, &n.RAM, &n.Storage, &pDate, &lc,
+			&n.OS, &n.Notes, &n.DeviceType, &n.SerialNumber, &n.BrandModel,
+			&n.Accessories, &n.ActionNotes, &n.PhotoSerial, &n.PhotoFront)
 	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
-
-	pc.Processor = valStr(processor); pc.RAM = valStr(ram); pc.Storage = valStr(storage)
-	pc.OperatingSystem = valStr(os); pc.SerialNumber = valStr(sn); pc.BrandModel = valStr(bm)
-	pc.DeviceType = valStr(dt); pc.Accessories = valStr(acc)
-	pc.Notes = valStr(notes); pc.ActionNotes = valStr(an)
-	pc.PhotoSerial = valStr(ps); pc.PhotoFront = valStr(pf)
+	n.fill(&pc)
 
 	var requiredSW, otherSW []models.PCSoftware
 	if sr, _ := h.db.Query(`SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE), sc.description
@@ -427,6 +413,33 @@ func syncPCSoftware(db *database.DB, pcID int, requiredIDs []string, otherNames,
 }
 
 // ─── Helper ───────────────────────────────────────────────────────
+
+// scanHelpers reduce nullable-filed scanning boilerplate
+type pcNulls struct {
+	Processor, RAM, Storage, OS, Notes, ActionNotes sql.NullString
+	SerialNumber, Brand, Model, AssetID, DeviceType, BrandModel, Accessories sql.NullString
+	PhysicalCondition, PhotoSerial, PhotoFront sql.NullString
+	PurchaseDate, LastChecked sql.NullTime
+}
+
+func (n *pcNulls) fill(pc *models.PC) {
+	pc.Processor = valStr(n.Processor); pc.RAM = valStr(n.RAM); pc.Storage = valStr(n.Storage)
+	pc.OperatingSystem = valStr(n.OS); pc.SerialNumber = valStr(n.SerialNumber)
+	pc.DeviceType = valStr(n.DeviceType); pc.BrandModel = valStr(n.BrandModel)
+	pc.Accessories = valStr(n.Accessories); pc.Notes = valStr(n.Notes)
+	pc.ActionNotes = valStr(n.ActionNotes); pc.PhotoSerial = valStr(n.PhotoSerial)
+	pc.PhotoFront = valStr(n.PhotoFront); pc.Brand = valStr(n.Brand); pc.Model = valStr(n.Model)
+	pc.PhysicalCondition = valStr(n.PhysicalCondition)
+	pc.PurchaseDate = valTimePtr(n.PurchaseDate); pc.LastChecked = valTimePtr(n.LastChecked)
+}
+
+type dtNulls struct{ Brand, Model, Prefix, Location, Notes sql.NullString }
+
+func (n *dtNulls) fill(dt *models.DeviceType) {
+	dt.Brand = valStr(n.Brand); dt.Model = valStr(n.Model)
+	dt.AssetCodePrefix = valStr(n.Prefix); dt.DefaultLocation = valStr(n.Location)
+	dt.NotesTemplate = valStr(n.Notes)
+}
 
 func copyFile(src, dst string) error {
 	s, err := os.Open(src); if err != nil { return err }; defer s.Close()

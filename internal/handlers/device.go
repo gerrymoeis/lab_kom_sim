@@ -23,9 +23,11 @@ func (h *Handler) fetchDeviceTypes() []models.DeviceType {
 	var dts []models.DeviceType
 	for rows.Next() {
 		var dt models.DeviceType
-		var b, m, p, l sql.NullString
-		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &b, &m, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &p, &l) != nil { continue }
-		dt.Brand = valStr(b); dt.Model = valStr(m)
+		var n dtNulls
+		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &n.Brand, &n.Model,
+			&dt.ItemType, &dt.IsLoanable, &dt.IsConsumable,
+			&n.Prefix, &n.Location) != nil { continue }
+		n.fill(&dt)
 		dts = append(dts, dt)
 	}
 	return dts
@@ -111,9 +113,11 @@ func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
 	var dts []models.DeviceType
 	for rows.Next() {
 		var dt models.DeviceType
-		var b, m, p, l, n sql.NullString
-		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &b, &m, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &p, &l, &n, &dt.CreatedAt) != nil { continue }
-		dt.Brand = valStr(b); dt.Model = valStr(m)
+		var n dtNulls
+		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &n.Brand, &n.Model,
+			&dt.ItemType, &dt.IsLoanable, &dt.IsConsumable,
+			&n.Prefix, &n.Location, &n.Notes, &dt.CreatedAt) != nil { continue }
+		n.fill(&dt)
 		dts = append(dts, dt)
 	}
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
