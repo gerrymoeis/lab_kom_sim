@@ -224,7 +224,6 @@ func runMigrations(db *DB, isPostgres bool) error {
 
 	indexes := []string{
 		`CREATE INDEX IF NOT EXISTS idx_pcs_status ON pcs(status)`,
-		`CREATE INDEX IF NOT EXISTS idx_pcs_number ON pcs(pc_number)`,
 		`CREATE INDEX IF NOT EXISTS idx_pc_software_pc_id ON pc_software(pc_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_date ON logbook_entries(date)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,
@@ -248,13 +247,25 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE INDEX IF NOT EXISTS idx_pcs_brand_model ON pcs(brand_model)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_serial_number ON pcs(serial_number)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_student_name ON logbook_entries(student_name)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_purpose ON logbook_entries(purpose)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_time_in ON logbook_entries(time_in)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_composite_search ON logbook_entries(student_name, nim, date)`,
 		`CREATE INDEX IF NOT EXISTS idx_devices_device_type_id ON devices(device_type_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_devices_asset_code ON devices(asset_code)`,
 		`CREATE INDEX IF NOT EXISTS idx_devices_item_type ON devices(item_type)`,
+		`CREATE INDEX IF NOT EXISTS idx_software_catalog_category ON software_catalog(category)`,
+		`CREATE INDEX IF NOT EXISTS idx_software_catalog_cat_name ON software_catalog(category, name)`,
+		`CREATE INDEX IF NOT EXISTS idx_schedules_day ON course_schedules(day)`,
+		`CREATE INDEX IF NOT EXISTS idx_schedules_day_time ON course_schedules(day, time_start)`,
+		`CREATE INDEX IF NOT EXISTS idx_schedules_lecturer ON course_schedules(lecturer)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_loanable_qty ON devices(is_loanable, quantity_available)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_consumable_qty ON devices(is_consumable, quantity_available)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_serial ON devices(serial_number)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_date_time ON logbook_entries(date, time_in)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_status ON activity_logs(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_pc_software_software_id ON pc_software(software_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_loans_borrower ON device_loans(borrower_name)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_usages_user_name ON device_usages(user_name)`,
 	}
 
 	for _, idx := range indexes {

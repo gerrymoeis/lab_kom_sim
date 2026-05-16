@@ -44,7 +44,7 @@ func (h *Handler) DeviceLoanList(c *gin.Context) {
 	validSort := map[string]bool{"loan_date": true, "borrower_name": true, "status": true}
 	if !validSort[sortBy] { sortBy = "loan_date" }
 	if sortOrder != "ASC" { sortOrder = "DESC" }
-	query += fmt.Sprintf(" ORDER BY l.%s %s", sortBy, sortOrder)
+	query += fmt.Sprintf(" ORDER BY l.%s %s LIMIT 100", sortBy, sortOrder)
 
 	rows, err := h.db.Query(query, args...)
 	if err != nil {

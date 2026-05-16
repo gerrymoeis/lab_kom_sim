@@ -129,7 +129,7 @@ func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
 		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
 			ELSE 'active' END
-		FROM device_loans l JOIN devices d ON l.device_id = d.id ORDER BY l.loan_date DESC`)
+		FROM device_loans l JOIN devices d ON l.device_id = d.id ORDER BY l.loan_date DESC LIMIT 100`)
 	if err != nil { h.errHTML(c, "Gagal mengambil data peminjaman"); return }
 	defer rows.Close()
 
@@ -156,7 +156,7 @@ func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
 func (h *Handler) deviceUsagesTab(c *gin.Context, username, role string) {
 	rows, err := h.db.Query(`SELECT u.id, u.device_id, d.asset_code, d.name, u.user_name, u.user_type,
 		u.usage_date, u.quantity, u.is_available, u.purpose
-		FROM device_usages u JOIN devices d ON u.device_id = d.id ORDER BY u.usage_date DESC`)
+		FROM device_usages u JOIN devices d ON u.device_id = d.id ORDER BY u.usage_date DESC LIMIT 100`)
 	if err != nil { h.errHTML(c, "Gagal mengambil data pemakaian"); return }
 	defer rows.Close()
 

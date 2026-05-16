@@ -29,8 +29,10 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite: %w", err)
 	}
-	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	for _, pragma := range []string{"PRAGMA foreign_keys = ON", "PRAGMA journal_mode = WAL"} {
+		if _, err := db.Exec(pragma); err != nil {
+			return nil, fmt.Errorf("failed to set pragma %s: %w", pragma, err)
+		}
 	}
 	return wrapSQLite(db), nil
 }

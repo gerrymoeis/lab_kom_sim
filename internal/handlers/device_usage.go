@@ -41,7 +41,7 @@ func (h *Handler) DeviceUsageList(c *gin.Context) {
 		DeviceName, AssetCode string
 	}
 
-	rows, err := h.db.Query(query+fmt.Sprintf(" ORDER BY u.%s %s", sortBy, sortOrder), args...)
+	rows, err := h.db.Query(query+fmt.Sprintf(" ORDER BY u.%s %s LIMIT 100", sortBy, sortOrder), args...)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data pemakaian")
 		return
