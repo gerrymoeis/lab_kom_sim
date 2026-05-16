@@ -22,7 +22,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	search := c.Query("search")
 	filterCategory := c.Query("category")
 
-	query := `SELECT sc.id, sc.name, sc.category, sc.description, COUNT(ps.software_id) FROM software_catalog sc LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE WHERE 1=1`
+	query := `SELECT sc.id, sc.name, sc.category, sc.description, COUNT(ps.software_id), pc.cnt FROM software_catalog sc LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE CROSS JOIN (SELECT COUNT(*) AS cnt FROM pcs) pc WHERE 1=1`
 	var args []interface{}
 
 	if search != "" {
@@ -35,7 +35,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 		args = append(args, filterCategory)
 	}
 
-	query += ` GROUP BY sc.id, sc.name, sc.category, sc.description ORDER BY CASE WHEN sc.category = 'required' THEN 0 ELSE 1 END, sc.name`
+	query += ` GROUP BY sc.id, sc.name, sc.category, sc.description, pc.cnt ORDER BY CASE WHEN sc.category = 'required' THEN 0 ELSE 1 END, sc.name`
 
 	rows, err := h.db.Query(query, args...)
 	if err != nil {
@@ -44,15 +44,11 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var totalPCs int
-	h.db.QueryRow(`SELECT COUNT(*) FROM pcs`).Scan(&totalPCs)
-
 	type Stat struct{ models.SoftwareCatalog; InstalledCount, TotalPCs int }
 	var stats []Stat
 	for rows.Next() {
 		var st Stat
-		if rows.Scan(&st.ID, &st.Name, &st.Category, &st.Description, &st.InstalledCount) == nil {
-			st.TotalPCs = totalPCs
+		if rows.Scan(&st.ID, &st.Name, &st.Category, &st.Description, &st.InstalledCount, &st.TotalPCs) == nil {
 			stats = append(stats, st)
 		}
 	}
@@ -196,24 +192,21 @@ func (h *Handler) SoftwareExport(c *gin.Context) {
 	if !ok { return }
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data software"); return }
 
-	rows, err := h.db.Query(`SELECT sc.id, sc.name, sc.category, sc.description, COUNT(ps.software_id) FROM software_catalog sc LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE GROUP BY sc.id, sc.name, sc.category, sc.description ORDER BY sc.category, sc.name`)
+	rows, err := h.db.Query(`SELECT sc.id, sc.name, sc.category, sc.description, COUNT(ps.software_id), pc.cnt FROM software_catalog sc LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE CROSS JOIN (SELECT COUNT(*) AS cnt FROM pcs) pc GROUP BY sc.id, sc.name, sc.category, sc.description, pc.cnt ORDER BY sc.category, sc.name`)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data software")
 		return
 	}
 	defer rows.Close()
 
-	type SW struct{ ID int; Name, Category string; Description sql.NullString; Count int }
+	type SW struct{ ID int; Name, Category string; Description sql.NullString; Count, TotalPCs int }
 	var software []SW
 	for rows.Next() {
 		var s SW
-		if rows.Scan(&s.ID, &s.Name, &s.Category, &s.Description, &s.Count) == nil {
+		if rows.Scan(&s.ID, &s.Name, &s.Category, &s.Description, &s.Count, &s.TotalPCs) == nil {
 			software = append(software, s)
 		}
 	}
-
-	var totalPCs int
-	h.db.QueryRow(`SELECT COUNT(*) FROM pcs`).Scan(&totalPCs)
 
 	data := [][]interface{}{}
 	for i, s := range software {
@@ -221,7 +214,7 @@ func (h *Handler) SoftwareExport(c *gin.Context) {
 		if s.Description.Valid { desc = s.Description.String }
 		cat := "Other"
 		if s.Category == "required" { cat = "Required" }
-		data = append(data, []interface{}{i + 1, s.Name, cat, desc, fmt.Sprintf("%d / %d PC", s.Count, totalPCs)})
+		data = append(data, []interface{}{i + 1, s.Name, cat, desc, fmt.Sprintf("%d / %d PC", s.Count, s.TotalPCs)})
 	}
 
 	svc := services.NewExcelService()

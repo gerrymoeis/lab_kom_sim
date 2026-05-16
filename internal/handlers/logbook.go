@@ -17,7 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// isDuplicateEntry, areNamesSimilar and countCharDifferences are in logbook_duplicate.go
+// IsDuplicateEntry is in internal/services/duplicate.go
 
 type LogbookFilters struct {
 	DateFrom, DateTo *time.Time
@@ -176,7 +176,7 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		if r, _ := h.db.Query(`SELECT date, student_name, nim, time_in FROM logbook_entries WHERE date = ? AND time_in = ?`, dv, ti); r != nil {
 			for r.Next() {
 				var ed time.Time; var en, eni, et string
-				if r.Scan(&ed, &en, &eni, &et) == nil && isDuplicateEntry(dv, ed, ti, et, names[i], en, nims[i], eni, cfg) { dup = true; break }
+				if r.Scan(&ed, &en, &eni, &et) == nil && services.IsDuplicateEntry(dv, ed, ti, et, names[i], en, nims[i], eni, cfg) { dup = true; break }
 			}
 			r.Close()
 		}
@@ -297,7 +297,7 @@ func (h *Handler) LogbookCreate(c *gin.Context) {
 	if r, _ := h.db.Query(`SELECT date, student_name, nim, time_in FROM logbook_entries WHERE date = ? AND time_in = ?`, date, ti); r != nil {
 		for r.Next() {
 			var ed time.Time; var en, eni, et string
-			if r.Scan(&ed, &en, &eni, &et) == nil && isDuplicateEntry(date, ed, ti, et, sn, en, nim, eni, config.DefaultDuplicateConfig) {
+			if r.Scan(&ed, &en, &eni, &et) == nil && services.IsDuplicateEntry(date, ed, ti, et, sn, en, nim, eni, config.DefaultDuplicateConfig) {
 				c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{"title": "Tambah Entry Logbook", "error": "Entry duplikat ditemukan"}); return
 			}
 		}
