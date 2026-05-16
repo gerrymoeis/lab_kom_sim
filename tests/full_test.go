@@ -1,7 +1,10 @@
 package tests
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -102,6 +105,39 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/pc/1 edit: %d", resp.StatusCode)
 	resp.Body.Close()
 
+	// ── 2b. PC Photo Upload ─────────────────────────────────────
+	t.Log("\n=== 2b. PC PHOTO UPLOAD ===")
+	photoData, _ := os.ReadFile(filepath.Join("tests", "resources", "logbook.jpeg"))
+
+	var photoBuf bytes.Buffer
+	mw := multipart.NewWriter(&photoBuf)
+	fw, _ := mw.CreateFormFile("image", "logbook.jpeg")
+	fw.Write(photoData)
+	mw.WriteField("type", "serial")
+	mw.Close()
+
+	req, _ := http.NewRequest("POST", ts.URL+"/api/upload-image", &photoBuf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	addCookies(req)
+	resp, err = client.Do(req)
+	assert(err == nil, "upload image request")
+	var uploadRes struct {
+		Success bool   `json:"success"`
+		FileRef string `json:"file_ref"`
+	}
+	json.NewDecoder(resp.Body).Decode(&uploadRes)
+	resp.Body.Close()
+	assert(uploadRes.Success && uploadRes.FileRef != "", "upload image: file_ref=%s", uploadRes.FileRef)
+
+	resp, _ = post("/pc/1/edit",
+		"status=normal&serial_number=SN001&operating_system=Win11&device_type=PC&brand_model=Dell&accessories=KB&processor=i7&ram=16GB&storage=512GB&notes=&action_notes=&serial_file_ref="+uploadRes.FileRef)
+	assert(resp.StatusCode == 302, "PC edit with photo: %d", resp.StatusCode)
+	resp.Body.Close()
+
+	var photoSerial string
+	db.QueryRow("SELECT COALESCE(photo_serial,'') FROM pcs WHERE pc_number=1").Scan(&photoSerial)
+	assert(photoSerial != "", "photo_serial saved: %s", photoSerial)
+
 	// ── 3. Device CRUD ───────────────────────────────────────────
 	t.Log("\n=== 3. DEVICE CRUD ===")
 	resp, _ = get("/devices")
@@ -170,6 +206,30 @@ func TestFullIntegration(t *testing.T) {
 	var lb int
 	db.QueryRow("SELECT COUNT(*) FROM logbook_entries").Scan(&lb)
 	assert(lb > 0, "Logbook entries: %d", lb)
+
+	// ── 6b. Logbook Upload ──────────────────────────────────────
+	t.Log("\n=== 6b. LOGBOOK UPLOAD ===")
+	photoBuf.Reset()
+	mw = multipart.NewWriter(&photoBuf)
+	fw, _ = mw.CreateFormFile("image", "logbook.jpeg")
+	fw.Write(photoData)
+	mw.WriteField("type", "logbook")
+	mw.Close()
+
+	req, _ = http.NewRequest("POST", ts.URL+"/api/upload-image", &photoBuf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	addCookies(req)
+	resp, err = client.Do(req)
+	assert(err == nil, "upload logbook image")
+	json.NewDecoder(resp.Body).Decode(&uploadRes)
+	resp.Body.Close()
+	assert(uploadRes.Success && uploadRes.FileRef != "", "logbook file_ref: %s", uploadRes.FileRef)
+
+	resp, _ = post("/logbook/upload", "file_ref="+uploadRes.FileRef)
+	// 500 expected: no Gemini API key configured in test, but file was moved before the check
+	_, logbookFileErr := os.Stat(filepath.Join("uploads", "logbook", uploadRes.FileRef))
+	assert(logbookFileErr == nil, "logbook file moved to uploads/logbook/")
+	resp.Body.Close()
 
 	// ── 7. User management ───────────────────────────────────────
 	t.Log("\n=== 7. USER ===")

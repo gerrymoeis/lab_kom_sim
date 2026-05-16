@@ -96,6 +96,7 @@ func (h *Handler) PCDetail(c *gin.Context) {
 	pc.OperatingSystem = valStr(os); pc.SerialNumber = valStr(sn); pc.BrandModel = valStr(bm)
 	pc.DeviceType = valStr(dt); pc.Accessories = valStr(acc)
 	pc.Notes = valStr(notes); pc.PurchaseDate = valTimePtr(pDate); pc.LastChecked = valTimePtr(lc)
+	pc.PhotoSerial = valStr(ps); pc.PhotoFront = valStr(pf)
 
 	var requiredSW, otherSW []models.PCSoftware
 	if sr, _ := h.db.Query(`SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE), sc.description
@@ -214,6 +215,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 	pc.OperatingSystem = valStr(os); pc.SerialNumber = valStr(sn); pc.BrandModel = valStr(bm)
 	pc.DeviceType = valStr(dt); pc.Accessories = valStr(acc)
 	pc.Notes = valStr(notes); pc.ActionNotes = valStr(an)
+	pc.PhotoSerial = valStr(ps); pc.PhotoFront = valStr(pf)
 
 	var requiredSW, otherSW []models.PCSoftware
 	if sr, _ := h.db.Query(`SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE), sc.description
@@ -285,7 +287,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/pc")
+	c.Redirect(http.StatusFound, "/pc/"+num)
 }
 
 // ─── Delete ───────────────────────────────────────────────────────
