@@ -25,7 +25,7 @@ func TestFullIntegration(t *testing.T) {
 	os.Chdir(projectRoot)
 	defer os.Chdir(wd)
 	defer os.Remove("full_testing.db")
-	defer os.RemoveAll("uploads")
+	defer func() { os.RemoveAll(filepath.Join("uploads", "temp")); os.RemoveAll(filepath.Join("uploads", "pc")); os.RemoveAll(filepath.Join("uploads", "logbook")) }()
 	// ── Setup ────────────────────────────────────────────────────
 	dbPath := "full_testing.db"
 	cfg := &config.Config{
