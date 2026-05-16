@@ -32,7 +32,7 @@ func SeedDefaultUser(db *DB) error {
 			return fmt.Errorf("failed to hash password for %s: %w", a.Username, err)
 		}
 
-		_, err = db.Exec(`INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, 'admin')`,
+		_, err = db.Exec(`INSERT INTO users (username, password, full_name, role, session_token) VALUES (?, ?, ?, 'admin', NULL)`,
 			a.Username, string(hashedPassword), a.FullName)
 		if err != nil {
 			return fmt.Errorf("failed to create user %s: %w", a.Username, err)
