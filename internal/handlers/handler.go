@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"strconv"
 	"time"
@@ -133,5 +134,17 @@ func parseDate(s string) (time.Time, error) {
 // parseIntParam parses an int from a gin URL param
 func parseIntParam(c *gin.Context, param string) (int, error) {
 	return strconv.Atoi(c.Param(param))
+}
+
+// valStr returns the string value from a NullString, or "" if invalid
+func valStr(ns sql.NullString) string {
+	if ns.Valid { return ns.String }
+	return ""
+}
+
+// valTimePtr returns a *time.Time from a NullTime, or nil if invalid
+func valTimePtr(nt sql.NullTime) *time.Time {
+	if nt.Valid { return &nt.Time }
+	return nil
 }
 

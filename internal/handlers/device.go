@@ -24,8 +24,7 @@ func (h *Handler) fetchDeviceTypes() []models.DeviceType {
 		var dt models.DeviceType
 		var b, m, p, l sql.NullString
 		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &b, &m, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &p, &l) != nil { continue }
-		if b.Valid { dt.Brand = b.String }
-		if m.Valid { dt.Model = m.String }
+		dt.Brand = valStr(b); dt.Model = valStr(m)
 		dts = append(dts, dt)
 	}
 	return dts
@@ -93,7 +92,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			var dt models.DeviceType
 			var b, m, p, l, n sql.NullString
 			if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &b, &m, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &p, &l, &n, &dt.CreatedAt) != nil { continue }
-			if b.Valid { dt.Brand = b.String }; if m.Valid { dt.Model = m.String }
+			dt.Brand = valStr(b); dt.Model = valStr(m)
 			dts = append(dts, dt)
 		}
 		c.HTML(http.StatusOK, "device/list.html", gin.H{

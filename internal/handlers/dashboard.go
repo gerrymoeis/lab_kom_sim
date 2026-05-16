@@ -30,12 +30,8 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		if rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &processor, &ram, &storage, &os, &notes, &lastChecked) != nil {
 			continue
 		}
-		if processor.Valid { pc.Processor = processor.String }
-		if ram.Valid { pc.RAM = ram.String }
-		if storage.Valid { pc.Storage = storage.String }
-		if os.Valid { pc.OperatingSystem = os.String }
-		if notes.Valid { pc.Notes = notes.String }
-		if lastChecked.Valid { pc.LastChecked = &lastChecked.Time }
+		pc.Processor = valStr(processor); pc.RAM = valStr(ram); pc.Storage = valStr(storage)
+		pc.OperatingSystem = valStr(os); pc.Notes = valStr(notes); pc.LastChecked = valTimePtr(lastChecked)
 		pcs = append(pcs, pc)
 	}
 

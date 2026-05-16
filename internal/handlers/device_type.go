@@ -44,11 +44,9 @@ func (h *Handler) DeviceTypeList(c *gin.Context) {
 		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &prefix, &location, &notes, &dt.CreatedAt) != nil {
 			continue
 		}
-		if brand.Valid { dt.Brand = brand.String }
-		if model.Valid { dt.Model = model.String }
-		if prefix.Valid { dt.AssetCodePrefix = prefix.String }
-		if location.Valid { dt.DefaultLocation = location.String }
-		if notes.Valid { dt.NotesTemplate = notes.String }
+		dt.Brand = valStr(brand); dt.Model = valStr(model)
+		dt.AssetCodePrefix = valStr(prefix); dt.DefaultLocation = valStr(location)
+		dt.NotesTemplate = valStr(notes)
 		types = append(types, dt)
 	}
 
@@ -72,11 +70,9 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 		h.errHTML(c, "Jenis barang tidak ditemukan")
 		return
 	}
-	if brand.Valid { dt.Brand = brand.String }
-	if model.Valid { dt.Model = model.String }
-	if prefix.Valid { dt.AssetCodePrefix = prefix.String }
-	if location.Valid { dt.DefaultLocation = location.String }
-	if notes.Valid { dt.NotesTemplate = notes.String }
+	dt.Brand = valStr(brand); dt.Model = valStr(model)
+	dt.AssetCodePrefix = valStr(prefix); dt.DefaultLocation = valStr(location)
+	dt.NotesTemplate = valStr(notes)
 
 	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
 		"title": "Detail Jenis Barang", "currentPage": "devices",
@@ -150,11 +146,9 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 		h.errHTML(c, "Jenis barang tidak ditemukan")
 		return
 	}
-	if brand.Valid { dt.Brand = brand.String }
-	if model.Valid { dt.Model = model.String }
-	if prefix.Valid { dt.AssetCodePrefix = prefix.String }
-	if location.Valid { dt.DefaultLocation = location.String }
-	if notes.Valid { dt.NotesTemplate = notes.String }
+	dt.Brand = valStr(brand); dt.Model = valStr(model)
+	dt.AssetCodePrefix = valStr(prefix); dt.DefaultLocation = valStr(location)
+	dt.NotesTemplate = valStr(notes)
 
 	c.HTML(http.StatusOK, "device_type/edit.html", gin.H{
 		"title": "Edit Jenis Barang", "currentPage": "devices",

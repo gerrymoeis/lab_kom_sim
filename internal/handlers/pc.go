@@ -51,12 +51,10 @@ func (h *Handler) PCList(c *gin.Context) {
 		var lastChecked sql.NullTime
 		if rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &processor, &ram, &storage, &os,
 			&sn, &bm, &dt, &acc, &notes, &an, &lastChecked) != nil { continue }
-		if processor.Valid { pc.Processor = processor.String }; if ram.Valid { pc.RAM = ram.String }
-		if storage.Valid { pc.Storage = storage.String }; if os.Valid { pc.OperatingSystem = os.String }
-		if sn.Valid { pc.SerialNumber = sn.String }; if bm.Valid { pc.BrandModel = bm.String }
-		if dt.Valid { pc.DeviceType = dt.String }; if acc.Valid { pc.Accessories = acc.String }
-		if notes.Valid { pc.Notes = notes.String }; if an.Valid { pc.ActionNotes = an.String }
-		if lastChecked.Valid { pc.LastChecked = &lastChecked.Time }
+		pc.Processor = valStr(processor); pc.RAM = valStr(ram); pc.Storage = valStr(storage)
+		pc.OperatingSystem = valStr(os); pc.SerialNumber = valStr(sn); pc.BrandModel = valStr(bm)
+		pc.DeviceType = valStr(dt); pc.Accessories = valStr(acc); pc.Notes = valStr(notes)
+		pc.ActionNotes = valStr(an); pc.LastChecked = valTimePtr(lastChecked)
 		pcs = append(pcs, pc)
 	}
 
@@ -93,12 +91,10 @@ func (h *Handler) PCDetail(c *gin.Context) {
 			&pc.CreatedAt, &pc.UpdatedAt)
 	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
 
-	if processor.Valid { pc.Processor = processor.String }; if ram.Valid { pc.RAM = ram.String }
-	if storage.Valid { pc.Storage = storage.String }; if notes.Valid { pc.Notes = notes.String }
-	if os.Valid { pc.OperatingSystem = os.String }; if sn.Valid { pc.SerialNumber = sn.String }
-	if bm.Valid { pc.BrandModel = bm.String }; if dt.Valid { pc.DeviceType = dt.String }
-	if acc.Valid { pc.Accessories = acc.String }; if pDate.Valid { pc.PurchaseDate = &pDate.Time }
-	if lc.Valid { pc.LastChecked = &lc.Time }
+	pc.Processor = valStr(processor); pc.RAM = valStr(ram); pc.Storage = valStr(storage)
+	pc.OperatingSystem = valStr(os); pc.SerialNumber = valStr(sn); pc.BrandModel = valStr(bm)
+	pc.DeviceType = valStr(dt); pc.Accessories = valStr(acc)
+	pc.Notes = valStr(notes); pc.PurchaseDate = valTimePtr(pDate); pc.LastChecked = valTimePtr(lc)
 
 	var requiredSW, otherSW []models.PCSoftware
 	if sr, _ := h.db.Query(`SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE), sc.description
@@ -210,11 +206,10 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 			&pDate, &lc, &os, &notes, &dt, &sn, &bm, &acc, &an, &ps, &pf)
 	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
 
-	if processor.Valid { pc.Processor = processor.String }; if ram.Valid { pc.RAM = ram.String }
-	if storage.Valid { pc.Storage = storage.String }; if os.Valid { pc.OperatingSystem = os.String }
-	if sn.Valid { pc.SerialNumber = sn.String }; if bm.Valid { pc.BrandModel = bm.String }
-	if dt.Valid { pc.DeviceType = dt.String }; if acc.Valid { pc.Accessories = acc.String }
-	if notes.Valid { pc.Notes = notes.String }; if an.Valid { pc.ActionNotes = an.String }
+	pc.Processor = valStr(processor); pc.RAM = valStr(ram); pc.Storage = valStr(storage)
+	pc.OperatingSystem = valStr(os); pc.SerialNumber = valStr(sn); pc.BrandModel = valStr(bm)
+	pc.DeviceType = valStr(dt); pc.Accessories = valStr(acc)
+	pc.Notes = valStr(notes); pc.ActionNotes = valStr(an)
 
 	var requiredSW, otherSW []models.PCSoftware
 	if sr, _ := h.db.Query(`SELECT sc.id, sc.name, sc.category, COALESCE(ps.installed, FALSE), sc.description
