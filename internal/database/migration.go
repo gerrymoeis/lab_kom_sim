@@ -266,7 +266,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE INDEX IF NOT EXISTS idx_pc_software_software_id ON pc_software(software_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_loans_borrower ON device_loans(borrower_name)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_usages_user_name ON device_usages(user_name)`,
-		`CREATE INDEX IF NOT EXISTS idx_pcs_grid ON pcs(row, column)`,
+		`CREATE INDEX IF NOT EXISTS idx_pcs_grid ON pcs("row", "column")`,
 	}
 
 	for _, idx := range indexes {
