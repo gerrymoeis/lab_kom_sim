@@ -36,18 +36,10 @@ func (h *Handler) Dashboard(c *gin.Context) {
 	}
 
 	statusCounts := make(map[string]int)
-	countRows, _ := h.db.Query(`SELECT status, COUNT(*) FROM pcs GROUP BY status`)
-	if countRows != nil {
-		defer countRows.Close()
-		for countRows.Next() {
-			var s string; var c int
-			if countRows.Scan(&s, &c) == nil { statusCounts[s] = c }
-		}
-	}
+	for _, pc := range pcs { statusCounts[pc.Status]++ }
 
 	var totalDevices, totalSoftware int
-	h.db.QueryRow("SELECT COUNT(*) FROM devices").Scan(&totalDevices)
-	h.db.QueryRow("SELECT COUNT(*) FROM software_catalog").Scan(&totalSoftware)
+	h.db.QueryRow(`SELECT (SELECT COUNT(*) FROM devices), (SELECT COUNT(*) FROM software_catalog)`).Scan(&totalDevices, &totalSoftware)
 
 	grid := make([][]models.PC, 5)
 	for i := range grid {

@@ -174,6 +174,34 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	if len(dates) == 0 { c.JSON(http.StatusBadRequest, gin.H{"error": "Tidak ada data"}); return }
 
 	cfg := config.DefaultDuplicateConfig
+
+	now := time.Now()
+
+	dateMap := make(map[string]time.Time)
+	for i := 0; i < len(dates); i++ {
+		if dates[i] == "" && names[i] == "" && nims[i] == "" { continue }
+		dv := now
+		if dates[i] != "" {
+			if d, e := time.Parse("2006-01-02", dates[i]); e == nil { dv = d } else if d, e := time.Parse("02/01/2006", dates[i]); e == nil { dv = d }
+		}
+		dateMap[dv.Format("2006-01-02")] = dv
+	}
+
+	type dupEntry struct{ date time.Time; name, nim, timeIn string }
+	existing := make(map[string][]dupEntry) // key: "date|time_in"
+	for _, dv := range dateMap {
+		if r, _ := h.db.Query(`SELECT date, student_name, nim, time_in FROM logbook_entries WHERE date = ?`, dv); r != nil {
+			for r.Next() {
+				var ed time.Time; var en, eni, et string
+				if r.Scan(&ed, &en, &eni, &et) == nil {
+					k := dv.Format("2006-01-02") + "|" + et
+					existing[k] = append(existing[k], dupEntry{ed, en, eni, et})
+				}
+			}
+			r.Close()
+		}
+	}
+
 	tx, _ := h.db.Begin()
 	defer tx.Rollback()
 
@@ -181,7 +209,6 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyiapkan statement"}); return }
 	defer stmt.Close()
 
-	now := time.Now()
 	saved, dups := 0, 0
 	for i := 0; i < len(dates); i++ {
 		if dates[i] == "" && names[i] == "" && nims[i] == "" { continue }
@@ -195,12 +222,9 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		pu := ""; if i < len(purposes) { pu = purposes[i] }
 
 		dup := false
-		if r, _ := h.db.Query(`SELECT date, student_name, nim, time_in FROM logbook_entries WHERE date = ? AND time_in = ?`, dv, ti); r != nil {
-			for r.Next() {
-				var ed time.Time; var en, eni, et string
-				if r.Scan(&ed, &en, &eni, &et) == nil && services.IsDuplicateEntry(dv, ed, ti, et, names[i], en, nims[i], eni, cfg) { dup = true; break }
-			}
-			r.Close()
+		k := dv.Format("2006-01-02") + "|" + ti
+		for _, e := range existing[k] {
+			if services.IsDuplicateEntry(dv, e.date, ti, e.timeIn, names[i], e.name, nims[i], e.nim, cfg) { dup = true; break }
 		}
 		if dup { dups++; continue }
 
