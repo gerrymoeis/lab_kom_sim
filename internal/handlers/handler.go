@@ -73,53 +73,21 @@ func (h *Handler) redirectWithError(c *gin.Context, url, msg string) {
 	c.Redirect(http.StatusFound, url+"?error="+msg)
 }
 
-// logCreate logs a successful create activity with request context
-func (h *Handler) logCreate(c *gin.Context, entityType string, entityID int, vals map[string]interface{}) {
+// logActivity logs any activity with request context — unified entry point
+func (h *Handler) logActivity(c *gin.Context, action, entityType string, entityID int, oldVals, newVals map[string]interface{}, errMsg string) {
 	if id, u, r, ok := h.user(c); ok {
 		ip, ua := getRequestContext(c)
-		h.activityLogService.LogCreate(id, u, r, entityType, entityID, vals, ip, ua)
+		h.activityLogService.LogAction(id, u, r, action, entityType, entityID, oldVals, newVals, ip, ua, errMsg)
 	}
 }
 
-// logUpdate logs a successful update activity with request context
-func (h *Handler) logUpdate(c *gin.Context, entityType string, entityID int, oldVals, newVals map[string]interface{}) {
-	if id, u, r, ok := h.user(c); ok {
-		ip, ua := getRequestContext(c)
-		h.activityLogService.LogUpdate(id, u, r, entityType, entityID, oldVals, newVals, ip, ua)
-	}
-}
-
-// logDelete logs a successful delete activity with request context
-func (h *Handler) logDelete(c *gin.Context, entityType string, entityID int, oldVals map[string]interface{}) {
-	if id, u, r, ok := h.user(c); ok {
-		ip, ua := getRequestContext(c)
-		h.activityLogService.LogDelete(id, u, r, entityType, entityID, oldVals, ip, ua)
-	}
-}
-
-// logCreateError logs a failed create activity with request context
-func (h *Handler) logCreateError(c *gin.Context, entityType string, vals map[string]interface{}, errMsg string) {
-	if id, u, r, ok := h.user(c); ok {
-		ip, ua := getRequestContext(c)
-		h.activityLogService.LogCreate(id, u, r, entityType, 0, vals, ip, ua, errMsg)
-	}
-}
-
-// logUpdateError logs a failed update activity with request context
-func (h *Handler) logUpdateError(c *gin.Context, entityType string, id int, oldVals map[string]interface{}, errMsg string) {
-	if uid, u, r, ok := h.user(c); ok {
-		ip, ua := getRequestContext(c)
-		h.activityLogService.LogUpdate(uid, u, r, entityType, id, oldVals, map[string]interface{}{"error": errMsg}, ip, ua, errMsg)
-	}
-}
-
-// logDeleteError logs a failed delete activity with request context
-func (h *Handler) logDeleteError(c *gin.Context, entityType string, id int, oldVals map[string]interface{}, errMsg string) {
-	if uid, u, r, ok := h.user(c); ok {
-		ip, ua := getRequestContext(c)
-		h.activityLogService.LogDelete(uid, u, r, entityType, id, oldVals, ip, ua, errMsg)
-	}
-}
+// convenience wrappers — kept for call-site readability
+func (h *Handler) logCreate(c *gin.Context, entityType string, entityID int, vals map[string]interface{}) { h.logActivity(c, "create", entityType, entityID, nil, vals, "") }
+func (h *Handler) logUpdate(c *gin.Context, entityType string, entityID int, oldVals, newVals map[string]interface{}) { h.logActivity(c, "update", entityType, entityID, oldVals, newVals, "") }
+func (h *Handler) logDelete(c *gin.Context, entityType string, entityID int, oldVals map[string]interface{}) { h.logActivity(c, "delete", entityType, entityID, oldVals, nil, "") }
+func (h *Handler) logCreateError(c *gin.Context, entityType string, vals map[string]interface{}, errMsg string) { h.logActivity(c, "create", entityType, 0, nil, vals, errMsg) }
+func (h *Handler) logUpdateError(c *gin.Context, entityType string, id int, oldVals map[string]interface{}, errMsg string) { h.logActivity(c, "update", entityType, id, oldVals, nil, errMsg) }
+func (h *Handler) logDeleteError(c *gin.Context, entityType string, id int, oldVals map[string]interface{}, errMsg string) { h.logActivity(c, "delete", entityType, id, oldVals, nil, errMsg) }
 
 // successJSON sends a success JSON response with optional message
 func (h *Handler) successJSON(c *gin.Context, msg string) {

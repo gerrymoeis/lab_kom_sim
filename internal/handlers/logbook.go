@@ -336,9 +336,7 @@ func (h *Handler) LogbookCreate(c *gin.Context) {
 	var lid int
 	h.db.QueryRow(`SELECT MAX(id) FROM logbook_entries`).Scan(&lid)
 
-	uid, u, r, _ := h.user(c)
-	ip, ua := getRequestContext(c)
-	h.activityLogService.LogCreate(uid, u, r, "logbook", lid, map[string]interface{}{"date": ds, "student_name": sn, "nim": nim}, ip, ua)
+	h.logCreate(c, "logbook", lid, map[string]interface{}{"date": ds, "student_name": sn, "nim": nim})
 	c.Redirect(http.StatusFound, "/logbook")
 }
 

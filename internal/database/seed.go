@@ -13,8 +13,8 @@ func SeedDefaultUser(db *DB) error {
 		Password string
 		FullName string
 	}{
-		{"admin", getEnvDefault("ADMIN_PASSWORD", "admin123"), "Administrator"},
-		{"rekan", getEnvDefault("REKAN_PASSWORD", "rekan123"), "Rekan Administrator"},
+		{"admin", env("ADMIN_PASSWORD", "admin123"), "Administrator"},
+		{"rekan", env("REKAN_PASSWORD", "rekan123"), "Rekan Administrator"},
 	}
 
 	for _, a := range admins {
@@ -44,9 +44,7 @@ func SeedDefaultUser(db *DB) error {
 	return nil
 }
 
-func getEnvDefault(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
+func env(key, fallback string) string {
+	if v := os.Getenv(key); v != "" { return v }
 	return fallback
 }

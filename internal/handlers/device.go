@@ -36,122 +36,132 @@ func (h *Handler) DeviceList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	tab := c.DefaultQuery("tab", "list")
+	switch c.DefaultQuery("tab", "list") {
+	case "list":   h.deviceListTab(c, username, role)
+	case "types":  h.deviceTypesTab(c, username, role)
+	case "loans":  h.deviceLoansTab(c, username, role)
+	case "usages": h.deviceUsagesTab(c, username, role)
+	}
+}
+
+func (h *Handler) deviceListTab(c *gin.Context, username, role string) {
 	search := c.Query("search")
 	category := c.Query("category")
 
-	switch tab {
-
-	case "list":
-		query := `SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
-			d.item_type, d.quantity_total, d.quantity_available, d.condition, d.location, d.created_at
-			FROM devices d JOIN device_types dt ON d.device_type_id = dt.id WHERE 1=1`
-		var args []interface{}
-		if search != "" {
-			query += ` AND (d.name LIKE ? OR d.asset_code LIKE ? OR d.serial_number LIKE ?)`
-			s := "%" + search + "%"; args = append(args, s, s, s)
-		}
-		if category != "" { query += ` AND dt.category = ?`; args = append(args, category) }
-		query += ` ORDER BY d.asset_code`
-
-		rows, err := h.db.Query(query, args...)
-		if err != nil { h.errHTML(c, "Gagal mengambil data perangkat"); return }
-		defer rows.Close()
-
-		var devices []models.DeviceWithCategory
-		for rows.Next() {
-			var d models.DeviceWithCategory
-			if rows.Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.Name, &d.Category, &d.Brand, &d.Model,
-				&d.ItemType, &d.QuantityTotal, &d.QuantityAvailable, &d.Condition, &d.Location, &d.CreatedAt) == nil {
-				devices = append(devices, d)
-			}
-		}
-
-		c.HTML(http.StatusOK, "device/list.html", gin.H{
-			"title": "Manajemen Perangkat", "currentPage": "devices",
-			"username": username, "role": role,
-			"activeTab": "list", "devices": devices,
-			"deviceTypes": h.fetchDeviceTypes(),
-			"filters": gin.H{"search": search, "category": category},
-		})
-
-	case "types":
-		query := `SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable,
-			asset_code_prefix, default_location, notes_template, created_at FROM device_types WHERE 1=1`
-		var args []interface{}
-		if search != "" { query += ` AND (name LIKE ? OR category LIKE ?)`; s := "%" + search + "%"; args = append(args, s, s) }
-		if category != "" { query += ` AND category = ?`; args = append(args, category) }
-		query += ` ORDER BY category, name`
-
-		rows, err := h.db.Query(query, args...)
-		if err != nil { h.errHTML(c, "Gagal mengambil data jenis barang"); return }
-		defer rows.Close()
-
-		var dts []models.DeviceType
-		for rows.Next() {
-			var dt models.DeviceType
-			var b, m, p, l, n sql.NullString
-			if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &b, &m, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &p, &l, &n, &dt.CreatedAt) != nil { continue }
-			dt.Brand = valStr(b); dt.Model = valStr(m)
-			dts = append(dts, dt)
-		}
-		c.HTML(http.StatusOK, "device/list.html", gin.H{
-			"title": "Jenis Barang", "currentPage": "devices",
-			"username": username, "role": role,
-			"activeTab": "types", "deviceTypes": dts,
-		})
-
-	case "loans":
-		rows, err := h.db.Query(`SELECT l.id, l.device_id, d.name, d.asset_code, l.borrower_name, l.borrower_type,
-			l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose,
-			CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
-				WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
-				ELSE 'active' END
-			FROM device_loans l JOIN devices d ON l.device_id = d.id ORDER BY l.loan_date DESC`)
-		if err != nil { h.errHTML(c, "Gagal mengambil data peminjaman"); return }
-		defer rows.Close()
-
-		type LoanRow struct {
-			ID, DeviceID int; DeviceName, AssetCode, BorrowerName, BorrowerType string
-			LoanDate time.Time; ExpectedReturnDate, ActualReturnDate sql.NullTime
-			Quantity int; Status, Purpose, ComputedStatus string
-		}
-		var loans []LoanRow
-		for rows.Next() {
-			var l LoanRow
-			if rows.Scan(&l.ID, &l.DeviceID, &l.DeviceName, &l.AssetCode, &l.BorrowerName, &l.BorrowerType,
-				&l.LoanDate, &l.ExpectedReturnDate, &l.ActualReturnDate, &l.Quantity, &l.Status, &l.Purpose, &l.ComputedStatus) == nil {
-				loans = append(loans, l)
-			}
-		}
-		c.HTML(http.StatusOK, "device/list.html", gin.H{
-			"title": "Peminjaman", "currentPage": "devices",
-			"username": username, "role": role,
-			"activeTab": "loans", "loans": loans,
-		})
-
-	case "usages":
-		rows, err := h.db.Query(`SELECT u.id, u.device_id, d.asset_code, d.name, u.user_name, u.user_type,
-			u.usage_date, u.quantity, u.is_available, u.purpose
-			FROM device_usages u JOIN devices d ON u.device_id = d.id ORDER BY u.usage_date DESC`)
-		if err != nil { h.errHTML(c, "Gagal mengambil data pemakaian"); return }
-		defer rows.Close()
-
-		var usages []models.DeviceUsage
-		for rows.Next() {
-			var u models.DeviceUsage
-			var ac, dn string
-			if rows.Scan(&u.ID, &u.DeviceID, &ac, &dn, &u.UserName, &u.UserType, &u.UsageDate, &u.Quantity, &u.IsAvailable, &u.Purpose) == nil {
-				u.DeviceAssetCode = ac; u.DeviceName = dn
-				usages = append(usages, u)
-			}
-		}
-		c.HTML(http.StatusOK, "device/list.html", gin.H{
-			"title": "Pemakaian", "currentPage": "devices",
-			"username": username, "role": role,
-			"activeTab": "usages", "usages": usages,
-		})
+	query := `SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
+		d.item_type, d.quantity_total, d.quantity_available, d.condition, d.location, d.created_at
+		FROM devices d JOIN device_types dt ON d.device_type_id = dt.id WHERE 1=1`
+	var args []interface{}
+	if search != "" {
+		query += ` AND (d.name LIKE ? OR d.asset_code LIKE ? OR d.serial_number LIKE ?)`
+		s := "%" + search + "%"; args = append(args, s, s, s)
 	}
+	if category != "" { query += ` AND dt.category = ?`; args = append(args, category) }
+	query += ` ORDER BY d.asset_code`
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil { h.errHTML(c, "Gagal mengambil data perangkat"); return }
+	defer rows.Close()
+
+	var devices []models.DeviceWithCategory
+	for rows.Next() {
+		var d models.DeviceWithCategory
+		if rows.Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.Name, &d.Category, &d.Brand, &d.Model,
+			&d.ItemType, &d.QuantityTotal, &d.QuantityAvailable, &d.Condition, &d.Location, &d.CreatedAt) == nil {
+			devices = append(devices, d)
+		}
+	}
+
+	c.HTML(http.StatusOK, "device/list.html", gin.H{
+		"title": "Manajemen Perangkat", "currentPage": "devices",
+		"username": username, "role": role,
+		"activeTab": "list", "devices": devices,
+		"deviceTypes": h.fetchDeviceTypes(),
+		"filters": gin.H{"search": search, "category": category},
+	})
+}
+
+func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
+	search := c.Query("search")
+	category := c.Query("category")
+
+	query := `SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable,
+		asset_code_prefix, default_location, notes_template, created_at FROM device_types WHERE 1=1`
+	var args []interface{}
+	if search != "" { query += ` AND (name LIKE ? OR category LIKE ?)`; s := "%" + search + "%"; args = append(args, s, s) }
+	if category != "" { query += ` AND category = ?`; args = append(args, category) }
+	query += ` ORDER BY category, name`
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil { h.errHTML(c, "Gagal mengambil data jenis barang"); return }
+	defer rows.Close()
+
+	var dts []models.DeviceType
+	for rows.Next() {
+		var dt models.DeviceType
+		var b, m, p, l, n sql.NullString
+		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &b, &m, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &p, &l, &n, &dt.CreatedAt) != nil { continue }
+		dt.Brand = valStr(b); dt.Model = valStr(m)
+		dts = append(dts, dt)
+	}
+	c.HTML(http.StatusOK, "device/list.html", gin.H{
+		"title": "Jenis Barang", "currentPage": "devices",
+		"username": username, "role": role,
+		"activeTab": "types", "deviceTypes": dts,
+	})
+}
+
+func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
+	rows, err := h.db.Query(`SELECT l.id, l.device_id, d.name, d.asset_code, l.borrower_name, l.borrower_type,
+		l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose,
+		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
+			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
+			ELSE 'active' END
+		FROM device_loans l JOIN devices d ON l.device_id = d.id ORDER BY l.loan_date DESC`)
+	if err != nil { h.errHTML(c, "Gagal mengambil data peminjaman"); return }
+	defer rows.Close()
+
+	type LoanRow struct {
+		ID, DeviceID int; DeviceName, AssetCode, BorrowerName, BorrowerType string
+		LoanDate time.Time; ExpectedReturnDate, ActualReturnDate sql.NullTime
+		Quantity int; Status, Purpose, ComputedStatus string
+	}
+	var loans []LoanRow
+	for rows.Next() {
+		var l LoanRow
+		if rows.Scan(&l.ID, &l.DeviceID, &l.DeviceName, &l.AssetCode, &l.BorrowerName, &l.BorrowerType,
+			&l.LoanDate, &l.ExpectedReturnDate, &l.ActualReturnDate, &l.Quantity, &l.Status, &l.Purpose, &l.ComputedStatus) == nil {
+			loans = append(loans, l)
+		}
+	}
+	c.HTML(http.StatusOK, "device/list.html", gin.H{
+		"title": "Peminjaman", "currentPage": "devices",
+		"username": username, "role": role,
+		"activeTab": "loans", "loans": loans,
+	})
+}
+
+func (h *Handler) deviceUsagesTab(c *gin.Context, username, role string) {
+	rows, err := h.db.Query(`SELECT u.id, u.device_id, d.asset_code, d.name, u.user_name, u.user_type,
+		u.usage_date, u.quantity, u.is_available, u.purpose
+		FROM device_usages u JOIN devices d ON u.device_id = d.id ORDER BY u.usage_date DESC`)
+	if err != nil { h.errHTML(c, "Gagal mengambil data pemakaian"); return }
+	defer rows.Close()
+
+	var usages []models.DeviceUsage
+	for rows.Next() {
+		var u models.DeviceUsage
+		var ac, dn string
+		if rows.Scan(&u.ID, &u.DeviceID, &ac, &dn, &u.UserName, &u.UserType, &u.UsageDate, &u.Quantity, &u.IsAvailable, &u.Purpose) == nil {
+			u.DeviceAssetCode = ac; u.DeviceName = dn
+			usages = append(usages, u)
+		}
+	}
+	c.HTML(http.StatusOK, "device/list.html", gin.H{
+		"title": "Pemakaian", "currentPage": "devices",
+		"username": username, "role": role,
+		"activeTab": "usages", "usages": usages,
+	})
 }
 
 // ─── Create ───────────────────────────────────────────────────────

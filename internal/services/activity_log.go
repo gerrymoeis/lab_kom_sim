@@ -69,6 +69,11 @@ func (s *ActivityLogService) logAction(p logParams) error {
 	})
 }
 
+func (s *ActivityLogService) LogAction(userID int, username, role, action, entityType string, entityID int, oldValues, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: action, entityType: entityType, entityID: entityID, oldValues: oldValues, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
+}
+
 func (s *ActivityLogService) LogCreate(userID int, username, role, entityType string, entityID int, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
 	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
 	return s.logAction(logParams{userID: userID, username: username, role: role, action: "create", entityType: entityType, entityID: entityID, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
