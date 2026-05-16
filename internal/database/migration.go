@@ -7,8 +7,8 @@ import (
 )
 
 type dialect struct {
-	pkType, tsType, boolTrue, boolFalse string
-	columnExists                         func(db *DB, table, col string) (bool, error)
+	pkType, tsType, boolTrue, boolFalse, qRow, qCol string
+	columnExists                                    func(db *DB, table, col string) (bool, error)
 }
 
 func runMigrations(db *DB, isPostgres bool) error {
@@ -16,6 +16,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		pkType: "INTEGER PRIMARY KEY AUTOINCREMENT",
 		tsType: "DATETIME",
 		boolTrue: "1", boolFalse: "0",
+		qRow: "row", qCol: "column",
 		columnExists: func(db *DB, table, col string) (bool, error) {
 			rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
 			if err != nil { return false, err }
@@ -31,6 +32,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		d = dialect{
 			pkType: "SERIAL PRIMARY KEY", tsType: "TIMESTAMP",
 			boolTrue: "TRUE", boolFalse: "FALSE",
+			qRow: `"row"`, qCol: `"column"`,
 			columnExists: func(db *DB, table, col string) (bool, error) {
 				var exists bool
 				err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name=? AND column_name=?)`, table, col).Scan(&exists)
@@ -53,8 +55,8 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE TABLE IF NOT EXISTS pcs (
 			id {{PK}},
 			pc_number INTEGER UNIQUE NOT NULL CHECK(pc_number >= 1 AND pc_number <= 40),
-			row INTEGER NOT NULL CHECK(row >= 1 AND row <= 5),
-			column INTEGER NOT NULL CHECK(column >= 1 AND column <= 8),
+			{{ROW}} INTEGER NOT NULL CHECK({{ROW}} >= 1 AND {{ROW}} <= 5),
+			{{COL}} INTEGER NOT NULL CHECK({{COL}} >= 1 AND {{COL}} <= 8),
 			status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken', 'inactive')),
 			processor TEXT,
 			ram TEXT,
@@ -213,6 +215,8 @@ func runMigrations(db *DB, isPostgres bool) error {
 		t = strings.ReplaceAll(t, "{{TS}}", d.tsType)
 		t = strings.ReplaceAll(t, "{{TRUE}}", d.boolTrue)
 		t = strings.ReplaceAll(t, "{{FALSE}}", d.boolFalse)
+		t = strings.ReplaceAll(t, "{{ROW}}", d.qRow)
+		t = strings.ReplaceAll(t, "{{COL}}", d.qCol)
 		if _, err := db.Exec(t); err != nil {
 			return fmt.Errorf("migration failed: %w\nSQL: %s", err, t)
 		}
