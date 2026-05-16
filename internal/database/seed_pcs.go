@@ -133,16 +133,19 @@ func seedPCs(db *DB) error {
 			swID, ok := swByName[name]
 			if !ok {
 				if skipMissing { continue }
-				var insertedID int
-				pgErr := tx.QueryRow(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '') RETURNING id`, name).Scan(&insertedID)
+				pgErr := tx.QueryRow(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '') RETURNING id`, name).Scan(&swID)
 				if pgErr != nil {
 					tx.Exec(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '')`, name)
-					tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&insertedID)
+					tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID)
 				}
-				if insertedID > 0 { swByName[name] = insertedID; swID = insertedID }
+				if swID > 0 { swByName[name] = swID }
 			}
 			if swID > 0 {
-				tx.Exec(`INSERT OR IGNORE INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
+				var exists int
+				tx.QueryRow(`SELECT COUNT(*) FROM pc_software WHERE pc_id = ? AND software_id = ?`, pcID, swID).Scan(&exists)
+				if exists == 0 {
+					tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
+				}
 			}
 		}
 	}
