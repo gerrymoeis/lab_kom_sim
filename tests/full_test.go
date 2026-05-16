@@ -31,6 +31,7 @@ func TestFullIntegration(t *testing.T) {
 	}
 	db, err := database.InitDB(dbPath, "")
 	if err != nil { t.Fatalf("InitDB: %v", err) }
+	defer db.Close()
 
 	if err := database.RunMigrations(db, false); err != nil { t.Fatalf("Migrate: %v", err) }
 	if err := database.SeedDefaultUser(db); err != nil { t.Errorf("Seed user: %v", err) }
