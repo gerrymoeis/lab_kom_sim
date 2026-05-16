@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -245,7 +246,66 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/admin/activity-logs: %d", resp.StatusCode)
 	resp.Body.Close()
 
-	// ── 9. Summary ──────────────────────────────────────────────
+	// ── 9. Export Downloads ───────────────────────────────────────
+	t.Log("\n=== 9. EXPORT DOWNLOADS ===")
+	checkExport := func(path, prefix string) {
+		resp, _ := get(path)
+		assert(resp.StatusCode == 200, "%s: %d", path, resp.StatusCode)
+		ct := resp.Header.Get("Content-Type")
+		assert(ct == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "%s CT: %s", path, ct)
+		cd := resp.Header.Get("Content-Disposition")
+		assert(strings.HasPrefix(cd, "attachment; filename="+prefix), "%s CD: %s", path, cd)
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		assert(len(body) > 0, "%s empty", path)
+	}
+	checkExport("/pc/export", "pc_export")
+	checkExport("/devices/export", "devices_export")
+	checkExport("/software/export", "software_catalog_export")
+	checkExport("/logbook/export", "logbook_export")
+	checkExport("/logbook/export-preview", "logbook_preview")
+	checkExport("/admin/activity-logs/export", "activity_log_export")
+
+	// ── 10. Device Loan CRUD ─────────────────────────────────────
+	t.Log("\n=== 10. DEVICE LOAN ===")
+	var devID, qtyBefore int
+	db.QueryRow("SELECT id, quantity_available FROM devices WHERE quantity_total>0 ORDER BY id LIMIT 1").Scan(&devID, &qtyBefore)
+	assert(devID > 0, "device exists for loan")
+	resp, _ = post("/device-loans/create", fmt.Sprintf("device_id=%d&borrower_name=Mahasiswa+Test&borrower_type=mahasiswa&loan_date=2026-05-16&quantity=1&purpose=Praktikum", devID))
+	assert(resp.StatusCode == 302, "create loan: %d", resp.StatusCode)
+	resp.Body.Close()
+	var loanCount int
+	db.QueryRow("SELECT COUNT(*) FROM device_loans").Scan(&loanCount)
+	assert(loanCount > 0, "loans: %d", loanCount)
+	var qtyAfter int
+	db.QueryRow("SELECT quantity_available FROM devices WHERE id=?", devID).Scan(&qtyAfter)
+	assert(qtyAfter == qtyBefore-1, "device qty: %d→%d", qtyBefore, qtyAfter)
+	resp, _ = get("/devices?tab=loans")
+	assert(resp.StatusCode == 200, "/devices loans: %d", resp.StatusCode)
+	resp.Body.Close()
+
+	// ── 11. Device Usage CRUD ────────────────────────────────────
+	t.Log("\n=== 11. DEVICE USAGE ===")
+	resp, _ = post("/device-usages/create", fmt.Sprintf("device_id=%d&user_name=Dosen+Test&user_type=dosen&usage_date=2026-05-16&quantity=1&is_available=yes&purpose=Demo", devID))
+	assert(resp.StatusCode == 302, "create usage: %d", resp.StatusCode)
+	resp.Body.Close()
+	var usageCount int
+	db.QueryRow("SELECT COUNT(*) FROM device_usages").Scan(&usageCount)
+	assert(usageCount > 0, "usages: %d", usageCount)
+	resp, _ = get("/devices?tab=usages")
+	assert(resp.StatusCode == 200, "/devices usages: %d", resp.StatusCode)
+	resp.Body.Close()
+
+	// ── 12. Logbook Save ─────────────────────────────────────────
+	t.Log("\n=== 12. LOGBOOK SAVE ===")
+	resp, _ = post("/logbook/save", "source_file=test&date[]=2026-05-17&student_name[]=Mahasiswa+Save&nim[]=24091111111&time_in[]=10:00&time_out[]=11:40&purpose[]=Praktikum")
+	assert(resp.StatusCode == 200, "logbook save: %d", resp.StatusCode)
+	var lsRes struct { Success bool; Saved int }
+	json.NewDecoder(resp.Body).Decode(&lsRes)
+	resp.Body.Close()
+	assert(lsRes.Success && lsRes.Saved == 1, "save: success=%v saved=%d", lsRes.Success, lsRes.Saved)
+
+	// ── 13. Summary ──────────────────────────────────────────────
 	t.Log("\n=== SUMMARY ===")
 	rows, _ := db.Query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
 	if rows != nil {
