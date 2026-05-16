@@ -29,6 +29,7 @@ go.work
 *.db
 *.sqlite
 *.sqlite3
+full_testing.db
 
 # Logs
 *.log
