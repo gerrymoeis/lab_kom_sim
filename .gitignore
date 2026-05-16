@@ -16,6 +16,7 @@ inventaris-lab-kom.exe
 
 # Dependency directories
 vendor/
+!web/static/vendor/
 
 # Go workspace file
 go.work

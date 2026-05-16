@@ -12,6 +12,12 @@ git checkout refinement 2>/dev/null || true
 echo "[deploy] Pulling latest code..."
 git pull origin refinement
 
+echo "[deploy] Checking vendor assets..."
+if [ ! -f "web/static/vendor/bootstrap/css/bootstrap.min.css" ]; then
+    echo "[deploy] Downloading vendor assets..."
+    bash scripts/download-vendor.sh
+fi
+
 echo "[deploy] Building binary..."
 CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
 
