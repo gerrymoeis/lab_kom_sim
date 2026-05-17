@@ -18,8 +18,8 @@ if [ ! -f "web/static/vendor/bootstrap/css/bootstrap.min.css" ]; then
     bash scripts/download-vendor.sh
 fi
 
-echo "[deploy] Building binary (SQLite + CGO)..."
-CGO_ENABLED=1 go build -ldflags="-s -w" -tags nodynamic -o app-simlab ./cmd/server/main.go
+echo "[deploy] Building binary (pure Go SQLite)..."
+CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 
 echo "[deploy] Stopping existing server..."
 pkill -f app-simlab 2>/dev/null || true

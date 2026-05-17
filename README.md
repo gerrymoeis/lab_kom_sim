@@ -1,11 +1,11 @@
 # Sistem Inventaris Laboratorium Komputer — Android (Termux)
 
-Deployment untuk HP Android via Termux. Menggunakan **SQLite** sebagai database lokal. PostgreSQL/Neon code tetap tersedia untuk scale up di masa depan.
+Deployment untuk HP Android via Termux. Menggunakan **SQLite** sebagai database lokal via pure Go driver (no C compiler needed). PostgreSQL/Neon code tetap tersedia untuk scale up di masa depan.
 
 ## Tech Stack
 
 - **Backend**: Go 1.25+ dengan Gin Framework
-- **Database**: SQLite (lokal) — CGO required
+- **Database**: SQLite (lokal) — pure Go (modernc.org/sqlite, no CGO)
 - **Frontend**: Bootstrap 5 + vanilla JS
 - **OCR**: OpenRouter (primary) → Google Gemini (fallback)
 - **Image**: WASM-based HEIC decoder (heic-to via CDN)
@@ -36,13 +36,14 @@ poc_prototype/
 ### Prasyarat
 
 - HP Android dengan Termux & Tailscale terinstall
-- C compiler (`gcc`) untuk SQLite via CGO
+- **Tidak perlu** C compiler (gcc/clang) — SQLite pure Go
+- Go 1.25+ (`pkg install golang`)
 
 ### Setup di Termux
 
 ```bash
 pkg update && pkg upgrade -y
-pkg install golang gcc git openssh -y
+pkg install golang git openssh -y
 
 git clone -b deploy_android https://github.com/gerrymoeis/lab_kom_sim.git
 cd lab_kom_sim
@@ -66,8 +67,8 @@ OPENROUTER_API_KEY=sk-or-your-key
 ### Build & Jalankan
 
 ```bash
-# Build dengan CGO (SQLite)
-CGO_ENABLED=1 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
+# Build (pure Go — cepat, tidak perlu CGO)
+CGO_ENABLED=0 go build -o app-simlab ./cmd/server/main.go
 
 # Atau pakai script
 bash scripts/build_termux.sh
@@ -75,6 +76,8 @@ bash scripts/build_termux.sh
 # Jalankan
 ./app-simlab
 ```
+
+Akses: http://localhost:8080
 
 ### Auto Deploy (Laptop → HP Android via Tailscale + SSH)
 
@@ -89,14 +92,18 @@ git config --global alias.deploy "!git push origin deploy_android && ssh -p 8022
 git deploy
 ```
 
+Satu perintah → push ke GitHub → SSH ke HP → git pull → build → restart server.
+
 ## Perbedaan dengan Branch Lain
 
 | Aspek | deploy_android | deploy_windows | deploy_linux |
 |-------|---------------|----------------|--------------|
 | OS Target | Android (Termux) | Windows | Linux |
-| Database | SQLite (CGO) | SQLite (CGO) | SQLite (CGO) |
-| Build | `CGO_ENABLED=1 -tags nodynamic` | `go build` (standar) | `go build` (standar) |
-| HEIC | WASM via wazero | WASM via wazero | WASM via wazero |
+| Database | SQLite (pure Go) | SQLite (pure Go) | SQLite (pure Go) |
+| C Compiler | **Tidak perlu** (modernc) | Tidak perlu (modernc) | Tidak perlu (modernc) |
+| Build | `CGO_ENABLED=0` | `CGO_ENABLED=0` | `CGO_ENABLED=0` |
+| HEIC | WASM via wazero | WASM via wazero | Native libheif |
+| Service | Termux bootstrap | NSSM / background | systemd / nohup |
 
 ## Fitur
 
@@ -108,7 +115,7 @@ git deploy
 - ✅ Activity log / audit trail (success + failure)
 - ✅ Export Excel (PC, device, logbook, software catalog)
 - ✅ HEIC/HEIF photo upload (WASM client-side conversion)
-- ✅ SQLite database (CGO) — PostgreSQL siap scale up
+- ✅ SQLite database (pure Go) — PostgreSQL siap scale up
 - ✅ Auto-deploy via SSH + Tailscale
 
 ## Default Login
@@ -119,7 +126,7 @@ git deploy
 ## Catatan Penting
 
 - **Database**: `DATABASE_URL` kosong = SQLite lokal, diisi = PostgreSQL/Neon
-- **CGO**: WAJIB `CGO_ENABLED=1` untuk SQLite + `-tags nodynamic` untuk Termux
-- **GCC**: Install `pkg install gcc` di Termux untuk CGO
+- **CGO**: `CGO_ENABLED=0` — tidak perlu C compiler, SQLite via pure Go (modernc.org/sqlite)
+- **GCC**: Tidak perlu diinstall. Build cepat tanpa CGO.
 - **Image**: HEIC dikonversi via WASM browser-side + server-side fallback
 - **OCR**: OpenRouter primary (free vision model), Gemini fallback jika gagal
