@@ -1,13 +1,7 @@
 {{ template "layout/base.html" . }}
 
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Pemakaian</h5>
-                </div>
-                <div class="card-body">
+    {{ template "layout/card_edit.html" . }}
                     <div class="alert alert-info">
                         <strong>Perangkat:</strong> {{ .deviceName }} ({{ .assetCode }})
                     </div>
@@ -72,10 +66,6 @@
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{{ template "layout/card_close.html" . }}
 
     {{ template "layout/footer.html" . }}

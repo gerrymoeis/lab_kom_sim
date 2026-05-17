@@ -1,13 +1,7 @@
 {{ template "layout/base.html" . }}
 
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Software: {{ .software.Name }}</h5>
-                </div>
-                <div class="card-body">
+    {{ template "layout/card_edit.html" . }}
                     <div class="mb-3">
                         <span class="badge {{ if eq .software.Category "required" }}bg-primary{{ else }}bg-secondary{{ end }}">
                             {{ if eq .software.Category "required" }}Required{{ else }}Other{{ end }}
@@ -49,10 +43,7 @@
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
+{{ template "layout/card_close.html" . }}
     </div>
-</div>
 
 {{ template "layout/footer.html" . }}

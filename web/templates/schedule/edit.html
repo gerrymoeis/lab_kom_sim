@@ -1,11 +1,5 @@
 {{ template "layout/base.html" . }}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow-sm">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Jadwal</h5>
-            </div>
-            <div class="card-body">
+{{ template "layout/card_edit.html" . }}
                 <form method="POST" action="/schedules/{{ .s.ID }}/edit">
                     <div class="row">
                         <div class="col-md-8 mb-3">
@@ -49,8 +43,5 @@
                         <a href="/schedules" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
                     </div>
                 </form>
-            </div>
-        </div>
-    </div>
-</div>
+{{ template "layout/card_close.html" . }}
 {{ template "layout/footer.html" . }}

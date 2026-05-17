@@ -1,17 +1,7 @@
 {{ template "layout/base.html" . }}
 
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> Catat Pemakaian Barang</h5>
-                </div>
-                <div class="card-body">
-                    {{ if .error }}
-                    <div class="alert alert-danger">{{ .error }}</div>
-                    {{ end }}
-
+    {{ template "layout/card_create.html" . }}
                     <form method="POST" action="/device-usages/create">
                         <div class="mb-3">
                             <label for="device_id" class="form-label">Perangkat *</label>
@@ -79,11 +69,7 @@
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{{ template "layout/card_close.html" . }}
 
     <script>
         // Set today as default usage date
