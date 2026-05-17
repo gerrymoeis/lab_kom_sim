@@ -114,14 +114,14 @@ func (r *DeviceTypeRepository) GetName(id int) (string, error) {
 	return name, err
 }
 
-func (r *DeviceTypeRepository) Create(name, category, brand, model, itemType, itemMode, prefix, location, notesTmpl string) (sql.Result, error) {
+func (r *DeviceTypeRepository) Create(name, category, brand, model, itemType string, isLoanable, isConsumable bool, prefix, location, notesTmpl string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO device_types (name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		name, category, brand, model, itemType, itemMode == "loanable", itemMode == "consumable", prefix, location, notesTmpl)
+		name, category, brand, model, itemType, isLoanable, isConsumable, prefix, location, notesTmpl)
 }
 
-func (r *DeviceTypeRepository) Update(id int, name, category, brand, model, itemType, itemMode, prefix, location, notesTmpl string) error {
+func (r *DeviceTypeRepository) Update(id int, name, category, brand, model, itemType string, isLoanable, isConsumable bool, prefix, location, notesTmpl string) error {
 	_, err := r.db.Exec(`UPDATE device_types SET name=?, category=?, brand=?, model=?, item_type=?, is_loanable=?, is_consumable=?, asset_code_prefix=?, default_location=?, notes_template=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-		name, category, brand, model, itemType, itemMode == "loanable", itemMode == "consumable", prefix, location, notesTmpl, id)
+		name, category, brand, model, itemType, isLoanable, isConsumable, prefix, location, notesTmpl, id)
 	return err
 }
 

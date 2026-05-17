@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"inventaris-lab-kom/internal/models"
@@ -56,24 +55,13 @@ func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
 	search := c.Query("search")
 	category := c.Query("category")
 
-	dts, err := h.deviceTypeRepo.List(category)
+	dts, err := h.deviceTypeService.List(category, search)
 	if err != nil { h.errHTML(c, "Gagal mengambil data jenis barang"); return }
-
-	if search != "" {
-		var filtered []models.DeviceType
-		for _, dt := range dts {
-			if strings.Contains(strings.ToLower(dt.Name), strings.ToLower(search)) ||
-				strings.Contains(strings.ToLower(dt.Category), strings.ToLower(search)) {
-				filtered = append(filtered, dt)
-			}
-		}
-		dts = filtered
-	}
 
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
 		"title": "Jenis Barang", "currentPage": "devices",
 		"username": username, "role": role,
-		"activeTab": "types", "deviceTypes": dts,
+		"deviceTypes": dts, "search": search, "category": category,
 	})
 }
 

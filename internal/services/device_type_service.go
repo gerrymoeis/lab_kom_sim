@@ -25,7 +25,7 @@ func NewDeviceTypeService(repo *repository.DeviceTypeRepository, log *ActivityLo
 }
 
 func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
-	result, err := s.repo.Create(in.Name, in.Category, in.Brand, in.Model, in.ItemType, in.ItemMode, in.AssetCodePrefix, in.DefaultLocation, in.NotesTemplate)
+	result, err := s.repo.Create(in.Name, in.Category, in.Brand, in.Model, in.ItemType, in.ItemMode == "loanable", in.ItemMode == "consumable", in.AssetCodePrefix, in.DefaultLocation, in.NotesTemplate)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return 0, err
@@ -42,7 +42,7 @@ func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorU
 }
 
 func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	err := s.repo.Update(id, in.Name, in.Category, in.Brand, in.Model, in.ItemType, in.ItemMode, in.AssetCodePrefix, in.DefaultLocation, in.NotesTemplate)
+	err := s.repo.Update(id, in.Name, in.Category, in.Brand, in.Model, in.ItemType, in.ItemMode == "loanable", in.ItemMode == "consumable", in.AssetCodePrefix, in.DefaultLocation, in.NotesTemplate)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return err

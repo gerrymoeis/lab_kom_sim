@@ -121,7 +121,7 @@ func (r *SoftwareRepository) Create(name, category, description string) (sql.Res
 		name, category, description)
 }
 
-func (r *SoftwareRepository) UpdateSoftwarePCs(softwareID int, pcIDs []string) error {
+func (r *SoftwareRepository) UpdateSoftwarePCs(softwareID int, pcIDs []int) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -129,16 +129,8 @@ func (r *SoftwareRepository) UpdateSoftwarePCs(softwareID int, pcIDs []string) e
 	defer tx.Rollback()
 
 	tx.Exec(`DELETE FROM pc_software WHERE software_id = ?`, softwareID)
-	for _, pidStr := range pcIDs {
-		pid := 0
-		for _, c := range pidStr {
-			if c >= '0' && c <= '9' {
-				pid = pid*10 + int(c-'0')
-			}
-		}
-		if pid > 0 {
-			tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pid, softwareID)
-		}
+	for _, pid := range pcIDs {
+		tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pid, softwareID)
 	}
 
 	return tx.Commit()

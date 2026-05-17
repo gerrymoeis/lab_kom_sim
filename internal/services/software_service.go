@@ -46,7 +46,19 @@ func (s *SoftwareService) Create(in SoftwareCreateInput, actorID int, actorUsern
 }
 
 func (s *SoftwareService) Update(id int, pcIDs []string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	if err := s.repo.UpdateSoftwarePCs(id, pcIDs); err != nil {
+	var ids []int
+	for _, pidStr := range pcIDs {
+		pid := 0
+		for _, c := range pidStr {
+			if c >= '0' && c <= '9' {
+				pid = pid*10 + int(c-'0')
+			}
+		}
+		if pid > 0 {
+			ids = append(ids, pid)
+		}
+	}
+	if err := s.repo.UpdateSoftwarePCs(id, ids); err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
 			map[string]interface{}{"software_id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
