@@ -146,7 +146,7 @@ func (h *Handler) PCDelete(c *gin.Context) {
 func (h *Handler) PCStatusAPI(c *gin.Context) {
 	pcs, err := h.pcService.List(repository.PCFilters{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"})
+		h.errJSON(c, http.StatusInternalServerError, "Gagal mengambil data")
 		return
 	}
 	statusCounts := make(map[string]int)
@@ -158,11 +158,11 @@ func (h *Handler) UpdatePCStatusAPI(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	var req struct { Status string `json:"status" form:"status"` }
 	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Status diperlukan"})
+		h.errJSON(c, http.StatusBadRequest, "Status diperlukan")
 		return
 	}
 	if err := h.pcService.UpdateStatus(id, req.Status); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengupdate status"})
+		h.errJSON(c, http.StatusInternalServerError, "Gagal mengupdate status")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})

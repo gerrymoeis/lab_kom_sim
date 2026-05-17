@@ -9,7 +9,7 @@
                 </div>
                 <div class="card-body">
                     {{ if .error }}
-                    <div class="alert alert-danger">{{ .error }}</div>
+                    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ .error }}</div>
                     {{ end }}
                     {{ if .success }}
                     <div class="alert alert-success">{{ .success }}</div>

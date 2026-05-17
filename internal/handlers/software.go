@@ -34,7 +34,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 
 func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
 	items, err := h.softwareService.GetOtherCatalog()
-	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"}); return }
+	if err != nil { h.errJSON(c, http.StatusInternalServerError, "Gagal mengambil data"); return }
 	c.JSON(http.StatusOK, items)
 }
 

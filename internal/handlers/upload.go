@@ -31,7 +31,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, UploadResponse{
 			Success: false,
-			Message: "No file uploaded",
+			Message: "File tidak ditemukan",
 		})
 		return
 	}
@@ -107,7 +107,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		os.Remove(tempOriginal)
 		c.JSON(http.StatusInternalServerError, UploadResponse{
 			Success: false,
-			Message: "Gagal memproses gambar: " + err.Error(),
+			Message: "Gagal memproses gambar",
 		})
 		return
 	}
@@ -128,7 +128,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 func (h *Handler) DeleteTempFile(c *gin.Context) {
 	var req CleanupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		h.errJSON(c, http.StatusBadRequest, "Request tidak valid")
 		return
 	}
 
@@ -144,7 +144,7 @@ func (h *Handler) DeleteTempFile(c *gin.Context) {
 func (h *Handler) CleanupTempFiles(c *gin.Context) {
 	var req CleanupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		h.errJSON(c, http.StatusBadRequest, "Request tidak valid")
 		return
 	}
 

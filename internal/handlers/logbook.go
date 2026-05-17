@@ -104,7 +104,7 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 func (h *Handler) LogbookSave(c *gin.Context) {
 	_, _, role, ok := h.user(c)
 	if !ok { return }
-	if role != "admin" { c.JSON(http.StatusForbidden, gin.H{"error": "Hanya admin"}); return }
+	if role != "admin" { h.errJSON(c, http.StatusForbidden, "Hanya admin"); return }
 
 	var req LogbookSaveRequest
 	c.ShouldBind(&req)
@@ -131,7 +131,7 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 
 	saved, dups, err := h.logbookService.BulkSave(bulk, req.SourceFile, uid, u, r, ip, ua)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan data: " + err.Error()})
+		h.errJSON(c, http.StatusInternalServerError, "Gagal menyimpan data")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -291,7 +291,7 @@ func (h *Handler) LogbookDelete(c *gin.Context) {
 
 	if err := h.logbookService.DeleteEntry(id, uid, u, r, ip, ua); err != nil {
 		if c.GetHeader("Accept") == "application/json" {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus data"})
+			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus data")
 		} else {
 			h.redirectWithError(c, "/logbook", "Gagal menghapus data")
 		}

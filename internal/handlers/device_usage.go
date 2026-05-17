@@ -101,13 +101,13 @@ func (h *Handler) DeviceUsageUpdateAvailability(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	var req UpdateAvailabilityRequest
 	if err := c.ShouldBind(&req); err != nil || (req.IsAvailable != "yes" && req.IsAvailable != "no") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Status tidak valid"})
+		h.errJSON(c, http.StatusBadRequest, "Status tidak valid")
 		return
 	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 	if err := h.deviceUsageService.UpdateAvailability(id, req.IsAvailable, uid, u, r, ip, ua); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengupdate status"})
+		h.errJSON(c, http.StatusInternalServerError, "Gagal mengupdate status")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
