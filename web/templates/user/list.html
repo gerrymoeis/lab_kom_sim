@@ -13,9 +13,7 @@
         </div>
     </div>
 
-    {{ if .error }}
-    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ .error }}</div>
-    {{ end }}
+    {{ template "layout/alert.html" . }}
 
     <div class="card shadow-sm">
         <div class="card-body">

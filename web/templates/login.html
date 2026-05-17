@@ -20,12 +20,7 @@
                         <p class="text-muted">Laboratorium Komputer</p>
                     </div>
 
-                    {{ if .error }}
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="bi bi-exclamation-triangle"></i> {{ .error }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                    {{ end }}
+                    {{ template "layout/alert.html" . }}
 
                     <form method="POST" action="/login" data-validate="true">
                         <div class="mb-3">
