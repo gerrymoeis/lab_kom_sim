@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -17,7 +17,7 @@ func NewDeviceTypeRepository(db *database.DB) *DeviceTypeRepository {
 
 func (r *DeviceTypeRepository) List(category string) ([]models.DeviceType, error) {
 	query := `SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template, created_at FROM device_types WHERE 1=1`
-	var args []interface{}
+	var args []any
 	if category != "" {
 		query += ` AND category = ?`
 		args = append(args, category)

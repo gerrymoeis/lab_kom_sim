@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"net/http"
@@ -208,30 +208,30 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 	yn := map[bool]string{true: "Ya", false: "Tidak"}
 
 	devices, _ := h.deviceRepo.ExportAll()
-	dData := make([][]interface{}, 0, len(devices))
+	dData := make([][]any, 0, len(devices))
 	for _, d := range devices {
-		dData = append(dData, []interface{}{d.AssetCode, d.Name, d.Category, d.Brand, d.Model, d.SerialNumber, d.ItemType, d.QuantityTotal, d.QuantityAvailable, d.Condition, d.Location})
+		dData = append(dData, []any{d.AssetCode, d.Name, d.Category, d.Brand, d.Model, d.SerialNumber, d.ItemType, d.QuantityTotal, d.QuantityAvailable, d.Condition, d.Location})
 	}
 
 	dtRows, _ := h.deviceRepo.ExportDeviceTypes()
-	tData := make([][]interface{}, 0, len(dtRows))
+	tData := make([][]any, 0, len(dtRows))
 	for _, dt := range dtRows {
 		pref := dt.AssetCodePrefix; if pref == "" { pref = "-" }
 		loc := dt.DefaultLocation; if loc == "" { loc = "-" }
-		tData = append(tData, []interface{}{dt.Name, dt.Category, dt.Brand, dt.Model, dt.ItemType, yn[dt.IsLoanable], yn[dt.IsConsumable], pref, loc})
+		tData = append(tData, []any{dt.Name, dt.Category, dt.Brand, dt.Model, dt.ItemType, yn[dt.IsLoanable], yn[dt.IsConsumable], pref, loc})
 	}
 
 	loans, _ := h.deviceRepo.ExportLoans()
-	lData := make([][]interface{}, 0, len(loans))
+	lData := make([][]any, 0, len(loans))
 	for _, l := range loans {
 		fd := func(t *time.Time) string { if t != nil { return t.Format("2006-01-02") }; return "-" }
-		lData = append(lData, []interface{}{l.DeviceAssetCode, l.DeviceName, l.BorrowerName, l.BorrowerType, l.LoanDate.Format("2006-01-02"), fd(l.ExpectedReturnDate), fd(l.ActualReturnDate), l.Quantity, l.Status, l.Purpose})
+		lData = append(lData, []any{l.DeviceAssetCode, l.DeviceName, l.BorrowerName, l.BorrowerType, l.LoanDate.Format("2006-01-02"), fd(l.ExpectedReturnDate), fd(l.ActualReturnDate), l.Quantity, l.Status, l.Purpose})
 	}
 
 	usages, _ := h.deviceRepo.ExportUsages()
-	uData := make([][]interface{}, 0, len(usages))
+	uData := make([][]any, 0, len(usages))
 	for _, u := range usages {
-		uData = append(uData, []interface{}{u.DeviceAssetCode, u.DeviceName, u.UserName, u.UserType, u.UsageDate.Format("2006-01-02"), u.Quantity, u.Purpose})
+		uData = append(uData, []any{u.DeviceAssetCode, u.DeviceName, u.UserName, u.UserType, u.UsageDate.Format("2006-01-02"), u.Quantity, u.Purpose})
 	}
 
 	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{

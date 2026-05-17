@@ -104,7 +104,9 @@ func (h *Handler) DeviceUsageUpdateAvailability(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Status tidak valid"})
 		return
 	}
-	if err := h.deviceUsageService.UpdateAvailability(id, isAvailable); err != nil {
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	if err := h.deviceUsageService.UpdateAvailability(id, isAvailable, uid, u, r, ip, ua); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengupdate status"})
 		return
 	}

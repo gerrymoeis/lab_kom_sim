@@ -1,7 +1,6 @@
-package repository
+﻿package repository
 
 import (
-	"database/sql"
 	"time"
 
 	"inventaris-lab-kom/internal/database"
@@ -9,11 +8,15 @@ import (
 )
 
 type DeviceLoanRepository struct {
-	db *database.DB
+	db DBTX
 }
 
 func NewDeviceLoanRepository(db *database.DB) *DeviceLoanRepository {
 	return &DeviceLoanRepository{db: db}
+}
+
+func (r *DeviceLoanRepository) WithTx(tx *database.Tx) *DeviceLoanRepository {
+	return &DeviceLoanRepository{db: tx}
 }
 
 type DeviceLoanFilters struct {
@@ -29,7 +32,7 @@ func (r *DeviceLoanRepository) List(filters DeviceLoanFilters) ([]DeviceLoanRow,
 			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
 			ELSE 'active' END as computed_status
 		FROM device_loans l JOIN devices d ON l.device_id = d.id WHERE 1=1`
-	var args []interface{}
+	var args []any
 
 	if filters.Status != "" {
 		query += ` AND CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
@@ -104,33 +107,10 @@ func (r *DeviceLoanRepository) GetLoanableDevices() ([]models.Device, error) {
 	return devices, nil
 }
 
-func (r *DeviceLoanRepository) GetDeviceAndQuantity(loanID int) (deviceID, quantity int, err error) {
-	err = r.db.QueryRow(`SELECT device_id, quantity FROM device_loans WHERE id = ?`, loanID).Scan(&deviceID, &quantity)
-	return
-}
-
 func (r *DeviceLoanRepository) Create(deviceID int, borrowerName, borrowerType string, loanDate time.Time, expectedReturnDate *time.Time, quantity int, purpose string) (int64, error) {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback()
-
-	res, err := tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, quantity, deviceID, quantity)
-	if err != nil {
-		return 0, err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return 0, sql.ErrNoRows
-	}
-
-	result, err := tx.Exec(`INSERT INTO device_loans (device_id, borrower_name, borrower_type, loan_date, expected_return_date, quantity, status, purpose) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`,
+	result, err := r.db.Exec(`INSERT INTO device_loans (device_id, borrower_name, borrower_type, loan_date, expected_return_date, quantity, status, purpose) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`,
 		deviceID, borrowerName, borrowerType, loanDate, expectedReturnDate, quantity, purpose)
 	if err != nil {
-		return 0, err
-	}
-
-	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
 	return result.LastInsertId()
@@ -142,27 +122,12 @@ func (r *DeviceLoanRepository) Update(id int, borrowerName, borrowerType string,
 	return err
 }
 
+func (r *DeviceLoanRepository) GetDeviceAndQuantity(id int) (deviceID, quantity int, err error) {
+	err = r.db.QueryRow(`SELECT device_id, quantity FROM device_loans WHERE id = ?`, id).Scan(&deviceID, &quantity)
+	return
+}
+
 func (r *DeviceLoanRepository) Delete(loanID int) error {
-	deviceID, quantity, err := r.GetDeviceAndQuantity(loanID)
-	if err != nil {
-		return err
-	}
-
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, deviceID)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(`DELETE FROM device_loans WHERE id = ?`, loanID)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	_, err := r.db.Exec(`DELETE FROM device_loans WHERE id = ?`, loanID)
+	return err
 }

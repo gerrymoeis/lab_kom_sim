@@ -1,4 +1,4 @@
-package database
+﻿package database
 
 import (
 	"database/sql"
@@ -24,13 +24,13 @@ func (db *DB) maybeRewrite(query string) string {
 	return query
 }
 
-func (db *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (db *DB) Query(query string, args ...any) (*sql.Rows, error) {
 	return db.DB.Query(db.maybeRewrite(query), args...)
 }
-func (db *DB) QueryRow(query string, args ...interface{}) *sql.Row {
+func (db *DB) QueryRow(query string, args ...any) *sql.Row {
 	return db.DB.QueryRow(db.maybeRewrite(query), args...)
 }
-func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (db *DB) Exec(query string, args ...any) (sql.Result, error) {
 	return db.DB.Exec(db.maybeRewrite(query), args...)
 }
 func (db *DB) Prepare(query string) (*sql.Stmt, error) {
@@ -53,13 +53,13 @@ func (tx *Tx) maybeRewrite(query string) string {
 	return query
 }
 
-func (tx *Tx) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (tx *Tx) Exec(query string, args ...any) (sql.Result, error) {
 	return tx.Tx.Exec(tx.maybeRewrite(query), args...)
 }
-func (tx *Tx) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (tx *Tx) Query(query string, args ...any) (*sql.Rows, error) {
 	return tx.Tx.Query(tx.maybeRewrite(query), args...)
 }
-func (tx *Tx) QueryRow(query string, args ...interface{}) *sql.Row {
+func (tx *Tx) QueryRow(query string, args ...any) *sql.Row {
 	return tx.Tx.QueryRow(tx.maybeRewrite(query), args...)
 }
 func (tx *Tx) Prepare(query string) (*sql.Stmt, error) {

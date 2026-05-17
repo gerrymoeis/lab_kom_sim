@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"errors"
@@ -35,7 +35,7 @@ func (s *UserService) CreateUser(actorID int, actorUsername, actorRole, username
 	if _, err := s.userRepo.Create(username, string(hash), fullName, role); err != nil {
 		return err
 	}
-	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", 0, map[string]interface{}{"username": username, "full_name": fullName, "role": role}, ipAddress, userAgent)
+	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", 0, map[string]any{"username": username, "full_name": fullName, "role": role}, ipAddress, userAgent)
 	return nil
 }
 
@@ -53,7 +53,7 @@ func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actor
 	if err := s.userRepo.Delete(targetID); err != nil {
 		return err
 	}
-	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", targetID, map[string]interface{}{"deleted_username": u.Username}, ipAddress, userAgent)
+	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", targetID, map[string]any{"deleted_username": u.Username}, ipAddress, userAgent)
 	return nil
 }
 
@@ -69,8 +69,8 @@ func (s *UserService) UpdateProfile(userID int, username, fullName, actorUsernam
 		return "", "", err
 	}
 	s.activityLogService.LogUpdate(userID, actorUsername, actorRole, "user", userID,
-		map[string]interface{}{"id": userID},
-		map[string]interface{}{"username": username, "full_name": fullName}, ipAddress, userAgent)
+		map[string]any{"id": userID},
+		map[string]any{"username": username, "full_name": fullName}, ipAddress, userAgent)
 	return username, fullName, nil
 }
 

@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"fmt"
@@ -154,9 +154,9 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 	})
 
 	svc := services.NewExcelService()
-	data := make([][]interface{}, 0, len(entries))
+	data := make([][]any, 0, len(entries))
 	for _, e := range entries {
-		data = append(data, []interface{}{e.Date.Format("2006-01-02"), e.StudentName, e.NIM, e.TimeIn, e.TimeOut, e.Purpose})
+		data = append(data, []any{e.Date.Format("2006-01-02"), e.StudentName, e.NIM, e.TimeIn, e.TimeOut, e.Purpose})
 	}
 	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
 		{
@@ -187,9 +187,9 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 	})
 
 	svc := services.NewExcelService()
-	data := make([][]interface{}, 0, len(entries))
+	data := make([][]any, 0, len(entries))
 	for _, e := range entries {
-		data = append(data, []interface{}{e.Date.Format("2006-01-02"), e.StudentName, e.NIM, e.TimeIn, e.TimeOut, e.Purpose})
+		data = append(data, []any{e.Date.Format("2006-01-02"), e.StudentName, e.NIM, e.TimeIn, e.TimeOut, e.Purpose})
 	}
 
 	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{

@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -28,7 +28,7 @@ type PCFilters struct {
 func (r *PCRepository) List(filters PCFilters) ([]models.PC, error) {
 	query := `SELECT id, pc_number, "row", "column", status, processor, ram, storage, operating_system,
 		serial_number, brand_model, device_type, accessories, notes, action_notes, last_checked FROM pcs WHERE 1=1`
-	var args []interface{}
+	var args []any
 
 	if filters.Status != "" {
 		query += ` AND status = ?`

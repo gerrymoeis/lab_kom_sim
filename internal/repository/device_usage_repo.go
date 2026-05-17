@@ -1,7 +1,6 @@
-package repository
+﻿package repository
 
 import (
-	"database/sql"
 	"time"
 
 	"inventaris-lab-kom/internal/database"
@@ -9,11 +8,15 @@ import (
 )
 
 type DeviceUsageRepository struct {
-	db *database.DB
+	db DBTX
 }
 
 func NewDeviceUsageRepository(db *database.DB) *DeviceUsageRepository {
 	return &DeviceUsageRepository{db: db}
+}
+
+func (r *DeviceUsageRepository) WithTx(tx *database.Tx) *DeviceUsageRepository {
+	return &DeviceUsageRepository{db: tx}
 }
 
 type DeviceUsageFilters struct {
@@ -25,7 +28,7 @@ type DeviceUsageFilters struct {
 func (r *DeviceUsageRepository) List(filters DeviceUsageFilters) ([]DeviceUsageRow, error) {
 	query := `SELECT u.id, u.device_id, d.name, d.asset_code, u.user_name, u.user_type, u.usage_date,
 		u.quantity, u.is_available, u.purpose FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1`
-	var args []interface{}
+	var args []any
 
 	if filters.DeviceID != "" {
 		query += ` AND u.device_id = ?`
@@ -97,130 +100,32 @@ func (r *DeviceUsageRepository) GetConsumableDevices() ([]models.Device, error) 
 	return devices, nil
 }
 
-func (r *DeviceUsageRepository) GetDeviceAndQuantity(id int) (deviceID, oldQty int, oldAvail string, err error) {
-	err = r.db.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &oldQty, &oldAvail)
-	return
-}
-
 func (r *DeviceUsageRepository) Create(deviceID int, userName, userType string, usageDate time.Time, quantity int, isAvailable, purpose string) (int64, error) {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback()
-
-	if isAvailable == "no" {
-		res, err := tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, quantity, deviceID, quantity)
-		if err != nil {
-			return 0, err
-		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			return 0, sql.ErrNoRows
-		}
-	}
-
-	result, err := tx.Exec(`INSERT INTO device_usages (device_id, user_name, user_type, usage_date, quantity, is_available, purpose) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+	result, err := r.db.Exec(`INSERT INTO device_usages (device_id, user_name, user_type, usage_date, quantity, is_available, purpose) VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		deviceID, userName, userType, usageDate, quantity, isAvailable, purpose)
 	if err != nil {
-		return 0, err
-	}
-
-	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
 	return result.LastInsertId()
 }
 
 func (r *DeviceUsageRepository) Update(id int, userName, userType string, usageDate time.Time, quantity int, isAvailable, purpose, notes string) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	devID, oldQty, oldAvail, err := r.GetDeviceAndQuantityTx(tx, id)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(`UPDATE device_usages SET user_name=?, user_type=?, usage_date=?, quantity=?, is_available=?, purpose=?, notes=? WHERE id=?`,
+	_, err := r.db.Exec(`UPDATE device_usages SET user_name=?, user_type=?, usage_date=?, quantity=?, is_available=?, purpose=?, notes=? WHERE id=?`,
 		userName, userType, usageDate, quantity, isAvailable, purpose, notes, id)
-	if err != nil {
-		return err
-	}
-
-	if oldAvail != isAvailable {
-		if isAvailable == "yes" {
-			_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, devID)
-		} else {
-			_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, devID)
-		}
-	} else if quantity != oldQty {
-		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, oldQty-quantity, devID)
-	}
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return err
 }
 
 func (r *DeviceUsageRepository) UpdateAvailability(id int, isAvailable string) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	devID, quantity, oldAvail, err := r.GetDeviceAndQuantityTx(tx, id)
-	if err != nil {
-		return err
-	}
-	if oldAvail == isAvailable {
-		return nil
-	}
-
-	_, err = tx.Exec(`UPDATE device_usages SET is_available = ? WHERE id = ?`, isAvailable, id)
-	if err != nil {
-		return err
-	}
-
-	if isAvailable == "yes" {
-		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, devID)
-	} else {
-		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, quantity, devID)
-	}
-
-	return tx.Commit()
+	_, err := r.db.Exec(`UPDATE device_usages SET is_available = ? WHERE id = ?`, isAvailable, id)
+	return err
 }
 
-func (r *DeviceUsageRepository) GetDeviceAndQuantityTx(tx *database.Tx, id int) (deviceID, oldQty int, oldAvail string, err error) {
-	err = tx.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &oldQty, &oldAvail)
+func (r *DeviceUsageRepository) GetDeviceAndQuantity(id int) (deviceID, oldQty int, oldAvail string, err error) {
+	err = r.db.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&deviceID, &oldQty, &oldAvail)
 	return
 }
 
 func (r *DeviceUsageRepository) Delete(id int) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	devID, qty, avail, err := r.GetDeviceAndQuantityTx(tx, id)
-	if err != nil {
-		return err
-	}
-
-	if _, err := tx.Exec(`DELETE FROM device_usages WHERE id = ?`, id); err != nil {
-		return err
-	}
-
-	if avail == "no" {
-		_, err = tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, qty, devID)
-		if err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit()
+	_, err := r.db.Exec(`DELETE FROM device_usages WHERE id = ?`, id)
+	return err
 }

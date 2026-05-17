@@ -1,4 +1,4 @@
-package middleware
+﻿package middleware
 
 import (
 	"database/sql"
@@ -10,7 +10,7 @@ import (
 
 // AuthRequired middleware checks if user is authenticated and session is valid
 // db is used to validate session_token for single-session enforcement
-func AuthRequired(db interface{}) gin.HandlerFunc {
+func AuthRequired(db any) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
@@ -23,7 +23,7 @@ func AuthRequired(db interface{}) gin.HandlerFunc {
 		}
 
 		queryDB, ok := db.(interface {
-			QueryRow(query string, args ...interface{}) *sql.Row
+			QueryRow(query string, args ...any) *sql.Row
 		})
 		if ok {
 			var dbToken string

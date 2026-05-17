@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"fmt"
@@ -120,13 +120,13 @@ func (h *Handler) SoftwareExport(c *gin.Context) {
 		return
 	}
 
-	data := [][]interface{}{}
+	data := [][]any{}
 	for i, s := range stats {
 		desc := s.Description
 		if desc == "" { desc = "-" }
 		cat := "Other"
 		if s.Category == "required" { cat = "Required" }
-		data = append(data, []interface{}{i + 1, s.Name, cat, desc, fmt.Sprintf("%d / %d PC", s.InstalledCount, s.TotalPCs)})
+		data = append(data, []any{i + 1, s.Name, cat, desc, fmt.Sprintf("%d / %d PC", s.InstalledCount, s.TotalPCs)})
 	}
 
 	svc := services.NewExcelService()

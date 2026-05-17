@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -19,7 +19,7 @@ var dayOrder = `CASE day WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' TH
 
 func (r *ScheduleRepository) List(search string) ([]models.CourseSchedule, error) {
 	query := `SELECT id, course_name, lecturer, day, class, time_start, time_end, notes FROM course_schedules WHERE 1=1`
-	var args []interface{}
+	var args []any
 	if search != "" {
 		query += ` AND (course_name LIKE ? OR lecturer LIKE ? OR class LIKE ?)`
 		s := "%" + search + "%"

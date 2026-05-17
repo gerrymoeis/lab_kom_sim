@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"bytes"
@@ -83,7 +83,7 @@ type GeminiResponse struct {
 }
 
 // ExtractLogbookFromImage extracts logbook data from image using AI vision API
-// Strategy: OpenRouter (primary) → Gemini (fallback)
+// Strategy: OpenRouter (primary) â†’ Gemini (fallback)
 func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, error) {
 	totalStart := time.Now()
 	log.Printf("[OCR] Starting OCR for %s", imagePath)
@@ -246,11 +246,11 @@ type OpenRouterResponse struct {
 func (s *OCRService) callOpenRouter(base64Image, mimeType string) (string, error) {
 	prompt := buildOCRPrompt()
 	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image)
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"model": "openrouter/free",
-		"messages": []map[string]interface{}{{
+		"messages": []map[string]any{{
 			"role": "user",
-			"content": []map[string]interface{}{
+			"content": []map[string]any{
 				{"type": "text", "text": prompt},
 				{"type": "image_url", "image_url": map[string]string{"url": dataURL}},
 			},
@@ -311,8 +311,8 @@ CRITICAL RULES - READ CAREFULLY:
    - If you see spelling errors or typos, CORRECT them intelligently based on context
 
 3. NAME ABBREVIATIONS:
-   - For middle abbreviations (initials), add dots between letters: "Herman SW" → "Herman S.W"
-   - NEVER add trailing dot at the end: "Herman S.W." → "Herman S.W"
+   - For middle abbreviations (initials), add dots between letters: "Herman SW" â†’ "Herman S.W"
+   - NEVER add trailing dot at the end: "Herman S.W." â†’ "Herman S.W"
    - Apply this consistently to all names
 
 4. DATE HANDLING:
@@ -322,7 +322,7 @@ CRITICAL RULES - READ CAREFULLY:
 5. NIM (STUDENT ID) VALIDATION:
    - NIM format: 11 digits (example: 24091397XXX)
    - If same student name appears multiple times, NIM MUST be EXACTLY the same
-   - Common OCR errors: 4↔9, 3↔8, 1↔7, 0↔6
+   - Common OCR errors: 4â†”9, 3â†”8, 1â†”7, 0â†”6
 
 6. TIME FIELDS:
    - If you see a combined time range like "13.00 - 14.40":
@@ -333,7 +333,7 @@ CRITICAL RULES - READ CAREFULLY:
 7. TEXT QUALITY:
    - Fix obvious spelling mistakes
    - Standardize capitalization (Title Case)
-   - Be intelligent about abbreviations (e.g., "Pemrog Web" → "Pemrograman Web")
+   - Be intelligent about abbreviations (e.g., "Pemrog Web" â†’ "Pemrograman Web")
 
 8. RETURN ONLY valid JSON, no additional text or explanations
 
@@ -390,7 +390,7 @@ func normalizeTimeFormat(timeStr string) string {
 	}
 
 	// Try to parse and reformat
-	// Handle formats like "9:00" → "09:00"
+	// Handle formats like "9:00" â†’ "09:00"
 	parts := strings.Split(timeStr, ":")
 	if len(parts) == 2 {
 		hour := strings.TrimSpace(parts[0])
@@ -463,8 +463,8 @@ func toTitleCase(text string) string {
 
 // normalizeAbbreviations normalizes abbreviations in names
 // Rules:
-// - Middle abbreviations get dots: "Herman SW" → "Herman S.W"
-// - No trailing dot at end: "Herman S.W." → "Herman S.W"
+// - Middle abbreviations get dots: "Herman SW" â†’ "Herman S.W"
+// - No trailing dot at end: "Herman S.W." â†’ "Herman S.W"
 func normalizeAbbreviations(text string) string {
 	if text == "" {
 		return ""
@@ -475,7 +475,7 @@ func normalizeAbbreviations(text string) string {
 	re := regexp.MustCompile(`\b([A-Z])([A-Z])\b`)
 
 	// Add dots between consecutive uppercase letters
-	// "SW" → "S.W", "SH" → "S.H"
+	// "SW" â†’ "S.W", "SH" â†’ "S.H"
 	text = re.ReplaceAllString(text, "$1.$2")
 
 	// Remove trailing dot at the end of text

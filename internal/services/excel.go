@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ func NewExcelService() *ExcelService {
 type ExcelExportConfig struct {
 	SheetName          string
 	Headers            []string
-	Data               [][]interface{}
+	Data               [][]any
 	ColumnWidths       map[string]float64
 	ConditionalFormats []ConditionalFormat
 }
@@ -102,7 +102,7 @@ func (s *ExcelService) applyHeaderStyle(f *excelize.File, sheetName, lastCol str
 }
 
 // fillData fills the data rows
-func (s *ExcelService) fillData(f *excelize.File, sheetName string, data [][]interface{}) error {
+func (s *ExcelService) fillData(f *excelize.File, sheetName string, data [][]any) error {
 	for rowIdx, rowData := range data {
 		row := rowIdx + 2 // Start from row 2 (after header)
 		for colIdx, value := range rowData {

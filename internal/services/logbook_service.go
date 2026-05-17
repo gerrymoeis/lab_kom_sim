@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"strings"
@@ -52,12 +52,12 @@ func (s *LogbookService) CreateEntry(in CreateLogbookInput, actorID int, actorUs
 	result, err := s.logbookRepo.Create(date, in.StudentName, in.NIM, in.TimeIn, in.TimeOut, in.Purpose)
 	if err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
-			map[string]interface{}{"student_name": in.StudentName}, ipAddress, userAgent, err.Error())
+			map[string]any{"student_name": in.StudentName}, ipAddress, userAgent, err.Error())
 		return 0, err
 	}
 	id, _ := result.LastInsertId()
 	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", int(id),
-		map[string]interface{}{"student_name": in.StudentName, "nim": in.NIM}, ipAddress, userAgent)
+		map[string]any{"student_name": in.StudentName, "nim": in.NIM}, ipAddress, userAgent)
 	return int(id), nil
 }
 
@@ -73,12 +73,12 @@ func (s *LogbookService) UpdateEntry(id int, in UpdateLogbookInput, actorID int,
 	err := s.logbookRepo.Update(id, date, in.StudentName, in.NIM, in.TimeIn, in.TimeOut, in.Purpose)
 	if err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "logbook", id,
-			map[string]interface{}{"id": id, "old_name": old}, nil, ipAddress, userAgent, err.Error())
+			map[string]any{"id": id, "old_name": old}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "logbook", id,
-		map[string]interface{}{"old_name": old},
-		map[string]interface{}{"student_name": in.StudentName, "nim": in.NIM}, ipAddress, userAgent)
+		map[string]any{"old_name": old},
+		map[string]any{"student_name": in.StudentName, "nim": in.NIM}, ipAddress, userAgent)
 	return nil
 }
 
@@ -89,11 +89,11 @@ func (s *LogbookService) DeleteEntry(id, actorID int, actorUsername, actorRole, 
 	}
 	if err := s.logbookRepo.Delete(id); err != nil {
 		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "logbook", eid,
-			map[string]interface{}{"student_name": sn}, ipAddress, userAgent, err.Error())
+			map[string]any{"student_name": sn}, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "logbook", eid,
-		map[string]interface{}{"student_name": sn, "nim": nim, "date": d.Format("2006-01-02")}, ipAddress, userAgent)
+		map[string]any{"student_name": sn, "nim": nim, "date": d.Format("2006-01-02")}, ipAddress, userAgent)
 	return nil
 }
 
@@ -125,7 +125,7 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 		return 0, dups, err
 	}
 	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
-		map[string]interface{}{"saved": saved, "duplicates": dups}, ipAddress, userAgent)
+		map[string]any{"saved": saved, "duplicates": dups}, ipAddress, userAgent)
 	return saved, dups, nil
 }
 

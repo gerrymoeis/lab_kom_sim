@@ -1,4 +1,4 @@
-package database
+﻿package database
 
 import (
 	"database/sql"
@@ -26,7 +26,7 @@ func seedDeviceTypesIfEmpty(db *DB, bt, bf string) error {
 		model := sql.NullString{String: s.model, Valid: s.model != ""}
 		q := `INSERT INTO device_types (name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location`
 		v := `VALUES (? ,?, ?, ?, ?, ?, ?, ?, ?`
-		args := []interface{}{s.name, s.category, brand, model, s.itemType, loan, cons, s.prefix, s.location}
+		args := []any{s.name, s.category, brand, model, s.itemType, loan, cons, s.prefix, s.location}
 		if s.notes != "" {
 			q += `, notes_template`
 			v += `, ?`
@@ -72,7 +72,7 @@ func seedDeviceTypesIfEmpty(db *DB, bt, bf string) error {
 		{"MicroSD Card SanDisk 512GB", "consumable", "SanDisk", "Ultra 512GB UHS-I Class 10", "consumable", "SDCARD", "Lemari Kaca", true, true, "Media penyimpanan untuk kamera CCTV. Kecepatan baca hingga 100 MB/s."},
 		{"Hard Disk Drive Seagate SkyHawk 6TB", "consumable", "Seagate", "SkyHawk 6TB", "consumable", "HDD-SATA", "Lemari Kaca", false, true, "HDD internal SATA untuk surveillance recording 24/7 di sistem CCTV/DVR/NVR."},
 		{"Speaker", "audio", "", "", "individual", "SPEAKER", "Lemari Kaca", true, false, ""},
-		{"Loudspeaker System JBL", "audio", "JBL", "PasiÃ³n", "individual", "SPEAKER-JBL", "Ruang Lab", true, false, "Loudspeaker Pasif (membutuhkan amplifier eksternal) dirancang oleh HARMAN."},
+		{"Loudspeaker System JBL", "audio", "JBL", "PasiÃƒÂ³n", "individual", "SPEAKER-JBL", "Ruang Lab", true, false, "Loudspeaker Pasif (membutuhkan amplifier eksternal) dirancang oleh HARMAN."},
 		{"Braket Speaker Dinding BMB", "audio", "BMB", "", "individual", "BRAKET-SPK", "Ruang Lab", true, false, ""},
 		{"Mixing Amplifier HA AUDIO MA-2600", "audio", "HA AUDIO", "MA-2600", "individual", "AMP-MIXER", "Ruang Lab", true, false, "Power Amplifier dan Mixing untuk Loudspeaker. Fitur Digital Korea Echo untuk Karaoke."},
 		{"Mikrofon Nirkabel Champion 1", "audio", "Champion", "Dual Channel UHF/PLL", "individual", "MIC-WIRELESS", "Ruang Lab", true, false, "Mikrofon Nirkabel Profesional dengan teknologi UHF/PLL Dual Channel."},

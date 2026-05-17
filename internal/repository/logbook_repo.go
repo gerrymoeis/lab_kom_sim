@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -28,7 +28,7 @@ type LogbookFilters struct {
 
 func (r *LogbookRepository) List(filters LogbookFilters) ([]models.LogbookEntry, int, error) {
 	where := ` WHERE 1=1`
-	var args []interface{}
+	var args []any
 
 	if filters.StartDate != "" {
 		where += ` AND date >= ?`
@@ -188,7 +188,7 @@ type ExportFilters struct {
 
 func (r *LogbookRepository) Export(filters ExportFilters) ([]models.LogbookEntry, error) {
 	query := `SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at FROM logbook_entries WHERE 1=1`
-	var args []interface{}
+	var args []any
 
 	if filters.StartDate != "" {
 		query += ` AND date >= ?`

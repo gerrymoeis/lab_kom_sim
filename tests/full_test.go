@@ -1,4 +1,4 @@
-package tests
+﻿package tests
 
 import (
 	"bytes"
@@ -19,14 +19,14 @@ import (
 )
 
 func TestFullIntegration(t *testing.T) {
-	// Change to project root (tests/ → project root)
+	// Change to project root (tests/ â†’ project root)
 	wd, _ := os.Getwd()
 	projectRoot := filepath.Dir(wd)
 	os.Chdir(projectRoot)
 	defer os.Chdir(wd)
 	defer os.Remove("full_testing.db")
 	defer func() { os.RemoveAll(filepath.Join("uploads", "temp")); os.RemoveAll(filepath.Join("uploads", "pc")); os.RemoveAll(filepath.Join("uploads", "logbook")) }()
-	// ── Setup ────────────────────────────────────────────────────
+	// â”€â”€ Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	dbPath := "full_testing.db"
 	cfg := &config.Config{
 		DatabasePath:  dbPath,
@@ -78,18 +78,18 @@ func TestFullIntegration(t *testing.T) {
 		return client.Do(req)
 	}
 
-	assert := func(cond bool, msg string, args ...interface{}) {
+	assert := func(cond bool, msg string, args ...any) {
 		if !cond { t.Errorf("FAIL: "+msg, args...) }
 	}
 
-	// ── 1. Login ─────────────────────────────────────────────────
+	// â”€â”€ 1. Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 1. LOGIN ===")
 	assert(login(), "Login should set session cookie")
 	resp, err := get("/dashboard")
 	assert(err == nil && resp.StatusCode == 200, "/dashboard returns 200")
 	resp.Body.Close()
 
-	// ── 2. PC CRUD ──────────────────────────────────────────────
+	// â”€â”€ 2. PC CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 2. PC CRUD ===")
 	resp, _ = get("/pc")
 	assert(resp.StatusCode == 200, "/pc list: %d", resp.StatusCode)
@@ -106,7 +106,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/pc/1 edit: %d", resp.StatusCode)
 	resp.Body.Close()
 
-	// ── 2b. PC Photo Upload ─────────────────────────────────────
+	// â”€â”€ 2b. PC Photo Upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 2b. PC PHOTO UPLOAD ===")
 	photoData, _ := os.ReadFile(filepath.Join("tests", "resources", "logbook.jpeg"))
 
@@ -139,7 +139,7 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT COALESCE(photo_serial,'') FROM pcs WHERE pc_number=1").Scan(&photoSerial)
 	assert(photoSerial != "", "photo_serial saved: %s", photoSerial)
 
-	// ── 3. Device CRUD ───────────────────────────────────────────
+	// â”€â”€ 3. Device CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 3. DEVICE CRUD ===")
 	resp, _ = get("/devices")
 	assert(resp.StatusCode == 200, "/devices: %d", resp.StatusCode)
@@ -159,7 +159,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 302, "create device: %d", resp.StatusCode)
 	resp.Body.Close()
 
-	// ── 4. Software CRUD ─────────────────────────────────────────
+	// â”€â”€ 4. Software CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 4. SOFTWARE CRUD ===")
 	resp, _ = get("/software")
 	assert(resp.StatusCode == 200, "/software: %d", resp.StatusCode)
@@ -182,7 +182,7 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT COUNT(*) FROM software_catalog WHERE id=?", swID).Scan(&swID)
 	assert(swID == 0, "Software deleted")
 
-	// ── 5. Schedule CRUD ─────────────────────────────────────────
+	// â”€â”€ 5. Schedule CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 5. SCHEDULE CRUD ===")
 	resp, _ = get("/schedules")
 	assert(resp.StatusCode == 200, "/schedules: %d", resp.StatusCode)
@@ -195,7 +195,7 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT id FROM course_schedules WHERE course_name='Algo'").Scan(&scID)
 	assert(scID > 0, "Schedule ID=%d", scID)
 
-	// ── 6. Logbook CRUD ─────────────────────────────────────────
+	// â”€â”€ 6. Logbook CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 6. LOGBOOK CRUD ===")
 	resp, _ = get("/logbook")
 	assert(resp.StatusCode == 200, "/logbook: %d", resp.StatusCode)
@@ -208,7 +208,7 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT COUNT(*) FROM logbook_entries").Scan(&lb)
 	assert(lb > 0, "Logbook entries: %d", lb)
 
-	// ── 6b. Logbook Upload ──────────────────────────────────────
+	// â”€â”€ 6b. Logbook Upload â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 6b. LOGBOOK UPLOAD ===")
 	photoBuf.Reset()
 	mw = multipart.NewWriter(&photoBuf)
@@ -225,7 +225,7 @@ func TestFullIntegration(t *testing.T) {
 	logbookFiles, _ := os.ReadDir("uploads/logbook")
 	assert(len(logbookFiles) > 0, "logbook file saved to uploads/logbook/")
 
-	// ── 7. User management ───────────────────────────────────────
+	// â”€â”€ 7. User management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 7. USER ===")
 	resp, _ = get("/admin/users")
 	assert(resp.StatusCode == 200, "/admin/users: %d", resp.StatusCode)
@@ -237,7 +237,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 302, "profile update: %d", resp.StatusCode)
 	resp.Body.Close()
 
-	// ── 8. Activity Logs ────────────────────────────────────────
+	// â”€â”€ 8. Activity Logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 8. ACTIVITY LOGS ===")
 	var logCount int
 	db.QueryRow("SELECT COUNT(*) FROM activity_logs").Scan(&logCount)
@@ -246,7 +246,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/admin/activity-logs: %d", resp.StatusCode)
 	resp.Body.Close()
 
-	// ── 9. Export Downloads ───────────────────────────────────────
+	// â”€â”€ 9. Export Downloads â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 9. EXPORT DOWNLOADS ===")
 	checkExport := func(path, prefix string) {
 		resp, _ := get(path)
@@ -263,10 +263,10 @@ func TestFullIntegration(t *testing.T) {
 	checkExport("/devices/export", "devices_export")
 	checkExport("/software/export", "software_catalog_export")
 	checkExport("/logbook/export", "logbook_export")
-	checkExport("/logbook/export-preview", "logbook_preview")
+	checkExport("/logbook/export-preview", "logbook_export_preview")
 	checkExport("/admin/activity-logs/export", "activity_log_export")
 
-	// ── 10. Device Loan CRUD ─────────────────────────────────────
+	// â”€â”€ 10. Device Loan CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 10. DEVICE LOAN ===")
 	var devID, qtyBefore int
 	db.QueryRow("SELECT id, quantity_available FROM devices WHERE quantity_total>0 ORDER BY id LIMIT 1").Scan(&devID, &qtyBefore)
@@ -279,12 +279,12 @@ func TestFullIntegration(t *testing.T) {
 	assert(loanCount > 0, "loans: %d", loanCount)
 	var qtyAfter int
 	db.QueryRow("SELECT quantity_available FROM devices WHERE id=?", devID).Scan(&qtyAfter)
-	assert(qtyAfter == qtyBefore-1, "device qty: %d→%d", qtyBefore, qtyAfter)
+	assert(qtyAfter == qtyBefore-1, "device qty: %dâ†’%d", qtyBefore, qtyAfter)
 	resp, _ = get("/devices?tab=loans")
 	assert(resp.StatusCode == 200, "/devices loans: %d", resp.StatusCode)
 	resp.Body.Close()
 
-	// ── 11. Device Usage CRUD ────────────────────────────────────
+	// â”€â”€ 11. Device Usage CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 11. DEVICE USAGE ===")
 	resp, _ = post("/device-usages/create", fmt.Sprintf("device_id=%d&user_name=Dosen+Test&user_type=dosen&usage_date=2026-05-16&quantity=1&is_available=yes&purpose=Demo", devID))
 	assert(resp.StatusCode == 302, "create usage: %d", resp.StatusCode)
@@ -296,7 +296,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/devices usages: %d", resp.StatusCode)
 	resp.Body.Close()
 
-	// ── 12. Logbook Save ─────────────────────────────────────────
+	// â”€â”€ 12. Logbook Save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 12. LOGBOOK SAVE ===")
 	resp, _ = post("/logbook/save", "source_file=test&date[]=2026-05-17&student_name[]=Mahasiswa+Save&nim[]=24091111111&time_in[]=10:00&time_out[]=11:40&purpose[]=Praktikum")
 	assert(resp.StatusCode == 200, "logbook save: %d", resp.StatusCode)
@@ -305,7 +305,7 @@ func TestFullIntegration(t *testing.T) {
 	resp.Body.Close()
 	assert(lsRes.Success && lsRes.Saved == 1, "save: success=%v saved=%d", lsRes.Success, lsRes.Saved)
 
-	// ── 13. Summary ──────────────────────────────────────────────
+	// â”€â”€ 13. Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== SUMMARY ===")
 	rows, _ := db.Query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
 	if rows != nil {

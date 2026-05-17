@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -27,7 +27,7 @@ func (r *SoftwareRepository) List(search, category string) ([]SoftwareStat, erro
 		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE
 		CROSS JOIN (SELECT COUNT(*) AS cnt FROM pcs) pc
 		WHERE 1=1`
-	var args []interface{}
+	var args []any
 
 	if search != "" {
 		query += ` AND (sc.name LIKE ? OR sc.description LIKE ?)`

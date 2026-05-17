@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"strings"
@@ -31,12 +31,12 @@ func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorU
 			return 0, err
 		}
 		s.log.LogCreate(actorID, actorUsername, actorRole, "device_type", 0,
-			map[string]interface{}{"name": in.Name}, ipAddress, userAgent, err.Error())
+			map[string]any{"name": in.Name}, ipAddress, userAgent, err.Error())
 		return 0, err
 	}
 	id, _ := result.LastInsertId()
 	s.log.LogCreate(actorID, actorUsername, actorRole, "device_type", int(id),
-		map[string]interface{}{"name": in.Name, "category": in.Category, "item_type": in.ItemType},
+		map[string]any{"name": in.Name, "category": in.Category, "item_type": in.ItemType},
 		ipAddress, userAgent)
 	return int(id), nil
 }
@@ -48,12 +48,12 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 			return err
 		}
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", 0,
-			map[string]interface{}{"id": id}, nil, ipAddress, userAgent, err.Error())
+			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", 0,
-		map[string]interface{}{"id": id},
-		map[string]interface{}{"name": in.Name, "category": in.Category},
+		map[string]any{"id": id},
+		map[string]any{"name": in.Name, "category": in.Category},
 		ipAddress, userAgent)
 	return nil
 }
@@ -65,11 +65,11 @@ func (s *DeviceTypeService) Delete(id int, actorID int, actorUsername, actorRole
 			return err
 		}
 		s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", 0,
-			map[string]interface{}{"id": id}, ipAddress, userAgent, err.Error())
+			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", 0,
-		map[string]interface{}{"id": id}, ipAddress, userAgent)
+		map[string]any{"id": id}, ipAddress, userAgent)
 	return nil
 }
 

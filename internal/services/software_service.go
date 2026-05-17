@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"strings"
@@ -30,17 +30,17 @@ func (s *SoftwareService) Create(in SoftwareCreateInput, actorID int, actorUsern
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
 			s.log.LogCreate(actorID, actorUsername, actorRole, "software", 0,
-				map[string]interface{}{"name": in.Name, "category": in.Category},
+				map[string]any{"name": in.Name, "category": in.Category},
 				ipAddress, userAgent, "Duplicate: "+in.Name)
 			return err
 		}
 		s.log.LogCreate(actorID, actorUsername, actorRole, "software", 0,
-			map[string]interface{}{"name": in.Name, "category": in.Category},
+			map[string]any{"name": in.Name, "category": in.Category},
 			ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogCreate(actorID, actorUsername, actorRole, "software", 0,
-		map[string]interface{}{"name": in.Name, "category": in.Category, "description": in.Description},
+		map[string]any{"name": in.Name, "category": in.Category, "description": in.Description},
 		ipAddress, userAgent)
 	return nil
 }
@@ -60,12 +60,12 @@ func (s *SoftwareService) Update(id int, pcIDs []string, actorID int, actorUsern
 	}
 	if err := s.repo.UpdateSoftwarePCs(id, ids); err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
-			map[string]interface{}{"software_id": id}, nil, ipAddress, userAgent, err.Error())
+			map[string]any{"software_id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
-		map[string]interface{}{"software_id": id},
-		map[string]interface{}{"pc_ids": pcIDs}, ipAddress, userAgent)
+		map[string]any{"software_id": id},
+		map[string]any{"pc_ids": pcIDs}, ipAddress, userAgent)
 	return nil
 }
 
@@ -74,10 +74,10 @@ func (s *SoftwareService) Delete(id int, actorID int, actorUsername, actorRole, 
 
 	if err := s.repo.Delete(id); err != nil {
 		s.log.LogDelete(actorID, actorUsername, actorRole, "software", 0,
-			map[string]interface{}{"name": name}, ipAddress, userAgent, err.Error())
+			map[string]any{"name": name}, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "software", 0,
-		map[string]interface{}{"name": name}, ipAddress, userAgent)
+		map[string]any{"name": name}, ipAddress, userAgent)
 	return nil
 }

@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"net/http"
@@ -29,7 +29,7 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 
 	keyword := c.Query("search")
 
-	var logs []interface{}
+	var logs []any
 	var totalCount int
 
 	if keyword != "" {
@@ -88,7 +88,7 @@ func (h *Handler) ActivityLogExport(c *gin.Context) {
 	entityMap := map[string]string{"pc": "PC", "device": "Device", "software": "Software", "logbook": "Logbook", "user": "User", "auth": "Auth", "device_loan": "Device Loan", "device_usage": "Device Usage", "schedule": "Schedule"}
 	statusMap := map[string]string{"success": "Success", "failed": "Failed", "error": "Error"}
 
-	data := [][]interface{}{}
+	data := [][]any{}
 	for i, l := range logs {
 		action := actionMap[l.Action]; if action == "" { action = l.Action }
 		entity := entityMap[l.EntityType]; if entity == "" { entity = l.EntityType }
@@ -97,7 +97,7 @@ func (h *Handler) ActivityLogExport(c *gin.Context) {
 		if l.EntityID != nil { eid = strconv.Itoa(*l.EntityID) }
 		ip := l.IPAddress; if ip == "" { ip = "-" }
 
-		data = append(data, []interface{}{
+		data = append(data, []any{
 			i + 1, l.CreatedAt.Format("02/01/2006 15:04:05"),
 			l.Username, l.UserRole, action, entity, eid, l.Description, status, ip,
 		})

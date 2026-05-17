@@ -1,10 +1,10 @@
-package repository
+﻿package repository
 
 import "database/sql"
 
 type DBTX interface {
-	Query(string, ...interface{}) (*sql.Rows, error)
-	QueryRow(string, ...interface{}) *sql.Row
-	Exec(string, ...interface{}) (sql.Result, error)
+	Query(string, ...any) (*sql.Rows, error)
+	QueryRow(string, ...any) *sql.Row
+	Exec(string, ...any) (sql.Result, error)
 	Prepare(string) (*sql.Stmt, error)
 }

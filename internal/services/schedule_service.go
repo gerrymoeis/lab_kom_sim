@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"inventaris-lab-kom/internal/models"
@@ -26,11 +26,11 @@ func (s *ScheduleService) Create(in ScheduleCreateInput, actorID int, actorUsern
 	_, err := s.repo.Create(in.CourseName, in.Lecturer, in.Day, in.Class, in.TimeStart, in.TimeEnd, in.Notes)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "schedule", 0,
-			map[string]interface{}{"course_name": in.CourseName}, ipAddress, userAgent, err.Error())
+			map[string]any{"course_name": in.CourseName}, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogCreate(actorID, actorUsername, actorRole, "schedule", 0,
-		map[string]interface{}{
+		map[string]any{
 			"course_name": in.CourseName, "lecturer": in.Lecturer, "day": in.Day, "class": in.Class,
 			"time": in.TimeStart + "-" + in.TimeEnd,
 		}, ipAddress, userAgent)
@@ -41,12 +41,12 @@ func (s *ScheduleService) Update(id int, in ScheduleUpdateInput, actorID int, ac
 	err := s.repo.Update(id, in.CourseName, in.Lecturer, in.Day, in.Class, in.TimeStart, in.TimeEnd, in.Notes)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "schedule", 0,
-			map[string]interface{}{"id": id}, nil, ipAddress, userAgent, err.Error())
+			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "schedule", 0,
-		map[string]interface{}{"id": id, "course_name": in.CourseName},
-		map[string]interface{}{"course_name": in.CourseName, "lecturer": in.Lecturer, "day": in.Day, "class": in.Class},
+		map[string]any{"id": id, "course_name": in.CourseName},
+		map[string]any{"course_name": in.CourseName, "lecturer": in.Lecturer, "day": in.Day, "class": in.Class},
 		ipAddress, userAgent)
 	return nil
 }
@@ -57,11 +57,11 @@ func (s *ScheduleService) Delete(id int, actorID int, actorUsername, actorRole, 
 	err := s.repo.Delete(id)
 	if err != nil {
 		s.log.LogDelete(actorID, actorUsername, actorRole, "schedule", 0,
-			map[string]interface{}{"course_name": courseName}, ipAddress, userAgent, err.Error())
+			map[string]any{"course_name": courseName}, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "schedule", 0,
-		map[string]interface{}{"course_name": courseName}, ipAddress, userAgent)
+		map[string]any{"course_name": courseName}, ipAddress, userAgent)
 	return nil
 }
 

@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"database/sql"
@@ -61,7 +61,7 @@ func (s *ActivityLogService) Log(al *models.ActivityLog) error {
 type logParams struct {
 	userID, entityID int
 	username, role, action, entityType string
-	oldValues, newValues interface{}
+	oldValues, newValues any
 	fileNewValues map[string]string
 	errMsg string
 	ipAddress, userAgent string
@@ -93,22 +93,22 @@ func (s *ActivityLogService) logAction(p logParams) error {
 	return nil
 }
 
-func (s *ActivityLogService) LogAction(userID int, username, role, action, entityType string, entityID int, oldValues, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
+func (s *ActivityLogService) LogAction(userID int, username, role, action, entityType string, entityID int, oldValues, newValues any, ipAddress, userAgent string, errorMsg ...string) error {
 	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
 	return s.logAction(logParams{userID: userID, username: username, role: role, action: action, entityType: entityType, entityID: entityID, oldValues: oldValues, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-func (s *ActivityLogService) LogCreate(userID int, username, role, entityType string, entityID int, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
+func (s *ActivityLogService) LogCreate(userID int, username, role, entityType string, entityID int, newValues any, ipAddress, userAgent string, errorMsg ...string) error {
 	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
 	return s.logAction(logParams{userID: userID, username: username, role: role, action: "create", entityType: entityType, entityID: entityID, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-func (s *ActivityLogService) LogUpdate(userID int, username, role, entityType string, entityID int, oldValues, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
+func (s *ActivityLogService) LogUpdate(userID int, username, role, entityType string, entityID int, oldValues, newValues any, ipAddress, userAgent string, errorMsg ...string) error {
 	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
 	return s.logAction(logParams{userID: userID, username: username, role: role, action: "update", entityType: entityType, entityID: entityID, oldValues: oldValues, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-func (s *ActivityLogService) LogDelete(userID int, username, role, entityType string, entityID int, oldValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
+func (s *ActivityLogService) LogDelete(userID int, username, role, entityType string, entityID int, oldValues any, ipAddress, userAgent string, errorMsg ...string) error {
 	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
 	return s.logAction(logParams{userID: userID, username: username, role: role, action: "delete", entityType: entityType, entityID: entityID, oldValues: oldValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
@@ -152,9 +152,9 @@ func (s *ActivityLogService) GetLogs(filters ActivityLogFilters) ([]models.Activ
 			description, old_values, new_values, created_at, ip_address,
 			user_agent, status, error_message FROM activity_logs WHERE 1=1`
 	countQ := "SELECT COUNT(*) FROM activity_logs WHERE 1=1"
-	args := []interface{}{}
+	args := []any{}
 
-	addCond := func(cond string, val interface{}) {
+	addCond := func(cond string, val any) {
 		baseQuery += cond; countQ += cond; args = append(args, val)
 	}
 

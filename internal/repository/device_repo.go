@@ -1,4 +1,4 @@
-package repository
+﻿package repository
 
 import (
 	"database/sql"
@@ -17,6 +17,10 @@ func NewDeviceRepository(db *database.DB) *DeviceRepository {
 	return &DeviceRepository{db: db}
 }
 
+func (r *DeviceRepository) WithTx(tx *database.Tx) *DeviceRepository {
+	return &DeviceRepository{db: tx}
+}
+
 type DeviceFilters struct {
 	Search   string
 	Category string
@@ -26,7 +30,7 @@ func (r *DeviceRepository) List(filters DeviceFilters) ([]models.DeviceWithCateg
 	query := `SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
 		d.item_type, d.quantity_total, d.quantity_available, d.condition, d.location, d.created_at
 		FROM devices d JOIN device_types dt ON d.device_type_id = dt.id WHERE 1=1`
-	var args []interface{}
+	var args []any
 	if filters.Search != "" {
 		query += ` AND (d.name LIKE ? OR d.asset_code LIKE ? OR d.serial_number LIKE ?)`
 		s := "%" + filters.Search + "%"
@@ -288,4 +292,21 @@ func (r *DeviceRepository) ExportLoans() ([]DeviceLoanRow, error) {
 
 func (r *DeviceRepository) ExportUsages() ([]DeviceUsageRow, error) {
 	return r.ListUsages()
+}
+
+func (r *DeviceRepository) DeductQuantity(deviceID, quantity int) error {
+	res, err := r.db.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, quantity, deviceID, quantity)
+	if err != nil { return err }
+	if n, _ := res.RowsAffected(); n == 0 { return sql.ErrNoRows }
+	return nil
+}
+
+func (r *DeviceRepository) RestoreQuantity(deviceID, quantity int) error {
+	_, err := r.db.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, quantity, deviceID)
+	return err
+}
+
+func (r *DeviceRepository) SetQuantity(deviceID, delta int) error {
+	_, err := r.db.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, delta, deviceID)
+	return err
 }

@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"fmt"
@@ -175,12 +175,12 @@ func (h *Handler) PCExport(c *gin.Context) {
 
 	pcs, _ := h.pcRepo.ExportAll()
 	svc := services.NewExcelService()
-	data := make([][]interface{}, 0, len(pcs))
+	data := make([][]any, 0, len(pcs))
 	for _, pc := range pcs {
 		pos := fmt.Sprintf("(%d,%d)", pc.Row, pc.Column)
 		pd := "-"; if pc.PurchaseDate != nil { pd = pc.PurchaseDate.Format("2006-01-02") }
 		ld := "-"; if pc.LastChecked != nil { ld = pc.LastChecked.Format("2006-01-02") }
-		data = append(data, []interface{}{pc.PCNumber, pos, pc.Status, pc.DeviceType, pc.SerialNumber, pc.BrandModel, pc.Processor, pc.RAM, pc.Storage, pc.OperatingSystem, pc.Accessories, pd, ld, pc.Notes, pc.ActionNotes})
+		data = append(data, []any{pc.PCNumber, pos, pc.Status, pc.DeviceType, pc.SerialNumber, pc.BrandModel, pc.Processor, pc.RAM, pc.Storage, pc.OperatingSystem, pc.Accessories, pd, ld, pc.Notes, pc.ActionNotes})
 	}
 	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
 		{

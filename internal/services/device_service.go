@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"inventaris-lab-kom/internal/models"
@@ -51,7 +51,7 @@ func (s *DeviceService) CreateDevice(in CreateDeviceInput, actorID int, actorUse
 		return 0, "", err
 	}
 	id, _ := result.LastInsertId()
-	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device", int(id), map[string]interface{}{"name": in.Name, "asset_code": code}, ipAddress, userAgent)
+	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device", int(id), map[string]any{"name": in.Name, "asset_code": code}, ipAddress, userAgent)
 	return int(id), code, nil
 }
 
@@ -60,21 +60,21 @@ func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, 
 		in.ItemMode == "loanable", in.ItemMode == "consumable",
 		in.QuantityTotal, in.QuantityAvailable, in.Condition, in.Location, in.PurchaseDate, in.Notes)
 	if err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device", 0, map[string]interface{}{"id": id}, nil, ipAddress, userAgent, err.Error())
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device", 0, map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device", 0,
-		map[string]interface{}{"id": id},
-		map[string]interface{}{"name": in.Name}, ipAddress, userAgent)
+		map[string]any{"id": id},
+		map[string]any{"name": in.Name}, ipAddress, userAgent)
 	return nil
 }
 
 func (s *DeviceService) DeleteDevice(id, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	if err := s.deviceRepo.Delete(id); err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device", 0, map[string]interface{}{"id": id}, ipAddress, userAgent, err.Error())
+		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device", 0, map[string]any{"id": id}, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device", 0, map[string]interface{}{"id": id}, ipAddress, userAgent)
+	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device", 0, map[string]any{"id": id}, ipAddress, userAgent)
 	return nil
 }
 
