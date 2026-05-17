@@ -24,7 +24,7 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	if page < 1 { page = 1 }
 	if pageSize < 1 { pageSize = 50 }
 
-	entries, total, err := h.logbookRepo.List(repository.LogbookFilters{
+	entries, total, err := h.logbookService.List(repository.LogbookFilters{
 		Search: c.Query("search"), Page: page, PageSize: pageSize,
 	})
 	if err != nil { h.errHTML(c, "Gagal mengambil data logbook"); return }
@@ -148,7 +148,7 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 	search := c.Query("search")
 	date := c.Query("date")
 
-	entries, _, _ := h.logbookRepo.List(repository.LogbookFilters{
+	entries, _, _ := h.logbookService.List(repository.LogbookFilters{
 		Search: search, StartDate: date, EndDate: date, PageSize: 10000,
 	})
 
@@ -181,7 +181,7 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 	filterDate := c.Query("date")
 	search := c.Query("search")
 
-	entries, total, _ := h.logbookRepo.List(repository.LogbookFilters{
+	entries, total, _ := h.logbookService.List(repository.LogbookFilters{
 		Search: search, StartDate: filterDate, EndDate: filterDate, PageSize: 10000,
 	})
 
@@ -253,7 +253,7 @@ func (h *Handler) LogbookEditPage(c *gin.Context) {
 	if !ok { return }
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	entry, err := h.logbookRepo.GetByID(id)
+	entry, err := h.logbookService.GetByID(id)
 	if err != nil { h.errHTML(c, "Data tidak ditemukan"); return }
 
 	c.HTML(http.StatusOK, "logbook/edit.html", gin.H{

@@ -14,20 +14,9 @@ import (
 
 // Handler holds dependencies for all handlers
 type Handler struct {
-	db                 *database.DB
 	cfg                *config.Config
 	activityLogService *services.ActivityLogService
 	imageService       *services.ImageService
-	deviceRepo         *repository.DeviceRepository
-	deviceTypeRepo     *repository.DeviceTypeRepository
-	deviceLoanRepo     *repository.DeviceLoanRepository
-	deviceUsageRepo    *repository.DeviceUsageRepository
-	pcRepo             *repository.PCRepository
-	softwareRepo       *repository.SoftwareRepository
-	logbookRepo        *repository.LogbookRepository
-	scheduleRepo       *repository.ScheduleRepository
-	userRepo           *repository.UserRepository
-	dashboardRepo      *repository.DashboardRepository
 
 	authService        *services.AuthService
 	userService        *services.UserService
@@ -56,20 +45,9 @@ func NewHandler(db *database.DB, cfg *config.Config) *Handler {
 	dashboardRepo := repository.NewDashboardRepository(db)
 
 	return &Handler{
-		db:                 db,
 		cfg:                cfg,
 		activityLogService: activityLogService,
 		imageService:       services.NewImageService(),
-		deviceRepo:         deviceRepo,
-		deviceTypeRepo:     deviceTypeRepo,
-		deviceLoanRepo:     deviceLoanRepo,
-		deviceUsageRepo:    deviceUsageRepo,
-		pcRepo:             pcRepo,
-		softwareRepo:       softwareRepo,
-		logbookRepo:        logbookRepo,
-		scheduleRepo:       scheduleRepo,
-		userRepo:           userRepo,
-		dashboardRepo:      dashboardRepo,
 
 		authService:        services.NewAuthService(userRepo, activityLogService),
 		userService:        services.NewUserService(userRepo, activityLogService),

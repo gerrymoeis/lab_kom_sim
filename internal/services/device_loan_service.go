@@ -39,6 +39,10 @@ func NewDeviceLoanService(db *database.DB, deviceLoanRepo *repository.DeviceLoan
 	return &DeviceLoanService{db: db, deviceLoanRepo: deviceLoanRepo, deviceRepo: deviceRepo, activityLogService: activityLogService}
 }
 
+func (s *DeviceLoanService) GetByID(id int) (*repository.DeviceLoanRow, error) {
+	return s.deviceLoanRepo.GetByID(id)
+}
+
 func (s *DeviceLoanService) CreateLoan(in CreateLoanInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
 	loanDate, _ := time.Parse("2006-01-02", in.LoanDate)
 	var expectedReturnDate *time.Time

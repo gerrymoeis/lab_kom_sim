@@ -73,6 +73,18 @@ func (s *DeviceTypeService) Delete(id int, actorID int, actorUsername, actorRole
 	return nil
 }
 
+func (s *DeviceTypeService) GetByID(id int) (*models.DeviceType, error) {
+	return s.repo.GetByID(id)
+}
+
+func (s *DeviceTypeService) GetAllSimple() ([]models.DeviceType, error) {
+	return s.repo.GetAllSimple()
+}
+
+func (s *DeviceTypeService) GetByIDSimple(id int) (*models.DeviceType, error) {
+	return s.repo.GetByIDSimple(id)
+}
+
 func (s *DeviceTypeService) List(category, search string) ([]models.DeviceType, error) {
 	types, err := s.repo.List(category)
 	if err != nil {

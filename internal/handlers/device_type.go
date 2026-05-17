@@ -35,7 +35,7 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 	if !ok { return }
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	dt, err := h.deviceTypeRepo.GetByID(id)
+	dt, err := h.deviceTypeService.GetByID(id)
 	if err != nil {
 		h.errHTML(c, "Jenis barang tidak ditemukan")
 		return
@@ -96,7 +96,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 	if !ok { return }
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	dt, err := h.deviceTypeRepo.GetByIDSimple(id)
+	dt, err := h.deviceTypeService.GetByIDSimple(id)
 	if err != nil {
 		h.errHTML(c, "Jenis barang tidak ditemukan")
 		return

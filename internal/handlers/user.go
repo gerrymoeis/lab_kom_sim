@@ -15,7 +15,7 @@ func (h *Handler) UserList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	users, err := h.userRepo.List()
+	users, err := h.userService.List()
 	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
 
 	c.HTML(http.StatusOK, "user/list.html", gin.H{
@@ -77,7 +77,7 @@ func (h *Handler) Profile(c *gin.Context) {
 	userID, username, role, ok := h.user(c)
 	if !ok { return }
 
-	user, err := h.userRepo.GetByID(userID)
+	user, err := h.userService.GetByID(userID)
 	if err != nil {
 		h.redirectWithError(c, "/profile", "User tidak ditemukan")
 		return

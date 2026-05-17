@@ -38,6 +38,42 @@ func NewDeviceService(deviceRepo *repository.DeviceRepository, deviceTypeRepo *r
 	return &DeviceService{deviceRepo: deviceRepo, deviceTypeRepo: deviceTypeRepo, activityLogService: activityLogService}
 }
 
+func (s *DeviceService) List(filters repository.DeviceFilters) ([]models.DeviceWithCategory, error) {
+	return s.deviceRepo.List(filters)
+}
+
+func (s *DeviceService) ListLoans() ([]repository.DeviceLoanRow, error) {
+	return s.deviceRepo.ListLoans()
+}
+
+func (s *DeviceService) ListUsages() ([]repository.DeviceUsageRow, error) {
+	return s.deviceRepo.ListUsages()
+}
+
+func (s *DeviceService) GetByIDSimple(id int) (*models.Device, error) {
+	return s.deviceRepo.GetByIDSimple(id)
+}
+
+func (s *DeviceService) GetNextAssetCode(prefix string) string {
+	return s.deviceRepo.GetNextAssetCode(prefix)
+}
+
+func (s *DeviceService) ExportAll() ([]repository.DeviceExportRow, error) {
+	return s.deviceRepo.ExportAll()
+}
+
+func (s *DeviceService) ExportDeviceTypes() ([]repository.DeviceTypeExportRow, error) {
+	return s.deviceRepo.ExportDeviceTypes()
+}
+
+func (s *DeviceService) ExportLoans() ([]repository.DeviceLoanRow, error) {
+	return s.deviceRepo.ExportLoans()
+}
+
+func (s *DeviceService) ExportUsages() ([]repository.DeviceUsageRow, error) {
+	return s.deviceRepo.ExportUsages()
+}
+
 func (s *DeviceService) CreateDevice(in CreateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, string, error) {
 	prefix, err := s.deviceTypeRepo.GetPrefix(in.DeviceTypeID)
 	if err != nil {

@@ -54,7 +54,7 @@ func (h *Handler) DeviceLoanEditPage(c *gin.Context) {
 	if !ok { return }
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	loan, err := h.deviceLoanRepo.GetByID(id)
+	loan, err := h.deviceLoanService.GetByID(id)
 	if err != nil { h.errHTML(c, "Peminjaman tidak ditemukan"); return }
 
 	c.HTML(http.StatusOK, "device_loan/edit.html", gin.H{

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"inventaris-lab-kom/internal/config"
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
 
@@ -33,6 +34,14 @@ type LogbookService struct {
 
 func NewLogbookService(logbookRepo *repository.LogbookRepository, activityLogService *ActivityLogService) *LogbookService {
 	return &LogbookService{logbookRepo: logbookRepo, activityLogService: activityLogService}
+}
+
+func (s *LogbookService) List(filters repository.LogbookFilters) ([]models.LogbookEntry, int, error) {
+	return s.logbookRepo.List(filters)
+}
+
+func (s *LogbookService) GetByID(id int) (*models.LogbookEntry, error) {
+	return s.logbookRepo.GetByID(id)
 }
 
 func (s *LogbookService) CreateEntry(in CreateLogbookInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {

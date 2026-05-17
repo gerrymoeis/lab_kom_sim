@@ -1,6 +1,7 @@
 ﻿package services
 
 import (
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
 
@@ -28,6 +29,30 @@ type PCService struct {
 
 func NewPCService(pcRepo *repository.PCRepository, activityLogService *ActivityLogService) *PCService {
 	return &PCService{pcRepo: pcRepo, activityLogService: activityLogService}
+}
+
+func (s *PCService) List(filters repository.PCFilters) ([]models.PC, error) {
+	return s.pcRepo.List(filters)
+}
+
+func (s *PCService) GetByPCNumber(num int) (*models.PC, error) {
+	return s.pcRepo.GetByPCNumber(num)
+}
+
+func (s *PCService) GetByPCNumberEdit(num int) (*models.PC, error) {
+	return s.pcRepo.GetByPCNumberEdit(num)
+}
+
+func (s *PCService) GetSoftware(pcID int) (requiredSW, otherSW []models.PCSoftware, err error) {
+	return s.pcRepo.GetSoftware(pcID)
+}
+
+func (s *PCService) SyncSoftware(pcID int, requiredIDs []string, otherNames, otherDescs []string) error {
+	return s.pcRepo.SyncSoftware(pcID, requiredIDs, otherNames, otherDescs)
+}
+
+func (s *PCService) ExportAll() ([]models.PC, error) {
+	return s.pcRepo.ExportAll()
 }
 
 func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {

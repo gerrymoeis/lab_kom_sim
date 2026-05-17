@@ -54,7 +54,7 @@ func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 	if !ok { return }
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	usage, err := h.deviceUsageRepo.GetByID(id)
+	usage, err := h.deviceUsageService.GetByID(id)
 	if err != nil { h.errHTML(c, "Pemakaian tidak ditemukan"); return }
 
 	c.HTML(http.StatusOK, "device_usage/edit.html", gin.H{

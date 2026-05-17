@@ -18,7 +18,7 @@ func (h *Handler) PCList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	pcs, err := h.pcRepo.List(repository.PCFilters{})
+	pcs, err := h.pcService.List(repository.PCFilters{})
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
 
 	c.HTML(http.StatusOK, "pc/list.html", gin.H{
@@ -32,10 +32,10 @@ func (h *Handler) PCDetail(c *gin.Context) {
 	if !ok { return }
 
 	num, _ := strconv.Atoi(c.Param("pc_number"))
-	pc, err := h.pcRepo.GetByPCNumber(num)
+	pc, err := h.pcService.GetByPCNumber(num)
 	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
 
-	requiredSW, otherSW, _ := h.pcRepo.GetSoftware(pc.ID)
+	requiredSW, otherSW, _ := h.pcService.GetSoftware(pc.ID)
 
 	lcFormatted := ""
 	if pc.LastChecked != nil { lcFormatted = pc.LastChecked.Format("02/01/2006 15:04") }
@@ -90,10 +90,10 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 	if !ok { return }
 
 	num, _ := strconv.Atoi(c.Param("pc_number"))
-	pc, err := h.pcRepo.GetByPCNumberEdit(num)
+	pc, err := h.pcService.GetByPCNumberEdit(num)
 	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
 
-	requiredSW, otherSW, _ := h.pcRepo.GetSoftware(pc.ID)
+	requiredSW, otherSW, _ := h.pcService.GetSoftware(pc.ID)
 
 	c.HTML(http.StatusOK, "pc/edit.html", gin.H{
 		"title": "Edit PC", "currentPage": "pc",
@@ -127,7 +127,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	h.pcRepo.SyncSoftware(num, req.RequiredSw, req.OtherName, req.OtherDesc)
+	h.pcService.SyncSoftware(num, req.RequiredSw, req.OtherName, req.OtherDesc)
 	c.Redirect(http.StatusFound, fmt.Sprintf("/pc/%d", num))
 }
 
@@ -144,7 +144,7 @@ func (h *Handler) PCDelete(c *gin.Context) {
 }
 
 func (h *Handler) PCStatusAPI(c *gin.Context) {
-	pcs, err := h.pcRepo.List(repository.PCFilters{})
+	pcs, err := h.pcService.List(repository.PCFilters{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"})
 		return
@@ -173,7 +173,7 @@ func (h *Handler) PCExport(c *gin.Context) {
 	if !ok { return }
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data"); return }
 
-	pcs, _ := h.pcRepo.ExportAll()
+	pcs, _ := h.pcService.ExportAll()
 	svc := services.NewExcelService()
 	data := make([][]any, 0, len(pcs))
 	for _, pc := range pcs {

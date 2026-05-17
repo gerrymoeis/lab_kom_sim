@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
@@ -25,6 +26,14 @@ type UserService struct {
 
 func NewUserService(userRepo *repository.UserRepository, activityLogService *ActivityLogService) *UserService {
 	return &UserService{userRepo: userRepo, activityLogService: activityLogService}
+}
+
+func (s *UserService) List() ([]models.User, error) {
+	return s.userRepo.List()
+}
+
+func (s *UserService) GetByID(id int) (*models.User, error) {
+	return s.userRepo.GetByID(id)
 }
 
 func (s *UserService) CreateUser(actorID int, actorUsername, actorRole, username, password, fullName, role, ipAddress, userAgent string) error {

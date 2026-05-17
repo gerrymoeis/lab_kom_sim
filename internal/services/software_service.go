@@ -3,6 +3,7 @@
 import (
 	"strings"
 
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
 
@@ -17,6 +18,26 @@ type SoftwareService struct {
 
 func NewSoftwareService(repo *repository.SoftwareRepository, log *ActivityLogService) *SoftwareService {
 	return &SoftwareService{repo: repo, log: log}
+}
+
+func (s *SoftwareService) List(search, filterCategory string) ([]repository.SoftwareStat, error) {
+	return s.repo.List(search, filterCategory)
+}
+
+func (s *SoftwareService) GetOtherCatalog() ([]repository.SoftwareItem, error) {
+	return s.repo.GetOtherCatalog()
+}
+
+func (s *SoftwareService) GetByID(id int) (*models.SoftwareCatalog, error) {
+	return s.repo.GetByID(id)
+}
+
+func (s *SoftwareService) GetPCInstallStatus(id int) ([]repository.PCInstallStatus, error) {
+	return s.repo.GetPCInstallStatus(id)
+}
+
+func (s *SoftwareService) Export() ([]repository.SoftwareStat, error) {
+	return s.repo.Export()
 }
 
 func (s *SoftwareService) Create(in SoftwareCreateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {

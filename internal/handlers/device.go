@@ -13,7 +13,7 @@ import (
 )
 
 func (h *Handler) fetchDeviceTypes() []models.DeviceType {
-	dts, err := h.deviceTypeRepo.GetAllSimple()
+	dts, err := h.deviceTypeService.GetAllSimple()
 	if err != nil { return nil }
 	return dts
 }
@@ -36,7 +36,7 @@ func (h *Handler) deviceListTab(c *gin.Context, username, role string) {
 		Category: c.Query("category"),
 	}
 
-	devices, err := h.deviceRepo.List(repository.DeviceFilters{
+	devices, err := h.deviceService.List(repository.DeviceFilters{
 		Search:   filters.Search,
 		Category: filters.Category,
 	})
@@ -66,7 +66,7 @@ func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
 }
 
 func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
-	loans, err := h.deviceRepo.ListLoans()
+	loans, err := h.deviceService.ListLoans()
 	if err != nil { h.errHTML(c, "Gagal mengambil data peminjaman"); return }
 
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
@@ -77,7 +77,7 @@ func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
 }
 
 func (h *Handler) deviceUsagesTab(c *gin.Context, username, role string) {
-	usages, err := h.deviceRepo.ListUsages()
+	usages, err := h.deviceService.ListUsages()
 	if err != nil { h.errHTML(c, "Gagal mengambil data pemakaian"); return }
 
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
@@ -147,7 +147,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 	if !ok { return }
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	d, err := h.deviceRepo.GetByIDSimple(id)
+	d, err := h.deviceService.GetByIDSimple(id)
 	if err != nil { h.errHTML(c, "Perangkat tidak ditemukan"); return }
 
 	c.HTML(http.StatusOK, "device/edit.html", gin.H{
@@ -195,7 +195,7 @@ func (h *Handler) DeviceDelete(c *gin.Context) {
 
 func (h *Handler) GetNextAssetCode(c *gin.Context) {
 	prefix := c.Query("prefix")
-	code := h.deviceRepo.GetNextAssetCode(prefix)
+	code := h.deviceService.GetNextAssetCode(prefix)
 	c.JSON(http.StatusOK, gin.H{"next_code": code})
 }
 
@@ -207,13 +207,13 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 	svc := services.NewExcelService()
 	yn := map[bool]string{true: "Ya", false: "Tidak"}
 
-	devices, _ := h.deviceRepo.ExportAll()
+	devices, _ := h.deviceService.ExportAll()
 	dData := make([][]any, 0, len(devices))
 	for _, d := range devices {
 		dData = append(dData, []any{d.AssetCode, d.Name, d.Category, d.Brand, d.Model, d.SerialNumber, d.ItemType, d.QuantityTotal, d.QuantityAvailable, d.Condition, d.Location})
 	}
 
-	dtRows, _ := h.deviceRepo.ExportDeviceTypes()
+	dtRows, _ := h.deviceService.ExportDeviceTypes()
 	tData := make([][]any, 0, len(dtRows))
 	for _, dt := range dtRows {
 		pref := dt.AssetCodePrefix; if pref == "" { pref = "-" }
@@ -221,14 +221,14 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 		tData = append(tData, []any{dt.Name, dt.Category, dt.Brand, dt.Model, dt.ItemType, yn[dt.IsLoanable], yn[dt.IsConsumable], pref, loc})
 	}
 
-	loans, _ := h.deviceRepo.ExportLoans()
+	loans, _ := h.deviceService.ExportLoans()
 	lData := make([][]any, 0, len(loans))
 	for _, l := range loans {
 		fd := func(t *time.Time) string { if t != nil { return t.Format("2006-01-02") }; return "-" }
 		lData = append(lData, []any{l.DeviceAssetCode, l.DeviceName, l.BorrowerName, l.BorrowerType, l.LoanDate.Format("2006-01-02"), fd(l.ExpectedReturnDate), fd(l.ActualReturnDate), l.Quantity, l.Status, l.Purpose})
 	}
 
-	usages, _ := h.deviceRepo.ExportUsages()
+	usages, _ := h.deviceService.ExportUsages()
 	uData := make([][]any, 0, len(usages))
 	for _, u := range usages {
 		uData = append(uData, []any{u.DeviceAssetCode, u.DeviceName, u.UserName, u.UserType, u.UsageDate.Format("2006-01-02"), u.Quantity, u.Purpose})

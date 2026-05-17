@@ -38,6 +38,10 @@ func NewDeviceUsageService(db *database.DB, deviceUsageRepo *repository.DeviceUs
 	return &DeviceUsageService{db: db, deviceUsageRepo: deviceUsageRepo, deviceRepo: deviceRepo, activityLogService: activityLogService}
 }
 
+func (s *DeviceUsageService) GetByID(id int) (*repository.DeviceUsageRow, error) {
+	return s.deviceUsageRepo.GetByID(id)
+}
+
 func (s *DeviceUsageService) CreateUsage(in CreateUsageInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
 	if in.IsAvailable != "no" { in.IsAvailable = "yes" }
 	usageDate, _ := time.Parse("2006-01-02", in.UsageDate)

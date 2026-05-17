@@ -18,7 +18,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	search := c.Query("search")
 	filterCategory := c.Query("category")
 
-	stats, err := h.softwareRepo.List(search, filterCategory)
+	stats, err := h.softwareService.List(search, filterCategory)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data software")
 		return
@@ -33,7 +33,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 }
 
 func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
-	items, err := h.softwareRepo.GetOtherCatalog()
+	items, err := h.softwareService.GetOtherCatalog()
 	if err != nil { c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data"}); return }
 	c.JSON(http.StatusOK, items)
 }
@@ -44,13 +44,13 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat mengedit software"); return }
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	sw, err := h.softwareRepo.GetByID(id)
+	sw, err := h.softwareService.GetByID(id)
 	if err != nil {
 		h.errHTML(c, "Software tidak ditemukan")
 		return
 	}
 
-	pcList, err := h.softwareRepo.GetPCInstallStatus(id)
+	pcList, err := h.softwareService.GetPCInstallStatus(id)
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
 
 	c.HTML(http.StatusOK, "software/edit.html", gin.H{
@@ -117,7 +117,7 @@ func (h *Handler) SoftwareExport(c *gin.Context) {
 	if !ok { return }
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data software"); return }
 
-	stats, err := h.softwareRepo.Export()
+	stats, err := h.softwareService.Export()
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data software")
 		return

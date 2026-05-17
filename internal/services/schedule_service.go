@@ -65,6 +65,10 @@ func (s *ScheduleService) Delete(id int, actorID int, actorUsername, actorRole, 
 	return nil
 }
 
+func (s *ScheduleService) GetByID(id int) (*models.CourseSchedule, error) {
+	return s.repo.GetByID(id)
+}
+
 func (s *ScheduleService) List(search, dayFilter string) ([]models.CourseSchedule, error) {
 	schedules, err := s.repo.List(search)
 	if err != nil {
