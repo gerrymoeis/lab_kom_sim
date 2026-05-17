@@ -252,8 +252,7 @@ func TestFullIntegration(t *testing.T) {
 
 	if cfg.GeminiAPIKey != "" || cfg.OpenRouterAPIKey != "" {
 		assert(resp.StatusCode == 200, "logbook upload (with API key): %d", resp.StatusCode)
-		logbookFiles, _ := os.ReadDir("uploads/logbook")
-		assert(len(logbookFiles) > 0, "logbook file saved to uploads/logbook/")
+		assert(strings.Contains(string(bodyOCR), "Gambar berhasil diproses"), "OCR success message in response")
 	} else {
 		assert(resp.StatusCode == 500, "logbook upload (no API key): %d", resp.StatusCode)
 		assert(strings.Contains(string(bodyOCR), "API key tidak dikonfigurasi"), "proper error message when no API keys")
