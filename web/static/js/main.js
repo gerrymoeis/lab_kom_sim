@@ -11,6 +11,16 @@ document.addEventListener('DOMContentLoaded', function() {
             bsAlert.close();
         }, 5000);
     });
+
+    document.querySelectorAll('.availability-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+            updateAvailability(this);
+        });
+    });
+
+    document.querySelectorAll('[data-default-date]').forEach(el => {
+        el.valueAsDate = new Date();
+    });
 });
 
 function confirmDelete(message) {
@@ -53,6 +63,19 @@ function filterTable(inputId, tableId) {
         
         tr[i].style.display = found ? '' : 'none';
     }
+}
+
+function updateAvailability(selectEl) {
+    const usageId = selectEl.dataset.usageId;
+    const formData = new FormData();
+    formData.append('is_available', selectEl.value);
+
+    fetch('/device-usages/' + usageId + '/availability', {
+        method: 'POST',
+        body: formData
+    }).then(r => r.json()).then(d => {
+        if (!d.success) alert('Error: ' + (d.error || 'Gagal'));
+    }).catch(() => alert('Gagal menyimpan'));
 }
 
 const FormValidator = {

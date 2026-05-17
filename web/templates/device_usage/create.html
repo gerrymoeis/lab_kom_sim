@@ -37,7 +37,7 @@
 
                         <div class="mb-3">
                             <label for="usage_date" class="form-label">Tanggal Pemakaian *</label>
-                            <input type="date" class="form-control" id="usage_date" name="usage_date" required>
+                            <input type="date" class="form-control" id="usage_date" name="usage_date" required data-default-date>
                         </div>
 
                         <div class="row">
@@ -71,7 +71,4 @@
                     </form>
 {{ template "layout/card_close.html" . }}
 
-    <script>
-        // Set today as default usage date
-        document.getElementById('usage_date').valueAsDate = new Date();
-    </script>{{ template "layout/footer.html" . }}
+{{ template "layout/footer.html" . }}

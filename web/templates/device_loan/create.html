@@ -38,7 +38,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="loan_date" class="form-label">Tanggal Pinjam *</label>
-                                <input type="date" class="form-control" id="loan_date" name="loan_date" required>
+                                <input type="date" class="form-control" id="loan_date" name="loan_date" required data-default-date>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="expected_return_date" class="form-label">Target Tanggal Kembali</label>
@@ -68,7 +68,4 @@
                     </form>
 {{ template "layout/card_close.html" . }}
 
-    <script>
-        // Set today as default loan date
-        document.getElementById('loan_date').valueAsDate = new Date();
-    </script>{{ template "layout/footer.html" . }}
+{{ template "layout/footer.html" . }}

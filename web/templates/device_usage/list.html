@@ -86,19 +86,4 @@
     </div>
 </div>
 
-    <script>
-    document.querySelectorAll('.availability-select').forEach(sel => {
-        sel.addEventListener('change', function() {
-            const usageId = this.dataset.usageId;
-            const formData = new FormData();
-            formData.append('is_available', this.value);
-
-            fetch('/device-usages/' + usageId + '/availability', {
-                method: 'POST',
-                body: formData
-            }).then(r => r.json()).then(d => {
-                if (!d.success) alert('Error: ' + (d.error || 'Gagal'));
-            }).catch(() => alert('Gagal menyimpan'));
-        });
-    });
-    </script>{{ template "layout/footer.html" . }}
+{{ template "layout/footer.html" . }}

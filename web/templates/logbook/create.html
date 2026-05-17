@@ -20,7 +20,7 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="date" class="form-label">Tanggal <span class="text-danger">*</span></label>
-                                    <input type="date" class="form-control" id="date" name="date" required>
+                                    <input type="date" class="form-control" id="date" name="date" required data-default-date>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="nim" class="form-label">NIM <span class="text-danger">*</span></label>
@@ -76,7 +76,4 @@
         </div>
     </div>
 
-    <script>
-        // Set default date to today
-        document.getElementById('date').valueAsDate = new Date();
-    </script>{{ template "layout/footer.html" . }}
+{{ template "layout/footer.html" . }}
