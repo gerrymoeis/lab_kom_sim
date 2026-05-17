@@ -1,23 +1,14 @@
-# Sistem Inventaris Laboratorium Komputer
+# Sistem Inventaris Laboratorium Komputer — Android (Termux)
 
-Sistem manajemen inventaris laboratorium komputer dengan visualisasi grid PC, OCR logbook, tracking software & perangkat. Sekarang dengan Auto Deploy workflow, develop di laptop, deploy ke HP Android (Termux) via SSH + Tailscale.
+Deployment untuk HP Android via Termux. Menggunakan **SQLite** sebagai database lokal. PostgreSQL/Neon code tetap tersedia untuk scale up di masa depan.
 
 ## Tech Stack
 
 - **Backend**: Go 1.25+ dengan Gin Framework
-- **Database**: SQLite (lokal) / PostgreSQL / Neon DB (production)
+- **Database**: SQLite (lokal) — CGO required
 - **Frontend**: Bootstrap 5 + vanilla JS
 - **OCR**: OpenRouter (primary) → Google Gemini (fallback)
 - **Image**: WASM-based HEIC decoder (heic-to via CDN)
-
-## Branch Strategy
-
-| Branch | Tujuan |
-|--------|--------|
-| `deploy_test` | **Stabil** — branch deploy yang sudah teruji |
-| `refinement` | **Development** — fitur baru, perbaikan bug |
-| *(future)* `deploy/windows` | Deployment khusus Windows |
-| *(future)* `deploy/linux` | Deployment khusus Linux |
 
 ## Struktur Project
 
@@ -32,63 +23,32 @@ poc_prototype/
 │   ├── services/        # Business logic
 │   └── middleware/      # Auth, session
 ├── web/templates/       # HTML templates (Go templates)
-├── web/static/          # CSS, JS
+├── web/static/          # CSS, JS, vendor
 ├── uploads/             # Upload foto
 └── scripts/
     ├── build_termux.sh  # Build untuk Android/Termux
     ├── deploy.sh        # Auto-deploy via SSH
-    └── README_DEPLOY.md # Panduan auto-deploy
+    └── download-vendor.sh
 ```
 
-## Development Lokal (SQLite)
-
-```bash
-cd poc_prototype
-cp .env.example .env
-
-# Run
-go run cmd/server/main.go
-# → http://localhost:8080
-```
-
-## Auto Deploy (Laptop → HP Android via Tailscale + SSH)
-
-**Prasyarat:**
-- HP Android (Termux) dengan `sshd` berjalan di port 8022
-- HP dan laptop dalam 1 Tailscale network
-- SSH key laptop sudah terdaftar di HP (passwordless)
-
-**Setup sekali:**
-
-```powershell
-# Di laptop
-git config --global alias.deploy "!git push origin refinement && ssh -p 8022 -i C:/Users/Gallan/.ssh/id_sim_lab_mi galaxy-a52s-5g.taila6b5cf.ts.net 'cd ~/lab_kom_sim && ./scripts/deploy.sh'"
-```
-
-**Cara pakai:**
-
-```bash
-git deploy
-```
-
-Satu perintah → push ke GitHub → SSH ke HP → git pull → build → restart server.
-
-## Deploy ke Android (Termux + Neon DB + Tailscale)
+## Deploy ke Android (Termux + SQLite)
 
 ### Prasyarat
+
 - HP Android dengan Termux & Tailscale terinstall
-- Akun Neon DB (gratis di neon.tech)
+- C compiler (`gcc`) untuk SQLite via CGO
 
 ### Setup di Termux
 
 ```bash
 pkg update && pkg upgrade -y
-pkg install golang git openssh -y
+pkg install golang gcc git openssh -y
 
-git clone -b refinement https://github.com/gerrymoeis/lab_kom_sim.git
+git clone -b deploy_android https://github.com/gerrymoeis/lab_kom_sim.git
 cd lab_kom_sim
 
 # Buat .env
+cp .env.example .env
 nano .env
 ```
 
@@ -97,29 +57,58 @@ Isi `.env`:
 ENVIRONMENT=production
 HOST=0.0.0.0
 PORT=8080
-DATABASE_URL=postgres://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+DATABASE_PATH=inventaris_lab.db
 SESSION_SECRET=random-string
 GEMINI_API_KEY=your-key
 OPENROUTER_API_KEY=sk-or-your-key
 ```
 
+### Build & Jalankan
+
 ```bash
-CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
+# Build dengan CGO (SQLite)
+CGO_ENABLED=1 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
+
+# Atau pakai script
+bash scripts/build_termux.sh
+
+# Jalankan
 ./app-simlab
 ```
+
+### Auto Deploy (Laptop → HP Android via Tailscale + SSH)
+
+**Setup sekali:**
+```powershell
+# Di laptop (PowerShell)
+git config --global alias.deploy "!git push origin deploy_android && ssh -p 8022 -i C:/Users/Gallan/.ssh/id_sim_lab_mi galaxy-a52s-5g.taila6b5cf.ts.net 'cd ~/lab_kom_sim && bash scripts/deploy.sh'"
+```
+
+**Cara pakai:**
+```bash
+git deploy
+```
+
+## Perbedaan dengan Branch Lain
+
+| Aspek | deploy_android | deploy_windows | deploy_linux |
+|-------|---------------|----------------|--------------|
+| OS Target | Android (Termux) | Windows | Linux |
+| Database | SQLite (CGO) | SQLite (CGO) | SQLite (CGO) |
+| Build | `CGO_ENABLED=1 -tags nodynamic` | `go build` (standar) | `go build` (standar) |
+| HEIC | WASM via wazero | WASM via wazero | WASM via wazero |
 
 ## Fitur
 
 - ✅ Dashboard grid 40 PC (8×5) dengan status color-coded
 - ✅ CRUD PC dengan upload foto serial & front panel
-- ✅ Manajemen perangkat (device types, loans, usages) — mutual exclusive dropdown
-- ✅ Software catalog (required + others) — many-to-many dengan toggle per PC
-- ✅ Batch edit software assignment (dari catalog, centang per PC)
+- ✅ Manajemen perangkat (device types, loans, usages)
+- ✅ Software catalog (required + others)
 - ✅ OCR logbook absensi via OpenRouter → Gemini (retry + fallback)
 - ✅ Activity log / audit trail (success + failure)
 - ✅ Export Excel (PC, device, logbook, software catalog)
 - ✅ HEIC/HEIF photo upload (WASM client-side conversion)
-- ✅ PostgreSQL via Neon DB (production) / SQLite (development)
+- ✅ SQLite database (CGO) — PostgreSQL siap scale up
 - ✅ Auto-deploy via SSH + Tailscale
 
 ## Default Login
@@ -129,8 +118,8 @@ CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
 
 ## Catatan Penting
 
-- **Database**: `DATABASE_URL` diisi = PostgreSQL (Neon), kosong = SQLite lokal
-- **Placeholder**: `?` di query otomatis dikonversi ke `$N` untuk PostgreSQL (DB wrapper)
-- **Image**: HEIC dikonversi di browser via CDN library, server terima JPEG
+- **Database**: `DATABASE_URL` kosong = SQLite lokal, diisi = PostgreSQL/Neon
+- **CGO**: WAJIB `CGO_ENABLED=1` untuk SQLite + `-tags nodynamic` untuk Termux
+- **GCC**: Install `pkg install gcc` di Termux untuk CGO
+- **Image**: HEIC dikonversi via WASM browser-side + server-side fallback
 - **OCR**: OpenRouter primary (free vision model), Gemini fallback jika gagal
-- **Build**: WAJIB `CGO_ENABLED=0 -tags nodynamic` untuk Termux/Android

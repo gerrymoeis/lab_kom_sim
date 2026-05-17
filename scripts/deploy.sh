@@ -1,16 +1,16 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Deploy script for Termux — called via SSH from laptop
+# Deploy script for Termux (deploy_android) — called via SSH from laptop
 # Usage: ./scripts/deploy.sh
 
 set -e
 
 cd ~/lab_kom_sim
 
-echo "[deploy] Switching to refinement branch..."
-git checkout refinement 2>/dev/null || true
+echo "[deploy] Switching to deploy_android branch..."
+git checkout deploy_android 2>/dev/null || true
 
 echo "[deploy] Pulling latest code..."
-git pull origin refinement
+git pull origin deploy_android
 
 echo "[deploy] Checking vendor assets..."
 if [ ! -f "web/static/vendor/bootstrap/css/bootstrap.min.css" ]; then
@@ -18,8 +18,8 @@ if [ ! -f "web/static/vendor/bootstrap/css/bootstrap.min.css" ]; then
     bash scripts/download-vendor.sh
 fi
 
-echo "[deploy] Building binary..."
-CGO_ENABLED=0 go build -ldflags="-s -w" -tags nodynamic -o app-simlab ./cmd/server/main.go
+echo "[deploy] Building binary (SQLite + CGO)..."
+CGO_ENABLED=1 go build -ldflags="-s -w" -tags nodynamic -o app-simlab ./cmd/server/main.go
 
 echo "[deploy] Stopping existing server..."
 pkill -f app-simlab 2>/dev/null || true
