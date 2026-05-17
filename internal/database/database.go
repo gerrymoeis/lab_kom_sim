@@ -6,7 +6,7 @@ import (
 	"log"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 func InitDB(dbPath, dbURL string) (*DB, error) {
@@ -25,7 +25,7 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 	}
 
 	log.Println("Using SQLite (local)")
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite: %w", err)
 	}
