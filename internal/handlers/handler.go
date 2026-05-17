@@ -29,14 +29,17 @@ type Handler struct {
 	userRepo           *repository.UserRepository
 	dashboardRepo      *repository.DashboardRepository
 
-	authService       *services.AuthService
-	userService       *services.UserService
-	deviceService     *services.DeviceService
-	pcService         *services.PCService
-	deviceLoanService *services.DeviceLoanService
+	authService        *services.AuthService
+	userService        *services.UserService
+	deviceService      *services.DeviceService
+	pcService          *services.PCService
+	deviceLoanService  *services.DeviceLoanService
 	deviceUsageService *services.DeviceUsageService
-	logbookService    *services.LogbookService
-	dashboardService  *services.DashboardService
+	logbookService     *services.LogbookService
+	dashboardService   *services.DashboardService
+	scheduleService    *services.ScheduleService
+	softwareService    *services.SoftwareService
+	deviceTypeService  *services.DeviceTypeService
 }
 
 func NewHandler(db *database.DB, cfg *config.Config) *Handler {
@@ -76,6 +79,9 @@ func NewHandler(db *database.DB, cfg *config.Config) *Handler {
 		deviceUsageService: services.NewDeviceUsageService(deviceUsageRepo, activityLogService),
 		logbookService:     services.NewLogbookService(logbookRepo, activityLogService),
 		dashboardService:   services.NewDashboardService(dashboardRepo),
+		scheduleService:    services.NewScheduleService(scheduleRepo, activityLogService),
+		softwareService:    services.NewSoftwareService(softwareRepo, activityLogService),
+		deviceTypeService:  services.NewDeviceTypeService(deviceTypeRepo, activityLogService),
 	}
 }
 

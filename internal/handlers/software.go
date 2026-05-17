@@ -64,16 +64,12 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	pcIDs := c.PostFormArray("pc_ids[]")
 
-	if err := h.softwareRepo.UpdateSoftwarePCs(id, pcIDs); err != nil {
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	if err := h.softwareService.Update(id, pcIDs, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/software", "Gagal mengupdate software PC")
 		return
 	}
-
-	uid, u, r, _ := h.user(c)
-	ip, ua := getRequestContext(c)
-	h.activityLogService.LogUpdate(uid, u, r, "software", 0,
-		map[string]interface{}{"software_id": id},
-		map[string]interface{}{"pc_ids": pcIDs}, ip, ua)
 
 	c.Redirect(http.StatusFound, "/software")
 }
@@ -81,18 +77,12 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 func (h *Handler) SoftwareDelete(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	name, err := h.softwareRepo.GetName(id)
-	if err != nil {
-		h.redirectWithError(c, "/software", "Software tidak ditemukan")
-		return
-	}
-
-	if err := h.softwareRepo.Delete(id); err != nil {
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	if err := h.softwareService.Delete(id, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/software", "Gagal menghapus software")
 		return
 	}
-
-	h.logDelete(c, "software", 0, map[string]interface{}{"name": name})
 	c.Redirect(http.StatusFound, "/software")
 }
 
@@ -103,22 +93,19 @@ func (h *Handler) SoftwareCreate(c *gin.Context) {
 		return
 	}
 
-	req.Name = strings.TrimSpace(req.Name)
-	req.Description = strings.TrimSpace(req.Description)
-	if req.Category != "required" { req.Category = "other" }
-
-	if _, err := h.softwareRepo.Create(req.Name, req.Category, req.Description); err != nil {
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	err := h.softwareService.Create(services.SoftwareCreateInput{
+		Name: req.Name, Category: req.Category, Description: req.Description,
+	}, uid, u, r, ip, ua)
+	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
-			h.logCreateError(c, "software", map[string]interface{}{"name": req.Name, "category": req.Category}, "Duplicate: "+req.Name)
 			h.redirectWithError(c, "/software", "Software dengan nama tersebut sudah ada")
 			return
 		}
-		h.logCreateError(c, "software", map[string]interface{}{"name": req.Name, "category": req.Category}, err.Error())
 		h.redirectWithError(c, "/software", "Gagal menyimpan software")
 		return
 	}
-
-	h.logCreate(c, "software", 0, map[string]interface{}{"name": req.Name, "category": req.Category, "description": req.Description})
 	c.Redirect(http.StatusFound, "/software")
 }
 

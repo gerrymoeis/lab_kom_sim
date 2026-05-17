@@ -5,12 +5,11 @@ import (
 	"strconv"
 	"time"
 
-	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-// dayNames returns the Indonesian day name for a time.Weekday
 var dayNames = map[time.Weekday]string{
 	time.Monday: "Senin", time.Tuesday: "Selasa", time.Wednesday: "Rabu",
 	time.Thursday: "Kamis", time.Friday: "Jumat", time.Saturday: "Sabtu",
@@ -19,26 +18,14 @@ var dayNames = map[time.Weekday]string{
 
 func (h *Handler) ScheduleList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
-	if !ok {
-		return
-	}
+	if !ok { return }
 
 	dayFilter := c.DefaultQuery("day", "")
 	search := c.Query("search")
 
-	schedules, err := h.scheduleRepo.List(search)
+	schedules, err := h.scheduleService.List(search, dayFilter)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data jadwal"); return
-	}
-
-	if dayFilter != "" {
-		var filtered []models.CourseSchedule
-		for _, s := range schedules {
-			if s.Day == dayFilter {
-				filtered = append(filtered, s)
-			}
-		}
-		schedules = filtered
 	}
 
 	c.HTML(http.StatusOK, "schedule/list.html", gin.H{
@@ -53,9 +40,7 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 
 func (h *Handler) ScheduleCreatePage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
-	if !ok {
-		return
-	}
+	if !ok { return }
 	c.HTML(http.StatusOK, "schedule/create.html", gin.H{
 		"title": "Tambah Jadwal", "currentPage": "schedules",
 		"username": username, "role": role,
@@ -72,27 +57,24 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 		return
 	}
 
-	_, err := h.scheduleRepo.Create(req.CourseName, req.Lecturer, req.Day, req.Class, req.TimeStart, req.TimeEnd, req.Notes)
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	err := h.scheduleService.Create(services.ScheduleCreateInput{
+		CourseName: req.CourseName, Lecturer: req.Lecturer, Day: req.Day,
+		Class: req.Class, TimeStart: req.TimeStart, TimeEnd: req.TimeEnd, Notes: req.Notes,
+	}, uid, u, r, ip, ua)
 	if err != nil {
-		h.logCreateError(c, "schedule", map[string]interface{}{"course_name": req.CourseName}, err.Error())
 		c.HTML(http.StatusInternalServerError, "schedule/create.html", gin.H{
 			"title": "Tambah Jadwal", "error": "Gagal menyimpan data",
 		})
 		return
 	}
-
-	h.logCreate(c, "schedule", 0, map[string]interface{}{
-		"course_name": req.CourseName, "lecturer": req.Lecturer, "day": req.Day, "class": req.Class,
-		"time": req.TimeStart + "-" + req.TimeEnd,
-	})
 	c.Redirect(http.StatusFound, "/schedules")
 }
 
 func (h *Handler) ScheduleEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
-	if !ok {
-		return
-	}
+	if !ok { return }
 
 	id, _ := strconv.Atoi(c.Param("id"))
 	s, err := h.scheduleRepo.GetByID(id)
@@ -116,31 +98,27 @@ func (h *Handler) ScheduleEdit(c *gin.Context) {
 		return
 	}
 
-	err := h.scheduleRepo.Update(id, req.CourseName, req.Lecturer, req.Day, req.Class, req.TimeStart, req.TimeEnd, req.Notes)
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	err := h.scheduleService.Update(id, services.ScheduleUpdateInput{
+		CourseName: req.CourseName, Lecturer: req.Lecturer, Day: req.Day,
+		Class: req.Class, TimeStart: req.TimeStart, TimeEnd: req.TimeEnd, Notes: req.Notes,
+	}, uid, u, r, ip, ua)
 	if err != nil {
-		h.logUpdateError(c, "schedule", 0, map[string]interface{}{"id": id}, err.Error())
 		h.errHTML(c, "Gagal mengupdate jadwal")
 		return
 	}
-
-	h.logUpdate(c, "schedule", 0,
-		map[string]interface{}{"id": id, "course_name": req.CourseName},
-		map[string]interface{}{"course_name": req.CourseName, "lecturer": req.Lecturer, "day": req.Day, "class": req.Class},
-	)
 	c.Redirect(http.StatusFound, "/schedules")
 }
 
 func (h *Handler) ScheduleDelete(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	courseName, _ := h.scheduleRepo.GetCourseName(id)
-
-	err := h.scheduleRepo.Delete(id)
-	if err != nil {
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	if err := h.scheduleService.Delete(id, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/schedules", "Gagal menghapus jadwal")
 		return
 	}
-
-	h.logDelete(c, "schedule", 0, map[string]interface{}{"course_name": courseName})
 	c.Redirect(http.StatusFound, "/schedules")
 }
