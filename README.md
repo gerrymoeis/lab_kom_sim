@@ -1,6 +1,8 @@
-# Sistem Inventaris Laboratorium Komputer — Windows
+# Sistem Inventaris Laboratorium Komputer — Linux
 
-Deployment untuk Windows. Menggunakan **SQLite** sebagai database lokal via pure Go driver (no C compiler needed). PostgreSQL/Neon code tetap tersedia untuk scale up di masa depan.
+Deployment untuk Linux. Menggunakan **SQLite** sebagai database lokal via pure Go driver (no C compiler needed). PostgreSQL/Neon code tetap tersedia untuk scale up di masa depan.
+
+HEIC menggunakan **native libheif** (lebih cepat dari WASM). Jika libheif tidak terinstall, otomatis fallback ke WASM decoder.
 
 ## Tech Stack
 
@@ -8,7 +10,7 @@ Deployment untuk Windows. Menggunakan **SQLite** sebagai database lokal via pure
 - **Database**: SQLite (lokal) — pure Go (modernc.org/sqlite, no CGO)
 - **Frontend**: Bootstrap 5 + vanilla JS
 - **OCR**: OpenRouter (primary) → Google Gemini (fallback)
-- **Image**: WASM-based HEIC decoder (heic-to via CDN)
+- **Image**: Native libheif (Linux) — WASM fallback jika tidak tersedia
 
 ## Struktur Project
 
@@ -26,33 +28,34 @@ poc_prototype/
 ├── web/static/          # CSS, JS, vendor
 ├── uploads/             # Upload foto
 └── scripts/
-    ├── build-windows.ps1    # Build untuk Windows
-    ├── deploy-windows.ps1   # Deploy (build + run background)
-    ├── download-vendor.ps1  # Download vendor assets
-    └── setup_firewall.ps1   # Firewall setup
+    ├── build-linux.sh       # Build static binary
+    ├── deploy-linux.sh      # Deploy (systemd / nohup)
+    ├── setup-firewall-linux.sh  # Firewall setup
+    ├── inventaris-lab.service   # systemd unit
+    └── download-vendor.sh   # Download vendor assets
 ```
 
-## Deploy ke Windows
+## Deploy ke Linux
 
 ### Prasyarat
 
-- Windows 10/11 64-bit
+- Linux 64-bit (x86_64 atau aarch64)
 - [Go 1.25+](https://go.dev/dl/) — pastikan `go` available di PATH
-- **Tidak perlu** C compiler (MinGW/TDM-GCC/MSVC) — SQLite pure Go
-- Git (opsional, untuk clone repo)
+- **Tidak perlu** C compiler — SQLite pure Go (modernc.org/sqlite)
+- Git (opsional, untuk clone)
 
 ### Setup
 
-```powershell
+```bash
 # Clone repositori
-git clone -b deploy_windows https://github.com/gerrymoeis/lab_kom_sim.git
+git clone -b deploy_linux https://github.com/gerrymoeis/lab_kom_sim.git
 cd lab_kom_sim
 
 # Buat .env dari contoh
-copy .env.example .env
+cp .env.example .env
 
 # Edit .env sesuai kebutuhan
-notepad .env
+nano .env
 ```
 
 Isi `.env`:
@@ -68,57 +71,86 @@ OPENROUTER_API_KEY=sk-or-your-key
 
 ### Build & Jalankan
 
-```powershell
-# Build
-CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab.exe ./cmd/server/main.go
+```bash
+# Build static binary
+CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 
 # Atau pakai script
-.\scripts\build-windows.ps1
+bash scripts/build-linux.sh
 
 # Jalankan langsung
-.\app-simlab.exe
+./app-simlab
 
-# Atau deploy script (background process)
-.\scripts\deploy-windows.ps1
+# Atau deploy script (otomatis pilih systemd atau nohup)
+bash scripts/deploy-linux.sh
 ```
 
 Akses: http://localhost:8080
 
-### Firewall (Akses dari Device Lain)
+### Instalasi systemd Service (Production)
 
-Jika ingin mengakses dari HP/device lain di jaringan yang sama:
+```bash
+# Build + install service (sekalian)
+sudo bash scripts/deploy-linux.sh --install-service
 
-```powershell
-# Jalankan sebagai Administrator
-.\scripts\setup_firewall.ps1
+# Atau manual:
+sudo cp scripts/inventaris-lab.service /etc/systemd/system/
+sudo mkdir -p /opt/inventaris-lab /etc/inventaris-lab /var/lib/inventaris-lab
+sudo cp app-simlab /opt/inventaris-lab/
+sudo cp .env /etc/inventaris-lab/
+sudo cp -r uploads /var/lib/inventaris-lab/
+sudo systemctl daemon-reload
+sudo systemctl enable --now inventaris-lab
+
+# Cek status
+sudo systemctl status inventaris-lab
+
+# Lihat log
+sudo journalctl -u inventaris-lab -f
 ```
 
-Script ini otomatis membuka port 8080 di Windows Firewall dan menampilkan URL akses.
+### HEIC Native (Opsional — Performa Lebih Baik)
 
-### Menjalankan sebagai Service (Opsional)
+Secara default HEIC fallback ke WASM decoder. Untuk native performance:
 
-Gunakan [NSSM](https://nssm.cc/) untuk menjalankan sebagai Windows Service:
+```bash
+# Debian / Ubuntu
+sudo apt install libheif-dev
 
-```powershell
-# Install NSSM
-winget install nssm
+# Fedora / RHEL
+sudo dnf install libheif-devel
 
-# Install service
-nssm install InventarisLab "C:\path\to\lab_kom_sim\app-simlab.exe"
-nssm set InventarisLab AppDirectory "C:\path\to\lab_kom_sim"
-nssm set InventarisLab AppEnvironmentExtra "CGO_ENABLED=0"
-nssm start InventarisLab
+# Arch Linux
+sudo pacman -S libheif
+
+# openSUSE
+sudo zypper install libheif-devel
+```
+
+Native loading otomatis terdeteksi — tidak perlu rebuild.
+
+### Firewall (Akses dari Device Lain)
+
+```bash
+# Jalankan sebagai root
+sudo bash scripts/setup-firewall-linux.sh
+
+# Atau manual:
+# ufw:    sudo ufw allow 8080/tcp
+# firewalld: sudo firewall-cmd --add-port=8080/tcp --permanent
+# iptables:  sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
 ```
 
 ## Perbedaan dengan Branch Lain
 
-| Aspek | deploy_windows | deploy_android | deploy_linux |
-|-------|---------------|----------------|--------------|
-| OS Target | Windows | Android (Termux) | Linux |
+| Aspek | deploy_linux | deploy_android | deploy_windows |
+|-------|-------------|----------------|----------------|
+| OS Target | Linux | Android (Termux) | Windows |
 | Database | SQLite (pure Go) | SQLite (CGO) | SQLite (pure Go) |
 | C Compiler | Tidak perlu (modernc) | WAJIB (gcc via pkg) | Tidak perlu (modernc) |
 | Build | `CGO_ENABLED=0` | `CGO_ENABLED=1 -tags nodynamic` | `CGO_ENABLED=0` |
-| HEIC | WASM via wazero | WASM via wazero | Native via libheif |
+| HEIC | **Native libheif** | WASM via wazero | WASM via wazero |
+| Service | systemd / nohup | Termux bootstrap | NSSM / background |
 
 ## Fitur
 
@@ -129,9 +161,9 @@ nssm start InventarisLab
 - ✅ OCR logbook absensi via OpenRouter → Gemini (retry + fallback)
 - ✅ Activity log / audit trail (success + failure)
 - ✅ Export Excel (PC, device, logbook, software catalog)
-- ✅ HEIC/HEIF photo upload (WASM client-side conversion)
+- ✅ HEIC/HEIF photo upload (native libheif + WASM fallback)
 - ✅ SQLite database (pure Go) — PostgreSQL siap scale up
-- ✅ Windows Firewall setup script
+- ✅ systemd service + nohup fallback untuk semua distro
 
 ## Default Login
 
@@ -142,7 +174,7 @@ nssm start InventarisLab
 
 - **Database**: `DATABASE_URL` kosong = SQLite lokal, diisi = PostgreSQL/Neon
 - **CGO**: `CGO_ENABLED=0` — tidak perlu C compiler, SQLite via pure Go (modernc.org/sqlite)
-- **HEIC Windows**: WASM via wazero (native Windows loading belum support di gen2brain/heic)
-- **HEIC Linux**: Native via system libheif (lebih cepat)
-- **Image**: HEIC dikonversi via WASM browser-side + server-side fallback
+- **HEIC**: Native via libheif (auto-detect). Install `libheif` untuk performa maksimal.
+- **Cross-distro**: Static binary (musl/glibc compatible). Script mendukung systemd & nohup.
+- **Image**: HEIC konversi server-side native + WASM fallback
 - **OCR**: OpenRouter primary (free vision model), Gemini fallback jika gagal
