@@ -78,15 +78,8 @@ func (h *Handler) ScheduleCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) ScheduleCreate(c *gin.Context) {
-	courseName := c.PostForm("course_name")
-	lecturer := c.PostForm("lecturer")
-	day := c.PostForm("day")
-	class := c.PostForm("class")
-	timeStart := c.PostForm("time_start")
-	timeEnd := c.PostForm("time_end")
-	notes := c.PostForm("notes")
-
-	if courseName == "" || lecturer == "" || day == "" || class == "" || timeStart == "" || timeEnd == "" {
+	var req CreateScheduleRequest
+	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "schedule/create.html", gin.H{
 			"title": "Tambah Jadwal", "error": "Semua field wajib diisi",
 		})
@@ -94,9 +87,9 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 	}
 
 	_, err := h.db.Exec(`INSERT INTO course_schedules (course_name, lecturer, day, class, time_start, time_end, notes) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		courseName, lecturer, day, class, timeStart, timeEnd, notes)
+		req.CourseName, req.Lecturer, req.Day, req.Class, req.TimeStart, req.TimeEnd, req.Notes)
 	if err != nil {
-		h.logCreateError(c, "schedule", map[string]interface{}{"course_name": courseName}, err.Error())
+		h.logCreateError(c, "schedule", map[string]interface{}{"course_name": req.CourseName}, err.Error())
 		c.HTML(http.StatusInternalServerError, "schedule/create.html", gin.H{
 			"title": "Tambah Jadwal", "error": "Gagal menyimpan data",
 		})
@@ -104,8 +97,8 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 	}
 
 	h.logCreate(c, "schedule", 0, map[string]interface{}{
-		"course_name": courseName, "lecturer": lecturer, "day": day, "class": class,
-		"time": timeStart + "-" + timeEnd,
+		"course_name": req.CourseName, "lecturer": req.Lecturer, "day": req.Day, "class": req.Class,
+		"time": req.TimeStart + "-" + req.TimeEnd,
 	})
 	c.Redirect(http.StatusFound, "/schedules")
 }
@@ -132,16 +125,14 @@ func (h *Handler) ScheduleEditPage(c *gin.Context) {
 
 func (h *Handler) ScheduleEdit(c *gin.Context) {
 	id := c.Param("id")
-	courseName := c.PostForm("course_name")
-	lecturer := c.PostForm("lecturer")
-	day := c.PostForm("day")
-	class := c.PostForm("class")
-	timeStart := c.PostForm("time_start")
-	timeEnd := c.PostForm("time_end")
-	notes := c.PostForm("notes")
+	var req EditScheduleRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.errHTML(c, "Semua field wajib diisi")
+		return
+	}
 
 	_, err := h.db.Exec(`UPDATE course_schedules SET course_name=?, lecturer=?, day=?, class=?, time_start=?, time_end=?, notes=? WHERE id=?`,
-		courseName, lecturer, day, class, timeStart, timeEnd, notes, id)
+		req.CourseName, req.Lecturer, req.Day, req.Class, req.TimeStart, req.TimeEnd, req.Notes, id)
 	if err != nil {
 		h.logUpdateError(c, "schedule", 0, map[string]interface{}{"id": id}, err.Error())
 		h.errHTML(c, "Gagal mengupdate jadwal")
@@ -149,8 +140,8 @@ func (h *Handler) ScheduleEdit(c *gin.Context) {
 	}
 
 	h.logUpdate(c, "schedule", 0,
-		map[string]interface{}{"id": id, "course_name": courseName},
-		map[string]interface{}{"course_name": courseName, "lecturer": lecturer, "day": day, "class": class},
+		map[string]interface{}{"id": id, "course_name": req.CourseName},
+		map[string]interface{}{"course_name": req.CourseName, "lecturer": req.Lecturer, "day": req.Day, "class": req.Class},
 	)
 	c.Redirect(http.StatusFound, "/schedules")
 }

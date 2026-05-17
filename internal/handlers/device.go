@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"inventaris-lab-kom/internal/models"
@@ -189,21 +188,8 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceCreate(c *gin.Context) {
-	dtID := c.PostForm("device_type_id")
-	name := c.PostForm("name")
-	brand := c.PostForm("brand")
-	model := c.PostForm("model")
-	serial := c.PostForm("serial_number")
-	itemType := c.PostForm("item_type")
-	itemMode := c.PostForm("item_mode")
-	qtyStr := c.PostForm("quantity_total")
-	condition := c.PostForm("condition")
-	location := c.PostForm("location")
-	purchaseDate := c.PostForm("purchase_date")
-	notes := c.PostForm("notes")
-
-	qty, _ := strconv.Atoi(qtyStr)
-	if dtID == "" || name == "" || qty <= 0 {
+	var req CreateDeviceRequest
+	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "device/create.html", gin.H{
 			"title": "Tambah Perangkat", "error": "Lengkapi data yang diperlukan",
 		})
@@ -211,7 +197,7 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 	}
 
 	var prefix string
-	h.db.QueryRow(`SELECT asset_code_prefix FROM device_types WHERE id = ?`, dtID).Scan(&prefix)
+	h.db.QueryRow(`SELECT asset_code_prefix FROM device_types WHERE id = ?`, req.DeviceTypeID).Scan(&prefix)
 	code := fmt.Sprintf("%s-001", prefix)
 
 	tx, err := h.db.Begin()
@@ -221,11 +207,11 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 	result, err := tx.Exec(`INSERT INTO devices (device_type_id, asset_code, name, brand, model, serial_number,
 		item_type, is_loanable, is_consumable, quantity_total, quantity_available, condition, location, purchase_date, notes)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		dtID, code, name, brand, model, serial, itemType,
-		itemMode == "loanable", itemMode == "consumable",
-		qty, qty, condition, location, purchaseDate, notes)
+		req.DeviceTypeID, code, req.Name, req.Brand, req.Model, req.SerialNumber, req.ItemType,
+		req.ItemMode == "loanable", req.ItemMode == "consumable",
+		req.Quantity, req.Quantity, req.Condition, req.Location, req.PurchaseDate, req.Notes)
 	if err != nil {
-		h.logCreateError(c, "device", map[string]interface{}{"name": name}, err.Error())
+		h.logCreateError(c, "device", map[string]interface{}{"name": req.Name}, err.Error())
 		c.HTML(http.StatusInternalServerError, "device/create.html", gin.H{
 			"title": "Tambah Perangkat", "error": "Gagal menyimpan perangkat",
 		})
@@ -234,7 +220,7 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 	tx.Commit()
 
 	id, _ := result.LastInsertId()
-	h.logCreate(c, "device", int(id), map[string]interface{}{"name": name, "asset_code": code})
+	h.logCreate(c, "device", int(id), map[string]interface{}{"name": req.Name, "asset_code": code})
 	c.Redirect(http.StatusFound, "/devices")
 }
 
@@ -315,28 +301,18 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceEdit(c *gin.Context) {
 	id := c.Param("id")
-	dtID := c.PostForm("device_type_id")
-	name := c.PostForm("name")
-	brand := c.PostForm("brand")
-	model := c.PostForm("model")
-	serial := c.PostForm("serial_number")
-	itemType := c.PostForm("item_type")
-	itemMode := c.PostForm("item_mode")
-	qtyTotalStr := c.PostForm("quantity_total")
-	qtyAvailStr := c.PostForm("quantity_available")
-	condition := c.PostForm("condition")
-	location := c.PostForm("location")
-	pDateForm := c.PostForm("purchase_date")
-	notes := c.PostForm("notes")
-
-	qtyTotal, _ := strconv.Atoi(qtyTotalStr)
-	qtyAvail, _ := strconv.Atoi(qtyAvailStr)
+	var req EditDeviceRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.errHTML(c, "Data tidak valid")
+		return
+	}
 
 	if _, err := h.db.Exec(`UPDATE devices SET device_type_id=?, name=?, brand=?, model=?, serial_number=?,
 		item_type=?, is_loanable=?, is_consumable=?, quantity_total=?, quantity_available=?, condition=?,
 		location=?, purchase_date=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-		dtID, name, brand, model, serial, itemType, itemMode == "loanable", itemMode == "consumable",
-		qtyTotal, qtyAvail, condition, location, pDateForm, notes, id); err != nil {
+		req.DeviceTypeID, req.Name, req.Brand, req.Model, req.SerialNumber, req.ItemType,
+		req.ItemMode == "loanable", req.ItemMode == "consumable",
+		req.QuantityTotal, req.QuantityAvailable, req.Condition, req.Location, req.PurchaseDate, req.Notes, id); err != nil {
 		h.logUpdateError(c, "device", 0, map[string]interface{}{"id": id}, err.Error())
 		h.errHTML(c, "Gagal mengupdate perangkat")
 		return
@@ -344,7 +320,7 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 
 	h.logUpdate(c, "device", 0,
 		map[string]interface{}{"id": id},
-		map[string]interface{}{"name": name},
+		map[string]interface{}{"name": req.Name},
 	)
 	c.Redirect(http.StatusFound, "/devices")
 }

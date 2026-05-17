@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"inventaris-lab-kom/internal/models"
@@ -101,24 +100,16 @@ func (h *Handler) DeviceLoanCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceLoanCreate(c *gin.Context) {
-	deviceID := c.PostForm("device_id")
-	borrowerName := c.PostForm("borrower_name")
-	borrowerType := c.PostForm("borrower_type")
-	loanDateStr := c.PostForm("loan_date")
-	expectedReturnDateStr := c.PostForm("expected_return_date")
-	quantityStr := c.PostForm("quantity")
-	purpose := c.PostForm("purpose")
-
-	quantity, _ := strconv.Atoi(quantityStr)
-	if deviceID == "" || borrowerName == "" || loanDateStr == "" || quantity <= 0 {
+	var req CreateDeviceLoanRequest
+	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Perangkat, nama peminjam, tanggal, dan jumlah harus diisi")
 		return
 	}
 
-	loanDate, _ := time.Parse("2006-01-02", loanDateStr)
+	loanDate, _ := time.Parse("2006-01-02", req.LoanDate)
 	var expectedReturnDate *time.Time
-	if expectedReturnDateStr != "" {
-		if t, err := time.Parse("2006-01-02", expectedReturnDateStr); err == nil {
+	if req.ExpectedReturnDate != "" {
+		if t, err := time.Parse("2006-01-02", req.ExpectedReturnDate); err == nil {
 			expectedReturnDate = &t
 		}
 	}
@@ -126,7 +117,7 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 	tx, _ := h.db.Begin()
 	defer tx.Rollback()
 
-	res, err := tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, quantity, deviceID, quantity)
+	res, err := tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, req.Quantity, req.DeviceID, req.Quantity)
 	if err != nil {
 		h.errHTML(c, "Gagal cek stok")
 		return
@@ -137,7 +128,7 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 	}
 
 	result, err := tx.Exec(`INSERT INTO device_loans (device_id, borrower_name, borrower_type, loan_date, expected_return_date, quantity, status, purpose) VALUES (?, ?, ?, ?, ?, ?, 'active', ?)`,
-		deviceID, borrowerName, borrowerType, loanDate, expectedReturnDate, quantity, purpose)
+		req.DeviceID, req.BorrowerName, req.BorrowerType, loanDate, expectedReturnDate, req.Quantity, req.Purpose)
 	if err != nil {
 		h.errHTML(c, "Gagal menyimpan data peminjaman")
 		return
@@ -147,7 +138,7 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 
 	loanID, _ := result.LastInsertId()
 	h.logCreate(c, "device_loan", int(loanID), map[string]interface{}{
-		"device_id": deviceID, "borrower_name": borrowerName, "quantity": quantity,
+		"device_id": req.DeviceID, "borrower_name": req.BorrowerName, "quantity": req.Quantity,
 	})
 	c.Redirect(http.StatusFound, "/devices?tab=loans")
 }
@@ -185,26 +176,23 @@ func (h *Handler) DeviceLoanEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 	id := c.Param("id")
-	borrowerName := c.PostForm("borrower_name")
-	borrowerType := c.PostForm("borrower_type")
-	loanDateStr := c.PostForm("loan_date")
-	expectedReturnDateStr := c.PostForm("expected_return_date")
-	actualReturnDateStr := c.PostForm("actual_return_date")
-	status := c.PostForm("status")
-	purpose := c.PostForm("purpose")
-	notes := c.PostForm("notes")
-
-	loanDate, _ := time.Parse("2006-01-02", loanDateStr)
-	var expectedReturnDate, actualReturnDate *time.Time
-	if expectedReturnDateStr != "" {
-		if t, err := time.Parse("2006-01-02", expectedReturnDateStr); err == nil { expectedReturnDate = &t }
+	var req EditDeviceLoanRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.errHTML(c, "Borrower name, loan date, and status are required")
+		return
 	}
-	if actualReturnDateStr != "" {
-		if t, err := time.Parse("2006-01-02", actualReturnDateStr); err == nil { actualReturnDate = &t }
+
+	loanDate, _ := time.Parse("2006-01-02", req.LoanDate)
+	var expectedReturnDate, actualReturnDate *time.Time
+	if req.ExpectedReturnDate != "" {
+		if t, err := time.Parse("2006-01-02", req.ExpectedReturnDate); err == nil { expectedReturnDate = &t }
+	}
+	if req.ActualReturnDate != "" {
+		if t, err := time.Parse("2006-01-02", req.ActualReturnDate); err == nil { actualReturnDate = &t }
 	}
 
 	_, err := h.db.Exec(`UPDATE device_loans SET borrower_name=?, borrower_type=?, loan_date=?, expected_return_date=?, actual_return_date=?, status=?, purpose=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-		borrowerName, borrowerType, loanDate, expectedReturnDate, actualReturnDate, status, purpose, notes, id)
+		req.BorrowerName, req.BorrowerType, loanDate, expectedReturnDate, actualReturnDate, req.Status, req.Purpose, req.Notes, id)
 	if err != nil {
 		h.logUpdateError(c, "device_loan", 0, map[string]interface{}{"id": id}, err.Error())
 		h.errHTML(c, "Gagal mengupdate peminjaman")
@@ -213,7 +201,7 @@ func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 
 	h.logUpdate(c, "device_loan", 0,
 		map[string]interface{}{"id": id},
-		map[string]interface{}{"borrower_name": borrowerName, "status": status},
+		map[string]interface{}{"borrower_name": req.BorrowerName, "status": req.Status},
 	)
 	c.Redirect(http.StatusFound, "/devices?tab=loans")
 }

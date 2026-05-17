@@ -94,17 +94,8 @@ func (h *Handler) DeviceTypeCreate(c *gin.Context) {
 	if !ok { return }
 	if role != "admin" { h.errHTML(c, "Akses ditolak"); return }
 
-	name := c.PostForm("name")
-	category := c.PostForm("category")
-	brand := c.PostForm("brand")
-	model := c.PostForm("model")
-	itemType := c.PostForm("item_type")
-	itemMode := c.PostForm("item_mode")
-	prefix := c.PostForm("asset_code_prefix")
-	location := c.PostForm("default_location")
-	notes := c.PostForm("notes_template")
-
-	if name == "" || category == "" || itemType == "" {
+	var req CreateDeviceTypeRequest
+	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "device_type/create.html", gin.H{
 			"title": "Tambah Jenis Barang", "error": "Nama, kategori, dan tipe item harus diisi",
 		})
@@ -112,7 +103,7 @@ func (h *Handler) DeviceTypeCreate(c *gin.Context) {
 	}
 
 	result, err := h.db.Exec(`INSERT INTO device_types (name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		name, category, brand, model, itemType, itemMode == "loanable", itemMode == "consumable", prefix, location, notes)
+		req.Name, req.Category, req.Brand, req.Model, req.ItemType, req.ItemMode == "loanable", req.ItemMode == "consumable", req.AssetCodePrefix, req.DefaultLocation, req.NotesTemplate)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			c.HTML(http.StatusBadRequest, "device_type/create.html", gin.H{
@@ -120,7 +111,7 @@ func (h *Handler) DeviceTypeCreate(c *gin.Context) {
 			})
 			return
 		}
-		h.logCreateError(c, "device_type", map[string]interface{}{"name": name}, err.Error())
+		h.logCreateError(c, "device_type", map[string]interface{}{"name": req.Name}, err.Error())
 		c.HTML(http.StatusInternalServerError, "device_type/create.html", gin.H{
 			"title": "Tambah Jenis Barang", "error": "Gagal menyimpan data",
 		})
@@ -129,7 +120,7 @@ func (h *Handler) DeviceTypeCreate(c *gin.Context) {
 
 	id, _ := result.LastInsertId()
 	h.logCreate(c, "device_type", int(id), map[string]interface{}{
-		"name": name, "category": category, "item_type": itemType,
+		"name": req.Name, "category": req.Category, "item_type": req.ItemType,
 	})
 	c.Redirect(http.StatusFound, "/device-types")
 }
@@ -158,18 +149,16 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	id := c.Param("id")
-	name := c.PostForm("name")
-	category := c.PostForm("category")
-	brand := c.PostForm("brand")
-	model := c.PostForm("model")
-	itemType := c.PostForm("item_type")
-	itemMode := c.PostForm("item_mode")
-	prefix := c.PostForm("asset_code_prefix")
-	location := c.PostForm("default_location")
-	notes := c.PostForm("notes_template")
+	var req EditDeviceTypeRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.HTML(http.StatusBadRequest, "device_type/edit.html", gin.H{
+			"title": "Edit Jenis Barang", "error": "Nama, kategori, dan tipe item harus diisi",
+		})
+		return
+	}
 
 	_, err := h.db.Exec(`UPDATE device_types SET name=?, category=?, brand=?, model=?, item_type=?, is_loanable=?, is_consumable=?, asset_code_prefix=?, default_location=?, notes_template=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-		name, category, brand, model, itemType, itemMode == "loanable", itemMode == "consumable", prefix, location, notes, id)
+		req.Name, req.Category, req.Brand, req.Model, req.ItemType, req.ItemMode == "loanable", req.ItemMode == "consumable", req.AssetCodePrefix, req.DefaultLocation, req.NotesTemplate, id)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			c.HTML(http.StatusBadRequest, "device_type/edit.html", gin.H{
@@ -184,7 +173,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 
 	h.logUpdate(c, "device_type", 0,
 		map[string]interface{}{"id": id},
-		map[string]interface{}{"name": name, "category": category},
+		map[string]interface{}{"name": req.Name, "category": req.Category},
 	)
 	c.Redirect(http.StatusFound, "/device-types")
 }

@@ -35,11 +35,8 @@ func (h *Handler) LoginPage(c *gin.Context) {
 
 // Login handles login form submission
 func (h *Handler) Login(c *gin.Context) {
-	username := c.PostForm("username")
-	password := c.PostForm("password")
-
-	// Validate input
-	if username == "" || password == "" {
+	var req LoginRequest
+	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "login.html", gin.H{
 			"title": "Login - Sistem Inventaris Lab",
 			"error": "Username dan password harus diisi",
@@ -54,7 +51,7 @@ func (h *Handler) Login(c *gin.Context) {
 		SELECT id, password, full_name, role 
 		FROM users 
 		WHERE username = ?
-	`, username).Scan(&userID, &hashedPassword, &fullName, &role)
+	`, req.Username).Scan(&userID, &hashedPassword, &fullName, &role)
 
 	if err == sql.ErrNoRows {
 		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
@@ -73,10 +70,10 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	// Verify password
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(req.Password)); err != nil {
 		ipAddress, userAgent := getRequestContext(c)
 		h.activityLogService.LogAuth(
-			0, username, "", "login", false,
+			0, req.Username, "", "login", false,
 			ipAddress, userAgent, "Invalid password",
 		)
 		c.HTML(http.StatusUnauthorized, "login.html", gin.H{
@@ -92,7 +89,7 @@ func (h *Handler) Login(c *gin.Context) {
 	if existingToken != "" {
 		ipAddress, userAgent := getRequestContext(c)
 		h.activityLogService.LogAuth(
-			userID, username, role, "login", false,
+			userID, req.Username, role, "login", false,
 			ipAddress, userAgent, "Account already logged in elsewhere",
 		)
 		c.HTML(http.StatusConflict, "login.html", gin.H{
@@ -122,7 +119,7 @@ func (h *Handler) Login(c *gin.Context) {
 
 	session := sessions.Default(c)
 	session.Set("user_id", userID)
-	session.Set("username", username)
+	session.Set("username", req.Username)
 	session.Set("full_name", fullName)
 	session.Set("role", role)
 	session.Set("session_token", token)
@@ -135,7 +132,7 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 	ipAddress, userAgent := getRequestContext(c)
 	h.activityLogService.LogAuth(
-		userID, username, role, "login", true,
+		userID, req.Username, role, "login", true,
 		ipAddress, userAgent, "",
 	)
 

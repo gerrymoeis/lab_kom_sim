@@ -165,28 +165,28 @@ func (h *Handler) SoftwareDelete(c *gin.Context) {
 }
 
 func (h *Handler) SoftwareCreate(c *gin.Context) {
-	name := strings.TrimSpace(c.PostForm("name"))
-	category := c.PostForm("category")
-	description := strings.TrimSpace(c.PostForm("description"))
-
-	if name == "" {
+	var req CreateSoftwareRequest
+	if err := c.ShouldBind(&req); err != nil {
 		h.redirectWithError(c, "/software", "Nama software harus diisi")
 		return
 	}
-	if category != "required" && category != "other" { category = "other" }
 
-	if _, err := h.db.Exec(`INSERT INTO software_catalog (name, category, description, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, name, category, description); err != nil {
+	req.Name = strings.TrimSpace(req.Name)
+	req.Description = strings.TrimSpace(req.Description)
+	if req.Category != "required" { req.Category = "other" }
+
+	if _, err := h.db.Exec(`INSERT INTO software_catalog (name, category, description, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, req.Name, req.Category, req.Description); err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
-			h.logCreateError(c, "software", map[string]interface{}{"name": name, "category": category}, "Duplicate: "+name)
+			h.logCreateError(c, "software", map[string]interface{}{"name": req.Name, "category": req.Category}, "Duplicate: "+req.Name)
 			h.redirectWithError(c, "/software", "Software dengan nama tersebut sudah ada")
 			return
 		}
-		h.logCreateError(c, "software", map[string]interface{}{"name": name, "category": category}, err.Error())
+		h.logCreateError(c, "software", map[string]interface{}{"name": req.Name, "category": req.Category}, err.Error())
 		h.redirectWithError(c, "/software", "Gagal menyimpan software")
 		return
 	}
 
-	h.logCreate(c, "software", 0, map[string]interface{}{"name": name, "category": category, "description": description})
+	h.logCreate(c, "software", 0, map[string]interface{}{"name": req.Name, "category": req.Category, "description": req.Description})
 	c.Redirect(http.StatusFound, "/software")
 }
 

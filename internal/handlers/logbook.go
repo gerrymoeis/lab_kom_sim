@@ -328,39 +328,39 @@ func (h *Handler) LogbookCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) LogbookCreate(c *gin.Context) {
-	ds := c.PostForm("date"); sn := c.PostForm("student_name"); nim := c.PostForm("nim")
-	ti := c.PostForm("time_in"); to := c.PostForm("time_out"); pu := c.PostForm("purpose")
-
-	if ds == "" || sn == "" || nim == "" || ti == "" {
+	var req CreateLogbookRequest
+	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{"title": "Tambah Entry Logbook", "error": "Semua field harus diisi"}); return
 	}
 
-	sn = toTitleCaseWithAbbr(sn); nim = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(nim, " ", ""))); pu = toTitleCaseWithAbbr(pu)
+	req.StudentName = toTitleCaseWithAbbr(req.StudentName)
+	req.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(req.NIM, " ", "")))
+	req.Purpose = toTitleCaseWithAbbr(req.Purpose)
 
-	date, _ := time.Parse("2006-01-02", ds)
+	date, _ := time.Parse("2006-01-02", req.Date)
 
 	// Check duplicate
-	if r, _ := h.db.Query(`SELECT date, student_name, nim, time_in FROM logbook_entries WHERE date = ? AND time_in = ?`, date, ti); r != nil {
+	if r, _ := h.db.Query(`SELECT date, student_name, nim, time_in FROM logbook_entries WHERE date = ? AND time_in = ?`, date, req.TimeIn); r != nil {
 		for r.Next() {
 			var ed time.Time; var en, eni, et string
-			if r.Scan(&ed, &en, &eni, &et) == nil && services.IsDuplicateEntry(date, ed, ti, et, sn, en, nim, eni, config.DefaultDuplicateConfig) {
+			if r.Scan(&ed, &en, &eni, &et) == nil && services.IsDuplicateEntry(date, ed, req.TimeIn, et, req.StudentName, en, req.NIM, eni, config.DefaultDuplicateConfig) {
 				c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{"title": "Tambah Entry Logbook", "error": "Entry duplikat ditemukan"}); return
 			}
 		}
 		r.Close()
 	}
 
-	_, err := h.db.Exec(`INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'manual_entry', ?, ?)`, date, sn, nim, ti, to, pu, time.Now(), time.Now())
+	_, err := h.db.Exec(`INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'manual_entry', ?, ?)`, date, req.StudentName, req.NIM, req.TimeIn, req.TimeOut, req.Purpose, time.Now(), time.Now())
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") { c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{"title": "Tambah Entry Logbook", "error": "Entry duplikat"}); return }
-		h.logCreateError(c, "logbook", map[string]interface{}{"student_name": sn}, err.Error())
+		h.logCreateError(c, "logbook", map[string]interface{}{"student_name": req.StudentName}, err.Error())
 		h.errHTML(c, "Gagal menyimpan"); return
 	}
 
 	var lid int
 	h.db.QueryRow(`SELECT MAX(id) FROM logbook_entries`).Scan(&lid)
 
-	h.logCreate(c, "logbook", lid, map[string]interface{}{"date": ds, "student_name": sn, "nim": nim})
+	h.logCreate(c, "logbook", lid, map[string]interface{}{"date": req.Date, "student_name": req.StudentName, "nim": req.NIM})
 	c.Redirect(http.StatusFound, "/logbook")
 }
 
@@ -381,22 +381,24 @@ func (h *Handler) LogbookEditPage(c *gin.Context) {
 }
 
 func (h *Handler) LogbookEdit(c *gin.Context) {
-	id := c.Param("id"); ds := c.PostForm("date"); sn := c.PostForm("student_name"); nim := c.PostForm("nim")
-	ti := c.PostForm("time_in"); to := c.PostForm("time_out"); pu := c.PostForm("purpose")
+	id := c.Param("id")
+	var req EditLogbookRequest
+	if err := c.ShouldBind(&req); err != nil { h.errHTML(c, "Semua field harus diisi"); return }
 
-	if ds == "" || sn == "" || nim == "" || ti == "" { h.errHTML(c, "Semua field harus diisi"); return }
-	date, _ := time.Parse("2006-01-02", ds)
-	sn = toTitleCaseWithAbbr(sn); nim = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(nim, " ", ""))); pu = toTitleCaseWithAbbr(pu)
+	date, _ := time.Parse("2006-01-02", req.Date)
+	req.StudentName = toTitleCaseWithAbbr(req.StudentName)
+	req.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(req.NIM, " ", "")))
+	req.Purpose = toTitleCaseWithAbbr(req.Purpose)
 
 	var oldDate time.Time; var oldName, oldNIM string
 	h.db.QueryRow(`SELECT date, student_name, nim FROM logbook_entries WHERE id = ?`, id).Scan(&oldDate, &oldName, &oldNIM)
 
-	if _, err := h.db.Exec(`UPDATE logbook_entries SET date=?, student_name=?, nim=?, time_in=?, time_out=?, purpose=?, updated_at=? WHERE id=?`, date, sn, nim, ti, to, pu, time.Now(), id); err != nil {
+	if _, err := h.db.Exec(`UPDATE logbook_entries SET date=?, student_name=?, nim=?, time_in=?, time_out=?, purpose=?, updated_at=? WHERE id=?`, date, req.StudentName, req.NIM, req.TimeIn, req.TimeOut, req.Purpose, time.Now(), id); err != nil {
 		h.logUpdateError(c, "logbook", 0, map[string]interface{}{"id": id}, err.Error())
 		h.errHTML(c, "Gagal mengupdate"); return
 	}
 
-	h.logUpdate(c, "logbook", 0, map[string]interface{}{"date": oldDate, "student_name": oldName, "nim": oldNIM}, map[string]interface{}{"date": ds, "student_name": sn, "nim": nim})
+	h.logUpdate(c, "logbook", 0, map[string]interface{}{"date": oldDate, "student_name": oldName, "nim": oldNIM}, map[string]interface{}{"date": req.Date, "student_name": req.StudentName, "nim": req.NIM})
 	c.Redirect(http.StatusFound, "/logbook")
 }
 

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"inventaris-lab-kom/internal/middleware"
@@ -88,28 +87,20 @@ func (h *Handler) DeviceUsageCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceUsageCreate(c *gin.Context) {
-	deviceID := c.PostForm("device_id")
-	userName := c.PostForm("user_name")
-	userType := c.PostForm("user_type")
-	usageDateStr := c.PostForm("usage_date")
-	quantityStr := c.PostForm("quantity")
-	isAvailable := c.PostForm("is_available")
-	purpose := c.PostForm("purpose")
-
-	quantity, _ := strconv.Atoi(quantityStr)
-	if deviceID == "" || userName == "" || usageDateStr == "" || quantity <= 0 {
+	var req CreateDeviceUsageRequest
+	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Perangkat, nama pengguna, tanggal, dan jumlah harus diisi")
 		return
 	}
-	if isAvailable != "no" { isAvailable = "yes" }
+	if req.IsAvailable != "no" { req.IsAvailable = "yes" }
 
-	usageDate, _ := time.Parse("2006-01-02", usageDateStr)
+	usageDate, _ := time.Parse("2006-01-02", req.UsageDate)
 
 	tx, _ := h.db.Begin()
 	defer tx.Rollback()
 
-	if isAvailable == "no" {
-		res, err := tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, quantity, deviceID, quantity)
+	if req.IsAvailable == "no" {
+		res, err := tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, req.Quantity, req.DeviceID, req.Quantity)
 		if err != nil {
 			h.errHTML(c, "Gagal cek stok")
 			return
@@ -121,7 +112,7 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	}
 
 	result, err := tx.Exec(`INSERT INTO device_usages (device_id, user_name, user_type, usage_date, quantity, is_available, purpose) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		deviceID, userName, userType, usageDate, quantity, isAvailable, purpose)
+		req.DeviceID, req.UserName, req.UserType, usageDate, req.Quantity, req.IsAvailable, req.Purpose)
 	if err != nil {
 		h.errHTML(c, "Gagal menyimpan data pemakaian")
 		return
@@ -131,7 +122,7 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 
 	id, _ := result.LastInsertId()
 	h.logCreate(c, "device_usage", int(id), map[string]interface{}{
-		"device_id": deviceID, "user_name": userName, "quantity": quantity,
+		"device_id": req.DeviceID, "user_name": req.UserName, "quantity": req.Quantity,
 	})
 	c.Redirect(http.StatusFound, "/devices?tab=usages")
 }
@@ -165,17 +156,14 @@ func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	id := c.Param("id")
-	userName := c.PostForm("user_name")
-	userType := c.PostForm("user_type")
-	usageDateStr := c.PostForm("usage_date")
-	quantityStr := c.PostForm("quantity")
-	isAvailable := c.PostForm("is_available")
-	purpose := c.PostForm("purpose")
-	notes := c.PostForm("notes")
-	if isAvailable != "no" { isAvailable = "yes" }
+	var req EditDeviceUsageRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.errHTML(c, "Data tidak valid")
+		return
+	}
+	if req.IsAvailable != "no" { req.IsAvailable = "yes" }
 
-	qty, _ := strconv.Atoi(quantityStr)
-	date, _ := time.Parse("2006-01-02", usageDateStr)
+	date, _ := time.Parse("2006-01-02", req.UsageDate)
 
 	tx, _ := h.db.Begin()
 	defer tx.Rollback()
@@ -185,22 +173,22 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	tx.QueryRow(`SELECT device_id, quantity, is_available FROM device_usages WHERE id = ?`, id).Scan(&devID, &oldQty, &oldAvail)
 
 	tx.Exec(`UPDATE device_usages SET user_name=?, user_type=?, usage_date=?, quantity=?, is_available=?, purpose=?, notes=? WHERE id=?`,
-		userName, userType, date, qty, isAvailable, purpose, notes, id)
+		req.UserName, req.UserType, date, req.Quantity, req.IsAvailable, req.Purpose, req.Notes, id)
 
-	if oldAvail != isAvailable {
-		if isAvailable == "yes" {
-			tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, qty, devID)
+	if oldAvail != req.IsAvailable {
+		if req.IsAvailable == "yes" {
+			tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, req.Quantity, devID)
 		} else {
-			tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, qty, devID)
+			tx.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ?`, req.Quantity, devID)
 		}
-	} else if qty != oldQty {
-		tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, oldQty-qty, devID)
+	} else if req.Quantity != oldQty {
+		tx.Exec(`UPDATE devices SET quantity_available = quantity_available + ? WHERE id = ?`, oldQty-req.Quantity, devID)
 	}
 	tx.Commit()
 
 	h.logUpdate(c, "device_usage", 0,
 		map[string]interface{}{"id": id, "quantity": oldQty},
-		map[string]interface{}{"quantity": qty, "is_available": isAvailable},
+		map[string]interface{}{"quantity": req.Quantity, "is_available": req.IsAvailable},
 	)
 	c.Redirect(http.StatusFound, "/devices?tab=usages")
 }

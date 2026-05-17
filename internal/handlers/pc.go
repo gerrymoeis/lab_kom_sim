@@ -132,29 +132,20 @@ func (h *Handler) PCCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) PCCreate(c *gin.Context) {
-	numStr := c.PostForm("pc_number")
-	rowStr := c.PostForm("row")
-	colStr := c.PostForm("column")
-	status := c.DefaultPostForm("status", "normal")
-	sn := c.PostForm("serial_number")
-	os := c.PostForm("operating_system")
-	dt := c.DefaultPostForm("device_type", "PC All-in-one")
-	bm := c.DefaultPostForm("brand_model", "Axioo Mypc One Pro K7-24 (16N9)")
-	acc := c.DefaultPostForm("accessories", "Keyboard & Mouse Axioo (Wired Set)")
-	processor := c.DefaultPostForm("processor", "Intel Core i7")
-	ram := c.DefaultPostForm("ram", "16GB DDR4")
-	storage := c.DefaultPostForm("storage", "1TB NVMe")
-
-	num, _ := strconv.Atoi(numStr)
-	row, _ := strconv.Atoi(rowStr)
-	col, _ := strconv.Atoi(colStr)
-
-	if num < 1 || num > 40 || row < 1 || row > 5 || col < 1 || col > 8 || sn == "" || os == "" {
+	var req CreatePCRequest
+	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
 			"title": "Tambah PC Baru", "error": "Lengkapi data yang diperlukan",
 		})
 		return
 	}
+	if req.Status == "" { req.Status = "normal" }
+	if req.DeviceType == "" { req.DeviceType = "PC All-in-one" }
+	if req.BrandModel == "" { req.BrandModel = "Axioo Mypc One Pro K7-24 (16N9)" }
+	if req.Accessories == "" { req.Accessories = "Keyboard & Mouse Axioo (Wired Set)" }
+	if req.Processor == "" { req.Processor = "Intel Core i7" }
+	if req.RAM == "" { req.RAM = "16GB DDR4" }
+	if req.Storage == "" { req.Storage = "1TB NVMe" }
 
 	photoSerial, photoFront := processPhotoRefs(c)
 
@@ -162,9 +153,11 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		serial_number, operating_system, device_type, brand_model, accessories, physical_condition,
 		photo_serial, photo_front)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'baik', ?, ?)`,
-		num, row, col, status, processor, ram, storage, sn, os, dt, bm, acc, photoSerial, photoFront)
+		req.PCNumber, req.Row, req.Column, req.Status, req.Processor, req.RAM, req.Storage,
+		req.SerialNumber, req.OperatingSystem, req.DeviceType, req.BrandModel, req.Accessories,
+		photoSerial, photoFront)
 	if err != nil {
-		h.logCreateError(c, "pc", map[string]interface{}{"pc_number": num, "serial_number": sn}, err.Error())
+		h.logCreateError(c, "pc", map[string]interface{}{"pc_number": req.PCNumber, "serial_number": req.SerialNumber}, err.Error())
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
 			"title": "Tambah PC Baru", "error": "Gagal menyimpan. Mungkin nomor PC sudah digunakan.",
 		})
@@ -172,10 +165,10 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	}
 
 	var pcID int
-	h.db.QueryRow(`SELECT id FROM pcs WHERE pc_number = ?`, num).Scan(&pcID)
+	h.db.QueryRow(`SELECT id FROM pcs WHERE pc_number = ?`, req.PCNumber).Scan(&pcID)
 	if pcID > 0 {
 		h.logCreate(c, "pc", pcID, map[string]interface{}{
-			"pc_number": num, "serial_number": sn, "operating_system": os,
+			"pc_number": req.PCNumber, "serial_number": req.SerialNumber, "operating_system": req.OperatingSystem,
 		})
 
 		// Seed required software for this PC
@@ -240,19 +233,11 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 
 func (h *Handler) PCEdit(c *gin.Context) {
 	num := c.Param("pc_number")
-	status := c.PostForm("status")
-	sn := c.PostForm("serial_number")
-	os := c.PostForm("operating_system")
-	dt := c.PostForm("device_type")
-	bm := c.PostForm("brand_model")
-	acc := c.PostForm("accessories")
-	processor := c.PostForm("processor")
-	ram := c.PostForm("ram")
-	storage := c.PostForm("storage")
-	notes := c.PostForm("notes")
-	an := c.PostForm("action_notes")
-
-	if sn == "" || os == "" { h.errHTML(c, "Serial Number dan OS wajib diisi"); return }
+	var req EditPCRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.errHTML(c, "Serial Number dan OS wajib diisi")
+		return
+	}
 
 	var pcID, oldNum int
 	h.db.QueryRow(`SELECT id, pc_number FROM pcs WHERE pc_number = ?`, num).Scan(&pcID, &oldNum)
@@ -265,7 +250,8 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		photo_front=COALESCE(NULLIF(?, ''), photo_front),
 		updated_at=CURRENT_TIMESTAMP
 		WHERE pc_number=?`,
-		status, dt, sn, bm, acc, processor, ram, storage, os, notes, an,
+		req.Status, req.DeviceType, req.SerialNumber, req.BrandModel, req.Accessories,
+		req.Processor, req.RAM, req.Storage, req.OperatingSystem, req.Notes, req.ActionNotes,
 		photoSerial, photoFront, num)
 	if err != nil {
 		h.logUpdateError(c, "pc", pcID, map[string]interface{}{"pc_number": num}, err.Error())
@@ -274,8 +260,8 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	}
 
 	h.logUpdate(c, "pc", pcID,
-		map[string]interface{}{"pc_number": num, "serial_number": sn},
-		map[string]interface{}{"status": status, "serial_number": sn},
+		map[string]interface{}{"pc_number": num, "serial_number": req.SerialNumber},
+		map[string]interface{}{"status": req.Status, "serial_number": req.SerialNumber},
 	)
 
 	requiredIDs := c.PostFormArray("required_sw[]")

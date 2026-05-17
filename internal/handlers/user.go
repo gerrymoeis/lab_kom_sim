@@ -43,25 +43,21 @@ func (h *Handler) UserCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) UserCreate(c *gin.Context) {
-	username := c.PostForm("username")
-	password := c.PostForm("password")
-	fullName := c.PostForm("full_name")
-	role := c.PostForm("role")
-
-	if username == "" || password == "" || fullName == "" {
+	var req CreateUserRequest
+	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Semua field harus diisi"})
 		return
 	}
 
-	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if _, err := h.db.Exec(`INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)`, username, string(hash), fullName, role); err != nil {
+	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if _, err := h.db.Exec(`INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)`, req.Username, string(hash), req.FullName, req.Role); err != nil {
 		c.HTML(http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal menyimpan user. Username mungkin sudah digunakan."})
 		return
 	}
 
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	h.activityLogService.LogCreate(uid, u, r, "user", 0, map[string]interface{}{"username": username, "full_name": fullName, "role": role}, ip, ua)
+	h.activityLogService.LogCreate(uid, u, r, "user", 0, map[string]interface{}{"username": req.Username, "full_name": req.FullName, "role": req.Role}, ip, ua)
 	c.Redirect(http.StatusFound, "/admin/users")
 }
 
@@ -119,35 +115,36 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	userID, _, role, ok := h.user(c)
 	if !ok { return }
 
-	newUsername := strings.TrimSpace(c.PostForm("username"))
-	newFullName := strings.TrimSpace(c.PostForm("full_name"))
-
-	if newUsername == "" || newFullName == "" {
+	var req UpdateProfileRequest
+	if err := c.ShouldBind(&req); err != nil {
 		c.Redirect(http.StatusFound, "/profile?error=Username dan Nama Lengkap harus diisi")
 		return
 	}
 
+	req.Username = strings.TrimSpace(req.Username)
+	req.FullName = strings.TrimSpace(req.FullName)
+
 	var exists int
-	h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE username = ? AND id != ?`, newUsername, userID).Scan(&exists)
+	h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE username = ? AND id != ?`, req.Username, userID).Scan(&exists)
 	if exists > 0 {
 		c.Redirect(http.StatusFound, "/profile?error=Username sudah digunakan")
 		return
 	}
 
-	if _, err := h.db.Exec(`UPDATE users SET username = ?, full_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, newUsername, newFullName, userID); err != nil {
+	if _, err := h.db.Exec(`UPDATE users SET username = ?, full_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, req.Username, req.FullName, userID); err != nil {
 		c.Redirect(http.StatusFound, "/profile?error=Gagal mengupdate profil")
 		return
 	}
 
 	sess := sessions.Default(c)
-	sess.Set("username", newUsername)
-	sess.Set("full_name", newFullName)
+	sess.Set("username", req.Username)
+	sess.Set("full_name", req.FullName)
 	sess.Save()
 
 	ip, ua := getRequestContext(c)
-	h.activityLogService.LogUpdate(userID, newUsername, role, "user", userID,
+	h.activityLogService.LogUpdate(userID, req.Username, role, "user", userID,
 		map[string]interface{}{"id": userID},
-		map[string]interface{}{"username": newUsername, "full_name": newFullName}, ip, ua)
+		map[string]interface{}{"username": req.Username, "full_name": req.FullName}, ip, ua)
 
 	c.Redirect(http.StatusFound, "/profile?success=Profil berhasil diupdate")
 }
@@ -156,15 +153,12 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	userID, _, _, ok := h.user(c)
 	if !ok { return }
 
-	oldPw := c.PostForm("old_password")
-	newPw := c.PostForm("new_password")
-	confirmPw := c.PostForm("confirm_password")
-
-	if oldPw == "" || newPw == "" || confirmPw == "" {
+	var req ChangePasswordRequest
+	if err := c.ShouldBind(&req); err != nil {
 		c.Redirect(http.StatusFound, "/profile?error=Semua field harus diisi")
 		return
 	}
-	if newPw != confirmPw {
+	if req.NewPassword != req.ConfirmPassword {
 		c.Redirect(http.StatusFound, "/profile?error=Password baru dan konfirmasi tidak cocok")
 		return
 	}
@@ -174,12 +168,12 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/profile?error=Gagal mengambil data user")
 		return
 	}
-	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(oldPw)) != nil {
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.OldPassword)) != nil {
 		c.Redirect(http.StatusFound, "/profile?error=Password lama salah")
 		return
 	}
 
-	newHash, _ := bcrypt.GenerateFromPassword([]byte(newPw), bcrypt.DefaultCost)
+	newHash, _ := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if _, err := h.db.Exec(`UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, string(newHash), userID); err != nil {
 		c.Redirect(http.StatusFound, "/profile?error=Gagal mengupdate password")
 		return
