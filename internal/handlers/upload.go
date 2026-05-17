@@ -27,7 +27,6 @@ type CleanupRequest struct {
 
 // UploadImage handles immediate image upload and processing for preview
 func (h *Handler) UploadImage(c *gin.Context) {
-	// Get form data
 	file, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, UploadResponse{
@@ -37,8 +36,8 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	imageType := c.PostForm("type") // "serial" or "front"
-	pcNumber := c.PostForm("pc_number")
+	var req UploadImageRequest
+	c.ShouldBind(&req)
 
 	// Validate file size (max 5MB)
 	if file.Size > 5*1024*1024 {
@@ -67,13 +66,12 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	// Generate unique filename
 	now := time.Now()
 	var finalFilename string
-	if pcNumber != "" {
-		finalFilename = fmt.Sprintf("pc_%s_%s_%s.jpeg", pcNumber, imageType, now.Format("150405_02012006"))
+	if req.PCNumber != "" {
+		finalFilename = fmt.Sprintf("pc_%s_%s_%s.jpeg", req.PCNumber, req.Type, now.Format("150405_02012006"))
 	} else {
-		finalFilename = fmt.Sprintf("temp_%s_%s.jpeg", imageType, now.Format("150405_02012006"))
+		finalFilename = fmt.Sprintf("temp_%s_%s.jpeg", req.Type, now.Format("150405_02012006"))
 	}
 
 	// Paths
@@ -101,7 +99,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 
 	// Compress and convert using existing ImageService
 	maxDimension := 1280
-	if imageType == "front" {
+	if req.Type == "front" {
 		maxDimension = 1920
 	}
 

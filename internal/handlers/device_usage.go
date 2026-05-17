@@ -99,14 +99,14 @@ func (h *Handler) DeviceUsageDelete(c *gin.Context) {
 
 func (h *Handler) DeviceUsageUpdateAvailability(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	isAvailable := c.PostForm("is_available")
-	if isAvailable != "yes" && isAvailable != "no" {
+	var req UpdateAvailabilityRequest
+	if err := c.ShouldBind(&req); err != nil || (req.IsAvailable != "yes" && req.IsAvailable != "no") {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Status tidak valid"})
 		return
 	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	if err := h.deviceUsageService.UpdateAvailability(id, isAvailable, uid, u, r, ip, ua); err != nil {
+	if err := h.deviceUsageService.UpdateAvailability(id, req.IsAvailable, uid, u, r, ip, ua); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengupdate status"})
 		return
 	}

@@ -65,7 +65,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		return
 	}
 
-	photoSerial, photoFront := processPhotoRefs(c)
+	photoSerial, photoFront := processPhotoRefs(req.SerialFileRef, req.FrontFileRef)
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
@@ -111,7 +111,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	photoSerial, photoFront := processPhotoRefs(c)
+	photoSerial, photoFront := processPhotoRefs(req.SerialFileRef, req.FrontFileRef)
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
@@ -127,7 +127,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	h.pcRepo.SyncSoftware(num, c.PostFormArray("required_sw"), c.PostFormArray("other_name"), c.PostFormArray("other_desc"))
+	h.pcRepo.SyncSoftware(num, req.RequiredSw, req.OtherName, req.OtherDesc)
 	c.Redirect(http.StatusFound, fmt.Sprintf("/pc/%d", num))
 }
 
@@ -198,11 +198,11 @@ func (h *Handler) PCExport(c *gin.Context) {
 	f.Write(c.Writer)
 }
 
-func processPhotoRefs(c *gin.Context) (serial, front string) {
-	for _, p := range []struct{ field string; result *string }{
-		{"serial_file_ref", &serial}, {"front_file_ref", &front},
+func processPhotoRefs(serialRef, frontRef string) (serial, front string) {
+	for _, p := range []struct{ ref string; result *string }{
+		{serialRef, &serial}, {frontRef, &front},
 	} {
-		ref := strings.TrimSpace(c.PostForm(p.field))
+		ref := strings.TrimSpace(p.ref)
 		if ref == "" { continue }
 		src := filepath.Join("uploads", "temp", ref)
 		dst := filepath.Join("uploads", "pc", ref)

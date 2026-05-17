@@ -18,20 +18,27 @@ type CreatePCRequest struct {
 	Processor       string `form:"processor"`
 	RAM             string `form:"ram"`
 	Storage         string `form:"storage"`
+	SerialFileRef   string `form:"serial_file_ref"`
+	FrontFileRef    string `form:"front_file_ref"`
 }
 
 type EditPCRequest struct {
-	Status          string `form:"status"`
-	SerialNumber    string `form:"serial_number" binding:"required"`
-	OperatingSystem string `form:"operating_system" binding:"required"`
-	DeviceType      string `form:"device_type"`
-	BrandModel      string `form:"brand_model"`
-	Accessories     string `form:"accessories"`
-	Processor       string `form:"processor"`
-	RAM             string `form:"ram"`
-	Storage         string `form:"storage"`
-	Notes           string `form:"notes"`
-	ActionNotes     string `form:"action_notes"`
+	Status          string   `form:"status"`
+	SerialNumber    string   `form:"serial_number" binding:"required"`
+	OperatingSystem string   `form:"operating_system" binding:"required"`
+	DeviceType      string   `form:"device_type"`
+	BrandModel      string   `form:"brand_model"`
+	Accessories     string   `form:"accessories"`
+	Processor       string   `form:"processor"`
+	RAM             string   `form:"ram"`
+	Storage         string   `form:"storage"`
+	Notes           string   `form:"notes"`
+	ActionNotes     string   `form:"action_notes"`
+	SerialFileRef   string   `form:"serial_file_ref"`
+	FrontFileRef    string   `form:"front_file_ref"`
+	RequiredSw      []string `form:"required_sw"`
+	OtherName       []string `form:"other_name"`
+	OtherDesc       []string `form:"other_desc"`
 }
 
 type CreateDeviceRequest struct {
@@ -190,4 +197,23 @@ type ChangePasswordRequest struct {
 	OldPassword string `form:"old_password" binding:"required"`
 	NewPassword string `form:"new_password" binding:"required"`
 	ConfirmPassword string `form:"confirm_password" binding:"required"`
+}
+
+type LogbookSaveRequest struct {
+	SourceFile  string   `form:"source_file"`
+	Date        []string `form:"date[]"`
+	TimeIn      []string `form:"time_in[]"`
+	TimeOut     []string `form:"time_out[]"`
+	StudentName []string `form:"student_name[]"`
+	NIM         []string `form:"nim[]"`
+	Purpose     []string `form:"purpose[]"`
+}
+
+type UploadImageRequest struct {
+	Type     string `form:"type"`
+	PCNumber string `form:"pc_number"`
+}
+
+type UpdateAvailabilityRequest struct {
+	IsAvailable string `form:"is_available" binding:"required"`
 }

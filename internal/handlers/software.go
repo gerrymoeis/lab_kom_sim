@@ -62,11 +62,14 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 
 func (h *Handler) SoftwareEdit(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	pcIDs := c.PostFormArray("pc_ids[]")
+	var req struct {
+		PCIDs []string `form:"pc_ids[]"`
+	}
+	c.ShouldBind(&req)
 
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	if err := h.softwareService.Update(id, pcIDs, uid, u, r, ip, ua); err != nil {
+	if err := h.softwareService.Update(id, req.PCIDs, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/software", "Gagal mengupdate software PC")
 		return
 	}

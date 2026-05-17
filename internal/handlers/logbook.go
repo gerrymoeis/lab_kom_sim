@@ -55,7 +55,11 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 
 	var path, fn string
 
-	fileRef := strings.TrimSpace(c.PostForm("file_ref"))
+	var uploadReq struct {
+		FileRef string `form:"file_ref"`
+	}
+	c.ShouldBind(&uploadReq)
+	fileRef := strings.TrimSpace(uploadReq.FileRef)
 	if fileRef != "" {
 		fn = fileRef
 		tempPath := filepath.Join("uploads", "temp", fn)
@@ -102,35 +106,30 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	if !ok { return }
 	if role != "admin" { c.JSON(http.StatusForbidden, gin.H{"error": "Hanya admin"}); return }
 
-	sourceFile := c.PostForm("source_file")
-	dates := c.PostFormArray("date[]")
-	timesIn := c.PostFormArray("time_in[]")
-	timesOut := c.PostFormArray("time_out[]")
-	names := c.PostFormArray("student_name[]")
-	nims := c.PostFormArray("nim[]")
-	purposes := c.PostFormArray("purpose[]")
+	var req LogbookSaveRequest
+	c.ShouldBind(&req)
 
-	bulk := make([]repository.BulkEntry, 0, len(dates))
-	for i := 0; i < len(dates) && i < len(names); i++ {
-		dv, err1 := time.Parse("2006-01-02", dates[i])
-		tiv, err2 := time.Parse("15:04", timesIn[i])
-		tov, err3 := time.Parse("15:04", timesOut[i])
+	bulk := make([]repository.BulkEntry, 0, len(req.Date))
+	for i := 0; i < len(req.Date) && i < len(req.StudentName); i++ {
+		dv, err1 := time.Parse("2006-01-02", req.Date[i])
+		tiv, err2 := time.Parse("15:04", req.TimeIn[i])
+		tov, err3 := time.Parse("15:04", req.TimeOut[i])
 		if err1 != nil || err2 != nil || err3 != nil { continue }
 
-		if i < len(purposes) && purposes[i] != "" {
-			purposes[i] = services.ToTitleCaseWithAbbr(purposes[i])
-		}
+		p := ""
+		if i < len(req.Purpose) { p = req.Purpose[i] }
+		if p != "" { p = services.ToTitleCaseWithAbbr(p) }
 		bulk = append(bulk, repository.BulkEntry{
-			Date: dv, StudentName: names[i], NIM: nims[i],
+			Date: dv, StudentName: req.StudentName[i], NIM: req.NIM[i],
 			TimeIn: tiv.Format("15:04"), TimeOut: tov.Format("15:04"),
-			Purpose: purposes[i],
+			Purpose: p,
 		})
 	}
 
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	saved, dups, err := h.logbookService.BulkSave(bulk, sourceFile, uid, u, r, ip, ua)
+	saved, dups, err := h.logbookService.BulkSave(bulk, req.SourceFile, uid, u, r, ip, ua)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan data: " + err.Error()})
 		return
