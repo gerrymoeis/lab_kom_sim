@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"inventaris-lab-kom/internal/models"
@@ -17,37 +17,21 @@ func (h *Handler) DeviceTypeList(c *gin.Context) {
 	search := c.Query("search")
 	category := c.Query("category")
 
-	query := `SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template, created_at FROM device_types WHERE 1=1`
-	var args []interface{}
-	if search != "" {
-		query += ` AND (name LIKE ? OR category LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s)
-	}
-	if category != "" {
-		query += ` AND category = ?`
-		args = append(args, category)
-	}
-	query += ` ORDER BY category, name`
-
-	rows, err := h.db.Query(query, args...)
+	types, err := h.deviceTypeRepo.List(category)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data jenis barang")
 		return
 	}
-	defer rows.Close()
 
-	var types []models.DeviceType
-	for rows.Next() {
-		var dt models.DeviceType
-		var brand, model, prefix, location, notes sql.NullString
-		if rows.Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &prefix, &location, &notes, &dt.CreatedAt) != nil {
-			continue
+	if search != "" {
+		var filtered []models.DeviceType
+		for _, dt := range types {
+			if strings.Contains(strings.ToLower(dt.Name), strings.ToLower(search)) ||
+				strings.Contains(strings.ToLower(dt.Category), strings.ToLower(search)) {
+				filtered = append(filtered, dt)
+			}
 		}
-		dt.Brand = valStr(brand); dt.Model = valStr(model)
-		dt.AssetCodePrefix = valStr(prefix); dt.DefaultLocation = valStr(location)
-		dt.NotesTemplate = valStr(notes)
-		types = append(types, dt)
+		types = filtered
 	}
 
 	c.HTML(http.StatusOK, "device_type/list.html", gin.H{
@@ -61,18 +45,12 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	id := c.Param("id")
-	var dt models.DeviceType
-	var brand, model, prefix, location, notes sql.NullString
-	err := h.db.QueryRow(`SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template, created_at FROM device_types WHERE id = ?`, id).
-		Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &prefix, &location, &notes, &dt.CreatedAt)
+	id, _ := strconv.Atoi(c.Param("id"))
+	dt, err := h.deviceTypeRepo.GetByID(id)
 	if err != nil {
 		h.errHTML(c, "Jenis barang tidak ditemukan")
 		return
 	}
-	dt.Brand = valStr(brand); dt.Model = valStr(model)
-	dt.AssetCodePrefix = valStr(prefix); dt.DefaultLocation = valStr(location)
-	dt.NotesTemplate = valStr(notes)
 
 	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
 		"title": "Detail Jenis Barang", "currentPage": "devices",
@@ -102,8 +80,7 @@ func (h *Handler) DeviceTypeCreate(c *gin.Context) {
 		return
 	}
 
-	result, err := h.db.Exec(`INSERT INTO device_types (name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.Name, req.Category, req.Brand, req.Model, req.ItemType, req.ItemMode == "loanable", req.ItemMode == "consumable", req.AssetCodePrefix, req.DefaultLocation, req.NotesTemplate)
+	result, err := h.deviceTypeRepo.Create(req.Name, req.Category, req.Brand, req.Model, req.ItemType, req.ItemMode, req.AssetCodePrefix, req.DefaultLocation, req.NotesTemplate)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			c.HTML(http.StatusBadRequest, "device_type/create.html", gin.H{
@@ -129,17 +106,12 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	id := c.Param("id")
-	rows := h.db.QueryRow(`SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template FROM device_types WHERE id = ?`, id)
-	var dt models.DeviceType
-	var brand, model, prefix, location, notes sql.NullString
-	if err := rows.Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &prefix, &location, &notes); err != nil {
+	id, _ := strconv.Atoi(c.Param("id"))
+	dt, err := h.deviceTypeRepo.GetByIDSimple(id)
+	if err != nil {
 		h.errHTML(c, "Jenis barang tidak ditemukan")
 		return
 	}
-	dt.Brand = valStr(brand); dt.Model = valStr(model)
-	dt.AssetCodePrefix = valStr(prefix); dt.DefaultLocation = valStr(location)
-	dt.NotesTemplate = valStr(notes)
 
 	c.HTML(http.StatusOK, "device_type/edit.html", gin.H{
 		"title": "Edit Jenis Barang", "currentPage": "devices",
@@ -148,7 +120,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceTypeEdit(c *gin.Context) {
-	id := c.Param("id")
+	id, _ := strconv.Atoi(c.Param("id"))
 	var req EditDeviceTypeRequest
 	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "device_type/edit.html", gin.H{
@@ -157,8 +129,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		return
 	}
 
-	_, err := h.db.Exec(`UPDATE device_types SET name=?, category=?, brand=?, model=?, item_type=?, is_loanable=?, is_consumable=?, asset_code_prefix=?, default_location=?, notes_template=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-		req.Name, req.Category, req.Brand, req.Model, req.ItemType, req.ItemMode == "loanable", req.ItemMode == "consumable", req.AssetCodePrefix, req.DefaultLocation, req.NotesTemplate, id)
+	err := h.deviceTypeRepo.Update(id, req.Name, req.Category, req.Brand, req.Model, req.ItemType, req.ItemMode, req.AssetCodePrefix, req.DefaultLocation, req.NotesTemplate)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			c.HTML(http.StatusBadRequest, "device_type/edit.html", gin.H{
@@ -179,9 +150,9 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 }
 
 func (h *Handler) DeviceTypeDelete(c *gin.Context) {
-	id := c.Param("id")
+	id, _ := strconv.Atoi(c.Param("id"))
 
-	_, err := h.db.Exec("DELETE FROM device_types WHERE id = ?", id)
+	err := h.deviceTypeRepo.Delete(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "foreign key") {
 			h.redirectWithError(c, "/device-types", "Jenis barang masih digunakan oleh perangkat")

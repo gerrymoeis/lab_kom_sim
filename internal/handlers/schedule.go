@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"inventaris-lab-kom/internal/models"
@@ -16,8 +17,6 @@ var dayNames = map[time.Weekday]string{
 	time.Sunday: "Minggu",
 }
 
-var dayOrder = "CASE day WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 ELSE 7 END"
-
 func (h *Handler) ScheduleList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok {
@@ -27,32 +26,19 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 	dayFilter := c.DefaultQuery("day", "")
 	search := c.Query("search")
 
-	query := `SELECT id, course_name, lecturer, day, class, time_start, time_end, notes FROM course_schedules WHERE 1=1`
-	var args []interface{}
+	schedules, err := h.scheduleRepo.List(search)
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data jadwal"); return
+	}
 
 	if dayFilter != "" {
-		query += ` AND day = ?`
-		args = append(args, dayFilter)
-	}
-	if search != "" {
-		query += ` AND (course_name LIKE ? OR lecturer LIKE ? OR class LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s, s)
-	}
-
-	query += ` ORDER BY ` + dayOrder + `, time_start`
-
-	var schedules []models.CourseSchedule
-	if r, e := h.db.Query(query, args...); e != nil {
-		h.errHTML(c, "Gagal mengambil data jadwal"); return
-	} else {
-		defer r.Close()
-		for r.Next() {
-			var s models.CourseSchedule
-			if r.Scan(&s.ID, &s.CourseName, &s.Lecturer, &s.Day, &s.Class, &s.TimeStart, &s.TimeEnd, &s.Notes) == nil {
-				schedules = append(schedules, s)
+		var filtered []models.CourseSchedule
+		for _, s := range schedules {
+			if s.Day == dayFilter {
+				filtered = append(filtered, s)
 			}
 		}
+		schedules = filtered
 	}
 
 	c.HTML(http.StatusOK, "schedule/list.html", gin.H{
@@ -86,8 +72,7 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 		return
 	}
 
-	_, err := h.db.Exec(`INSERT INTO course_schedules (course_name, lecturer, day, class, time_start, time_end, notes) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		req.CourseName, req.Lecturer, req.Day, req.Class, req.TimeStart, req.TimeEnd, req.Notes)
+	_, err := h.scheduleRepo.Create(req.CourseName, req.Lecturer, req.Day, req.Class, req.TimeStart, req.TimeEnd, req.Notes)
 	if err != nil {
 		h.logCreateError(c, "schedule", map[string]interface{}{"course_name": req.CourseName}, err.Error())
 		c.HTML(http.StatusInternalServerError, "schedule/create.html", gin.H{
@@ -109,9 +94,9 @@ func (h *Handler) ScheduleEditPage(c *gin.Context) {
 		return
 	}
 
-	id := c.Param("id")
-	var s models.CourseSchedule
-	if err := h.db.QueryRow(`SELECT id, course_name, lecturer, day, class, time_start, time_end, notes FROM course_schedules WHERE id = ?`, id).Scan(&s.ID, &s.CourseName, &s.Lecturer, &s.Day, &s.Class, &s.TimeStart, &s.TimeEnd, &s.Notes); err != nil {
+	id, _ := strconv.Atoi(c.Param("id"))
+	s, err := h.scheduleRepo.GetByID(id)
+	if err != nil {
 		h.errHTML(c, "Jadwal tidak ditemukan")
 		return
 	}
@@ -124,15 +109,14 @@ func (h *Handler) ScheduleEditPage(c *gin.Context) {
 }
 
 func (h *Handler) ScheduleEdit(c *gin.Context) {
-	id := c.Param("id")
+	id, _ := strconv.Atoi(c.Param("id"))
 	var req EditScheduleRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Semua field wajib diisi")
 		return
 	}
 
-	_, err := h.db.Exec(`UPDATE course_schedules SET course_name=?, lecturer=?, day=?, class=?, time_start=?, time_end=?, notes=? WHERE id=?`,
-		req.CourseName, req.Lecturer, req.Day, req.Class, req.TimeStart, req.TimeEnd, req.Notes, id)
+	err := h.scheduleRepo.Update(id, req.CourseName, req.Lecturer, req.Day, req.Class, req.TimeStart, req.TimeEnd, req.Notes)
 	if err != nil {
 		h.logUpdateError(c, "schedule", 0, map[string]interface{}{"id": id}, err.Error())
 		h.errHTML(c, "Gagal mengupdate jadwal")
@@ -147,12 +131,11 @@ func (h *Handler) ScheduleEdit(c *gin.Context) {
 }
 
 func (h *Handler) ScheduleDelete(c *gin.Context) {
-	id := c.Param("id")
+	id, _ := strconv.Atoi(c.Param("id"))
 
-	var courseName string
-	h.db.QueryRow(`SELECT course_name FROM course_schedules WHERE id = ?`, id).Scan(&courseName)
+	courseName, _ := h.scheduleRepo.GetCourseName(id)
 
-	_, err := h.db.Exec(`DELETE FROM course_schedules WHERE id = ?`, id)
+	err := h.scheduleRepo.Delete(id)
 	if err != nil {
 		h.redirectWithError(c, "/schedules", "Gagal menghapus jadwal")
 		return

@@ -1,13 +1,12 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
-	"time"
 
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/middleware"
+	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -19,14 +18,64 @@ type Handler struct {
 	cfg                *config.Config
 	activityLogService *services.ActivityLogService
 	imageService       *services.ImageService
+	deviceRepo         *repository.DeviceRepository
+	deviceTypeRepo     *repository.DeviceTypeRepository
+	deviceLoanRepo     *repository.DeviceLoanRepository
+	deviceUsageRepo    *repository.DeviceUsageRepository
+	pcRepo             *repository.PCRepository
+	softwareRepo       *repository.SoftwareRepository
+	logbookRepo        *repository.LogbookRepository
+	scheduleRepo       *repository.ScheduleRepository
+	userRepo           *repository.UserRepository
+	dashboardRepo      *repository.DashboardRepository
+
+	authService       *services.AuthService
+	userService       *services.UserService
+	deviceService     *services.DeviceService
+	pcService         *services.PCService
+	deviceLoanService *services.DeviceLoanService
+	deviceUsageService *services.DeviceUsageService
+	logbookService    *services.LogbookService
+	dashboardService  *services.DashboardService
 }
 
 func NewHandler(db *database.DB, cfg *config.Config) *Handler {
+	activityLogService := services.NewActivityLogService(db)
+	deviceRepo := repository.NewDeviceRepository(db)
+	deviceTypeRepo := repository.NewDeviceTypeRepository(db)
+	deviceLoanRepo := repository.NewDeviceLoanRepository(db)
+	deviceUsageRepo := repository.NewDeviceUsageRepository(db)
+	pcRepo := repository.NewPCRepository(db)
+	softwareRepo := repository.NewSoftwareRepository(db)
+	logbookRepo := repository.NewLogbookRepository(db)
+	scheduleRepo := repository.NewScheduleRepository(db)
+	userRepo := repository.NewUserRepository(db)
+	dashboardRepo := repository.NewDashboardRepository(db)
+
 	return &Handler{
 		db:                 db,
 		cfg:                cfg,
-		activityLogService: services.NewActivityLogService(db),
+		activityLogService: activityLogService,
 		imageService:       services.NewImageService(),
+		deviceRepo:         deviceRepo,
+		deviceTypeRepo:     deviceTypeRepo,
+		deviceLoanRepo:     deviceLoanRepo,
+		deviceUsageRepo:    deviceUsageRepo,
+		pcRepo:             pcRepo,
+		softwareRepo:       softwareRepo,
+		logbookRepo:        logbookRepo,
+		scheduleRepo:       scheduleRepo,
+		userRepo:           userRepo,
+		dashboardRepo:      dashboardRepo,
+
+		authService:        services.NewAuthService(userRepo, activityLogService),
+		userService:        services.NewUserService(userRepo, activityLogService),
+		deviceService:      services.NewDeviceService(deviceRepo, deviceTypeRepo, activityLogService),
+		pcService:          services.NewPCService(pcRepo, activityLogService),
+		deviceLoanService:  services.NewDeviceLoanService(deviceLoanRepo, activityLogService),
+		deviceUsageService: services.NewDeviceUsageService(deviceUsageRepo, activityLogService),
+		logbookService:     services.NewLogbookService(logbookRepo, activityLogService),
+		dashboardService:   services.NewDashboardService(dashboardRepo),
 	}
 }
 
@@ -78,15 +127,5 @@ func (h *Handler) logCreateError(c *gin.Context, entityType string, vals map[str
 func (h *Handler) logUpdateError(c *gin.Context, entityType string, id int, oldVals map[string]interface{}, errMsg string) { h.logActivity(c, "update", entityType, id, oldVals, nil, errMsg) }
 func (h *Handler) logDeleteError(c *gin.Context, entityType string, id int, oldVals map[string]interface{}, errMsg string) { h.logActivity(c, "delete", entityType, id, oldVals, nil, errMsg) }
 
-// valStr returns the string value from a NullString, or "" if invalid
-func valStr(ns sql.NullString) string {
-	if ns.Valid { return ns.String }
-	return ""
-}
 
-// valTimePtr returns a *time.Time from a NullTime, or nil if invalid
-func valTimePtr(nt sql.NullTime) *time.Time {
-	if nt.Valid { return &nt.Time }
-	return nil
-}
 
