@@ -88,6 +88,10 @@ func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, erro
 	totalStart := time.Now()
 	log.Printf("[OCR] Starting OCR for %s", imagePath)
 
+	if s.geminiKey == "" && s.openRouterKey == "" {
+		return nil, fmt.Errorf("OCR tidak dapat diproses: API key tidak dikonfigurasi")
+	}
+
 	imageData, err := os.ReadFile(imagePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read image: %w", err)

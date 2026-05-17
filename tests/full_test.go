@@ -16,6 +16,8 @@ import (
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/server"
+
+	"github.com/joho/godotenv"
 )
 
 func TestFullIntegration(t *testing.T) {
@@ -28,10 +30,16 @@ func TestFullIntegration(t *testing.T) {
 	defer func() { os.RemoveAll(filepath.Join("uploads", "temp")); os.RemoveAll(filepath.Join("uploads", "pc")); os.RemoveAll(filepath.Join("uploads", "logbook")) }()
 	// â”€â”€ Setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	dbPath := "full_testing.db"
+
+	// Load .env for API keys (if available)
+	godotenv.Load()
+
 	cfg := &config.Config{
-		DatabasePath:  dbPath,
-		SessionSecret: "test-secret-12345",
-		UploadPath:    "uploads",
+		DatabasePath:     dbPath,
+		SessionSecret:    "test-secret-12345",
+		UploadPath:       "uploads",
+		GeminiAPIKey:     os.Getenv("GEMINI_API_KEY"),
+		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 	}
 	db, err := database.InitDB(dbPath, "")
 	if err != nil { t.Fatalf("InitDB: %v", err) }
@@ -221,9 +229,17 @@ func TestFullIntegration(t *testing.T) {
 	addCookies(req)
 	resp, err = client.Do(req)
 	assert(err == nil, "logbook upload")
+	bodyOCR, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	logbookFiles, _ := os.ReadDir("uploads/logbook")
-	assert(len(logbookFiles) > 0, "logbook file saved to uploads/logbook/")
+
+	if cfg.GeminiAPIKey != "" || cfg.OpenRouterAPIKey != "" {
+		assert(resp.StatusCode == 200, "logbook upload (with API key): %d", resp.StatusCode)
+		logbookFiles, _ := os.ReadDir("uploads/logbook")
+		assert(len(logbookFiles) > 0, "logbook file saved to uploads/logbook/")
+	} else {
+		assert(resp.StatusCode == 500, "logbook upload (no API key): %d", resp.StatusCode)
+		assert(strings.Contains(string(bodyOCR), "API key tidak dikonfigurasi"), "proper error message when no API keys")
+	}
 
 	// â”€â”€ 7. User management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	t.Log("\n=== 7. USER ===")

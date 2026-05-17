@@ -84,14 +84,17 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		path = tempPath
 	}
 
+	// Ensure temp file cleanup after OCR processing
+	if fileRef == "" {
+		defer os.Remove(path)
+	}
+
 	ocr := services.NewOCRService(h.cfg.GeminiAPIKey, h.cfg.OpenRouterAPIKey)
 	result, err := ocr.ExtractLogbookFromImage(path)
 	if err != nil {
 		h.errHTML(c, "Gagal memproses gambar: "+err.Error())
 		return
 	}
-
-	if fileRef == "" { os.Remove(path) }
 
 	c.HTML(http.StatusOK, "logbook/upload.html", gin.H{
 		"title": "Upload Logbook", "currentPage": "logbook",
