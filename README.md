@@ -67,8 +67,8 @@ OPENROUTER_API_KEY=sk-or-your-key
 ### Build & Jalankan
 
 ```bash
-# Build (pure Go — cepat, tidak perlu CGO)
-CGO_ENABLED=0 go build -o app-simlab ./cmd/server/main.go
+# Build (pure Go + nodynamic — cepat, tidak perlu CGO)
+CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
 
 # Atau pakai script
 bash scripts/build_termux.sh
@@ -101,7 +101,7 @@ Satu perintah → push ke GitHub → SSH ke HP → git pull → build → restar
 | OS Target | Android (Termux) | Windows | Linux |
 | Database | SQLite (pure Go) | SQLite (pure Go) | SQLite (pure Go) |
 | C Compiler | **Tidak perlu** (modernc) | Tidak perlu (modernc) | Tidak perlu (modernc) |
-| Build | `CGO_ENABLED=0` | `CGO_ENABLED=0` | `CGO_ENABLED=0` |
+| Build | `CGO_ENABLED=0 -tags nodynamic` | `CGO_ENABLED=0` | `CGO_ENABLED=0` |
 | HEIC | WASM via wazero | WASM via wazero | Native libheif |
 | Service | Termux bootstrap | NSSM / background | systemd / nohup |
 
@@ -127,6 +127,7 @@ Satu perintah → push ke GitHub → SSH ke HP → git pull → build → restar
 
 - **Database**: `DATABASE_URL` kosong = SQLite lokal, diisi = PostgreSQL/Neon
 - **CGO**: `CGO_ENABLED=0` — tidak perlu C compiler, SQLite via pure Go (modernc.org/sqlite)
-- **GCC**: Tidak perlu diinstall. Build cepat tanpa CGO.
+- **nodynamic**: `-tags nodynamic` WAJIB di Android — mencegah `purego` pakai CGO untuk dynamic library loading
+- **HEIC**: WASM via wazero — library purego belum support Android tanpa CGO
 - **Image**: HEIC dikonversi via WASM browser-side + server-side fallback
 - **OCR**: OpenRouter primary (free vision model), Gemini fallback jika gagal
