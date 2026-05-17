@@ -1,8 +1,6 @@
 ﻿package services
 
 import (
-	"time"
-
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/repository"
 )
@@ -44,7 +42,7 @@ func (s *DeviceUsageService) GetByID(id int) (*repository.DeviceUsageRow, error)
 
 func (s *DeviceUsageService) CreateUsage(in CreateUsageInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
 	if in.IsAvailable != "no" { in.IsAvailable = "yes" }
-	usageDate, _ := time.Parse("2006-01-02", in.UsageDate)
+	usageDate := MustParseDate(in.UsageDate)
 
 	tx, err := s.db.Begin()
 	if err != nil { return 0, err }
@@ -78,7 +76,7 @@ func (s *DeviceUsageService) CreateUsage(in CreateUsageInput, actorID int, actor
 
 func (s *DeviceUsageService) UpdateUsage(id int, in UpdateUsageInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	if in.IsAvailable != "no" { in.IsAvailable = "yes" }
-	usageDate, _ := time.Parse("2006-01-02", in.UsageDate)
+	usageDate := MustParseDate(in.UsageDate)
 
 	tx, err := s.db.Begin()
 	if err != nil { return err }

@@ -49,7 +49,7 @@ func (s *LogbookService) CreateEntry(in CreateLogbookInput, actorID int, actorUs
 	in.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(in.NIM, " ", "")))
 	in.Purpose = ToTitleCaseWithAbbr(in.Purpose)
 
-	date, _ := time.Parse("2006-01-02", in.Date)
+	date := MustParseDate(in.Date)
 
 	existing, _ := s.logbookRepo.GetDuplicateCheck(date, in.TimeIn)
 	for _, e := range existing {
@@ -75,7 +75,7 @@ func (s *LogbookService) UpdateEntry(id int, in UpdateLogbookInput, actorID int,
 	in.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(in.NIM, " ", "")))
 	in.Purpose = ToTitleCaseWithAbbr(in.Purpose)
 
-	date, _ := time.Parse("2006-01-02", in.Date)
+	date := MustParseDate(in.Date)
 
 	old, _, _, _, _ := s.logbookRepo.GetDeleteInfo(id)
 

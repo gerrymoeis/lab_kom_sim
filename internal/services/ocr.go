@@ -198,8 +198,8 @@ func (s *OCRService) parseOCRResponse(responseText string) (*OCRResult, error) {
 
 	for i := range result.Entries {
 		normalizeTimeEntry(&result.Entries[i])
-		result.Entries[i].StudentName = toTitleCase(result.Entries[i].StudentName)
-		result.Entries[i].Purpose = toTitleCase(result.Entries[i].Purpose)
+		result.Entries[i].StudentName = ToTitleCaseWithAbbr(result.Entries[i].StudentName)
+		result.Entries[i].Purpose = ToTitleCaseWithAbbr(result.Entries[i].Purpose)
 		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
 		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
 	}
@@ -416,70 +416,4 @@ func normalizeTimeFormat(timeStr string) string {
 	return timeStr
 }
 
-// normalizeText normalizes text by:
-// - Trimming leading/trailing whitespace
-// - Removing double spaces
-// - Converting to Title Case for proper names
-func normalizeText(text string) string {
-	if text == "" {
-		return ""
-	}
 
-	// Trim leading and trailing whitespace
-	text = strings.TrimSpace(text)
-
-	// Replace multiple spaces with single space
-	re := regexp.MustCompile(`\s+`)
-	text = re.ReplaceAllString(text, " ")
-
-	return text
-}
-
-// toTitleCase converts text to Title Case (proper capitalization)
-func toTitleCase(text string) string {
-	if text == "" {
-		return ""
-	}
-
-	// Normalize first
-	text = normalizeText(text)
-
-	// Split by space and capitalize each word
-	words := strings.Fields(text)
-	for i, word := range words {
-		if len(word) > 0 {
-			// Convert to lowercase first, then capitalize first letter
-			words[i] = strings.ToUpper(string(word[0])) + strings.ToLower(word[1:])
-		}
-	}
-
-	result := strings.Join(words, " ")
-
-	// Normalize abbreviations (singkatan)
-	result = normalizeAbbreviations(result)
-
-	return result
-}
-
-// normalizeAbbreviations normalizes abbreviations in names
-// Rules:
-// - Middle abbreviations get dots: "Herman SW" â†’ "Herman S.W"
-// - No trailing dot at end: "Herman S.W." â†’ "Herman S.W"
-func normalizeAbbreviations(text string) string {
-	if text == "" {
-		return ""
-	}
-
-	// Pattern: single uppercase letter followed by space or another uppercase letter
-	// This handles cases like "SW", "SH", "A", etc.
-	re := regexp.MustCompile(`\b([A-Z])([A-Z])\b`)
-
-	// Add dots between consecutive uppercase letters
-	// "SW" â†’ "S.W", "SH" â†’ "S.H"
-	text = re.ReplaceAllString(text, "$1.$2")
-
-	// Remove trailing dot at the end of text
-	text = strings.TrimSuffix(text, ".")
-
-	return text
-}

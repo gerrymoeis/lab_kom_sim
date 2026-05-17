@@ -20,8 +20,8 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 	if p, err := strconv.Atoi(c.DefaultQuery("page", "1")); err == nil && p > 0 { page = p }
 	filters.Offset = (page - 1) * 50
 
-	if d := c.Query("date_from"); d != "" { if t, err := time.Parse("2006-01-02", d); err == nil { filters.DateFrom = &t } }
-	if d := c.Query("date_to"); d != "" { if t, err := time.Parse("2006-01-02", d); err == nil { eod := t.Add(23*time.Hour + 59*time.Minute + 59*time.Second); filters.DateTo = &eod } }
+	if d := c.Query("date_from"); d != "" { if t, err := services.ParseDate(d); err == nil { filters.DateFrom = &t } }
+	if d := c.Query("date_to"); d != "" { if t, err := services.ParseDate(d); err == nil { eod := t.Add(23*time.Hour + 59*time.Minute + 59*time.Second); filters.DateTo = &eod } }
 	if a := c.Query("action"); a != "" { filters.Action = a }
 	if e := c.Query("entity_type"); e != "" { filters.EntityType = e }
 	if u := c.Query("username"); u != "" { filters.Username = u }
@@ -70,8 +70,8 @@ func (h *Handler) ActivityLogExport(c *gin.Context) {
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export"); return }
 
 	filters := services.ActivityLogFilters{Limit: 1000, Offset: 0}
-	if d := c.Query("date_from"); d != "" { if t, err := time.Parse("2006-01-02", d); err == nil { filters.DateFrom = &t } }
-	if d := c.Query("date_to"); d != "" { if t, err := time.Parse("2006-01-02", d); err == nil { eod := t.Add(23*time.Hour + 59*time.Minute + 59*time.Second); filters.DateTo = &eod } }
+	if d := c.Query("date_from"); d != "" { if t, err := services.ParseDate(d); err == nil { filters.DateFrom = &t } }
+	if d := c.Query("date_to"); d != "" { if t, err := services.ParseDate(d); err == nil { eod := t.Add(23*time.Hour + 59*time.Minute + 59*time.Second); filters.DateTo = &eod } }
 	if a := c.Query("action"); a != "" { filters.Action = a }
 	if e := c.Query("entity_type"); e != "" { filters.EntityType = e }
 	if u := c.Query("username"); u != "" { filters.Username = u }

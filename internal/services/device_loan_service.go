@@ -44,10 +44,10 @@ func (s *DeviceLoanService) GetByID(id int) (*repository.DeviceLoanRow, error) {
 }
 
 func (s *DeviceLoanService) CreateLoan(in CreateLoanInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
-	loanDate, _ := time.Parse("2006-01-02", in.LoanDate)
+	loanDate := MustParseDate(in.LoanDate)
 	var expectedReturnDate *time.Time
 	if in.ExpectedReturnDate != "" {
-		if t, err := time.Parse("2006-01-02", in.ExpectedReturnDate); err == nil {
+		if t, err := ParseDate(in.ExpectedReturnDate); err == nil {
 			expectedReturnDate = &t
 		}
 	}
@@ -81,13 +81,13 @@ func (s *DeviceLoanService) CreateLoan(in CreateLoanInput, actorID int, actorUse
 }
 
 func (s *DeviceLoanService) UpdateLoan(id int, in UpdateLoanInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	loanDate, _ := time.Parse("2006-01-02", in.LoanDate)
+	loanDate := MustParseDate(in.LoanDate)
 	var expectedReturnDate, actualReturnDate *time.Time
 	if in.ExpectedReturnDate != "" {
-		if t, err := time.Parse("2006-01-02", in.ExpectedReturnDate); err == nil { expectedReturnDate = &t }
+		if t, err := ParseDate(in.ExpectedReturnDate); err == nil { expectedReturnDate = &t }
 	}
 	if in.ActualReturnDate != "" {
-		if t, err := time.Parse("2006-01-02", in.ActualReturnDate); err == nil { actualReturnDate = &t }
+		if t, err := ParseDate(in.ActualReturnDate); err == nil { actualReturnDate = &t }
 	}
 	err := s.deviceLoanRepo.Update(id, in.BorrowerName, in.BorrowerType, loanDate, expectedReturnDate, actualReturnDate, in.Status, in.Purpose, in.Notes)
 	if err != nil {

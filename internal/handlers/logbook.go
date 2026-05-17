@@ -111,7 +111,7 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 
 	bulk := make([]repository.BulkEntry, 0, len(req.Date))
 	for i := 0; i < len(req.Date) && i < len(req.StudentName); i++ {
-		dv, err1 := time.Parse("2006-01-02", req.Date[i])
+		dv, err1 := services.ParseDate(req.Date[i])
 		tiv, err2 := time.Parse("15:04", req.TimeIn[i])
 		tov, err3 := time.Parse("15:04", req.TimeOut[i])
 		if err1 != nil || err2 != nil || err3 != nil { continue }
