@@ -128,6 +128,26 @@ type DeviceUsage struct {
 }
 
 
+// LostItem represents a lost item report
+type LostItem struct {
+	ID               int        `json:"id"`
+	DeviceID         *int       `json:"device_id"`
+	ItemName         string     `json:"item_name"`
+	ItemDescription  string     `json:"item_description"`
+	ReportedBy       string     `json:"reported_by"`
+	ReportedDate     time.Time  `json:"reported_date"`
+	LastSeenAt       *time.Time `json:"last_seen_at"`
+	LocationLastSeen string     `json:"location_last_seen"`
+	Status           string     `json:"status"`
+	OwnerName        string     `json:"owner_name"`
+	OwnerClass       string     `json:"owner_class"`
+	OwnerNim         string     `json:"owner_nim"`
+	ReturnedDate     *time.Time `json:"returned_date"`
+	Photo            string     `json:"photo"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+}
+
 // SoftwareCatalog represents a software entry in the master catalog
 type SoftwareCatalog struct {
 	ID          int       `json:"id"`
