@@ -61,7 +61,8 @@ func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
 		"title": "Jenis Barang", "currentPage": "devices",
 		"username": username, "role": role,
-		"deviceTypes": dts, "search": search, "category": category,
+		"activeTab": "types", "deviceTypes": dts,
+		"filters": gin.H{"search": search, "category": category},
 	})
 }
 

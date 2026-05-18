@@ -83,19 +83,9 @@
                                     <i class="bi bi-pc-display" aria-hidden="true"></i>
                                 </div>
                                 <div class="pc-status-badge">
-                                    {{ if eq $pc.Status "normal" }}
-                                        <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
-                                        <span class="visually-hidden">Status Normal</span>
-                                    {{ else if eq $pc.Status "warning" }}
-                                        <i class="bi bi-exclamation-triangle-fill text-warning" aria-hidden="true"></i>
-                                        <span class="visually-hidden">Status Warning</span>
-                                    {{ else if eq $pc.Status "broken" }}
-                                        <i class="bi bi-x-circle-fill text-danger" aria-hidden="true"></i>
-                                        <span class="visually-hidden">Status Rusak</span>
-                                    {{ else }}
-                                        <i class="bi bi-dash-circle-fill text-secondary" aria-hidden="true"></i>
-                                        <span class="visually-hidden">Status Inactive</span>
-                                    {{ end }}
+                                    {{ $info := pcStatusInfo $pc.Status }}
+                                    <i class="bi {{ $info.Icon }} {{ $info.Color }}" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
                                 </div>
                                 <!-- Windows Version Badge -->
                                 <div class="pc-windows-badge" id="win-badge-{{ $pc.PCNumber }}">

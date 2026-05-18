@@ -6,20 +6,12 @@
                         <!-- Step 1: Pilih Kategori -->
                         <div class="mb-3">
                             <label for="category_filter" class="form-label">Kategori *</label>
-                            <select class="form-select" id="category_filter" required>
-                                <option value="">Pilih kategori...</option>
-                                <option value="peripheral">Peripheral</option>
-                                <option value="network">Network</option>
-                                <option value="consumable">Consumable</option>
-                                <option value="power">Power</option>
-                                <option value="display">Display</option>
-                                <option value="printer">Printer</option>
-                                <option value="audio">Audio</option>
-                                <option value="tools">Tools</option>
-                                <option value="server">Server</option>
-                                <option value="security">Security</option>
-                                <option value="stationery">Stationery</option>
-                            </select>
+<select class="form-select" id="category_filter" required>
+    <option value="">Pilih kategori...</option>
+    {{ range $cat := allCategories }}
+    <option value="{{ $cat.Value }}">{{ $cat.Label }}</option>
+    {{ end }}
+</select>
                             <small class="text-muted">Pilih kategori untuk menampilkan template yang sesuai</small>
                         </div>
 
