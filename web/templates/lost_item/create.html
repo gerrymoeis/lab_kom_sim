@@ -42,6 +42,22 @@
                             <input type="text" class="form-control" id="location_last_seen" name="location_last_seen" placeholder="Misal: Meja PC-01, di bawah meja PC-07, ...">
                         </div>
 
+                        <hr>
+                        <h6 class="text-muted"><i class="bi bi-camera"></i> Foto Barang</h6>
+
+                        <div class="mb-3">
+                            <input type="hidden" id="photo" name="photo" value="">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <input type="file" class="form-control" id="photoInput" accept="image/*" capture="environment">
+                                    <small class="text-muted">Ambil foto atau pilih dari galeri (JPEG/PNG/HEIC)</small>
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    <img src="/static/img/no-image.png" class="img-thumbnail" style="max-height: 120px; display: none;" id="photoPreview">
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save"></i> Simpan
@@ -52,5 +68,30 @@
                         </div>
                     </form>
 {{ template "layout/card_close.html" . }}
+
+<script>
+document.getElementById('photoInput').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+
+    var formData = new FormData();
+    formData.append('image', file);
+    formData.append('type', 'lost_item');
+
+    fetch('/api/upload-image', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            document.getElementById('photo').value = data.file_ref;
+            var preview = document.getElementById('photoPreview');
+            preview.src = data.preview_url;
+            preview.style.display = 'inline-block';
+        } else {
+            alert('Gagal upload foto: ' + data.message);
+        }
+    })
+    .catch(function() { alert('Gagal upload foto'); });
+});
+</script>
 
 {{ template "layout/footer.html" . }}

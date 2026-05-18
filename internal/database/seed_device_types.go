@@ -56,7 +56,7 @@ func seedDeviceTypesIfEmpty(db *DB, bt, bf string) error {
 		{"Double Tip Kecil", "consumable", "", "", "consumable", "DOUBLETIP", "Lemari Kayu no.2", false, true, ""},
 		{"MicroSD Card SanDisk 512GB", "consumable", "SanDisk", "Ultra 512GB UHS-I Class 10", "consumable", "SDCARD", "Lemari Kaca", true, true, "Media penyimpanan untuk kamera CCTV. Kecepatan baca hingga 100 MB/s."},
 		{"Hard Disk Drive Seagate SkyHawk 6TB", "consumable", "Seagate", "SkyHawk 6TB", "consumable", "HDD-SATA", "Lemari Kaca", false, true, "HDD internal SATA untuk surveillance recording 24/7 di sistem CCTV/DVR/NVR."},
-		{"Loudspeaker System JBL", "audio", "JBL", "PasiÃƒÂ³n", "individual", "SPEAKER-JBL", "Ruang Lab", true, false, "Loudspeaker Pasif (membutuhkan amplifier eksternal) dirancang oleh HARMAN."},
+		{"Loudspeaker System JBL", "audio", "JBL", "Pasion", "individual", "SPEAKER-JBL", "Ruang Lab", true, false, "Loudspeaker Pasif (membutuhkan amplifier eksternal) dirancang oleh HARMAN."},
 		{"Mikrofon Nirkabel Champion 1", "audio", "Champion", "Dual Channel UHF/PLL", "individual", "MIC-WIRELESS", "Ruang Lab", true, false, "Mikrofon Nirkabel Profesional dengan teknologi UHF/PLL Dual Channel."},
 		{"Hydraulic Crimping Tool YQK-240", "tools", "YQK", "YQK-240", "individual", "CRIMP-HYD", "Lemari Kaca", true, false, "Alat Press Hidrolik untuk menghubungkan kabel dengan konektor berukuran besar."},
 		{"Server Komputer DELL", "server", "DELL Technologies", "", "individual", "SERVER-DELL", "Ruang Server", false, false, "Pusat komputasi dan penyimpanan data untuk Laboratorium Komputer. Tipe Rack-Mount."},
