@@ -59,8 +59,10 @@ func (h *Handler) PCCreatePage(c *gin.Context) {
 func (h *Handler) PCCreate(c *gin.Context) {
 	var req CreatePCRequest
 	if err := c.ShouldBind(&req); err != nil {
+		_, username, role, _ := h.user(c)
 		c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
 			"title": "Tambah PC Baru", "error": "Lengkapi data yang diperlukan",
+			"currentPage": "pc", "username": username, "role": role,
 		})
 		return
 	}
@@ -79,6 +81,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
 			"title": "Tambah PC Baru", "error": "Gagal menyimpan. Mungkin nomor PC sudah digunakan.",
+			"currentPage": "pc", "username": u, "role": r,
 		})
 		return
 	}
