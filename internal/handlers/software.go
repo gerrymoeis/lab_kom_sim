@@ -38,6 +38,36 @@ func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
+func (h *Handler) SoftwareDetail(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok { return }
+
+	id, _ := strconv.Atoi(c.Param("id"))
+	sw, err := h.softwareService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Software tidak ditemukan")
+		return
+	}
+
+	pcList, err := h.softwareService.GetPCInstallStatus(id)
+	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
+
+	installedCount := 0
+	for _, p := range pcList {
+		if p.Installed { installedCount++ }
+	}
+
+	c.HTML(http.StatusOK, "software/detail.html", gin.H{
+		"title": "Detail Software - " + sw.Name, "currentPage": "software",
+		"username": username, "role": role,
+		"software": sw, "pcList": pcList,
+		"installedCount": installedCount,
+		"totalPCs": len(pcList),
+		"createdAt": sw.CreatedAt.Format("2006-01-02 15:04"),
+		"updatedAt": sw.UpdatedAt.Format("2006-01-02 15:04"),
+	})
+}
+
 func (h *Handler) SoftwareEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
