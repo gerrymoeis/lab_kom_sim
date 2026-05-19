@@ -16,6 +16,7 @@ type CreateLostItemInput struct {
 	LastSeenAt      string
 	LocationLastSeen string
 	Status          string
+	Photo           string
 }
 
 type UpdateLostItemInput struct {
@@ -82,7 +83,7 @@ func parseDatePtr(s string) *time.Time {
 }
 
 func (s *LostItemService) Create(in CreateLostItemInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
-	id, err := s.repo.Create(in.DeviceID, in.ItemName, in.ItemDescription, in.ReportedBy, in.ReportedDate, parseDatetime(in.LastSeenAt), in.LocationLastSeen, in.Status)
+	id, err := s.repo.Create(in.DeviceID, in.ItemName, in.ItemDescription, in.ReportedBy, in.ReportedDate, parseDatetime(in.LastSeenAt), in.LocationLastSeen, in.Status, in.Photo)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "lost_item", 0,
 			map[string]any{"item_name": in.ItemName}, ipAddress, userAgent, err.Error())
