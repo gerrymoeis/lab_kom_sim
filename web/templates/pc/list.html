@@ -47,9 +47,9 @@
                             <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else if .Brand }}{{ .Brand }}{{ if .Model }} {{ .Model }}{{ end }}{{ else }}-{{ end }}</td>
                             <td>Baris {{ .Row }}, Kolom {{ .Column }}</td>
                             <td>
-                                <span class="badge bg-{{ if eq .Status "normal" }}success{{ else if eq .Status "warning" }}warning{{ else if eq .Status "broken" }}danger{{ else }}secondary{{ end }}">
-                                    {{ .Status }}
-                                </span>
+<span class="badge bg-{{ (pcStatusInfo .Status).BadgeClass }}">
+    {{ .Status }}
+</span>
                             </td>
                             <td>
                                 <small>

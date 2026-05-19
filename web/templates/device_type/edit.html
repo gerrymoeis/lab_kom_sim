@@ -11,14 +11,12 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="category" class="form-label">Kategori *</label>
-                                <select class="form-select" id="category" name="category" required>
-                                    <option value="peripheral" {{ if eq .deviceType.Category "peripheral" }}selected{{ end }}>Peripheral</option>
-                                    <option value="network" {{ if eq .deviceType.Category "network" }}selected{{ end }}>Network</option>
-                                    <option value="consumable" {{ if eq .deviceType.Category "consumable" }}selected{{ end }}>Consumable</option>
-                                    <option value="power" {{ if eq .deviceType.Category "power" }}selected{{ end }}>Power</option>
-                                    <option value="display" {{ if eq .deviceType.Category "display" }}selected{{ end }}>Display</option>
-                                    <option value="printer" {{ if eq .deviceType.Category "printer" }}selected{{ end }}>Printer</option>
-                                </select>
+<select class="form-select" id="category" name="category" required>
+    <option value="">Pilih kategori...</option>
+    {{ range $cat := dtCategories }}
+    <option value="{{ $cat.Value }}" {{ if eq $.deviceType.Category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
+    {{ end }}
+</select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="item_type" class="form-label">Tipe Item *</label>

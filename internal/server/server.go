@@ -15,6 +15,69 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type NavItem struct {
+	Page, Icon, Label, URL string
+}
+
+type Category struct {
+	Value, Label string
+}
+
+type PCStatusInfo struct {
+	Status, BadgeClass, Icon, Color, VisLabel string
+}
+
+func loadCategories() []Category {
+	return []Category{
+		{"peripheral", "Peripheral"}, {"network", "Network"},
+		{"consumable", "Consumable"}, {"power", "Power"},
+		{"display", "Display"}, {"printer", "Printer"},
+		{"audio", "Audio"}, {"tools", "Tools"},
+		{"server", "Server"}, {"security", "Security"},
+		{"stationery", "Stationery"},
+	}
+}
+
+func loadDeviceTypeCategories() []Category {
+	return []Category{
+		{"peripheral", "Peripheral"}, {"network", "Network"},
+		{"consumable", "Consumable"}, {"power", "Power"},
+		{"display", "Display"}, {"printer", "Printer"},
+	}
+}
+
+var pcStatusMap = map[string]PCStatusInfo{
+	"normal":  {"normal", "success", "bi-check-circle-fill", "text-success", "Normal"},
+	"warning": {"warning", "warning", "bi-exclamation-triangle-fill", "text-warning", "Warning"},
+	"broken":  {"broken", "danger", "bi-x-circle-fill", "text-danger", "Rusak"},
+}
+
+func getPCStatusInfo(status string) PCStatusInfo {
+	if s, ok := pcStatusMap[status]; ok {
+		return s
+	}
+	return PCStatusInfo{"inactive", "secondary", "bi-dash-circle-fill", "text-secondary", "Inactive"}
+}
+
+func loadNavItems(currentPage, role string) []NavItem {
+	items := []NavItem{
+		{"dashboard", "bi-grid-3x3-gap", "Dashboard", "/dashboard"},
+		{"pc", "bi-pc-display", "PC", "/pc"},
+		{"devices", "bi-hdd-rack", "Perangkat", "/devices"},
+		{"software", "bi-app-indicator", "Software", "/software"},
+		{"schedules", "bi-calendar-event", "Jadwal", "/schedules"},
+		{"logbook", "bi-journal-text", "Logbook", "/logbook"},
+	}
+	if role == "admin" {
+		items = append(items,
+			NavItem{"lost_items", "bi-question-circle", "Barang Hilang", "/lost-items"},
+			NavItem{"users", "bi-people", "Users", "/admin/users"},
+			NavItem{"activity_logs", "bi-clock-history", "Activity Logs", "/admin/activity-logs"},
+		)
+	}
+	return items
+}
+
 func CleanupTempFiles() {
 	filepath.Walk(filepath.Join("uploads", "temp"),
 		func(path string, info os.FileInfo, err error) error {
@@ -34,6 +97,10 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 			for i := 0; i < count; i++ { r[i] = i }
 			return r
 		},
+		"navItems":        func(currentPage, role string) []NavItem { return loadNavItems(currentPage, role) },
+		"allCategories":   func() []Category { return loadCategories() },
+		"dtCategories":    func() []Category { return loadDeviceTypeCategories() },
+		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },
 	})
 	err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil { return err }
@@ -116,6 +183,14 @@ func SetupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 		protected.POST("/device-usages/:id/edit", h.DeviceUsageEdit)
 		protected.POST("/device-usages/:id/delete", h.DeviceUsageDelete)
 		protected.POST("/device-usages/:id/availability", h.DeviceUsageUpdateAvailability)
+
+		protected.GET("/lost-items", h.LostItemList)
+		protected.GET("/lost-items/create", h.LostItemCreatePage)
+		protected.POST("/lost-items/create", h.LostItemCreate)
+		protected.GET("/lost-items/:id", h.LostItemDetail)
+		protected.GET("/lost-items/:id/edit", h.LostItemEditPage)
+		protected.POST("/lost-items/:id/edit", h.LostItemEdit)
+		protected.POST("/lost-items/:id/delete", h.LostItemDelete)
 
 		protected.GET("/schedules", h.ScheduleList)
 		protected.GET("/schedules/create", h.ScheduleCreatePage)
