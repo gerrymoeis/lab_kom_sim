@@ -63,8 +63,6 @@ func (h *Handler) SoftwareDetail(c *gin.Context) {
 		"software": sw, "pcList": pcList,
 		"installedCount": installedCount,
 		"totalPCs": len(pcList),
-		"createdAt": sw.CreatedAt.Format("2006-01-02 15:04"),
-		"updatedAt": sw.UpdatedAt.Format("2006-01-02 15:04"),
 	})
 }
 
@@ -83,24 +81,51 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 	pcList, err := h.softwareService.GetPCInstallStatus(id)
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
 
+	installedCount := 0
+	for _, p := range pcList {
+		if p.Installed { installedCount++ }
+	}
+
 	c.HTML(http.StatusOK, "software/edit.html", gin.H{
 		"title": "Edit Software - " + sw.Name, "currentPage": "software",
 		"username": username, "role": role,
 		"software": sw, "pcList": pcList,
+		"installedCount": installedCount,
+		"totalPCs": len(pcList),
 	})
 }
 
 func (h *Handler) SoftwareEdit(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+	sw, err := h.softwareService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Software tidak ditemukan")
+		return
+	}
+
 	var req struct {
-		PCIDs []string `form:"pc_ids[]"`
+		Name        string   `form:"name"`
+		Category    string   `form:"category"`
+		Description string   `form:"description"`
+		PCIDs       []string `form:"pc_ids[]"`
 	}
 	c.ShouldBind(&req)
 
+	if req.Name == "" {
+		req.Name = sw.Name
+	}
+	if req.Category == "" {
+		req.Category = sw.Category
+	}
+
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	if err := h.softwareService.Update(id, req.PCIDs, uid, u, r, ip, ua); err != nil {
-		h.redirectWithError(c, "/software", "Gagal mengupdate software PC")
+	if err := h.softwareService.Update(id, req.Name, req.Category, req.Description, req.PCIDs, uid, u, r, ip, ua); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			h.redirectWithError(c, "/software/"+c.Param("id")+"/edit", "Nama software sudah ada")
+			return
+		}
+		h.redirectWithError(c, "/software/"+c.Param("id")+"/edit", "Gagal mengupdate software")
 		return
 	}
 
