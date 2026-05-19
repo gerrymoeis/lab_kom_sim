@@ -120,10 +120,11 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/profile?error=Semua field harus diisi")
 		return
 	}
-	userID, _, _, ok := h.user(c)
+	userID, u, r, ok := h.user(c)
 	if !ok { return }
+	ip, ua := getRequestContext(c)
 
-	if err := h.userService.ChangePassword(userID, req.OldPassword, req.NewPassword, req.ConfirmPassword); err != nil {
+	if err := h.userService.ChangePassword(userID, req.OldPassword, req.NewPassword, req.ConfirmPassword, u, r, ip, ua); err != nil {
 		msg := "Gagal mengubah password"
 		if errors.Is(err, services.ErrPasswordMismatch) { msg = "Password baru dan konfirmasi tidak cocok" }
 		if errors.Is(err, services.ErrWrongPassword) { msg = "Password lama salah" }

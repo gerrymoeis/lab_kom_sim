@@ -49,9 +49,10 @@ func (h *Handler) LogbookUploadPage(c *gin.Context) {
 }
 
 func (h *Handler) LogbookUpload(c *gin.Context) {
-	_, username, role, ok := h.user(c)
+	userID, username, role, ok := h.user(c)
 	if !ok { return }
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat mengupload"); return }
+	ip, ua := getRequestContext(c)
 
 	var path, fn string
 
@@ -95,6 +96,8 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		h.errHTML(c, "Gagal memproses gambar: "+err.Error())
 		return
 	}
+
+	h.activityLogService.LogUpload(userID, username, role, "logbook", 0, fn, "image", ip, ua)
 
 	c.HTML(http.StatusOK, "logbook/upload.html", gin.H{
 		"title": "Upload Logbook", "currentPage": "logbook",
