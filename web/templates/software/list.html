@@ -42,8 +42,9 @@
                         <td>{{ .Description }}</td>
                         <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
                         <td>
-                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="if(confirm('Hapus {{ .Name }}?')){ document.getElementById('del-{{ .ID }}').submit(); }"><i class="bi bi-trash"></i></button>
+                            <a href="/software/{{ .ID }}" class="btn btn-sm btn-info" title="Detail"><i class="bi bi-eye"></i></a>
+                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" title="Hapus" onclick="if(confirm('Hapus {{ .Name }}?')){ document.getElementById('del-{{ .ID }}').submit(); }"><i class="bi bi-trash"></i></button>
                             <form id="del-{{ .ID }}" method="POST" action="/software/{{ .ID }}/delete" style="display:none;"></form>
                         </td>
                     </tr>

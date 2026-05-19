@@ -1,0 +1,80 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-eye"></i> {{ .title }}</h5>
+                </div>
+                <div class="card-body">
+                    {{ template "layout/alert.html" . }}
+
+                    <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Informasi Software</h6>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="25%">Nama Software</th>
+                            <td><strong>{{ .software.Name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Kategori</th>
+                            <td>
+                                {{ if eq .software.Category "required" }}<span class="badge bg-primary">Required</span>{{ else }}<span class="badge bg-secondary">Other</span>{{ end }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Deskripsi</th>
+                            <td>{{ if .software.Description }}{{ .software.Description }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
+                        </tr>
+                        <tr>
+                            <th>Tanggal Dibuat</th>
+                            <td>{{ .createdAt }}</td>
+                        </tr>
+                        <tr>
+                            <th>Terakhir Diupdate</th>
+                            <td>{{ .updatedAt }}</td>
+                        </tr>
+                    </table>
+
+                    <hr>
+
+                    <h6 class="text-primary mb-3"><i class="bi bi-pc-display"></i> Status Instalasi Per PC</h6>
+                    <p>
+                        <span class="badge bg-success fs-6 me-2">{{ .installedCount }} Terinstall</span>
+                        <span class="badge bg-secondary fs-6">{{ sub .totalPCs .installedCount }} Belum</span>
+                    </p>
+
+                    <div class="row row-cols-5 g-2">
+                        {{ range .pcList }}
+                        <div class="col">
+                            {{ if .Installed }}
+                            <div class="border rounded p-2 text-center bg-success text-white border-success">
+                                <small>PC-{{ printf "%02d" .PCNumber }}</small>
+                                <div><i class="bi bi-check-circle-fill"></i></div>
+                            </div>
+                            {{ else }}
+                            <div class="border rounded p-2 text-center bg-light text-muted border-secondary">
+                                <small>PC-{{ printf "%02d" .PCNumber }}</small>
+                                <div><i class="bi bi-x-circle-fill"></i></div>
+                            </div>
+                            {{ end }}
+                        </div>
+                        {{ else }}
+                        <p class="text-muted">Belum ada data PC</p>
+                        {{ end }}
+                    </div>
+
+                    <hr class="my-4">
+                    <div class="d-flex gap-2">
+                        {{ if eq .role "admin" }}
+                        <a href="/software/{{ .software.ID }}/edit" class="btn btn-warning"><i class="bi bi-pencil"></i> Edit</a>
+                        {{ end }}
+                        <a href="/software" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ template "layout/footer.html" . }}
