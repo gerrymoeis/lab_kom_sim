@@ -71,17 +71,9 @@
                 <div class="col-md-2">
                     <select class="form-select" name="category">
                         <option value="">Semua Kategori</option>
-                        <option value="peripheral" {{ if eq .filters.category "peripheral" }}selected{{ end }}>Peripheral</option>
-                        <option value="network" {{ if eq .filters.category "network" }}selected{{ end }}>Network</option>
-                        <option value="consumable" {{ if eq .filters.category "consumable" }}selected{{ end }}>Consumable</option>
-                        <option value="power" {{ if eq .filters.category "power" }}selected{{ end }}>Power</option>
-                        <option value="display" {{ if eq .filters.category "display" }}selected{{ end }}>Display</option>
-                        <option value="printer" {{ if eq .filters.category "printer" }}selected{{ end }}>Printer</option>
-                        <option value="audio" {{ if eq .filters.category "audio" }}selected{{ end }}>Audio</option>
-                        <option value="tools" {{ if eq .filters.category "tools" }}selected{{ end }}>Tools</option>
-                        <option value="server" {{ if eq .filters.category "server" }}selected{{ end }}>Server</option>
-                        <option value="security" {{ if eq .filters.category "security" }}selected{{ end }}>Security</option>
-                        <option value="stationery" {{ if eq .filters.category "stationery" }}selected{{ end }}>Stationery</option>
+                        {{ range $cat := allCategories }}
+                        <option value="{{ $cat.Value }}" {{ if eq $.filters.category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
+                        {{ end }}
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -184,17 +176,9 @@
                 <div class="col-md-3">
                     <select class="form-select" name="category">
                         <option value="">Semua Kategori</option>
-                        <option value="peripheral" {{ if eq .filters.category "peripheral" }}selected{{ end }}>Peripheral</option>
-                        <option value="network" {{ if eq .filters.category "network" }}selected{{ end }}>Network</option>
-                        <option value="consumable" {{ if eq .filters.category "consumable" }}selected{{ end }}>Consumable</option>
-                        <option value="power" {{ if eq .filters.category "power" }}selected{{ end }}>Power</option>
-                        <option value="display" {{ if eq .filters.category "display" }}selected{{ end }}>Display</option>
-                        <option value="printer" {{ if eq .filters.category "printer" }}selected{{ end }}>Printer</option>
-                        <option value="audio" {{ if eq .filters.category "audio" }}selected{{ end }}>Audio</option>
-                        <option value="tools" {{ if eq .filters.category "tools" }}selected{{ end }}>Tools</option>
-                        <option value="server" {{ if eq .filters.category "server" }}selected{{ end }}>Server</option>
-                        <option value="security" {{ if eq .filters.category "security" }}selected{{ end }}>Security</option>
-                        <option value="stationery" {{ if eq .filters.category "stationery" }}selected{{ end }}>Stationery</option>
+                        {{ range $cat := allCategories }}
+                        <option value="{{ $cat.Value }}" {{ if eq $.filters.category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
+                        {{ end }}
                     </select>
                 </div>
                 <div class="col-md-3">

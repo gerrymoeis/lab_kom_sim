@@ -1,6 +1,39 @@
 {{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="{{ if eq .role "admin" }}col-md-6{{ else }}col-md-12{{ end }}">
+            <h2><i class="bi bi-tags"></i> Jenis Barang</h2>
+            <p class="text-muted">Daftar jenis barang inventaris</p>
+        </div>
+        {{ if eq .role "admin" }}
+        <div class="col-md-6 text-end">
+            <a href="/device-types/create" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Tambah Jenis Barang
+            </a>
+        </div>
+        {{ end }}
+    </div>
+
+    <form method="GET" action="/device-types" class="row g-3 mb-3">
+        <div class="col-md-4">
+            <input type="text" class="form-control" name="search" placeholder="Cari jenis barang..." value="{{ .search }}">
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" name="category">
+                <option value="">Semua Kategori</option>
+                {{ range $cat := allCategories }}
+                <option value="{{ $cat.Value }}" {{ if eq $.category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
+                {{ end }}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-search"></i> Filter
+            </button>
+        </div>
+    </form>
+
     <div class="card shadow-sm">
         <div class="card-body">
             <div class="table-responsive">
