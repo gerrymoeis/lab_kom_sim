@@ -269,6 +269,12 @@ func (r *PCRepository) GetAllStatus() ([]models.PC, error) {
 	return pcs, nil
 }
 
+func (r *PCRepository) GetStatus(id int) (string, error) {
+	var status string
+	err := r.db.QueryRow(`SELECT status FROM pcs WHERE id = ?`, id).Scan(&status)
+	return status, err
+}
+
 func (r *PCRepository) SeedRequiredSoftware(pcID int) error {
 	swRows, err := r.db.Query(`SELECT id FROM software_catalog WHERE category = 'required'`)
 	if err != nil {

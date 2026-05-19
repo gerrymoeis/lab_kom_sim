@@ -127,7 +127,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	h.pcService.SyncSoftware(num, req.RequiredSw, req.OtherName, req.OtherDesc)
+	h.pcService.SyncSoftware(num, req.RequiredSw, req.OtherName, req.OtherDesc, uid, u, r, ip, ua)
 	c.Redirect(http.StatusFound, fmt.Sprintf("/pc/%d", num))
 }
 
@@ -161,7 +161,9 @@ func (h *Handler) UpdatePCStatusAPI(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, "Status diperlukan")
 		return
 	}
-	if err := h.pcService.UpdateStatus(id, req.Status); err != nil {
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	if err := h.pcService.UpdateStatus(id, req.Status, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal mengupdate status")
 		return
 	}
