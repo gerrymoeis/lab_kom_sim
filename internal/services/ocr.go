@@ -225,12 +225,16 @@ func (s *OCRService) callGemini(base64Image, mimeType string) (string, error) {
 		}}},
 	}
 	jsonData, _ := json.Marshal(reqBody)
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=%s", s.geminiKey)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=%s", s.geminiKey)
 	body, err := s.doAPIRequest("POST", url, jsonData, nil)
-	if err != nil { return "", err }
+	if err != nil {
+		return "", err
+	}
 
 	var geminiResp GeminiResponse
-	if err := json.Unmarshal(body, &geminiResp); err != nil { return "", fmt.Errorf("failed to parse response: %w", err) }
+	if err := json.Unmarshal(body, &geminiResp); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
 	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
 		return "", fmt.Errorf("no response from Gemini API")
 	}
@@ -262,26 +266,40 @@ func (s *OCRService) callOpenRouter(base64Image, mimeType string) (string, error
 	}
 	jsonData, _ := json.Marshal(reqBody)
 	body, err := s.doAPIRequest("POST", "https://openrouter.ai/api/v1/chat/completions", jsonData, map[string]string{"Authorization": "Bearer " + s.openRouterKey})
-	if err != nil { return "", err }
+	if err != nil {
+		return "", err
+	}
 
 	var orResp OpenRouterResponse
-	if err := json.Unmarshal(body, &orResp); err != nil { return "", fmt.Errorf("failed to parse response: %w", err) }
-	if len(orResp.Choices) == 0 { return "", fmt.Errorf("no response from OpenRouter") }
+	if err := json.Unmarshal(body, &orResp); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+	if len(orResp.Choices) == 0 {
+		return "", fmt.Errorf("no response from OpenRouter")
+	}
 	return orResp.Choices[0].Message.Content, nil
 }
 
 func (s *OCRService) doAPIRequest(method, url string, jsonData []byte, extraHeaders map[string]string) ([]byte, error) {
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
-	if err != nil { return nil, fmt.Errorf("failed to create request: %w", err) }
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
-	for k, v := range extraHeaders { req.Header.Set(k, v) }
+	for k, v := range extraHeaders {
+		req.Header.Set(k, v)
+	}
 
 	resp, err := s.client.Do(req)
-	if err != nil { return nil, fmt.Errorf("failed to call API: %w", err) }
+	if err != nil {
+		return nil, fmt.Errorf("failed to call API: %w", err)
+	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
-	if err != nil { return nil, fmt.Errorf("failed to read response: %w", err) }
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
@@ -419,5 +437,3 @@ func normalizeTimeFormat(timeStr string) string {
 	// If cannot parse, return as is
 	return timeStr
 }
-
-

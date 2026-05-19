@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"inventaris-lab-kom/internal/services"
 
@@ -57,9 +58,18 @@ func (h *Handler) DeviceLoanEditPage(c *gin.Context) {
 	loan, err := h.deviceLoanService.GetByID(id)
 	if err != nil { h.errHTML(c, "Peminjaman tidak ditemukan"); return }
 
+	computedStatus := "active"
+	if loan.ActualReturnDate != nil {
+		computedStatus = "returned"
+	} else if loan.ExpectedReturnDate != nil && loan.ExpectedReturnDate.Before(time.Now()) {
+		computedStatus = "overdue"
+	}
+
 	c.HTML(http.StatusOK, "device_loan/edit.html", gin.H{
 		"title": "Edit Peminjaman", "currentPage": "devices",
 		"username": username, "role": role, "loan": loan,
+		"deviceName": loan.DeviceName, "assetCode": loan.DeviceAssetCode,
+		"computedStatus": computedStatus,
 	})
 }
 

@@ -60,6 +60,7 @@ func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "device_usage/edit.html", gin.H{
 		"title": "Edit Pemakaian", "currentPage": "devices",
 		"username": username, "role": role, "usage": usage,
+		"deviceName": usage.DeviceName, "assetCode": usage.DeviceAssetCode,
 	})
 }
 
