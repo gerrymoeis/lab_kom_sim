@@ -47,10 +47,6 @@ func (s *PCService) GetSoftware(pcID int) (requiredSW, otherSW []models.PCSoftwa
 	return s.pcRepo.GetSoftware(pcID)
 }
 
-func (s *PCService) SyncSoftware(pcID int, requiredIDs []string, otherNames, otherDescs []string) error {
-	return s.pcRepo.SyncSoftware(pcID, requiredIDs, otherNames, otherDescs)
-}
-
 func (s *PCService) ExportAll() ([]models.PC, error) {
 	return s.pcRepo.ExportAll()
 }
@@ -108,6 +104,38 @@ func (s *PCService) DeletePC(pcNumber, actorID int, actorUsername, actorRole, ip
 	return nil
 }
 
-func (s *PCService) UpdateStatus(id int, status string) error {
-	return s.pcRepo.UpdateStatus(id, status)
+func (s *PCService) UpdateStatus(id int, status string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	oldStatus, _ := s.pcRepo.GetStatus(id)
+
+	if err := s.pcRepo.UpdateStatus(id, status); err != nil {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", id,
+			map[string]any{"pc_id": id}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", id,
+		map[string]any{"pc_id": id},
+		map[string]any{"old_status": oldStatus, "new_status": status},
+		ipAddress, userAgent)
+	return nil
+}
+
+func (s *PCService) SyncSoftware(pcNumber int, requiredIDs []string, otherNames, otherDescs []string,
+	actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+
+	pc, _ := s.pcRepo.GetByPCNumber(pcNumber)
+	pcID := 0
+	if pc != nil { pcID = pc.ID }
+
+	if err := s.pcRepo.SyncSoftware(pcID, requiredIDs, otherNames, otherDescs); err != nil {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+			map[string]any{"pc_number": pcNumber}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+		map[string]any{"pc_number": pcNumber},
+		map[string]any{"required_ids": requiredIDs, "other_names": otherNames},
+		ipAddress, userAgent)
+	return nil
 }
