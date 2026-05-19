@@ -105,14 +105,12 @@
                                 </div>
                             </div>
 
-                            <div class="mt-3 position-relative d-inline-block">
+                            <div class="mt-3 position-relative d-inline-block" id="photoPreviewWrapper"{{ if not .lostItem.Photo }} style="display: none;"{{ end }}>
+                                <img src="{{ if .lostItem.Photo }}/uploads/lost_items/{{ .lostItem.Photo }}{{ end }}" class="img-thumbnail" style="max-height: 120px;" id="photoPreview">
                                 {{ if .lostItem.Photo }}
-                                <img src="/uploads/lost_items/{{ .lostItem.Photo }}" class="img-thumbnail" style="max-height: 120px;" id="photoPreview">
                                 <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0" onclick="removePhoto()" title="Hapus foto">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                {{ else }}
-                                <img src="/static/img/no-image.png" class="img-thumbnail" style="max-height: 120px; display: none;" id="photoPreview">
                                 {{ end }}
                             </div>
                         </div>
@@ -152,9 +150,8 @@ function handleLostItemPhotoUpload(input) {
     .then(function(data) {
         if (data.success) {
             document.getElementById('photo').value = data.file_ref;
-            var preview = document.getElementById('photoPreview');
-            preview.src = data.preview_url;
-            preview.style.display = 'inline-block';
+            document.getElementById('photoPreview').src = data.preview_url;
+            document.getElementById('photoPreviewWrapper').style.display = '';
         } else {
             alert('Gagal upload foto: ' + data.message);
         }
@@ -177,7 +174,8 @@ function removePhoto() {
     document.getElementById('photo').value = '';
     document.getElementById('photoCamera').value = '';
     document.getElementById('photoGallery').value = '';
-    document.getElementById('photoPreview').style.display = 'none';
+    document.getElementById('photoPreview').src = '';
+    document.getElementById('photoPreviewWrapper').style.display = 'none';
 }
 </script>
 

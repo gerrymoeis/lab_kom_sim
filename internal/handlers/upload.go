@@ -67,16 +67,17 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	}
 
 	now := time.Now()
-	var finalFilename string
+	var fileBase string
 	if req.PCNumber != "" {
-		finalFilename = fmt.Sprintf("pc_%s_%s_%s.jpeg", req.PCNumber, req.Type, now.Format("150405_02012006"))
+		fileBase = fmt.Sprintf("pc_%s_%s_%s", req.PCNumber, req.Type, now.Format("150405_02012006"))
 	} else {
-		finalFilename = fmt.Sprintf("temp_%s_%s.jpeg", req.Type, now.Format("150405_02012006"))
+		fileBase = fmt.Sprintf("temp_%s_%s", req.Type, now.Format("150405_02012006"))
 	}
+	finalFilename := fileBase + ".jpeg"
 
 	// Paths
-	tempOriginal := filepath.Join("uploads", "temp", "original_"+finalFilename+ext)
-	finalPath := filepath.Join("uploads", "temp", finalFilename) // Temp location first
+	tempOriginal := filepath.Join("uploads", "temp", "original_"+fileBase+ext)
+	finalPath := filepath.Join("uploads", "temp", finalFilename)
 
 	// Ensure temp directory exists
 	tempDir := filepath.Join("uploads", "temp")
