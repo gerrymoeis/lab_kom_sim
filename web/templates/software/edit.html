@@ -2,48 +2,123 @@
 
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
-                    <div class="mb-3">
-                        <span class="badge {{ if eq .software.Category "required" }}bg-primary{{ else }}bg-secondary{{ end }}">
-                            {{ if eq .software.Category "required" }}Required{{ else }}Other{{ end }}
-                        </span>
-                        {{ if .software.Description }}
-                        <small class="text-muted ms-2">{{ .software.Description }}</small>
-                        {{ end }}
-                    </div>
 
                     <form method="POST" action="/software/{{ .software.ID }}/edit">
-                        <div class="d-flex align-items-center gap-2 mb-3">
-                            <strong class="me-2">Centang PC yang terinstall software ini:</strong>
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.querySelectorAll('input[name=\'pc_ids[]\']').forEach(c=>c.checked=true)">Semua</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.querySelectorAll('input[name=\'pc_ids[]\']').forEach(c=>c.checked=false)">Batal Semua</button>
+
+                        <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Edit Informasi Software</h6>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nama Software</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ .software.Name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Kategori</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="required" {{ if eq .software.Category "required" }}selected{{ end }}>Required</option>
+                                <option value="other" {{ if eq .software.Category "other" }}selected{{ end }}>Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Deskripsi</label>
+                            <textarea class="form-control" id="description" name="description" rows="2">{{ .software.Description }}</textarea>
                         </div>
 
-                        <div class="row row-cols-md-3">
+                        <hr>
+
+                        <h6 class="text-primary mb-3"><i class="bi bi-pc-display"></i> Status Instalasi Per PC</h6>
+                        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                            <span class="fw-bold">Installed: <span id="install-count" class="text-success">{{ .installedCount }}</span> / {{ .totalPCs }} PC</span>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="select-all"><i class="bi bi-check-all"></i> Pilih Semua</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="deselect-all"><i class="bi bi-x"></i> Hapus Semua</button>
+                        </div>
+
+                        <div class="row row-cols-5 g-2" id="pc-grid">
                             {{ range .pcList }}
-                            <div class="col mb-1">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="pc_ids[]" value="{{ .PCID }}" id="pc-{{ .PCID }}" {{ if .Installed }}checked{{ end }}>
-                                    <label class="form-check-label" for="pc-{{ .PCID }}">
-                                        PC-{{ printf "%02d" .PCNumber }}
-                                    </label>
+                            <div class="col">
+                                <div class="pc-toggle border rounded p-2 text-center {{ if .Installed }}bg-success text-white border-success{{ else }}bg-light text-muted border-secondary{{ end }}"
+                                     role="button" tabindex="0"
+                                     data-pc-id="{{ .PCID }}"
+                                     data-installed="{{ .Installed }}">
+                                    <small>PC-{{ printf "%02d" .PCNumber }}</small>
+                                    <div class="toggle-icon">
+                                        {{ if .Installed }}
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        {{ else }}
+                                        <i class="bi bi-x-circle-fill"></i>
+                                        {{ end }}
+                                    </div>
+                                    <input type="checkbox" name="pc_ids[]" value="{{ .PCID }}" {{ if .Installed }}checked{{ end }} hidden>
                                 </div>
                             </div>
                             {{ else }}
-                            <p class="text-muted">Belum ada PC</p>
+                            <p class="text-muted">Belum ada data PC</p>
                             {{ end }}
                         </div>
 
                         <hr class="my-4">
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Simpan
-                            </button>
-                            <a href="/software" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left"></i> Kembali
-                            </a>
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Simpan</button>
+                            <a href="/software/{{ .software.ID }}" class="btn btn-info"><i class="bi bi-eye"></i> Lihat Detail</a>
+                            <a href="/software" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
                         </div>
                     </form>
-{{ template "layout/card_close.html" . }}
-    </div>
+
+    {{ template "layout/card_close.html" . }}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const grid = document.getElementById('pc-grid');
+    const countEl = document.getElementById('install-count');
+
+    function updateCount() {
+        const checked = grid.querySelectorAll('input[name="pc_ids[]"]:checked').length;
+        countEl.textContent = checked;
+    }
+
+    function setAll(checked) {
+        grid.querySelectorAll('.pc-toggle').forEach(function(el) {
+            const cb = el.querySelector('input[name="pc_ids[]"]');
+            cb.checked = checked;
+            if (checked) {
+                el.classList.remove('bg-light', 'text-muted', 'border-secondary');
+                el.classList.add('bg-success', 'text-white', 'border-success');
+                el.querySelector('.toggle-icon i').className = 'bi bi-check-circle-fill';
+            } else {
+                el.classList.remove('bg-success', 'text-white', 'border-success');
+                el.classList.add('bg-light', 'text-muted', 'border-secondary');
+                el.querySelector('.toggle-icon i').className = 'bi bi-x-circle-fill';
+            }
+        });
+        updateCount();
+    }
+
+    grid.addEventListener('click', function(e) {
+        const el = e.target.closest('.pc-toggle');
+        if (!el) return;
+        const cb = el.querySelector('input[name="pc_ids[]"]');
+        cb.checked = !cb.checked;
+        if (cb.checked) {
+            el.classList.remove('bg-light', 'text-muted', 'border-secondary');
+            el.classList.add('bg-success', 'text-white', 'border-success');
+            el.querySelector('.toggle-icon i').className = 'bi bi-check-circle-fill';
+        } else {
+            el.classList.remove('bg-success', 'text-white', 'border-success');
+            el.classList.add('bg-light', 'text-muted', 'border-secondary');
+            el.querySelector('.toggle-icon i').className = 'bi bi-x-circle-fill';
+        }
+        updateCount();
+    });
+
+    grid.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            const el = e.target.closest('.pc-toggle');
+            if (el) { e.preventDefault(); el.click(); }
+        }
+    });
+
+    document.getElementById('select-all').addEventListener('click', function() { setAll(true); });
+    document.getElementById('deselect-all').addEventListener('click', function() { setAll(false); });
+});
+</script>
 
 {{ template "layout/footer.html" . }}

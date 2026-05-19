@@ -66,7 +66,24 @@ func (s *SoftwareService) Create(in SoftwareCreateInput, actorID int, actorUsern
 	return nil
 }
 
-func (s *SoftwareService) Update(id int, pcIDs []string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+func (s *SoftwareService) Update(id int, name, category, description string, pcIDs []string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	name = strings.TrimSpace(name)
+	description = strings.TrimSpace(description)
+	if category != "required" {
+		category = "other"
+	}
+
+	if err := s.repo.UpdateMetadata(id, name, category, description); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+				map[string]any{"software_id": id}, nil, ipAddress, userAgent, "Duplicate: "+name)
+			return err
+		}
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+			map[string]any{"software_id": id}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+
 	var ids []int
 	for _, pidStr := range pcIDs {
 		pid := 0
@@ -81,11 +98,11 @@ func (s *SoftwareService) Update(id int, pcIDs []string, actorID int, actorUsern
 	}
 	if err := s.repo.UpdateSoftwarePCs(id, ids); err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
-			map[string]any{"software_id": id}, nil, ipAddress, userAgent, err.Error())
+			map[string]any{"name": name, "category": category}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
-		map[string]any{"software_id": id},
+		map[string]any{"name": name, "category": category},
 		map[string]any{"pc_ids": pcIDs}, ipAddress, userAgent)
 	return nil
 }
