@@ -110,9 +110,9 @@ func (r *LostItemRepository) GetByID(id int) (*models.LostItem, error) {
 	return &li, nil
 }
 
-func (r *LostItemRepository) Create(deviceID *int, itemName, itemDescription, reportedBy, reportedDate string, lastSeenAt *time.Time, locationLastSeen, status string) (int64, error) {
-	result, err := r.db.Exec(`INSERT INTO lost_items (device_id, item_name, item_description, reported_by, reported_date, last_seen_at, location_last_seen, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		deviceID, itemName, itemDescription, reportedBy, reportedDate, lastSeenAt, locationLastSeen, status)
+func (r *LostItemRepository) Create(deviceID *int, itemName, itemDescription, reportedBy, reportedDate string, lastSeenAt *time.Time, locationLastSeen, status, photo string) (int64, error) {
+	result, err := r.db.Exec(`INSERT INTO lost_items (device_id, item_name, item_description, reported_by, reported_date, last_seen_at, location_last_seen, status, photo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		deviceID, itemName, itemDescription, reportedBy, reportedDate, lastSeenAt, locationLastSeen, status, photo)
 	if err != nil {
 		return 0, err
 	}

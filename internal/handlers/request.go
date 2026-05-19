@@ -227,6 +227,7 @@ type CreateLostItemRequest struct {
 	LastSeenAt      string `form:"last_seen_at"`
 	Status          string `form:"status"`
 	LocationLastSeen string `form:"location_last_seen"`
+	Photo           string `form:"photo"`
 }
 
 type EditLostItemRequest struct {

@@ -79,6 +79,8 @@ func (h *Handler) LostItemCreate(c *gin.Context) {
 		}
 	}
 
+	photo := processLostItemPhoto(req.Photo)
+
 	_, err := h.lostItemService.Create(services.CreateLostItemInput{
 		DeviceID:        deviceID,
 		ItemName:        req.ItemName,
@@ -88,6 +90,7 @@ func (h *Handler) LostItemCreate(c *gin.Context) {
 		LastSeenAt:      req.LastSeenAt,
 		LocationLastSeen: req.LocationLastSeen,
 		Status:          req.Status,
+		Photo:           photo,
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "lost_item/create.html", gin.H{
