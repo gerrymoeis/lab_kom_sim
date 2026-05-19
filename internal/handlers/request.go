@@ -217,3 +217,30 @@ type UploadImageRequest struct {
 type UpdateAvailabilityRequest struct {
 	IsAvailable string `form:"is_available" binding:"required"`
 }
+
+type CreateLostItemRequest struct {
+	DeviceID        string `form:"device_id"`
+	ItemName        string `form:"item_name" binding:"required"`
+	ItemDescription string `form:"item_description"`
+	ReportedBy      string `form:"reported_by" binding:"required"`
+	ReportedDate    string `form:"reported_date"`
+	LastSeenAt      string `form:"last_seen_at"`
+	Status          string `form:"status"`
+	LocationLastSeen string `form:"location_last_seen"`
+}
+
+type EditLostItemRequest struct {
+	DeviceID        string `form:"device_id"`
+	ItemName        string `form:"item_name" binding:"required"`
+	ItemDescription string `form:"item_description"`
+	ReportedBy      string `form:"reported_by" binding:"required"`
+	ReportedDate    string `form:"reported_date"`
+	LastSeenAt      string `form:"last_seen_at"`
+	Status          string `form:"status"`
+	LocationLastSeen string `form:"location_last_seen"`
+	OwnerName       string `form:"owner_name"`
+	OwnerClass      string `form:"owner_class"`
+	OwnerNim        string `form:"owner_nim"`
+	ReturnedDate    string `form:"returned_date"`
+	Photo           string `form:"photo"`
+}

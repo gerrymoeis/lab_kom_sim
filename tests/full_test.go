@@ -132,7 +132,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/pc/1 edit: %d", resp.StatusCode)
 	resp.Body.Close()
 
-	//  2b. PC Photo Uploadâ
+	//  2b. PC Photo Upload →
 	t.Log("\n=== 2b. PC PHOTO UPLOAD ===")
 	photoData, _ := os.ReadFile(filepath.Join("tests", "resources", "logbook.jpeg"))
 
@@ -312,7 +312,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(loanCount > 0, "loans: %d", loanCount)
 	var qtyAfter int
 	db.QueryRow("SELECT quantity_available FROM devices WHERE id=?", devID).Scan(&qtyAfter)
-	assert(qtyAfter == qtyBefore-1, "device qty: %dâ†’%d", qtyBefore, qtyAfter)
+	assert(qtyAfter == qtyBefore-1, "device qty: %d→%d", qtyBefore, qtyAfter)
 	resp, _ = get("/devices?tab=loans")
 	assert(resp.StatusCode == 200, "/devices loans: %d", resp.StatusCode)
 	resp.Body.Close()

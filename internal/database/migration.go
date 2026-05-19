@@ -191,13 +191,31 @@ func runMigrations(db *DB, isPostgres bool) error {
 			cost REAL DEFAULT 0,
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS lost_items (
+			id {{PK}},
+			device_id INTEGER,
+			item_name TEXT NOT NULL,
+			item_description TEXT,
+			reported_by TEXT NOT NULL,
+			reported_date DATE NOT NULL DEFAULT (DATE('now')),
+			last_seen_at {{TS}},
+			location_last_seen TEXT,
+			status TEXT NOT NULL DEFAULT 'hilang' CHECK(status IN ('hilang', 'ditemukan', 'dilaporkan')),
+			owner_name TEXT,
+			owner_class TEXT,
+			owner_nim TEXT,
+			returned_date DATE,
+			photo TEXT,
+			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
+			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
+		)`,
 		`CREATE TABLE IF NOT EXISTS activity_logs (
 			id {{PK}},
 			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
 			username TEXT NOT NULL,
 			user_role TEXT NOT NULL,
 			action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
-			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule', 'device_type')),
+			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule', 'device_type', 'lost_item')),
 			entity_id INTEGER,
 			description TEXT NOT NULL,
 			old_values TEXT,
@@ -267,6 +285,9 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE INDEX IF NOT EXISTS idx_device_loans_borrower ON device_loans(borrower_name)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_usages_user_name ON device_usages(user_name)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_grid ON pcs("row", "column")`,
+		`CREATE INDEX IF NOT EXISTS idx_lost_items_status ON lost_items(status)`,
+		`CREATE INDEX IF NOT EXISTS idx_lost_items_reported_date ON lost_items(reported_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_lost_items_status_date ON lost_items(status, reported_date)`,
 	}
 
 	for _, idx := range indexes {
