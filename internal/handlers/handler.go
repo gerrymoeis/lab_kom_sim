@@ -87,8 +87,10 @@ func (h *Handler) errJSON(c *gin.Context, status int, msg string) {
 
 // errHTML renders error.html with the given message
 func (h *Handler) errHTML(c *gin.Context, msg string) {
+	_, username, role, _ := h.user(c)
 	c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 		"title": "Error", "message": msg,
+		"currentPage": "", "username": username, "role": role,
 	})
 }
 
