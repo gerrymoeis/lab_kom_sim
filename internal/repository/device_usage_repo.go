@@ -73,7 +73,7 @@ type DeviceUsageRow struct {
 func (r *DeviceUsageRepository) GetByID(id int) (*DeviceUsageRow, error) {
 	var u DeviceUsageRow
 	err := r.db.QueryRow(`SELECT u.id, u.device_id, d.name, d.asset_code, u.user_name, u.user_type,
-		u.usage_date, u.quantity, u.is_available, u.purpose, u.notes
+		u.usage_date, u.quantity, u.is_available, u.purpose, COALESCE(u.notes,'')
 		FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE u.id = ?`, id).
 		Scan(&u.ID, &u.DeviceID, &u.DeviceName, &u.DeviceAssetCode,
 			&u.UserName, &u.UserType, &u.UsageDate, &u.Quantity, &u.IsAvailable, &u.Purpose, &u.Notes)

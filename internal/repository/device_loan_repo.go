@@ -80,7 +80,7 @@ type DeviceLoanRow struct {
 func (r *DeviceLoanRepository) GetByID(id int) (*DeviceLoanRow, error) {
 	var l DeviceLoanRow
 	err := r.db.QueryRow(`SELECT l.id, l.device_id, d.name, d.asset_code, l.borrower_name, l.borrower_type,
-		l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose, l.notes
+		l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose, COALESCE(l.notes,'')
 		FROM device_loans l JOIN devices d ON l.device_id = d.id WHERE l.id = ?`, id).
 		Scan(&l.ID, &l.DeviceID, &l.DeviceName, &l.DeviceAssetCode, &l.BorrowerName, &l.BorrowerType,
 			&l.LoanDate, &l.ExpectedReturnDate, &l.ActualReturnDate, &l.Quantity, &l.Status, &l.Purpose, &l.Notes)
