@@ -203,6 +203,7 @@ func SetupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 		protected.POST("/software/create", h.SoftwareCreate)
 		protected.GET("/software/export", h.SoftwareExport)
 		protected.GET("/software/catalog.json", h.GetSoftwareCatalogJSON)
+		protected.GET("/software/:id", h.SoftwareDetail)
 		protected.GET("/software/:id/edit", h.SoftwareEditPage)
 		protected.POST("/software/:id/edit", h.SoftwareEdit)
 		protected.POST("/software/:id/delete", h.SoftwareDelete)
