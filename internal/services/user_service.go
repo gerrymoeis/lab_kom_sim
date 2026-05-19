@@ -83,8 +83,11 @@ func (s *UserService) UpdateProfile(userID int, username, fullName, actorUsernam
 	return username, fullName, nil
 }
 
-func (s *UserService) ChangePassword(userID int, oldPassword, newPassword, confirmPassword string) error {
+func (s *UserService) ChangePassword(userID int, oldPassword, newPassword, confirmPassword, actorUsername, actorRole, ipAddress, userAgent string) error {
 	if newPassword != confirmPassword {
+		s.activityLogService.LogAction(userID, actorUsername, actorRole, "update", "user", userID,
+			map[string]any{"password_changed": true}, map[string]any{"password_changed": false},
+			ipAddress, userAgent, ErrPasswordMismatch.Error())
 		return ErrPasswordMismatch
 	}
 	hash, err := s.userRepo.GetPasswordHash(userID)
@@ -92,11 +95,20 @@ func (s *UserService) ChangePassword(userID int, oldPassword, newPassword, confi
 		return ErrUserNotFound
 	}
 	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(oldPassword)) != nil {
+		s.activityLogService.LogAction(userID, actorUsername, actorRole, "update", "user", userID,
+			map[string]any{"password_changed": true}, map[string]any{"password_changed": false},
+			ipAddress, userAgent, ErrWrongPassword.Error())
 		return ErrWrongPassword
 	}
 	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
-	return s.userRepo.UpdatePassword(userID, string(newHash))
+	if err := s.userRepo.UpdatePassword(userID, string(newHash)); err != nil {
+		return err
+	}
+	s.activityLogService.LogAction(userID, actorUsername, actorRole, "update", "user", userID,
+		map[string]any{"password_changed": true}, map[string]any{"password_changed": true},
+		ipAddress, userAgent)
+	return nil
 }
