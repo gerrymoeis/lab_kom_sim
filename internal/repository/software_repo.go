@@ -136,6 +136,12 @@ func (r *SoftwareRepository) UpdateSoftwarePCs(softwareID int, pcIDs []int) erro
 	return tx.Commit()
 }
 
+func (r *SoftwareRepository) UpdateMetadata(id int, name, category, description string) error {
+	_, err := r.db.Exec(`UPDATE software_catalog SET name = ?, category = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		name, category, description, id)
+	return err
+}
+
 func (r *SoftwareRepository) GetName(id int) (string, error) {
 	var name string
 	err := r.db.QueryRow(`SELECT name FROM software_catalog WHERE id = ?`, id).Scan(&name)
