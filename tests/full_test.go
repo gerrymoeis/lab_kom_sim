@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -165,6 +166,30 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT COALESCE(photo_serial,'') FROM pcs WHERE pc_number=1").Scan(&photoSerial)
 	assert(photoSerial != "", "photo_serial saved: %s", photoSerial)
 
+	// 2c. PC Create + Delete
+	t.Log("\n=== 2c. PC CREATE + DELETE ===")
+	pcCreateData := url.Values{
+		"pc_number": {"40"}, "row": {"5"}, "column": {"8"},
+		"status": {"normal"}, "serial_number": {"SN-TEST40"},
+		"operating_system": {"Win11"}, "device_type": {"PC"},
+		"brand_model": {"Dell"}, "accessories": {"KB"},
+		"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},
+	}.Encode()
+	resp, _ = post("/pc/create", pcCreateData)
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	assert(resp.StatusCode == 302, "PC create: %d body=%s", resp.StatusCode, string(bodyBytes))
+	var newPCID int
+	db.QueryRow("SELECT id FROM pcs WHERE pc_number=40").Scan(&newPCID)
+	assert(newPCID > 0, "PC 40 created: id=%d", newPCID)
+
+	resp, _ = post("/pc/40/delete", "")
+	assert(resp.StatusCode == 302, "PC delete: %d", resp.StatusCode)
+	resp.Body.Close()
+	var pcDeleted int
+	db.QueryRow("SELECT COUNT(*) FROM pcs WHERE pc_number=40").Scan(&pcDeleted)
+	assert(pcDeleted == 0, "PC 40 deleted")
+
 	// 3. Device CRUD
 	t.Log("\n=== 3. DEVICE CRUD ===")
 	resp, _ = get("/devices")
@@ -201,6 +226,13 @@ func TestFullIntegration(t *testing.T) {
 	resp, _ = get("/software/" + fmt.Sprint(swID) + "/edit")
 	assert(resp.StatusCode == 200, "/software/%d/edit: %d", swID, resp.StatusCode)
 	resp.Body.Close()
+
+	resp, _ = post("/software/"+fmt.Sprint(swID)+"/edit", "name=TestSW2&category=required&description=Test2+updated")
+	assert(resp.StatusCode == 302, "edit software: %d", resp.StatusCode)
+	resp.Body.Close()
+	var swName string
+	db.QueryRow("SELECT name FROM software_catalog WHERE id=?", swID).Scan(&swName)
+	assert(swName == "TestSW2", "Software name updated: %s", swName)
 
 	resp, _ = post("/software/"+fmt.Sprint(swID)+"/delete", "")
 	assert(resp.StatusCode == 302, "delete software: %d", resp.StatusCode)
@@ -341,7 +373,64 @@ func TestFullIntegration(t *testing.T) {
 	resp.Body.Close()
 	assert(lsRes.Success && lsRes.Saved == 1, "save: success=%v saved=%d", lsRes.Success, lsRes.Saved)
 
-	// 13. Summary
+	// 13. Lost Items CRUD
+	t.Log("\n=== 13. LOST ITEMS CRUD ===")
+	photoBuf.Reset()
+	mw = multipart.NewWriter(&photoBuf)
+	fw, _ = mw.CreateFormFile("image", "logbook.jpeg")
+	fw.Write(photoData)
+	mw.WriteField("type", "lost_item")
+	mw.Close()
+
+	req, _ = http.NewRequest("POST", ts.URL+"/api/upload-image", &photoBuf)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	addCookies(req)
+	resp, err = client.Do(req)
+	assert(err == nil, "lost item photo upload request")
+	var liUploadRes struct {
+		Success bool   `json:"success"`
+		FileRef string `json:"file_ref"`
+	}
+	json.NewDecoder(resp.Body).Decode(&liUploadRes)
+	resp.Body.Close()
+	assert(liUploadRes.Success && liUploadRes.FileRef != "", "lost item photo upload: file_ref=%s", liUploadRes.FileRef)
+
+	resp, _ = post("/lost-items/create", "item_name=Mouse+Hilang&reported_by=Mahasiswa+Test&status=hilang&photo="+liUploadRes.FileRef)
+	assert(resp.StatusCode == 302, "create lost item: %d", resp.StatusCode)
+	resp.Body.Close()
+	var liID int
+	db.QueryRow("SELECT id FROM lost_items WHERE item_name='Mouse Hilang'").Scan(&liID)
+	assert(liID > 0, "Lost item ID=%d", liID)
+
+	resp, _ = get("/lost-items")
+	assert(resp.StatusCode == 200, "/lost-items: %d", resp.StatusCode)
+	resp.Body.Close()
+
+	resp, _ = get("/lost-items/" + fmt.Sprint(liID))
+	assert(resp.StatusCode == 200, "/lost-items/%d: %d", liID, resp.StatusCode)
+	resp.Body.Close()
+
+	var liPhoto string
+	db.QueryRow("SELECT COALESCE(photo,'') FROM lost_items WHERE id=?", liID).Scan(&liPhoto)
+	assert(liPhoto != "", "lost item photo saved: %s", liPhoto)
+	_, photoErr := os.Stat(filepath.Join("uploads", "lost_items", liPhoto))
+	assert(photoErr == nil, "lost item photo file exists: %s", liPhoto)
+
+	// 14. Change Password
+	t.Log("\n=== 14. CHANGE PASSWORD ===")
+	resp, _ = post("/profile/password", "old_password=admin123&new_password=admin123&confirm_password=admin123")
+	assert(resp.StatusCode == 302, "change password success: %d", resp.StatusCode)
+	resp.Body.Close()
+
+	resp, _ = post("/profile/password", "old_password=wrongpass&new_password=admin123&confirm_password=admin123")
+	assert(resp.StatusCode == 302, "change password wrong pass: %d", resp.StatusCode)
+	resp.Body.Close()
+
+	resp, _ = post("/profile/password", "old_password=admin123&new_password=newpass123&confirm_password=mismatch")
+	assert(resp.StatusCode == 302, "change password mismatch: %d", resp.StatusCode)
+	resp.Body.Close()
+
+	// 15. Summary
 	t.Log("\n=== SUMMARY ===")
 	rows, _ := db.Query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
 	if rows != nil {
