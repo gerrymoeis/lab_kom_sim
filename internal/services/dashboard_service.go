@@ -32,13 +32,13 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 		statusCounts[pc.Status]++
 	}
 
-	grid := make([][]models.PC, 8)
+	grid := make([][]models.PC, 5)
 	for i := range grid {
-		grid[i] = make([]models.PC, 5)
+		grid[i] = make([]models.PC, 8)
 	}
 	for _, pc := range pcs {
 		if pc.Row >= 1 && pc.Row <= 5 && pc.Column >= 1 && pc.Column <= 8 {
-			grid[pc.Column-1][pc.Row-1] = pc
+			grid[pc.Row-1][pc.Column-1] = pc
 		}
 	}
 
