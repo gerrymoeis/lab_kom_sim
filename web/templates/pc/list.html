@@ -45,7 +45,7 @@
                             <td><strong>PC-{{ printf "%02d" .PCNumber }}</strong></td>
                             <td>{{ if .SerialNumber }}<small><code>{{ .SerialNumber }}</code></small>{{ else }}-{{ end }}</td>
                             <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else if .Brand }}{{ .Brand }}{{ if .Model }} {{ .Model }}{{ end }}{{ else }}-{{ end }}</td>
-                            <td>Baris {{ .Row }}, Kolom {{ .Column }}</td>
+                            <td>Baris {{ .Column }}, Kolom {{ .Row }}</td>
                             <td>
 <span class="badge bg-{{ (pcStatusInfo .Status).BadgeClass }}">
     {{ .Status }}
