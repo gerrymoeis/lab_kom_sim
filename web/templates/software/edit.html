@@ -31,23 +31,31 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="deselect-all"><i class="bi bi-x"></i> Hapus Semua</button>
                         </div>
 
-                        <div class="row row-cols-4 row-cols-sm-6 row-cols-md-8 g-1 g-sm-2" id="pc-grid">
-                            {{ range .pcList }}
-                            <div class="col">
-                                <div class="pc-toggle border rounded p-2 text-center {{ if .Installed }}bg-success text-white border-success{{ else }}bg-light text-muted border-secondary{{ end }}"
+                        <div class="d-flex flex-column gap-2" id="pc-grid">
+                            {{ range $barisIdx, $baris := .pcGrid }}
+                            <div class="d-flex gap-2 justify-content-center">
+                                {{ range $kolomIdx, $pc := $baris }}
+                                <div class="pc-toggle border rounded p-2 text-center {{ if gt $pc.PCID 0 }}{{ if $pc.Installed }}bg-success text-white border-success{{ else }}bg-light text-muted border-secondary{{ end }}{{ else }}bg-white border-dashed{{ end }}"
+                                     style="width:80px;{{ if not (gt $pc.PCID 0) }}border-style:dashed;cursor:default;{{ end }}"
                                      role="button" tabindex="0"
-                                     data-pc-id="{{ .PCID }}"
-                                     data-installed="{{ .Installed }}">
-                                    <small>PC-{{ printf "%02d" .PCNumber }}</small>
-                                    <div class="toggle-icon">
-                                        {{ if .Installed }}
+                                     data-pc-id="{{ $pc.PCID }}"
+                                     data-installed="{{ $pc.Installed }}">
+                                    {{ if gt $pc.PCID 0 }}
+                                    <div style="font-size:0.8rem;font-weight:600;">PC-{{ printf "%02d" $pc.PCNumber }}</div>
+                                    <div class="toggle-icon" style="font-size:1.2rem;">
+                                        {{ if $pc.Installed }}
                                         <i class="bi bi-check-circle-fill"></i>
                                         {{ else }}
                                         <i class="bi bi-x-circle-fill"></i>
                                         {{ end }}
                                     </div>
-                                    <input type="checkbox" name="pc_ids[]" value="{{ .PCID }}" {{ if .Installed }}checked{{ end }} hidden>
+                                    <input type="checkbox" name="pc_ids[]" value="{{ $pc.PCID }}" {{ if $pc.Installed }}checked{{ end }} hidden>
+                                    {{ else }}
+                                    <div style="font-size:0.8rem;color:#aaa;">-</div>
+                                    <div style="font-size:1.2rem;"><i class="bi bi-dash text-muted"></i></div>
+                                    {{ end }}
                                 </div>
+                                {{ end }}
                             </div>
                             {{ else }}
                             <p class="text-muted">Belum ada data PC</p>
@@ -78,6 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function setAll(checked) {
         grid.querySelectorAll('.pc-toggle').forEach(function(el) {
             const cb = el.querySelector('input[name="pc_ids[]"]');
+            if (!cb) return;
             cb.checked = checked;
             if (checked) {
                 el.classList.remove('bg-light', 'text-muted', 'border-secondary');
@@ -96,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const el = e.target.closest('.pc-toggle');
         if (!el) return;
         const cb = el.querySelector('input[name="pc_ids[]"]');
+        if (!cb) return;
         cb.checked = !cb.checked;
         if (cb.checked) {
             el.classList.remove('bg-light', 'text-muted', 'border-secondary');
