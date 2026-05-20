@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"inventaris-lab-kom/internal/config"
@@ -114,8 +115,21 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 	return templ, err
 }
 
+func sourceMapBlocker() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if strings.HasSuffix(c.Request.URL.Path, ".map") {
+			c.AbortWithStatus(404)
+			return
+		}
+		c.Next()
+	}
+}
+
 func SetupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(sourceMapBlocker())
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
 
 	templ, err := LoadTemplates("web/templates")
 	if err != nil {
