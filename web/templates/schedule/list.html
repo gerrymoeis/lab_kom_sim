@@ -17,7 +17,7 @@
     <div class="card-body">
         <div class="row mb-3">
             <div class="col-md-8">
-                <form method="GET" action="/schedules" class="d-flex gap-2">
+                <form method="GET" action="/schedules" class="d-flex gap-2 flex-wrap">
                     <select name="day" class="form-select" style="width:auto;">
                         <option value="">Semua Hari</option>
                         {{ range .days }}<option value="{{ . }}" {{ if eq $.dayFilter . }}selected{{ end }}>{{ . }}</option>{{ end }}

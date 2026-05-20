@@ -37,9 +37,9 @@
                     </p>
 
                     <div class="d-flex flex-column gap-2">
-                        {{ range $barisIdx, $baris := .pcGrid }}
-                        <div class="d-flex gap-2 justify-content-center">
-                            {{ range $kolomIdx, $pc := $baris }}
+                        {{ range $kolomIdx, $kolom := .pcGrid }}
+                        <div class="d-flex gap-2 justify-content-center flex-wrap">
+                            {{ range $barisIdx, $pc := $kolom }}
                             <div class="border rounded p-2 text-center" style="width:80px; {{ if gt $pc.PCID 0 }}{{ if $pc.Installed }}background:#d4edda;border-color:#28a745;{{ else }}background:#f8f9fa;border-color:#dee2e6;{{ end }}{{ else }}background:white;border-style:dashed;border-color:#dee2e6;{{ end }}">
                                 {{ if gt $pc.PCID 0 }}
                                 <div style="font-size:0.8rem;font-weight:600;">PC-{{ printf "%02d" $pc.PCNumber }}</div>
