@@ -107,7 +107,7 @@ func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, erro
 	var responseText string
 
 	if s.openRouterKey != "" {
-		log.Printf("[OCR] Trying OpenRouter (openrouter/free) primary...")
+		log.Printf("[OCR] Trying OpenRouter (openrouter/auto) primary...")
 		responseText, err = s.tryProvider(s.callOpenRouter, "OpenRouter", base64Image, mimeType, totalStart)
 		if err == nil {
 			return s.parseOCRResponse(responseText)
@@ -255,7 +255,7 @@ func (s *OCRService) callOpenRouter(base64Image, mimeType string) (string, error
 	prompt := buildOCRPrompt()
 	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image)
 	reqBody := map[string]any{
-		"model": "openrouter/free",
+		"model": "openrouter/auto",
 		"messages": []map[string]any{{
 			"role": "user",
 			"content": []map[string]any{
