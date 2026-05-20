@@ -125,7 +125,7 @@
                                 <td>{{ .TimeIn }}</td>
                                 <td>{{ if .TimeOut }}{{ .TimeOut }}{{ else }}-{{ end }}</td>
                                 {{ if eq $.role "admin" }}
-                                <td>
+                                <td class="d-flex gap-1 flex-wrap align-items-center">
                                     <a href="/logbook/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>

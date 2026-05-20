@@ -74,7 +74,7 @@
                                     {{ .Status }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 {{ if eq $.role "admin" }}
                                 <a href="/device-loans/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
