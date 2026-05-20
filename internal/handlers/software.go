@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -38,6 +39,19 @@ func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
+func buildSoftwareGrid(pcList []repository.PCInstallStatus) [][]repository.PCInstallStatus {
+	grid := make([][]repository.PCInstallStatus, 8)
+	for i := range grid {
+		grid[i] = make([]repository.PCInstallStatus, 5)
+	}
+	for _, p := range pcList {
+		if p.Row >= 1 && p.Row <= 5 && p.Column >= 1 && p.Column <= 8 {
+			grid[p.Column-1][p.Row-1] = p
+		}
+	}
+	return grid
+}
+
 func (h *Handler) SoftwareDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
@@ -60,7 +74,7 @@ func (h *Handler) SoftwareDetail(c *gin.Context) {
 	c.HTML(http.StatusOK, "software/detail.html", gin.H{
 		"title": "Detail Software - " + sw.Name, "currentPage": "software",
 		"username": username, "role": role,
-		"software": sw, "pcList": pcList,
+		"software": sw, "pcGrid": buildSoftwareGrid(pcList),
 		"installedCount": installedCount,
 		"totalPCs": len(pcList),
 	})
@@ -89,7 +103,7 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "software/edit.html", gin.H{
 		"title": "Edit Software - " + sw.Name, "currentPage": "software",
 		"username": username, "role": role,
-		"software": sw, "pcList": pcList,
+		"software": sw, "pcGrid": buildSoftwareGrid(pcList),
 		"installedCount": installedCount,
 		"totalPCs": len(pcList),
 	})

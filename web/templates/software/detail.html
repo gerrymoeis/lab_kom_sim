@@ -36,23 +36,27 @@
                         <span class="badge bg-secondary fs-6">{{ sub .totalPCs .installedCount }} Belum</span>
                     </p>
 
-                    <div class="row row-cols-4 row-cols-sm-6 row-cols-md-8 g-1 g-sm-2">
-                        {{ range .pcList }}
-                        <div class="col">
-                            {{ if .Installed }}
-                            <div class="border rounded p-2 text-center bg-success text-white border-success">
-                                <small>PC-{{ printf "%02d" .PCNumber }}</small>
-                                <div><i class="bi bi-check-circle-fill"></i></div>
-                            </div>
-                            {{ else }}
-                            <div class="border rounded p-2 text-center bg-light text-muted border-secondary">
-                                <small>PC-{{ printf "%02d" .PCNumber }}</small>
-                                <div><i class="bi bi-x-circle-fill"></i></div>
+                    <div class="d-flex flex-column gap-2">
+                        {{ range $barisIdx, $baris := .pcGrid }}
+                        <div class="d-flex gap-2 justify-content-center">
+                            {{ range $kolomIdx, $pc := $baris }}
+                            <div class="border rounded p-2 text-center" style="width:80px; {{ if gt $pc.PCID 0 }}{{ if $pc.Installed }}background:#d4edda;border-color:#28a745;{{ else }}background:#f8f9fa;border-color:#dee2e6;{{ end }}{{ else }}background:white;border-style:dashed;border-color:#dee2e6;{{ end }}">
+                                {{ if gt $pc.PCID 0 }}
+                                <div style="font-size:0.8rem;font-weight:600;">PC-{{ printf "%02d" $pc.PCNumber }}</div>
+                                <div style="font-size:1.2rem;">
+                                    {{ if $pc.Installed }}
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                    {{ else }}
+                                    <i class="bi bi-x-circle-fill text-muted"></i>
+                                    {{ end }}
+                                </div>
+                                {{ else }}
+                                <div style="font-size:0.8rem;color:#aaa;">-</div>
+                                <div style="font-size:1.2rem;"><i class="bi bi-dash text-muted"></i></div>
+                                {{ end }}
                             </div>
                             {{ end }}
                         </div>
-                        {{ else }}
-                        <p class="text-muted">Belum ada data PC</p>
                         {{ end }}
                     </div>
 
