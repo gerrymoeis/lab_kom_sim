@@ -119,6 +119,7 @@
     .table th, .table td { padding: 0.5rem; }
     .table .btn-sm { margin-bottom: 5px; display: block; width: 100%; }
     .form-control, .form-select { font-size: 16px; }
+    .row.mt-4.mb-4 > [class*="col-md-4"] { margin-bottom: 15px; }
 }
 
 @media (max-width: 375px) {
