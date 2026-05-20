@@ -50,6 +50,10 @@ func (s *DeviceService) ListUsages() ([]repository.DeviceUsageRow, error) {
 	return s.deviceRepo.ListUsages()
 }
 
+func (s *DeviceService) GetByID(id int) (*models.DeviceWithCategory, error) {
+	return s.deviceRepo.GetByID(id)
+}
+
 func (s *DeviceService) GetByIDSimple(id int) (*models.Device, error) {
 	return s.deviceRepo.GetByIDSimple(id)
 }

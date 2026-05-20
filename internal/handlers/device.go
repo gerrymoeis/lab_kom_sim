@@ -148,7 +148,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 	if !ok { return }
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	d, err := h.deviceService.GetByIDSimple(id)
+	d, err := h.deviceService.GetByID(id)
 	if err != nil { h.errHTML(c, "Perangkat tidak ditemukan"); return }
 
 	c.HTML(http.StatusOK, "device/edit.html", gin.H{
