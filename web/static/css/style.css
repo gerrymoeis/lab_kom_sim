@@ -119,7 +119,7 @@
     .card.bg-success h5, .card.bg-warning h5, .card.bg-danger h5, .card.bg-secondary h5 { font-size: 1rem; }
     .table { font-size: 0.875rem; }
     .table th, .table td { padding: 0.5rem; }
-    .table .btn-sm { margin-bottom: 5px; display: block; width: 100%; }
+
     .form-control, .form-select { font-size: 16px; }
 }
 

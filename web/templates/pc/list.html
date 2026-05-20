@@ -56,7 +56,7 @@
                                 {{ if .Processor }}{{ .Processor }}{{ else }}-{{ end }}{{ if .RAM }} | {{ .RAM }}{{ end }}{{ if .Storage }} | {{ .Storage }}{{ end }}{{ if .OperatingSystem }}<br>{{ .OperatingSystem }}{{ end }}
                                 </small>
                             </td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 <a href="/pc/{{ .PCNumber }}" class="btn btn-sm btn-info" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
