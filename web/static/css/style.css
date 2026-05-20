@@ -26,7 +26,6 @@
 }
 
 .card:hover { transform: translateY(-2px); }
-.card-header { border-radius: 10px 10px 0 0 !important; }
 
 .form-label.required::after {
     content: " *";
@@ -74,13 +73,15 @@
 .windows-10-22h2 { background-color: #FF9933; }
 .windows-other { background-color: #FFD966; color: #333; text-shadow: none; }
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
     .pc-card { width: 100px; height: 100px; }
     .pc-icon { font-size: 1.8rem; }
     .pc-number { font-size: 13px; }
     .pc-status-badge { font-size: 1rem; }
     .pc-windows-badge { font-size: 0.6rem; padding: 2px 5px; }
     .pc-windows-text { font-size: 0.65rem; }
+    .pc-row { gap: 16px; flex-wrap: wrap; }
+    .pc-grid { gap: 18px; }
 }
 
 @media (max-width: 768px) {
