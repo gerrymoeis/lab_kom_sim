@@ -94,11 +94,13 @@ func (r *SoftwareRepository) GetByID(id int) (*models.SoftwareCatalog, error) {
 type PCInstallStatus struct {
 	PCID      int
 	PCNumber  int
+	Row       int
+	Column    int
 	Installed bool
 }
 
 func (r *SoftwareRepository) GetPCInstallStatus(softwareID int) ([]PCInstallStatus, error) {
-	rows, err := r.db.Query(`SELECT p.id, p.pc_number, COALESCE(ps.installed, FALSE) AS installed
+	rows, err := r.db.Query(`SELECT p.id, p.pc_number, p.row, p.column, COALESCE(ps.installed, FALSE) AS installed
 		FROM pcs p LEFT JOIN pc_software ps ON p.id = ps.pc_id AND ps.software_id = ?
 		ORDER BY p.pc_number`, softwareID)
 	if err != nil {
@@ -109,7 +111,7 @@ func (r *SoftwareRepository) GetPCInstallStatus(softwareID int) ([]PCInstallStat
 	var pcList []PCInstallStatus
 	for rows.Next() {
 		var p PCInstallStatus
-		if rows.Scan(&p.PCID, &p.PCNumber, &p.Installed) == nil {
+		if rows.Scan(&p.PCID, &p.PCNumber, &p.Row, &p.Column, &p.Installed) == nil {
 			pcList = append(pcList, p)
 		}
 	}

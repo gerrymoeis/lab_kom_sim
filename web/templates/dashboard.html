@@ -66,11 +66,11 @@
                             <div class="pc-card status-{{ $pc.Status }} pc-card-clickable" 
                                  role="button"
                                  tabindex="0"
-                                 aria-label="PC {{ printf "%02d" $pc.PCNumber }}, Status {{ $pc.Status }}, Baris {{ $pc.Row }}, Kolom {{ $pc.Column }}"
+								 aria-label="PC {{ printf "%02d" $pc.PCNumber }}, Status {{ $pc.Status }}, Baris {{ $pc.Column }}, Kolom {{ $pc.Row }}"
                                  data-pc-id="{{ $pc.ID }}"
                                  data-pc-number="{{ printf "%02d" $pc.PCNumber }}"
-                                 data-pc-row="{{ $pc.Row }}"
-                                 data-pc-column="{{ $pc.Column }}"
+								 data-pc-row="{{ $pc.Column }}"
+								 data-pc-column="{{ $pc.Row }}"
                                  data-pc-status="{{ $pc.Status }}"
                                  data-pc-processor="{{ $pc.Processor }}"
                                  data-pc-ram="{{ $pc.RAM }}"
@@ -319,7 +319,7 @@
             document.getElementById('pcDetailModalLabel').textContent = 'PC-' + pcNumber + ' Detail';
             
             // Update modal content
-            document.getElementById('modal-position').textContent = 'Baris ' + pcRow + ', Kolom ' + pcColumn;
+            document.getElementById('modal-position').textContent = 'Baris ' + pcColumn + ', Kolom ' + pcRow;
             document.getElementById('modal-processor').textContent = pcProcessor;
             document.getElementById('modal-ram').textContent = pcRam;
             document.getElementById('modal-storage').textContent = pcStorage;
