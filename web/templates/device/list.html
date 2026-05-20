@@ -140,7 +140,7 @@
                                 </span>
                             </td>
                             <td>{{ if .Location }}{{ .Location }}{{ else }}-{{ end }}</td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 <a href="/devices/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
@@ -217,7 +217,7 @@
                                 </span>
                             </td>
                             <td><code>{{ .AssetCodePrefix }}</code></td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 <a href="/device-types/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
@@ -317,7 +317,7 @@
                                     </span>
                                 {{ end }}
                             </td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 {{ if eq $.role "admin" }}
                                 <a href="/device-loans/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
@@ -386,7 +386,7 @@
                             </td>
                             <td><span class="badge bg-warning">{{ .Quantity }}</span></td>
                             <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 {{ if eq $.role "admin" }}
                                 <a href="/device-usages/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
