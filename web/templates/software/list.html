@@ -24,7 +24,7 @@
                         <option value="required" {{ if eq .filterCat "required" }}selected{{ end }}>Required</option>
                         <option value="other" {{ if eq .filterCat "other" }}selected{{ end }}>Other</option>
                     </select>
-                    <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
                 </form>
             </div>
         </div>
@@ -43,8 +43,8 @@
                         <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
                         <td class="d-flex gap-1 flex-wrap align-items-center">
                             <a href="/software/{{ .ID }}" class="btn btn-sm btn-info" title="Detail"><i class="bi bi-eye"></i></a>
-                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
-                            <button type="button" class="btn btn-sm btn-outline-danger" title="Hapus" onclick="if(confirm('Hapus {{ .Name }}?')){ document.getElementById('del-{{ .ID }}').submit(); }"><i class="bi bi-trash"></i></button>
+                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit"><i class="bi bi-pencil"></i></a>
+                            <button type="button" class="btn btn-sm btn-danger" title="Hapus" onclick="if(confirm('Hapus {{ .Name }}?')){ document.getElementById('del-{{ .ID }}').submit(); }"><i class="bi bi-trash"></i></button>
                             <form id="del-{{ .ID }}" method="POST" action="/software/{{ .ID }}/delete" style="display:none;"></form>
                         </td>
                     </tr>
