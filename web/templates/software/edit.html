@@ -32,9 +32,9 @@
                         </div>
 
                         <div class="d-flex flex-column gap-2" id="pc-grid">
-                            {{ range $barisIdx, $baris := .pcGrid }}
-                            <div class="d-flex gap-2 justify-content-center">
-                                {{ range $kolomIdx, $pc := $baris }}
+                            {{ range $kolomIdx, $kolom := .pcGrid }}
+                            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                {{ range $barisIdx, $pc := $kolom }}
                                 <div class="pc-toggle border rounded p-2 text-center {{ if gt $pc.PCID 0 }}{{ if $pc.Installed }}bg-success text-white border-success{{ else }}bg-light text-muted border-secondary{{ end }}{{ else }}bg-white border-dashed{{ end }}"
                                      style="width:80px;{{ if not (gt $pc.PCID 0) }}border-style:dashed;cursor:default;{{ end }}"
                                      role="button" tabindex="0"

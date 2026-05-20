@@ -29,7 +29,7 @@
                 </table>
                 {{ if or .pc.PhotoSerial .pc.PhotoFront }}
                 <hr><h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Dokumentasi Foto</h6>
-                <div class="row">{{ if .pc.PhotoSerial }}<div class="col-md-6 mb-3"><div class="card"><img src="/uploads/pc/{{ .pc.PhotoSerial }}" class="card-img-top" alt="Foto Serial"><div class="card-body"><p class="card-text small text-muted mb-0">Foto Serial Number + Barcode</p></div></div></div>{{ end }}{{ if .pc.PhotoFront }}<div class="col-md-6 mb-3"><div class="card"><img src="/uploads/pc/{{ .pc.PhotoFront }}" class="card-img-top" alt="Foto Depan"><div class="card-body"><p class="card-text small text-muted mb-0">Foto Tampilan Depan</p></div></div></div>{{ end }}</div>
+                <div class="row">{{ if .pc.PhotoSerial }}<div class="col-md-6 mb-3"><div class="card"><img src="/uploads/pc/{{ .pc.PhotoSerial }}" class="card-img-top img-fluid" alt="Foto Serial"><div class="card-body"><p class="card-text small text-muted mb-0">Foto Serial Number + Barcode</p></div></div></div>{{ end }}{{ if .pc.PhotoFront }}<div class="col-md-6 mb-3"><div class="card"><img src="/uploads/pc/{{ .pc.PhotoFront }}" class="card-img-top img-fluid" alt="Foto Depan"><div class="card-body"><p class="card-text small text-muted mb-0">Foto Tampilan Depan</p></div></div></div>{{ end }}</div>
                 {{ end }}
                 <hr><h6 class="text-primary mb-3"><i class="bi bi-clipboard-data"></i> Informasi Tambahan</h6>
                 <table class="table table-bordered">
