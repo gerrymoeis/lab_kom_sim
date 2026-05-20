@@ -68,6 +68,12 @@ func TestFullIntegration(t *testing.T) {
 	client := &http.Client{CheckRedirect: noRedirect}
 	jar := make(map[string]string)
 
+	closeResp := func(resp *http.Response) {
+		if resp != nil && resp.Body != nil {
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
+	}
 	saveCookies := func(resp *http.Response) {
 		for _, c := range resp.Cookies() {
 			jar[c.Name] = c.Value
@@ -86,7 +92,7 @@ func TestFullIntegration(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		defer resp.Body.Close()
+		defer closeResp(resp)
 		saveCookies(resp)
 		return resp.StatusCode == 302 && len(jar) > 0
 	}
@@ -114,13 +120,13 @@ func TestFullIntegration(t *testing.T) {
 	assert(login(), "Login should set session cookie")
 	resp, err := get("/dashboard")
 	assert(err == nil && resp.StatusCode == 200, "/dashboard returns 200")
-	resp.Body.Close()
+	closeResp(resp)
 
 	// 2. PC CRUD
 	t.Log("\n=== 2. PC CRUD ===")
 	resp, _ = get("/pc")
 	assert(resp.StatusCode == 200, "/pc list: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	var pcCount int
 	db.QueryRow("SELECT COUNT(*) FROM pcs").Scan(&pcCount)
@@ -128,10 +134,10 @@ func TestFullIntegration(t *testing.T) {
 
 	resp, _ = get("/pc/1")
 	assert(resp.StatusCode == 200, "/pc/1: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	resp, _ = get("/pc/1/edit")
 	assert(resp.StatusCode == 200, "/pc/1 edit: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	//  2b. PC Photo Upload →
 	t.Log("\n=== 2b. PC PHOTO UPLOAD ===")
@@ -154,13 +160,13 @@ func TestFullIntegration(t *testing.T) {
 		FileRef string `json:"file_ref"`
 	}
 	json.NewDecoder(resp.Body).Decode(&uploadRes)
-	resp.Body.Close()
+	closeResp(resp)
 	assert(uploadRes.Success && uploadRes.FileRef != "", "upload image: file_ref=%s", uploadRes.FileRef)
 
 	resp, _ = post("/pc/1/edit",
 		"status=normal&serial_number=SN001&operating_system=Win11&device_type=PC&brand_model=Dell&accessories=KB&processor=i7&ram=16GB&storage=512GB&notes=&action_notes=&serial_file_ref="+uploadRes.FileRef)
 	assert(resp.StatusCode == 302, "PC edit with photo: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	var photoSerial string
 	db.QueryRow("SELECT COALESCE(photo_serial,'') FROM pcs WHERE pc_number=1").Scan(&photoSerial)
@@ -176,7 +182,7 @@ func TestFullIntegration(t *testing.T) {
 		"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},
 	}.Encode()
 	resp, _ = post("/pc/create", pcCreateData)
-	resp.Body.Close()
+	closeResp(resp)
 	assert(resp.StatusCode == 302, "PC create: %d", resp.StatusCode)
 	var newPCID int
 	db.QueryRow("SELECT id FROM pcs WHERE pc_number=40").Scan(&newPCID)
@@ -184,7 +190,7 @@ func TestFullIntegration(t *testing.T) {
 
 	resp, _ = post("/pc/40/delete", "")
 	assert(resp.StatusCode == 302, "PC delete: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var pcDeleted int
 	db.QueryRow("SELECT COUNT(*) FROM pcs WHERE pc_number=40").Scan(&pcDeleted)
 	assert(pcDeleted == 0, "PC 40 deleted")
@@ -193,21 +199,21 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 3. DEVICE CRUD ===")
 	resp, _ = get("/devices")
 	assert(resp.StatusCode == 200, "/devices: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	resp, _ = get("/devices?tab=types")
 	assert(resp.StatusCode == 200, "/devices types: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	resp, _ = post("/device-types/create", "name=TestKB&category=peripheral&brand=B&model=T100&item_type=individual")
 	assert(resp.StatusCode == 302, "create device type: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var dtID int
 	db.QueryRow("SELECT id FROM device_types WHERE name='TestKB'").Scan(&dtID)
 	assert(dtID > 0, "Device type ID=%d", dtID)
 
 	resp, _ = post("/devices/create", "device_type_id=1&name=Monitor&brand=LG&model=27&item_type=individual&item_mode=loanable&quantity_total=5&condition=baik&location=Lab")
 	assert(resp.StatusCode == 302, "create device: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var devID int
 	db.QueryRow("SELECT id FROM devices WHERE name='Monitor'").Scan(&devID)
 	assert(devID > 0, "Device ID=%d", devID)
@@ -215,18 +221,18 @@ func TestFullIntegration(t *testing.T) {
 	// Device detail
 	resp, _ = get("/devices/" + fmt.Sprint(devID))
 	assert(resp.StatusCode == 200, "/devices/%d: %d", devID, resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// Device edit page
 	resp, _ = get("/devices/" + fmt.Sprint(devID) + "/edit")
 	assert(resp.StatusCode == 200, "/devices/%d/edit: %d", devID, resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// Device edit POST
 	resp, _ = post("/devices/"+fmt.Sprint(devID)+"/edit",
 		"device_type_id=1&name=Monitor+Updated&brand=LG&model=27&item_type=individual&item_mode=loanable&quantity_total=5&quantity_available=5&condition=baik&location=Lab")
 	assert(resp.StatusCode == 302, "edit device: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var devName string
 	db.QueryRow("SELECT name FROM devices WHERE id=?", devID).Scan(&devName)
 	assert(devName == "Monitor Updated", "Device name updated: %s", devName)
@@ -234,40 +240,40 @@ func TestFullIntegration(t *testing.T) {
 	// Device type detail
 	resp, _ = get("/device-types/" + fmt.Sprint(dtID))
 	assert(resp.StatusCode == 200, "/device-types/%d: %d", dtID, resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// Device type edit page
 	resp, _ = get("/device-types/" + fmt.Sprint(dtID) + "/edit")
 	assert(resp.StatusCode == 200, "/device-types/%d/edit: %d", dtID, resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// 4. Software CRUD
 	t.Log("\n=== 4. SOFTWARE CRUD ===")
 	resp, _ = get("/software")
 	assert(resp.StatusCode == 200, "/software: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	resp, _ = post("/software/create", "name=TestSW&category=other&description=Test")
 	assert(resp.StatusCode == 302, "create software: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var swID int
 	db.QueryRow("SELECT id FROM software_catalog WHERE name='TestSW'").Scan(&swID)
 	assert(swID > 0, "Software ID=%d", swID)
 
 	resp, _ = get("/software/" + fmt.Sprint(swID) + "/edit")
 	assert(resp.StatusCode == 200, "/software/%d/edit: %d", swID, resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	resp, _ = post("/software/"+fmt.Sprint(swID)+"/edit", "name=TestSW2&category=required&description=Test2+updated")
 	assert(resp.StatusCode == 302, "edit software: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var swName string
 	db.QueryRow("SELECT name FROM software_catalog WHERE id=?", swID).Scan(&swName)
 	assert(swName == "TestSW2", "Software name updated: %s", swName)
 
 	resp, _ = post("/software/"+fmt.Sprint(swID)+"/delete", "")
 	assert(resp.StatusCode == 302, "delete software: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	db.QueryRow("SELECT COUNT(*) FROM software_catalog WHERE id=?", swID).Scan(&swID)
 	assert(swID == 0, "Software deleted")
 
@@ -275,11 +281,11 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 5. SCHEDULE CRUD ===")
 	resp, _ = get("/schedules")
 	assert(resp.StatusCode == 200, "/schedules: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	resp, _ = post("/schedules/create", "course_name=Algo&lecturer=Dr.T&day=Senin&class=IF-1&time_start=08:00&time_end=09:40")
 	assert(resp.StatusCode == 302, "create schedule: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var scID int
 	db.QueryRow("SELECT id FROM course_schedules WHERE course_name='Algo'").Scan(&scID)
 	assert(scID > 0, "Schedule ID=%d", scID)
@@ -287,13 +293,13 @@ func TestFullIntegration(t *testing.T) {
 	// Schedule edit page
 	resp, _ = get("/schedules/" + fmt.Sprint(scID) + "/edit")
 	assert(resp.StatusCode == 200, "/schedules/%d/edit: %d", scID, resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// Schedule edit POST
 	resp, _ = post("/schedules/"+fmt.Sprint(scID)+"/edit",
 		"course_name=Algo2&lecturer=Dr.T&day=Senin&class=IF-1&time_start=08:00&time_end=09:40")
 	assert(resp.StatusCode == 302, "edit schedule: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var scName string
 	db.QueryRow("SELECT course_name FROM course_schedules WHERE id=?", scID).Scan(&scName)
 	assert(scName == "Algo2", "Schedule name updated: %s", scName)
@@ -301,7 +307,7 @@ func TestFullIntegration(t *testing.T) {
 	// Schedule delete
 	resp, _ = post("/schedules/"+fmt.Sprint(scID)+"/delete", "")
 	assert(resp.StatusCode == 302, "delete schedule: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var scCount int
 	db.QueryRow("SELECT COUNT(*) FROM course_schedules WHERE id=?", scID).Scan(&scCount)
 	assert(scCount == 0, "Schedule deleted")
@@ -310,11 +316,11 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 6. LOGBOOK CRUD ===")
 	resp, _ = get("/logbook")
 	assert(resp.StatusCode == 200, "/logbook: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	resp, _ = post("/logbook/create", "date=2026-05-16&student_name=Mhs+Test&nim=24091234567&time_in=08:00&time_out=09:40&purpose=Prak")
 	assert(resp.StatusCode == 302, "create logbook: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var lb int
 	db.QueryRow("SELECT COUNT(*) FROM logbook_entries").Scan(&lb)
 	assert(lb > 0, "Logbook entries: %d", lb)
@@ -333,7 +339,7 @@ func TestFullIntegration(t *testing.T) {
 	resp, err = client.Do(req)
 	assert(err == nil, "logbook upload")
 	bodyOCR, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	closeResp(resp)
 
 	if cfg.GeminiAPIKey != "" || cfg.OpenRouterAPIKey != "" {
 		assert(resp.StatusCode == 200, "logbook upload (with API key): %d", resp.StatusCode)
@@ -347,13 +353,13 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 7. USER ===")
 	resp, _ = get("/admin/users")
 	assert(resp.StatusCode == 200, "/admin/users: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	resp, _ = get("/profile")
 	assert(resp.StatusCode == 200, "/profile: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	resp, _ = post("/profile", "username=admin&full_name=Admin+U")
 	assert(resp.StatusCode == 302, "profile update: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// 8. Activity Log
 	t.Log("\n=== 8. ACTIVITY LOG ===")
@@ -362,7 +368,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(logCount > 0, "Activity logs: %d", logCount)
 	resp, _ = get("/admin/activity-logs")
 	assert(resp.StatusCode == 200, "/admin/activity-logs: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// 9. Export Download
 	t.Log("\n=== 9. EXPORT DOWNLOAD ===")
@@ -374,7 +380,7 @@ func TestFullIntegration(t *testing.T) {
 		cd := resp.Header.Get("Content-Disposition")
 		assert(strings.HasPrefix(cd, "attachment; filename="+prefix), "%s CD: %s", path, cd)
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		closeResp(resp)
 		assert(len(body) > 0, "%s empty", path)
 	}
 	checkExport("/pc/export", "pc_export")
@@ -391,7 +397,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(loanDevID > 0, "device exists for loan")
 	resp, _ = post("/device-loans/create", fmt.Sprintf("device_id=%d&borrower_name=Mahasiswa+Test&borrower_type=mahasiswa&loan_date=2026-05-16&quantity=1&purpose=Praktikum", loanDevID))
 	assert(resp.StatusCode == 302, "create loan: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var loanCount int
 	db.QueryRow("SELECT COUNT(*) FROM device_loans").Scan(&loanCount)
 	assert(loanCount > 0, "loans: %d", loanCount)
@@ -400,7 +406,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(qtyAfter == qtyBefore-1, "device qty: %d→%d", qtyBefore, qtyAfter)
 	resp, _ = get("/devices?tab=loans")
 	assert(resp.StatusCode == 200, "/devices loans: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// Loan edit page
 	var loanID int
@@ -409,13 +415,13 @@ func TestFullIntegration(t *testing.T) {
 
 	resp, _ = get("/device-loans/" + fmt.Sprint(loanID) + "/edit")
 	assert(resp.StatusCode == 200, "/device-loans/%d/edit: %d", loanID, resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// Loan edit POST
 	resp, _ = post("/device-loans/"+fmt.Sprint(loanID)+"/edit",
 		"borrower_name=Mahasiswa+Updated&borrower_type=mahasiswa&loan_date=2026-05-16&actual_return_date=2026-05-17&status=returned&purpose=Praktikum")
 	assert(resp.StatusCode == 302, "edit loan: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var loanStatus string
 	db.QueryRow("SELECT status FROM device_loans WHERE id=?", loanID).Scan(&loanStatus)
 	assert(loanStatus == "returned", "Loan status updated: %s", loanStatus)
@@ -423,7 +429,7 @@ func TestFullIntegration(t *testing.T) {
 	// Loan delete
 	resp, _ = post("/device-loans/"+fmt.Sprint(loanID)+"/delete", "")
 	assert(resp.StatusCode == 302, "delete loan: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	db.QueryRow("SELECT COUNT(*) FROM device_loans WHERE id=?", loanID).Scan(&loanCount)
 	assert(loanCount == 0, "Loan deleted")
 
@@ -431,13 +437,13 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 11. DEVICE USAGE ===")
 	resp, _ = post("/device-usages/create", fmt.Sprintf("device_id=%d&user_name=Dosen+Test&user_type=dosen&usage_date=2026-05-16&quantity=1&is_available=yes&purpose=Demo", loanDevID))
 	assert(resp.StatusCode == 302, "create usage: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var usageCount int
 	db.QueryRow("SELECT COUNT(*) FROM device_usages").Scan(&usageCount)
 	assert(usageCount > 0, "usages: %d", usageCount)
 	resp, _ = get("/devices?tab=usages")
 	assert(resp.StatusCode == 200, "/devices usages: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// Usage edit page
 	var usageID int
@@ -445,13 +451,13 @@ func TestFullIntegration(t *testing.T) {
 	assert(usageID > 0, "Usage ID=%d", usageID)
 	resp, _ = get("/device-usages/" + fmt.Sprint(usageID) + "/edit")
 	assert(resp.StatusCode == 200, "/device-usages/%d/edit: %d", usageID, resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// Usage edit POST
 	resp, _ = post("/device-usages/"+fmt.Sprint(usageID)+"/edit",
 		"user_name=Dosen+Updated&user_type=dosen&usage_date=2026-05-16&quantity=1&is_available=yes&purpose=Demo")
 	assert(resp.StatusCode == 302, "edit usage: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var usageUser string
 	db.QueryRow("SELECT user_name FROM device_usages WHERE id=?", usageID).Scan(&usageUser)
 	assert(usageUser == "Dosen Updated", "Usage user updated: %s", usageUser)
@@ -459,7 +465,7 @@ func TestFullIntegration(t *testing.T) {
 	// Usage delete
 	resp, _ = post("/device-usages/"+fmt.Sprint(usageID)+"/delete", "")
 	assert(resp.StatusCode == 302, "delete usage: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	db.QueryRow("SELECT COUNT(*) FROM device_usages WHERE id=?", usageID).Scan(&usageCount)
 	assert(usageCount == 0, "Usage deleted")
 
@@ -472,7 +478,7 @@ func TestFullIntegration(t *testing.T) {
 		Saved   int
 	}
 	json.NewDecoder(resp.Body).Decode(&lsRes)
-	resp.Body.Close()
+	closeResp(resp)
 	assert(lsRes.Success && lsRes.Saved == 1, "save: success=%v saved=%d", lsRes.Success, lsRes.Saved)
 
 	// 13. Lost Items CRUD
@@ -494,23 +500,23 @@ func TestFullIntegration(t *testing.T) {
 		FileRef string `json:"file_ref"`
 	}
 	json.NewDecoder(resp.Body).Decode(&liUploadRes)
-	resp.Body.Close()
+	closeResp(resp)
 	assert(liUploadRes.Success && liUploadRes.FileRef != "", "lost item photo upload: file_ref=%s", liUploadRes.FileRef)
 
 	resp, _ = post("/lost-items/create", "item_name=Mouse+Hilang&reported_by=Mahasiswa+Test&status=hilang&photo="+liUploadRes.FileRef)
 	assert(resp.StatusCode == 302, "create lost item: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var liID int
 	db.QueryRow("SELECT id FROM lost_items WHERE item_name='Mouse Hilang'").Scan(&liID)
 	assert(liID > 0, "Lost item ID=%d", liID)
 
 	resp, _ = get("/lost-items")
 	assert(resp.StatusCode == 200, "/lost-items: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	resp, _ = get("/lost-items/" + fmt.Sprint(liID))
 	assert(resp.StatusCode == 200, "/lost-items/%d: %d", liID, resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	var liPhoto string
 	db.QueryRow("SELECT COALESCE(photo,'') FROM lost_items WHERE id=?", liID).Scan(&liPhoto)
@@ -522,28 +528,28 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 14. CHANGE PASSWORD ===")
 	resp, _ = post("/profile/password", "old_password=admin123&new_password=admin123&confirm_password=admin123")
 	assert(resp.StatusCode == 302, "change password success: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	resp, _ = post("/profile/password", "old_password=wrongpass&new_password=admin123&confirm_password=admin123")
 	assert(resp.StatusCode == 302, "change password wrong pass: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	resp, _ = post("/profile/password", "old_password=admin123&new_password=newpass123&confirm_password=mismatch")
 	assert(resp.StatusCode == 302, "change password mismatch: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 
 	// Cleanup: delete device + device type created in §3
 	t.Log("\n=== DEVICE CLEANUP ===")
 	resp, _ = post("/devices/"+fmt.Sprint(devID)+"/delete", "")
 	assert(resp.StatusCode == 302, "delete device: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var devDelCount int
 	db.QueryRow("SELECT COUNT(*) FROM devices WHERE id=?", devID).Scan(&devDelCount)
 	assert(devDelCount == 0, "Device deleted")
 
 	resp, _ = post("/device-types/"+fmt.Sprint(dtID)+"/delete", "")
 	assert(resp.StatusCode == 302, "delete device type: %d", resp.StatusCode)
-	resp.Body.Close()
+	closeResp(resp)
 	var dtDelCount int
 	db.QueryRow("SELECT COUNT(*) FROM device_types WHERE id=?", dtID).Scan(&dtDelCount)
 	assert(dtDelCount == 0, "Device type deleted")
