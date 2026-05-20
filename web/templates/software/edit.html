@@ -31,7 +31,7 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="deselect-all"><i class="bi bi-x"></i> Hapus Semua</button>
                         </div>
 
-                        <div class="row row-cols-5 g-2" id="pc-grid">
+                        <div class="row row-cols-4 row-cols-sm-6 row-cols-md-8 g-1 g-sm-2" id="pc-grid">
                             {{ range .pcList }}
                             <div class="col">
                                 <div class="pc-toggle border rounded p-2 text-center {{ if .Installed }}bg-success text-white border-success{{ else }}bg-light text-muted border-secondary{{ end }}"
