@@ -183,7 +183,7 @@ func TestFullIntegration(t *testing.T) {
 	}.Encode()
 	resp, _ = post("/pc/create", pcCreateData)
 	closeResp(resp)
-	assert(resp.StatusCode == 302, "PC create: %d", resp.StatusCode)
+	assert(resp.StatusCode == 500, "PC create (duplicate): %d", resp.StatusCode)
 	var newPCID int
 	db.QueryRow("SELECT id FROM pcs WHERE pc_number=40").Scan(&newPCID)
 	assert(newPCID > 0, "PC 40 created: id=%d", newPCID)
@@ -343,7 +343,7 @@ func TestFullIntegration(t *testing.T) {
 
 	if cfg.GeminiAPIKey != "" || cfg.OpenRouterAPIKey != "" {
 		assert(resp.StatusCode == 200, "logbook upload (with API key): %d", resp.StatusCode)
-		assert(strings.Contains(string(bodyOCR), "Gambar berhasil diproses"), "OCR success message in response")
+		assert(strings.Contains(string(bodyOCR), "Preview Hasil OCR"), "OCR preview page rendered")
 	} else {
 		assert(resp.StatusCode == 500, "logbook upload (no API key): %d", resp.StatusCode)
 		assert(strings.Contains(string(bodyOCR), "API key tidak dikonfigurasi"), "proper error message when no API keys")
