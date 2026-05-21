@@ -27,20 +27,59 @@ type DeviceFilters struct {
 }
 
 func (r *DeviceRepository) List(filters DeviceFilters) ([]models.DeviceWithCategory, error) {
-	query := `SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
-		d.item_type, d.quantity_total, d.quantity_available, d.condition, d.location, d.created_at
-		FROM devices d JOIN device_types dt ON d.device_type_id = dt.id WHERE 1=1`
+	return r.listWithQuery(filters, "", 0, 0)
+}
+
+func (r *DeviceRepository) ListPaginated(filters DeviceFilters, page, pageSize int) ([]models.DeviceWithCategory, int, error) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 { pageSize = 20 }
+
+	var total int
+	r.db.QueryRow(r.buildDeviceCountQuery(filters), r.buildDeviceArgs(filters)...).Scan(&total)
+
+	devices, err := r.listWithQuery(filters, ` LIMIT ? OFFSET ?`, pageSize, (page-1)*pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	return devices, total, nil
+}
+
+func (r *DeviceRepository) buildDeviceClause(filters DeviceFilters) (string, []any) {
+	var clause string
 	var args []any
 	if filters.Search != "" {
-		query += ` AND (d.name LIKE ? OR d.asset_code LIKE ? OR d.serial_number LIKE ?)`
+		clause += ` AND (d.name LIKE ? OR d.asset_code LIKE ? OR d.serial_number LIKE ?)`
 		s := "%" + filters.Search + "%"
 		args = append(args, s, s, s)
 	}
 	if filters.Category != "" {
-		query += ` AND dt.category = ?`
+		clause += ` AND dt.category = ?`
 		args = append(args, filters.Category)
 	}
+	return clause, args
+}
+
+func (r *DeviceRepository) buildDeviceCountQuery(filters DeviceFilters) string {
+	clause, _ := r.buildDeviceClause(filters)
+	return `SELECT COUNT(*) FROM devices d JOIN device_types dt ON d.device_type_id = dt.id WHERE 1=1` + clause
+}
+
+func (r *DeviceRepository) buildDeviceArgs(filters DeviceFilters) []any {
+	_, args := r.buildDeviceClause(filters)
+	return args
+}
+
+func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, limit, offset int) ([]models.DeviceWithCategory, error) {
+	query := `SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
+		d.item_type, d.quantity_total, d.quantity_available, d.condition, d.location, d.created_at
+		FROM devices d JOIN device_types dt ON d.device_type_id = dt.id WHERE 1=1`
+	clause, args := r.buildDeviceClause(filters)
+	query += clause
 	query += ` ORDER BY d.asset_code`
+	query += suffix
+	if suffix != "" {
+		args = append(args, limit, offset)
+	}
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
@@ -175,12 +214,76 @@ func (r *DeviceRepository) Delete(id int) error {
 // --- List page queries (inner joins with computed status) ---
 
 func (r *DeviceRepository) ListLoans() ([]DeviceLoanRow, error) {
+	return r.listLoansWithQuery("")
+}
+
+func (r *DeviceRepository) ListLoansPaginated(search, status string, page, pageSize int) ([]DeviceLoanRow, int, error) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 { pageSize = 20 }
+
+	countQuery := `SELECT COUNT(*) FROM device_loans l JOIN devices d ON l.device_id = d.id WHERE 1=1`
+	var args []any
+	if status != "" {
+		countQuery += ` AND CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
+			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
+			ELSE 'active' END = ?`
+		args = append(args, status)
+	}
+	if search != "" {
+		countQuery += ` AND (l.borrower_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
+		s := "%" + search + "%"
+		args = append(args, s, s, s)
+	}
+	var total int
+	r.db.QueryRow(countQuery, args...).Scan(&total)
+
+	query := `SELECT l.id, l.device_id, d.name, d.asset_code, l.borrower_name, l.borrower_type,
+		l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose,
+		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
+			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
+			ELSE 'active' END
+		FROM device_loans l JOIN devices d ON l.device_id = d.id WHERE 1=1`
+	var dataArgs []any
+	if status != "" {
+		query += ` AND CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
+			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
+			ELSE 'active' END = ?`
+		dataArgs = append(dataArgs, status)
+	}
+	if search != "" {
+		query += ` AND (l.borrower_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
+		s := "%" + search + "%"
+		dataArgs = append(dataArgs, s, s, s)
+	}
+	query += ` ORDER BY l.loan_date DESC LIMIT ? OFFSET ?`
+	dataArgs = append(dataArgs, pageSize, (page-1)*pageSize)
+
+	rows, err := r.db.Query(query, dataArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var loans []DeviceLoanRow
+	for rows.Next() {
+		var l DeviceLoanRow
+		if err := rows.Scan(&l.ID, &l.DeviceID, &l.DeviceName, &l.DeviceAssetCode,
+			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ExpectedReturnDate,
+			&l.ActualReturnDate, &l.Quantity, &l.Status, &l.Purpose, &l.ComputedStatus); err != nil {
+			return nil, 0, err
+		}
+		loans = append(loans, l)
+	}
+	return loans, total, nil
+}
+
+func (r *DeviceRepository) listLoansWithQuery(suffix string) ([]DeviceLoanRow, error) {
 	rows, err := r.db.Query(`SELECT l.id, l.device_id, d.name, d.asset_code, l.borrower_name, l.borrower_type,
 		l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose,
 		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
 			ELSE 'active' END
-		FROM device_loans l JOIN devices d ON l.device_id = d.id ORDER BY l.loan_date DESC LIMIT 100`)
+		FROM device_loans l JOIN devices d ON l.device_id = d.id ORDER BY l.loan_date DESC`+suffix)
 	if err != nil {
 		return nil, err
 	}
@@ -200,9 +303,57 @@ func (r *DeviceRepository) ListLoans() ([]DeviceLoanRow, error) {
 }
 
 func (r *DeviceRepository) ListUsages() ([]DeviceUsageRow, error) {
+	return r.listUsagesWithQuery("")
+}
+
+func (r *DeviceRepository) ListUsagesPaginated(search string, page, pageSize int) ([]DeviceUsageRow, int, error) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 { pageSize = 20 }
+
+	var total int
+	countQuery := `SELECT COUNT(*) FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1`
+	var args []any
+	if search != "" {
+		countQuery += ` AND (u.user_name LIKE ? OR d.name LIKE ?)`
+		s := "%" + search + "%"
+		args = append(args, s, s)
+	}
+	r.db.QueryRow(countQuery, args...).Scan(&total)
+
+	query := `SELECT u.id, u.device_id, d.asset_code, d.name, u.user_name, u.user_type,
+		u.usage_date, u.quantity, u.is_available, u.purpose
+		FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1`
+	var dataArgs []any
+	if search != "" {
+		query += ` AND (u.user_name LIKE ? OR d.name LIKE ?)`
+		s := "%" + search + "%"
+		dataArgs = append(dataArgs, s, s)
+	}
+	query += ` ORDER BY u.usage_date DESC LIMIT ? OFFSET ?`
+	dataArgs = append(dataArgs, pageSize, (page-1)*pageSize)
+
+	rows, err := r.db.Query(query, dataArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var usages []DeviceUsageRow
+	for rows.Next() {
+		var u DeviceUsageRow
+		if err := rows.Scan(&u.ID, &u.DeviceID, &u.DeviceAssetCode, &u.DeviceName,
+			&u.UserName, &u.UserType, &u.UsageDate, &u.Quantity, &u.IsAvailable, &u.Purpose); err != nil {
+			return nil, 0, err
+		}
+		usages = append(usages, u)
+	}
+	return usages, total, nil
+}
+
+func (r *DeviceRepository) listUsagesWithQuery(suffix string) ([]DeviceUsageRow, error) {
 	rows, err := r.db.Query(`SELECT u.id, u.device_id, d.asset_code, d.name, u.user_name, u.user_type,
 		u.usage_date, u.quantity, u.is_available, u.purpose
-		FROM device_usages u JOIN devices d ON u.device_id = d.id ORDER BY u.usage_date DESC LIMIT 100`)
+		FROM device_usages u JOIN devices d ON u.device_id = d.id ORDER BY u.usage_date DESC`+suffix)
 	if err != nil {
 		return nil, err
 	}

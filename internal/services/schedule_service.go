@@ -72,3 +72,7 @@ func (s *ScheduleService) GetByID(id int) (*models.CourseSchedule, error) {
 func (s *ScheduleService) List(search, dayFilter string) ([]models.CourseSchedule, error) {
 	return s.repo.List(search, dayFilter)
 }
+
+func (s *ScheduleService) ListPaginated(search, dayFilter string, page, pageSize int) ([]models.CourseSchedule, int, error) {
+	return s.repo.ListPaginated(search, dayFilter, page, pageSize)
+}

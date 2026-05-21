@@ -26,27 +26,73 @@ type DeviceUsageFilters struct {
 }
 
 func (r *DeviceUsageRepository) List(filters DeviceUsageFilters) ([]DeviceUsageRow, error) {
-	query := `SELECT u.id, u.device_id, d.name, d.asset_code, u.user_name, u.user_type, u.usage_date,
-		u.quantity, u.is_available, u.purpose FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1`
-	var args []any
+	return r.listWithQuery(filters, "")
+}
 
-	if filters.DeviceID != "" {
-		query += ` AND u.device_id = ?`
-		args = append(args, filters.DeviceID)
-	}
-	if filters.Search != "" {
-		query += ` AND (u.user_name LIKE ? OR d.name LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s)
-	}
+func (r *DeviceUsageRepository) ListPaginated(filters DeviceUsageFilters, page, pageSize int) ([]DeviceUsageRow, int, error) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 { pageSize = 20 }
+
+	usageClause, usageArgs := r.buildUsageClause(filters)
+
+	var total int
+	r.db.QueryRow(`SELECT COUNT(*) FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1`+usageClause, usageArgs...).Scan(&total)
 
 	sortBy := "u.usage_date"
 	if filters.SortBy == "user_name" {
 		sortBy = "u.user_name"
 	}
-	query += ` ORDER BY ` + sortBy + ` DESC LIMIT 100`
 
-	rows, err := r.db.Query(query, args...)
+	query := `SELECT u.id, u.device_id, d.name, d.asset_code, u.user_name, u.user_type, u.usage_date,
+		u.quantity, u.is_available, u.purpose FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1` + usageClause
+	query += ` ORDER BY ` + sortBy + ` DESC LIMIT ? OFFSET ?`
+
+	allArgs := append(usageArgs, pageSize, (page-1)*pageSize)
+	rows, err := r.db.Query(query, allArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var usages []DeviceUsageRow
+	for rows.Next() {
+		var u DeviceUsageRow
+		if err := rows.Scan(&u.ID, &u.DeviceID, &u.DeviceName, &u.DeviceAssetCode,
+			&u.UserName, &u.UserType, &u.UsageDate, &u.Quantity, &u.IsAvailable, &u.Purpose); err != nil {
+			return nil, 0, err
+		}
+		usages = append(usages, u)
+	}
+	return usages, total, nil
+}
+
+func (r *DeviceUsageRepository) buildUsageClause(filters DeviceUsageFilters) (string, []any) {
+	var clause string
+	var args []any
+	if filters.DeviceID != "" {
+		clause += ` AND u.device_id = ?`
+		args = append(args, filters.DeviceID)
+	}
+	if filters.Search != "" {
+		clause += ` AND (u.user_name LIKE ? OR d.name LIKE ?)`
+		s := "%" + filters.Search + "%"
+		args = append(args, s, s)
+	}
+	return clause, args
+}
+
+func (r *DeviceUsageRepository) listWithQuery(filters DeviceUsageFilters, suffix string) ([]DeviceUsageRow, error) {
+	usageClause, usageArgs := r.buildUsageClause(filters)
+	query := `SELECT u.id, u.device_id, d.name, d.asset_code, u.user_name, u.user_type, u.usage_date,
+		u.quantity, u.is_available, u.purpose FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1` + usageClause
+
+	sortBy := "u.usage_date"
+	if filters.SortBy == "user_name" {
+		sortBy = "u.user_name"
+	}
+	query += ` ORDER BY ` + sortBy + ` DESC` + suffix
+
+	rows, err := r.db.Query(query, usageArgs...)
 	if err != nil {
 		return nil, err
 	}
