@@ -54,5 +54,8 @@ func RunMigrations(db *DB, isPostgres bool) error {
 	if err := seedRequiredSoftware(db); err != nil {
 		return err
 	}
-	return seedPCs(db)
+	if err := seedPCs(db); err != nil {
+		return err
+	}
+	return seedPCPhotos(db)
 }
