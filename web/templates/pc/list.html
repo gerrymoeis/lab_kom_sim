@@ -8,14 +8,14 @@
         </div>
         <div class="col-md-6">
             {{ if eq .role "admin" }}
-            {{ template "layout/header_actions_start" $ }}
+            {{ template "layout/header_actions_start.html" $ }}
             <a href="/pc/create" class="btn btn-primary flex-fill">
                 <i class="bi bi-plus-circle"></i> Tambah PC Baru
             </a>
             <a href="/pc/export" class="btn btn-success flex-fill">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
-            {{ template "layout/header_actions_end" }}
+            {{ template "layout/header_actions_end.html" }}
             {{ end }}
         </div>
     </div>
