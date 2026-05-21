@@ -99,7 +99,7 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 
 	h.activityLogService.LogUpload(userID, username, role, "logbook", 0, fn, "image", ip, ua)
 
-	c.HTML(http.StatusOK, "logbook/upload.html", gin.H{
+	c.HTML(http.StatusOK, "logbook/preview.html", gin.H{
 		"title": "Upload Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
 		"entries": result.Entries, "total": len(result.Entries),
