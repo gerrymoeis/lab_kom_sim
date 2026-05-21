@@ -7,8 +7,8 @@
     <div class="col-md-6">
         {{ if eq .role "admin" }}
         {{ template "layout/header_actions_start.html" $ }}
-        <button type="button" class="btn btn-primary flex-fill" data-bs-toggle="modal" data-bs-target="#addSoftwareModal"><i class="bi bi-plus-circle"></i> Tambah Software</button>
-        <a href="/software/export" class="btn btn-success flex-fill"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSoftwareModal"><i class="bi bi-plus-circle"></i> Tambah Software</button>
+        <a href="/software/export" class="btn btn-success"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
         {{ template "layout/header_actions_end.html" }}
         {{ end }}
     </div>
