@@ -7,27 +7,27 @@
             <h2><i class="bi bi-hdd-rack"></i> Manajemen Perangkat</h2>
             <p class="text-muted">Kelola perangkat, jenis barang, peminjaman, dan pemakaian</p>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
             {{ if eq .activeTab "list" }}
-            <a href="/devices/create" class="btn btn-primary">
+            <a href="/devices/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Perangkat
             </a>
             {{ else if eq .activeTab "types" }}
-            <a href="/device-types/create" class="btn btn-primary">
+            <a href="/device-types/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Jenis Barang
             </a>
             {{ else if eq .activeTab "loans" }}
-            <a href="/device-loans/create" class="btn btn-primary">
+            <a href="/device-loans/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-box-arrow-right"></i> Pinjam Perangkat
             </a>
             {{ else if eq .activeTab "usages" }}
-            <a href="/device-usages/create" class="btn btn-primary">
+            <a href="/device-usages/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-clipboard-check"></i> Catat Pemakaian
             </a>
             {{ end }}
-            <a href="/devices/export" class="btn btn-success">
+            <a href="/devices/export" class="btn btn-success flex-grow-1">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
             {{ template "layout/header_actions_end.html" }}
