@@ -39,6 +39,7 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 	}
 
 	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
 
 	c.HTML(http.StatusOK, "schedule/list.html", gin.H{
 		"title": "Jadwal Mata Kuliah", "currentPage": "schedules",
@@ -46,7 +47,7 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 		"schedules": schedules, "today": dayNames[time.Now().Weekday()],
 		"dayFilter": dayFilter, "search": search,
 		"days": []string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"},
-		"page": page, "totalPages": totalPages, "totalItems": total,
+		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 		"error": c.Query("error"),
 	})

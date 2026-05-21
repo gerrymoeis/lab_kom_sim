@@ -82,13 +82,14 @@ func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
 	if err != nil { h.errHTML(c, "Gagal mengambil data jenis barang"); return }
 
 	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
 
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
 		"title": "Jenis Barang", "currentPage": "devices",
 		"username": username, "role": role,
 		"activeTab": "types", "deviceTypes": dts,
 		"filters": gin.H{"search": search, "category": category},
-		"page": page, "totalPages": totalPages, "totalItems": total,
+		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 	})
 }
