@@ -70,18 +70,5 @@ func (s *ScheduleService) GetByID(id int) (*models.CourseSchedule, error) {
 }
 
 func (s *ScheduleService) List(search, dayFilter string) ([]models.CourseSchedule, error) {
-	schedules, err := s.repo.List(search)
-	if err != nil {
-		return nil, err
-	}
-	if dayFilter != "" {
-		var filtered []models.CourseSchedule
-		for _, sch := range schedules {
-			if sch.Day == dayFilter {
-				filtered = append(filtered, sch)
-			}
-		}
-		schedules = filtered
-	}
-	return schedules, nil
+	return s.repo.List(search, dayFilter)
 }

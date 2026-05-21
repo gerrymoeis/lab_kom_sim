@@ -40,6 +40,10 @@ func (s *LogbookService) List(filters repository.LogbookFilters) ([]models.Logbo
 	return s.logbookRepo.List(filters)
 }
 
+func (s *LogbookService) ListCursor(filters repository.LogbookFilters) ([]models.LogbookEntry, bool, error) {
+	return s.logbookRepo.ListCursor(filters)
+}
+
 func (s *LogbookService) GetByID(id int) (*models.LogbookEntry, error) {
 	return s.logbookRepo.GetByID(id)
 }
