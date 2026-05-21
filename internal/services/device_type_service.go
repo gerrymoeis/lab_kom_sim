@@ -86,19 +86,9 @@ func (s *DeviceTypeService) GetByIDSimple(id int) (*models.DeviceType, error) {
 }
 
 func (s *DeviceTypeService) List(category, search string) ([]models.DeviceType, error) {
-	types, err := s.repo.List(category)
-	if err != nil {
-		return nil, err
-	}
-	if search != "" {
-		var filtered []models.DeviceType
-		for _, dt := range types {
-			if strings.Contains(strings.ToLower(dt.Name), strings.ToLower(search)) ||
-				strings.Contains(strings.ToLower(dt.Category), strings.ToLower(search)) {
-				filtered = append(filtered, dt)
-			}
-		}
-		types = filtered
-	}
-	return types, nil
+	return s.repo.List(category, search)
+}
+
+func (s *DeviceTypeService) ListPaginated(category, search string, page, pageSize int) ([]models.DeviceType, int, error) {
+	return s.repo.ListPaginated(category, search, page, pageSize)
 }

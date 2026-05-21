@@ -26,33 +26,86 @@ type DeviceLoanFilters struct {
 }
 
 func (r *DeviceLoanRepository) List(filters DeviceLoanFilters) ([]DeviceLoanRow, error) {
+	return r.listWithQuery(filters, "")
+}
+
+func (r *DeviceLoanRepository) ListPaginated(filters DeviceLoanFilters, page, pageSize int) ([]DeviceLoanRow, int, error) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 { pageSize = 20 }
+
+	loanClause, loanArgs := r.buildLoanClause(filters)
+
+	var total int
+	r.db.QueryRow(`SELECT COUNT(*) FROM device_loans l JOIN devices d ON l.device_id = d.id WHERE 1=1`+loanClause, loanArgs...).Scan(&total)
+
+	query := `SELECT l.id, l.device_id, d.name, d.asset_code, l.borrower_name, l.borrower_type,
+		l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose,
+		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
+			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
+			ELSE 'active' END as computed_status
+		FROM device_loans l JOIN devices d ON l.device_id = d.id WHERE 1=1` + loanClause
+
+	orderBy := "l.loan_date"
+	if filters.SortBy == "borrower_name" {
+		orderBy = "l.borrower_name"
+	}
+	query += ` ORDER BY ` + orderBy + ` DESC LIMIT ? OFFSET ?`
+
+	allArgs := append(loanArgs, pageSize, (page-1)*pageSize)
+	rows, err := r.db.Query(query, allArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var loans []DeviceLoanRow
+	for rows.Next() {
+		var l DeviceLoanRow
+		if err := rows.Scan(&l.ID, &l.DeviceID, &l.DeviceName, &l.DeviceAssetCode,
+			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ExpectedReturnDate,
+			&l.ActualReturnDate, &l.Quantity, &l.Status, &l.Purpose, &l.ComputedStatus); err != nil {
+			return nil, 0, err
+		}
+		loans = append(loans, l)
+	}
+	return loans, total, nil
+}
+
+func (r *DeviceLoanRepository) buildLoanClause(filters DeviceLoanFilters) (string, []any) {
+	var clause string
+	var args []any
+	if filters.Status != "" {
+		clause += ` AND CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
+			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
+			ELSE 'active' END = ?`
+		args = append(args, filters.Status)
+	}
+	if filters.Search != "" {
+		clause += ` AND (l.borrower_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
+		s := "%" + filters.Search + "%"
+		args = append(args, s, s, s)
+	}
+	return clause, args
+}
+
+func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix string) ([]DeviceLoanRow, error) {
+	_, loanArgs := r.buildLoanClause(filters)
 	query := `SELECT l.id, l.device_id, d.name, d.asset_code, l.borrower_name, l.borrower_type,
 		l.loan_date, l.expected_return_date, l.actual_return_date, l.quantity, l.status, l.purpose,
 		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
 			ELSE 'active' END as computed_status
 		FROM device_loans l JOIN devices d ON l.device_id = d.id WHERE 1=1`
-	var args []any
-
-	if filters.Status != "" {
-		query += ` AND CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
-			WHEN l.expected_return_date IS NOT NULL AND CURRENT_DATE > l.expected_return_date THEN 'overdue'
-			ELSE 'active' END = ?`
-		args = append(args, filters.Status)
-	}
-	if filters.Search != "" {
-		query += ` AND (l.borrower_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s, s)
-	}
+	clause, _ := r.buildLoanClause(filters)
+	query += clause
 
 	orderBy := "l.loan_date"
 	if filters.SortBy == "borrower_name" {
 		orderBy = "l.borrower_name"
 	}
-	query += ` ORDER BY ` + orderBy + ` DESC LIMIT 100`
+	query += ` ORDER BY ` + orderBy + ` DESC` + suffix
 
-	rows, err := r.db.Query(query, args...)
+	rows, err := r.db.Query(query, loanArgs...)
 	if err != nil {
 		return nil, err
 	}

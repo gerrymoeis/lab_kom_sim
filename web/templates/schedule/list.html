@@ -2,7 +2,7 @@
 <div class="row mb-3">
     <div class="col-md-6">
         <h2><i class="bi bi-calendar-event"></i> Jadwal Mata Kuliah</h2>
-        <p class="text-muted mb-0">Jadwal hari ini: <strong>{{ .today }}</strong></p>
+        <p class="mb-0"><span class="badge bg-primary-subtle text-primary-emphasis rounded-pill px-3 py-1 small fw-normal"><i class="bi bi-calendar-check me-1"></i> Hari ini: <strong>{{ .today }}</strong></span></p>
     </div>
     <div class="col-md-6 text-end">
         {{ if eq .role "admin" }}
@@ -59,6 +59,8 @@
                 </tbody>
             </table>
         </div>
+
+        {{ template "layout/pagination.html" . }}
     </div>
 </div>
 {{ template "layout/footer.html" . }}

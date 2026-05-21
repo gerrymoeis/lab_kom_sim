@@ -42,12 +42,24 @@ func (s *DeviceService) List(filters repository.DeviceFilters) ([]models.DeviceW
 	return s.deviceRepo.List(filters)
 }
 
+func (s *DeviceService) ListPaginated(filters repository.DeviceFilters, page, pageSize int) ([]models.DeviceWithCategory, int, error) {
+	return s.deviceRepo.ListPaginated(filters, page, pageSize)
+}
+
 func (s *DeviceService) ListLoans() ([]repository.DeviceLoanRow, error) {
 	return s.deviceRepo.ListLoans()
 }
 
+func (s *DeviceService) ListLoansPaginated(search, status string, page, pageSize int) ([]repository.DeviceLoanRow, int, error) {
+	return s.deviceRepo.ListLoansPaginated(search, status, page, pageSize)
+}
+
 func (s *DeviceService) ListUsages() ([]repository.DeviceUsageRow, error) {
 	return s.deviceRepo.ListUsages()
+}
+
+func (s *DeviceService) ListUsagesPaginated(search string, page, pageSize int) ([]repository.DeviceUsageRow, int, error) {
+	return s.deviceRepo.ListUsagesPaginated(search, page, pageSize)
 }
 
 func (s *DeviceService) GetByID(id int) (*models.DeviceWithCategory, error) {
