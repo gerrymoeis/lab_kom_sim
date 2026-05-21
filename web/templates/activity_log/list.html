@@ -81,7 +81,7 @@
         <div class="row mb-3">
             <div class="col">
                 <p class="text-muted">
-                    Menampilkan {{ len .logs }} dari {{ .totalCount }} entries
+                    Menampilkan {{ len .logs }} entries
                     {{ if .filters.search }}
                     (hasil pencarian: "{{ .filters.search }}")
                     {{ end }}
@@ -191,42 +191,17 @@
                 </div>
 
                 <!-- Pagination -->
-                {{ if gt .totalPages 1 }}
+                {{ if or .prevCursor .nextCursor }}
+                {{ $q := "" }}{{ if .filters.date_from }}{{ $q = printf "%s&date_from=%s" $q .filters.date_from }}{{ end }}{{ if .filters.date_to }}{{ $q = printf "%s&date_to=%s" $q .filters.date_to }}{{ end }}{{ if .filters.action }}{{ $q = printf "%s&action=%s" $q .filters.action }}{{ end }}{{ if .filters.entity_type }}{{ $q = printf "%s&entity_type=%s" $q .filters.entity_type }}{{ end }}{{ if .filters.username }}{{ $q = printf "%s&username=%s" $q .filters.username }}{{ end }}{{ if .filters.status }}{{ $q = printf "%s&status=%s" $q .filters.status }}{{ end }}{{ if .filters.search }}{{ $q = printf "%s&search=%s" $q .filters.search }}{{ end }}
                 <nav aria-label="Page navigation" class="mt-3">
                     <ul class="pagination justify-content-center">
-                        <!-- Previous -->
-                        <li class="page-item {{ if eq .page 1 }}disabled{{ end }}">
-                            <a class="page-link" href="?page={{ sub .page 1 }}{{ if .filters.date_from }}&date_from={{ .filters.date_from }}{{ end }}{{ if .filters.date_to }}&date_to={{ .filters.date_to }}{{ end }}{{ if .filters.action }}&action={{ .filters.action }}{{ end }}{{ if .filters.entity_type }}&entity_type={{ .filters.entity_type }}{{ end }}{{ if .filters.username }}&username={{ .filters.username }}{{ end }}{{ if .filters.status }}&status={{ .filters.status }}{{ end }}{{ if .filters.search }}&search={{ .filters.search }}{{ end }}">
-                                Previous
-                            </a>
-                        </li>
-
-                        <!-- Page numbers -->
-                        {{ $currentPage := .page }}
-                        {{ $totalPages := .totalPages }}
-                        {{ $filters := .filters }}
-                        
-                        {{ range $i := iterate $totalPages }}
-                        {{ $page := add $i 1 }}
-                        {{ if or (le $page 3) (and (ge $page (sub $currentPage 1)) (le $page (add $currentPage 1))) (ge $page (sub $totalPages 2)) }}
-                        <li class="page-item {{ if eq $page $currentPage }}active{{ end }}">
-                            <a class="page-link" href="?page={{ $page }}{{ if $filters.date_from }}&date_from={{ $filters.date_from }}{{ end }}{{ if $filters.date_to }}&date_to={{ $filters.date_to }}{{ end }}{{ if $filters.action }}&action={{ $filters.action }}{{ end }}{{ if $filters.entity_type }}&entity_type={{ $filters.entity_type }}{{ end }}{{ if $filters.username }}&username={{ $filters.username }}{{ end }}{{ if $filters.status }}&status={{ $filters.status }}{{ end }}{{ if $filters.search }}&search={{ $filters.search }}{{ end }}">
-                                {{ $page }}
-                            </a>
-                        </li>
-                        {{ else if or (eq $page 4) (eq $page (sub $totalPages 3)) }}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
+                        {{ if .searchMode }}
+                        <li class="page-item {{ if not .prevCursor }}disabled{{ end }}"><a class="page-link" href="?search_offset={{ .prevCursor }}{{ $q }}">Previous</a></li>
+                        <li class="page-item {{ if not .hasMore }}disabled{{ end }}"><a class="page-link" href="?search_offset={{ .nextCursor }}{{ $q }}">Next</a></li>
+                        {{ else }}
+                        <li class="page-item {{ if not .prevCursor }}disabled{{ end }}"><a class="page-link" href="?cursor={{ .prevCursor }}&dir=prev{{ $q }}">Previous</a></li>
+                        <li class="page-item {{ if not .hasMore }}disabled{{ end }}"><a class="page-link" href="?cursor={{ .nextCursor }}&dir=next{{ $q }}">Next</a></li>
                         {{ end }}
-                        {{ end }}
-
-                        <!-- Next -->
-                        <li class="page-item {{ if eq .page .totalPages }}disabled{{ end }}">
-                            <a class="page-link" href="?page={{ add .page 1 }}{{ if .filters.date_from }}&date_from={{ .filters.date_from }}{{ end }}{{ if .filters.date_to }}&date_to={{ .filters.date_to }}{{ end }}{{ if .filters.action }}&action={{ .filters.action }}{{ end }}{{ if .filters.entity_type }}&entity_type={{ .filters.entity_type }}{{ end }}{{ if .filters.username }}&username={{ .filters.username }}{{ end }}{{ if .filters.status }}&status={{ .filters.status }}{{ end }}{{ if .filters.search }}&search={{ .filters.search }}{{ end }}">
-                                Next
-                            </a>
-                        </li>
                     </ul>
                 </nav>
                 {{ end }}

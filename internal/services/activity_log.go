@@ -15,13 +15,25 @@ import (
 type ActivityLogService struct {
 	db      *database.DB
 	logChan chan *models.ActivityLog
+	stmt    *sql.Stmt
 }
 
 // NewActivityLogService creates a new activity log service
 func NewActivityLogService(db *database.DB) *ActivityLogService {
+	stmt, err := db.Prepare(`
+		INSERT INTO activity_logs (
+			user_id, username, user_role, action, entity_type, entity_id,
+			description, old_values, new_values, created_at, ip_address,
+			user_agent, status, error_message
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		log.Printf("failed to prepare activity log stmt: %v", err)
+	}
 	s := &ActivityLogService{
 		db:      db,
 		logChan: make(chan *models.ActivityLog, 64),
+		stmt:    stmt,
 	}
 	go s.logWriter()
 	return s
@@ -45,6 +57,18 @@ func (s *ActivityLogService) enqueueLog(al *models.ActivityLog) {
 
 // Log creates a new activity log entry (called by the background writer goroutine)
 func (s *ActivityLogService) Log(al *models.ActivityLog) error {
+	exec := func(stmt *sql.Stmt) error {
+		_, err := stmt.Exec(al.UserID, al.Username, al.UserRole, al.Action, al.EntityType,
+			al.EntityID, al.Description, al.OldValues, al.NewValues,
+			al.CreatedAt, al.IPAddress, al.UserAgent, al.Status, al.ErrorMessage)
+		return err
+	}
+	if s.stmt != nil {
+		if err := exec(s.stmt); err != nil {
+			return fmt.Errorf("failed to insert activity log: %w", err)
+		}
+		return nil
+	}
 	_, err := s.db.Exec(`
 		INSERT INTO activity_logs (
 			user_id, username, user_role, action, entity_type, entity_id,
@@ -134,15 +158,18 @@ func (s *ActivityLogService) LogAuth(userID int, username, role, action string, 
 
 // ActivityLogFilters represents filters for querying activity logs
 type ActivityLogFilters struct {
-	DateFrom   *time.Time
-	DateTo     *time.Time
-	Action     string
-	EntityType string
-	UserID     *int
-	Username   string
-	Status     string
-	Limit      int
-	Offset     int
+	DateFrom        *time.Time
+	DateTo          *time.Time
+	Action          string
+	EntityType      string
+	UserID          *int
+	Username        string
+	Status          string
+	Limit           int
+	Offset          int
+	CursorID        int64
+	CursorCreatedAt time.Time
+	Direction       string
 }
 
 // GetLogs retrieves activity logs with filters
@@ -193,6 +220,69 @@ func (s *ActivityLogService) GetLogs(filters ActivityLogFilters) ([]models.Activ
 	defer rows.Close()
 
 	return scanLogs(rows, totalCount)
+}
+
+func (s *ActivityLogService) GetLogsCursor(filters ActivityLogFilters) ([]models.ActivityLog, bool, error) {
+	query := `SELECT id, user_id, username, user_role, action, entity_type, entity_id,
+		description, old_values, new_values, created_at, ip_address,
+		user_agent, status, error_message FROM activity_logs WHERE 1=1`
+	args := []any{}
+
+	if filters.DateFrom != nil { query += " AND created_at >= ?"; args = append(args, filters.DateFrom) }
+	if filters.DateTo != nil { query += " AND created_at <= ?"; args = append(args, filters.DateTo) }
+	if filters.Action != "" { query += " AND action = ?"; args = append(args, filters.Action) }
+	if filters.EntityType != "" { query += " AND entity_type = ?"; args = append(args, filters.EntityType) }
+	if filters.UserID != nil { query += " AND user_id = ?"; args = append(args, *filters.UserID) }
+	if filters.Username != "" { query += " AND username LIKE ?"; args = append(args, "%"+filters.Username+"%") }
+	if filters.Status != "" { query += " AND status = ?"; args = append(args, filters.Status) }
+
+	if filters.CursorID > 0 {
+		if filters.Direction == "prev" {
+			query += " AND (created_at, id) > (?, ?)"
+		} else {
+			query += " AND (created_at, id) < (?, ?)"
+		}
+		args = append(args, filters.CursorCreatedAt, filters.CursorID)
+	}
+
+	limit := filters.Limit + 1
+	orderDir := "DESC"
+	if filters.Direction == "prev" {
+		orderDir = "ASC"
+	}
+
+	query += " ORDER BY created_at " + orderDir + ", id " + orderDir + " LIMIT ?"
+	args = append(args, limit)
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil { return nil, false, fmt.Errorf("failed to query logs: %w", err) }
+	defer rows.Close()
+
+	logs := []models.ActivityLog{}
+	for rows.Next() {
+		var l models.ActivityLog
+		if err := rows.Scan(&l.ID, &l.UserID, &l.Username, &l.UserRole, &l.Action,
+			&l.EntityType, &l.EntityID, &l.Description, &l.OldValues, &l.NewValues,
+			&l.CreatedAt, &l.IPAddress, &l.UserAgent, &l.Status, &l.ErrorMessage); err != nil {
+			return nil, false, fmt.Errorf("failed to scan log: %w", err)
+		}
+		logs = append(logs, l)
+	}
+	if err := rows.Err(); err != nil { return nil, false, fmt.Errorf("rows error: %w", err) }
+
+	hasMore := false
+	if len(logs) > filters.Limit {
+		hasMore = true
+		logs = logs[:filters.Limit]
+	}
+
+	if filters.Direction == "prev" {
+		for i, j := 0, len(logs)-1; i < j; i, j = i+1, j-1 {
+			logs[i], logs[j] = logs[j], logs[i]
+		}
+	}
+
+	return logs, hasMore, nil
 }
 
 // SearchLogs searches activity logs by keyword

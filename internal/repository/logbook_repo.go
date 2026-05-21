@@ -17,13 +17,17 @@ func NewLogbookRepository(db *database.DB) *LogbookRepository {
 }
 
 type LogbookFilters struct {
-	StartDate string
-	EndDate   string
-	Search    string
-	SortBy    string
-	SortOrder string
-	Page      int
-	PageSize  int
+	StartDate    string
+	EndDate      string
+	Search       string
+	SortBy       string
+	SortOrder    string
+	Page         int
+	PageSize     int
+	CursorID     int64
+	CursorDate   string
+	CursorTimeIn string
+	Direction    string
 }
 
 func (r *LogbookRepository) List(filters LogbookFilters) ([]models.LogbookEntry, int, error) {
@@ -82,6 +86,79 @@ func (r *LogbookRepository) List(filters LogbookFilters) ([]models.LogbookEntry,
 		entries = append(entries, e)
 	}
 	return entries, total, nil
+}
+
+func (r *LogbookRepository) ListCursor(filters LogbookFilters) ([]models.LogbookEntry, bool, error) {
+	var args []any
+	where := ` WHERE 1=1`
+	from := ` FROM logbook_entries`
+
+	if filters.StartDate != "" {
+		where += ` AND date >= ?`
+		args = append(args, filters.StartDate)
+	}
+	if filters.EndDate != "" {
+		where += ` AND date <= ?`
+		args = append(args, filters.EndDate)
+	}
+	if filters.Search != "" {
+		s := "%" + filters.Search + "%"
+		if r.db.IsPostgres() {
+			where += ` AND (student_name LIKE ? OR nim LIKE ?)`
+			args = append(args, s, s)
+		} else {
+			where += ` AND id IN (SELECT rowid FROM logbook_fts WHERE student_name LIKE ? OR nim LIKE ? OR purpose LIKE ?)`
+			args = append(args, s, s, s)
+		}
+	}
+
+	if filters.CursorID > 0 {
+		if filters.Direction == "prev" {
+			where += ` AND (date, time_in, id) < (?, ?, ?)`
+		} else {
+			where += ` AND (date, time_in, id) > (?, ?, ?)`
+		}
+		args = append(args, filters.CursorDate, filters.CursorTimeIn, filters.CursorID)
+	}
+
+	limit := filters.PageSize + 1
+	orderDir := "ASC"
+	if filters.Direction == "prev" {
+		orderDir = "DESC"
+	}
+
+	query := `SELECT id, date, student_name, nim, time_in, time_out, purpose` + from + where +
+		` ORDER BY date ` + orderDir + `, time_in ` + orderDir + `, id ` + orderDir + ` LIMIT ?`
+	args = append(args, limit)
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+
+	var entries []models.LogbookEntry
+	for rows.Next() {
+		var e models.LogbookEntry
+		if err := rows.Scan(&e.ID, &e.Date, &e.StudentName, &e.NIM, &e.TimeIn, &e.TimeOut, &e.Purpose); err != nil {
+			return nil, false, err
+		}
+		entries = append(entries, e)
+	}
+
+	hasMore := false
+	if len(entries) > filters.PageSize {
+		hasMore = true
+		entries = entries[:filters.PageSize]
+	}
+
+	if filters.Direction == "prev" {
+		for i, j := 0, len(entries)-1; i < j; i, j = i+1, j-1 {
+			entries[i], entries[j] = entries[j], entries[i]
+		}
+	}
+
+	return entries, hasMore, nil
 }
 
 func (r *LogbookRepository) GetByID(id int) (*models.LogbookEntry, error) {

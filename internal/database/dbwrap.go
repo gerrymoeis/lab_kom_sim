@@ -2,21 +2,57 @@
 
 import (
 	"database/sql"
+	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type DB struct {
-	*sql.DB
+	writer  *sql.DB
+	reader  *sql.DB
 	rewrite bool
 }
 
 func wrapPG(db *sql.DB) *DB {
-	return &DB{DB: db, rewrite: true}
+	return &DB{writer: db, reader: db, rewrite: true}
 }
 
-func wrapSQLite(db *sql.DB) *DB {
-	return &DB{DB: db, rewrite: false}
+func wrapSQLite(reader, writer *sql.DB) *DB {
+	reader.SetMaxOpenConns(runtime.GOMAXPROCS(0))
+	reader.SetMaxIdleConns(4)
+	reader.SetConnMaxLifetime(5 * time.Minute)
+	reader.SetConnMaxIdleTime(1 * time.Minute)
+
+	writer.SetMaxOpenConns(1)
+	writer.SetMaxIdleConns(1)
+	writer.SetConnMaxLifetime(5 * time.Minute)
+	writer.SetConnMaxIdleTime(1 * time.Minute)
+
+	go func() {
+		for range time.NewTicker(30 * time.Second).C {
+			if _, err := writer.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+				_ = err
+			}
+		}
+	}()
+
+	return &DB{writer: writer, reader: reader, rewrite: false}
+}
+
+func (db *DB) IsPostgres() bool {
+	return db.rewrite
+}
+
+func (db *DB) Close() error {
+	if db.writer != db.reader {
+		if err := db.reader.Close(); err != nil { return err }
+	}
+	return db.writer.Close()
+}
+
+func (db *DB) Ping() error {
+	return db.reader.Ping()
 }
 
 func (db *DB) maybeRewrite(query string) string {
@@ -25,16 +61,16 @@ func (db *DB) maybeRewrite(query string) string {
 }
 
 func (db *DB) Query(query string, args ...any) (*sql.Rows, error) {
-	return db.DB.Query(db.maybeRewrite(query), args...)
+	return db.reader.Query(db.maybeRewrite(query), args...)
 }
 func (db *DB) QueryRow(query string, args ...any) *sql.Row {
-	return db.DB.QueryRow(db.maybeRewrite(query), args...)
+	return db.reader.QueryRow(db.maybeRewrite(query), args...)
 }
 func (db *DB) Exec(query string, args ...any) (sql.Result, error) {
-	return db.DB.Exec(db.maybeRewrite(query), args...)
+	return db.writer.Exec(db.maybeRewrite(query), args...)
 }
 func (db *DB) Prepare(query string) (*sql.Stmt, error) {
-	return db.DB.Prepare(db.maybeRewrite(query))
+	return db.writer.Prepare(db.maybeRewrite(query))
 }
 
 type Tx struct {
@@ -43,7 +79,7 @@ type Tx struct {
 }
 
 func (db *DB) Begin() (*Tx, error) {
-	tx, err := db.DB.Begin()
+	tx, err := db.writer.Begin()
 	if err != nil { return nil, err }
 	return &Tx{Tx: tx, rewrite: db.rewrite}, nil
 }
