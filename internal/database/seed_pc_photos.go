@@ -98,7 +98,7 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 	}
 	defer os.Remove(tmpFile)
 
-	re := regexp.MustCompile(`^(\d+)_(sn|full)\.jpeg$`)
+	re := regexp.MustCompile(`^(\d+)_(sn|full|serial|front)\.jpeg$`)
 	var entries []photoEntry
 
 	reader, err := zip.OpenReader(tmpFile)
@@ -118,7 +118,7 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 		}
 		pcNum, _ := strconv.Atoi(matches[1])
 		dbCol := "photo_serial"
-		if matches[2] == "full" {
+		if matches[2] == "full" || matches[2] == "front" {
 			dbCol = "photo_front"
 		}
 
@@ -148,7 +148,7 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 	}
 
 	if len(entries) == 0 {
-		return nil, fmt.Errorf("no files matching pattern pc{N}_{sn,full}.jpeg in zip")
+		return nil, fmt.Errorf("no files matching pattern {N}_{sn,full,serial,front}.jpeg in zip")
 	}
 
 	return entries, nil
