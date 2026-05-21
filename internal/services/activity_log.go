@@ -16,6 +16,7 @@ type ActivityLogService struct {
 	db      *database.DB
 	logChan chan *models.ActivityLog
 	stmt    *sql.Stmt
+	close   chan struct{}
 }
 
 // NewActivityLogService creates a new activity log service
@@ -32,54 +33,71 @@ func NewActivityLogService(db *database.DB) *ActivityLogService {
 	}
 	s := &ActivityLogService{
 		db:      db,
-		logChan: make(chan *models.ActivityLog, 64),
+		logChan: make(chan *models.ActivityLog, 4096),
 		stmt:    stmt,
+		close:   make(chan struct{}),
 	}
 	go s.logWriter()
 	return s
 }
 
 func (s *ActivityLogService) logWriter() {
-	for l := range s.logChan {
-		if err := s.Log(l); err != nil {
-			log.Printf("async log write: %v", err)
+	const batchSize = 100
+	batch := make([]*models.ActivityLog, 0, batchSize)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	flush := func() {
+		if len(batch) == 0 { return }
+		if err := s.batchLog(batch); err != nil {
+			log.Printf("batch log write: %v", err)
+		}
+		batch = batch[:0]
+	}
+
+	for {
+		select {
+		case l, ok := <-s.logChan:
+			if !ok {
+				flush(); return
+			}
+			batch = append(batch, l)
+			if len(batch) >= batchSize { flush() }
+		case <-ticker.C:
+			flush()
+		case <-s.close:
+			flush(); return
 		}
 	}
 }
 
+func (s *ActivityLogService) batchLog(batch []*models.ActivityLog) error {
+	tx, err := s.db.Begin()
+	if err != nil { return err }
+	defer tx.Rollback()
+
+	for _, l := range batch {
+		_, err := tx.Stmt(s.stmt).Exec(
+			l.UserID, l.Username, l.UserRole, l.Action, l.EntityType,
+			l.EntityID, l.Description, l.OldValues, l.NewValues,
+			l.CreatedAt, l.IPAddress, l.UserAgent, l.Status, l.ErrorMessage,
+		)
+		if err != nil { return fmt.Errorf("failed to batch insert activity log: %w", err) }
+	}
+	return tx.Commit()
+}
+
+func (s *ActivityLogService) Close() {
+	close(s.close)
+}
+
+// enqueueLog sends a log entry to the background writer
 func (s *ActivityLogService) enqueueLog(al *models.ActivityLog) {
 	select {
 	case s.logChan <- al:
 	default:
 		log.Printf("async log channel full, dropping entry")
 	}
-}
-
-// Log creates a new activity log entry (called by the background writer goroutine)
-func (s *ActivityLogService) Log(al *models.ActivityLog) error {
-	exec := func(stmt *sql.Stmt) error {
-		_, err := stmt.Exec(al.UserID, al.Username, al.UserRole, al.Action, al.EntityType,
-			al.EntityID, al.Description, al.OldValues, al.NewValues,
-			al.CreatedAt, al.IPAddress, al.UserAgent, al.Status, al.ErrorMessage)
-		return err
-	}
-	if s.stmt != nil {
-		if err := exec(s.stmt); err != nil {
-			return fmt.Errorf("failed to insert activity log: %w", err)
-		}
-		return nil
-	}
-	_, err := s.db.Exec(`
-		INSERT INTO activity_logs (
-			user_id, username, user_role, action, entity_type, entity_id,
-			description, old_values, new_values, created_at, ip_address,
-			user_agent, status, error_message
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, al.UserID, al.Username, al.UserRole, al.Action, al.EntityType,
-		al.EntityID, al.Description, al.OldValues, al.NewValues,
-		al.CreatedAt, al.IPAddress, al.UserAgent, al.Status, al.ErrorMessage)
-	if err != nil { return fmt.Errorf("failed to insert activity log: %w", err) }
-	return nil
 }
 
 type logParams struct {
