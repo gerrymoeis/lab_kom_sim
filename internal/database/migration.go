@@ -288,6 +288,9 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE INDEX IF NOT EXISTS idx_lost_items_status ON lost_items(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_lost_items_reported_date ON lost_items(reported_date)`,
 		`CREATE INDEX IF NOT EXISTS idx_lost_items_status_date ON lost_items(status, reported_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_date_time_id ON logbook_entries(date, time_in, id)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_search_id ON logbook_entries(student_name, nim, date, id)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_id ON activity_logs(created_at, id)`,
 	}
 
 	for _, idx := range indexes {
@@ -343,6 +346,42 @@ func runMigrations(db *DB, isPostgres bool) error {
 
 	if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_logbook_unique ON logbook_entries(date, LOWER(TRIM(student_name)), time_in)`); err != nil {
 		return fmt.Errorf("failed to create unique index: %w", err)
+	}
+
+	if !isPostgres {
+		if _, err := db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS logbook_fts USING fts5(
+			student_name, nim, purpose,
+			tokenize='trigram',
+			detail='none',
+			content='logbook_entries',
+			content_rowid='id'
+		)`); err != nil {
+			return fmt.Errorf("failed to create fts5 table: %w", err)
+		}
+
+		for _, t := range []string{
+			`CREATE TRIGGER IF NOT EXISTS logbook_fts_ai AFTER INSERT ON logbook_entries BEGIN
+				INSERT INTO logbook_fts(rowid, student_name, nim, purpose) VALUES (new.id, new.student_name, new.nim, new.purpose); END`,
+			`CREATE TRIGGER IF NOT EXISTS logbook_fts_ad AFTER DELETE ON logbook_entries BEGIN
+				INSERT INTO logbook_fts(logbook_fts, rowid, student_name, nim, purpose) VALUES('delete', old.id, old.student_name, old.nim, old.purpose); END`,
+			`CREATE TRIGGER IF NOT EXISTS logbook_fts_au AFTER UPDATE ON logbook_entries BEGIN
+				INSERT INTO logbook_fts(logbook_fts, rowid, student_name, nim, purpose) VALUES('delete', old.id, old.student_name, old.nim, old.purpose);
+				INSERT INTO logbook_fts(rowid, student_name, nim, purpose) VALUES (new.id, new.student_name, new.nim, new.purpose); END`,
+		} {
+			if _, err := db.Exec(t); err != nil {
+				return fmt.Errorf("failed to create fts5 trigger: %w", err)
+			}
+		}
+
+		var ftsCount int
+		db.QueryRow(`SELECT COUNT(*) FROM logbook_fts`).Scan(&ftsCount)
+		if ftsCount == 0 {
+			db.Exec(`INSERT INTO logbook_fts(rowid, student_name, nim, purpose) SELECT id, student_name, nim, purpose FROM logbook_entries`)
+		}
+
+		if _, err := db.Exec("ANALYZE"); err != nil {
+			return fmt.Errorf("failed to run ANALYZE: %w", err)
+		}
 	}
 
 	return seedDeviceTypesIfEmpty(db, d.boolTrue, d.boolFalse)

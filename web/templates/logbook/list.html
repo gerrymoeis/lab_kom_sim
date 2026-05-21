@@ -90,7 +90,8 @@
         <div class="row mb-3">
             <div class="col">
                 <p class="text-muted">
-                    Menampilkan {{ len .entries }} dari {{ .totalCount }} entries
+                    Menampilkan {{ len .entries }} entries
+                    {{ if .total }}dari {{ .total }}{{ end }}
                     {{ if .filters.search }}
                     (hasil pencarian: "{{ .filters.search }}")
                     {{ end }}
@@ -151,43 +152,22 @@
                 </div>
 
                 <!-- Pagination -->
-                {{ if gt .totalPages 1 }}
+                {{ $q := "" }}{{ if .filters.date_from }}{{ $q = printf "%s&date_from=%s" $q .filters.date_from }}{{ end }}{{ if .filters.date_to }}{{ $q = printf "%s&date_to=%s" $q .filters.date_to }}{{ end }}{{ if .filters.search }}{{ $q = printf "%s&search=%s" $q .filters.search }}{{ end }}{{ if .filters.sort_by }}{{ $q = printf "%s&sort_by=%s" $q .filters.sort_by }}{{ end }}{{ if .filters.sort_order }}{{ $q = printf "%s&sort_order=%s" $q .filters.sort_order }}{{ end }}{{ $q = printf "%s&size=%d" $q $.pageSize }}
+                {{ if or .prevCursor .nextCursor }}
                 <nav aria-label="Page navigation" class="mt-3">
                     <ul class="pagination justify-content-center">
-                        <!-- Previous -->
-                        <li class="page-item {{ if eq .page 1 }}disabled{{ end }}">
-                            <a class="page-link" href="?page={{ sub .page 1 }}{{ if .filters.date_from }}&date_from={{ .filters.date_from }}{{ end }}{{ if .filters.date_to }}&date_to={{ .filters.date_to }}{{ end }}{{ if .filters.search }}&search={{ .filters.search }}{{ end }}{{ if .filters.sort_by }}&sort_by={{ .filters.sort_by }}{{ end }}{{ if .filters.sort_order }}&sort_order={{ .filters.sort_order }}{{ end }}&size={{ .pageSize }}">
-                                Previous
-                            </a>
-                        </li>
-
-                        <!-- Page numbers -->
-                        {{ $currentPage := .page }}
-                        {{ $totalPages := .totalPages }}
-                        {{ $filters := .filters }}
-                        {{ $pageSize := .pageSize }}
-                        
-                        {{ range $i := iterate $totalPages }}
-                        {{ $page := add $i 1 }}
-                        {{ if or (le $page 3) (and (ge $page (sub $currentPage 1)) (le $page (add $currentPage 1))) (ge $page (sub $totalPages 2)) }}
-                        <li class="page-item {{ if eq $page $currentPage }}active{{ end }}">
-                            <a class="page-link" href="?page={{ $page }}{{ if $filters.date_from }}&date_from={{ $filters.date_from }}{{ end }}{{ if $filters.date_to }}&date_to={{ $filters.date_to }}{{ end }}{{ if $filters.search }}&search={{ $filters.search }}{{ end }}{{ if $filters.sort_by }}&sort_by={{ $filters.sort_by }}{{ end }}{{ if $filters.sort_order }}&sort_order={{ $filters.sort_order }}{{ end }}&size={{ $pageSize }}">
-                                {{ $page }}
-                            </a>
-                        </li>
-                        {{ else if or (eq $page 4) (eq $page (sub $totalPages 3)) }}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
-                        {{ end }}
-                        {{ end }}
-
-                        <!-- Next -->
-                        <li class="page-item {{ if eq .page .totalPages }}disabled{{ end }}">
-                            <a class="page-link" href="?page={{ add .page 1 }}{{ if .filters.date_from }}&date_from={{ .filters.date_from }}{{ end }}{{ if .filters.date_to }}&date_to={{ .filters.date_to }}{{ end }}{{ if .filters.search }}&search={{ .filters.search }}{{ end }}{{ if .filters.sort_by }}&sort_by={{ .filters.sort_by }}{{ end }}{{ if .filters.sort_order }}&sort_order={{ .filters.sort_order }}{{ end }}&size={{ .pageSize }}">
-                                Next
-                            </a>
-                        </li>
+                        <li class="page-item {{ if not .prevCursor }}disabled{{ end }}"><a class="page-link" href="?cursor={{ .prevCursor }}&dir=prev{{ $q }}">Previous</a></li>
+                        <li class="page-item {{ if not .hasMore }}disabled{{ end }}"><a class="page-link" href="?cursor={{ .nextCursor }}&dir=next{{ $q }}">Next</a></li>
+                    </ul>
+                </nav>
+                {{ else if gt .totalPages 1 }}
+                <nav aria-label="Page navigation" class="mt-3">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item {{ if eq .page 1 }}disabled{{ end }}"><a class="page-link" href="?page={{ sub .page 1 }}{{ $q }}">Previous</a></li>
+                        {{ $curr := .page }}{{ $last := .totalPages }}{{ range $i := iterate $last }}{{ $p := add $i 1 }}{{ if or (le $p 3) (and (ge $p (sub $curr 1)) (le $p (add $curr 1))) (ge $p (sub $last 2)) }}
+                        <li class="page-item {{ if eq $p $curr }}active{{ end }}"><a class="page-link" href="?page={{ $p }}{{ $q }}">{{ $p }}</a></li>
+                        {{ else if or (eq $p 4) (eq $p (sub $last 3)) }}<li class="page-item disabled"><span class="page-link">...</span></li>{{ end }}{{ end }}
+                        <li class="page-item {{ if eq .page .totalPages }}disabled{{ end }}"><a class="page-link" href="?page={{ add .page 1 }}{{ $q }}">Next</a></li>
                     </ul>
                 </nav>
                 {{ end }}
