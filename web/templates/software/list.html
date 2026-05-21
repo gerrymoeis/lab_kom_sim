@@ -38,7 +38,7 @@
                 <tbody>
                     {{ range $i, $s := .catalog }}
                     <tr>
-                        <td>{{ add $i 1 }}</td>
+                        <td>{{ add $i $.startRow }}</td>
                         <td><strong>{{ .Name }}</strong></td>
                         <td>{{ if eq .Category "required" }}<span class="badge bg-primary">Required</span>{{ else }}<span class="badge bg-secondary">Other</span>{{ end }}</td>
                         <td>{{ .Description }}</td>

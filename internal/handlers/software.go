@@ -36,12 +36,13 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	}
 
 	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
 
 	c.HTML(http.StatusOK, "software/list.html", gin.H{
 		"title": "Software Catalog", "currentPage": "software",
 		"username": username, "role": role,
 		"catalog": stats, "search": search, "filterCat": filterCategory,
-		"page": page, "totalPages": totalPages, "totalItems": total,
+		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 		"error": c.Query("error"),
 	})
