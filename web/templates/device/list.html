@@ -10,23 +10,23 @@
         <div class="col-md-6 d-flex flex-wrap gap-2 justify-content-end">
             {{ if eq .role "admin" }}
             {{ if eq .activeTab "list" }}
-            <a href="/devices/create" class="btn btn-primary flex-grow-1">
+            <a href="/devices/create" class="btn btn-primary flex-fill">
                 <i class="bi bi-plus-circle"></i> Tambah Perangkat
             </a>
             {{ else if eq .activeTab "types" }}
-            <a href="/device-types/create" class="btn btn-primary flex-grow-1">
+            <a href="/device-types/create" class="btn btn-primary flex-fill">
                 <i class="bi bi-plus-circle"></i> Tambah Jenis Barang
             </a>
             {{ else if eq .activeTab "loans" }}
-            <a href="/device-loans/create" class="btn btn-primary flex-grow-1">
+            <a href="/device-loans/create" class="btn btn-primary flex-fill">
                 <i class="bi bi-box-arrow-right"></i> Pinjam Perangkat
             </a>
             {{ else if eq .activeTab "usages" }}
-            <a href="/device-usages/create" class="btn btn-primary flex-grow-1">
+            <a href="/device-usages/create" class="btn btn-primary flex-fill">
                 <i class="bi bi-clipboard-check"></i> Catat Pemakaian
             </a>
             {{ end }}
-            <a href="/devices/export" class="btn btn-success flex-grow-1">
+            <a href="/devices/export" class="btn btn-success flex-fill">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
             {{ end }}
