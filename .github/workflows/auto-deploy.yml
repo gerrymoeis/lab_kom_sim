@@ -44,7 +44,7 @@ jobs:
           git merge origin/refactoring -X theirs --no-commit
 
           echo "=== 3. Restore deploy-specific files ==="
-          git checkout "${OLD_HEAD}" -- README.md .env.example go.mod go.sum
+          git checkout "${OLD_HEAD}" -- README.md go.mod go.sum
           git checkout "${OLD_HEAD}" -- scripts/
 
           echo "=== 4. Cleanup Windows scripts on deploy_linux ==="
