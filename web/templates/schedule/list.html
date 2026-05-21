@@ -38,7 +38,7 @@
                 <tbody>
                     {{ range $i, $s := .schedules }}
                     <tr class="{{ if eq $s.Day $.today }}table-primary{{ end }}">
-                        <td>{{ add $i 1 }}</td>
+                        <td>{{ add $i $.startRow }}</td>
                         <td>{{ if eq $s.Day $.today }}<span class="badge bg-primary">{{ $s.Day }}</span>{{ else }}{{ $s.Day }}{{ end }}</td>
                         <td><strong>{{ $s.CourseName }}</strong></td>
                         <td>{{ $s.Class }}</td>
