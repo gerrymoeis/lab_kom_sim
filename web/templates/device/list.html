@@ -167,6 +167,8 @@
                 </table>
             </div>
 
+            {{ template "layout/pagination.html" . }}
+
             {{ else if eq .activeTab "types" }}
             <!-- TAB 2: Jenis Barang -->
             <!-- Filter & Search -->
@@ -248,6 +250,8 @@
             <div class="mt-2 text-muted">
                 <small>Total: <strong>{{ len .deviceTypes }}</strong> jenis barang</small>
             </div>
+
+            {{ template "layout/pagination.html" . }}
 
             {{ else if eq .activeTab "loans" }}
             <!-- TAB 3: Peminjaman -->
@@ -341,6 +345,8 @@
                 </table>
             </div>
 
+            {{ template "layout/pagination.html" . }}
+
             {{ else if eq .activeTab "usages" }}
             <!-- TAB 4: Pemakaian -->
             <!-- Filter & Search -->
@@ -409,6 +415,9 @@
                     </tbody>
                 </table>
             </div>
+
+            {{ template "layout/pagination.html" . }}
+
             {{ end }}
         </div>
     </div>

@@ -2,6 +2,7 @@
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -31,16 +32,27 @@ func (h *Handler) DeviceList(c *gin.Context) {
 }
 
 func (h *Handler) deviceListTab(c *gin.Context, username, role string) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	query := ""
+	if len(values) > 0 { query = "&" + values.Encode() }
+
 	filters := struct{ Search, Category string }{
 		Search:   c.Query("search"),
 		Category: c.Query("category"),
 	}
 
-	devices, err := h.deviceService.List(repository.DeviceFilters{
+	devices, total, err := h.deviceService.ListPaginated(repository.DeviceFilters{
 		Search:   filters.Search,
 		Category: filters.Category,
-	})
+	}, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data perangkat"); return }
+
+	totalPages := (total + pageSize - 1) / pageSize
 
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
 		"title": "Manajemen Perangkat", "currentPage": "devices",
@@ -48,43 +60,91 @@ func (h *Handler) deviceListTab(c *gin.Context, username, role string) {
 		"activeTab": "list", "devices": devices,
 		"deviceTypes": h.fetchDeviceTypes(),
 		"filters": gin.H{"search": filters.Search, "category": filters.Category},
+		"page": page, "totalPages": totalPages, "totalItems": total,
+		"query": query,
 	})
 }
 
 func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	query := ""
+	if len(values) > 0 { query = "&" + values.Encode() }
+
 	search := c.Query("search")
 	category := c.Query("category")
 
-	dts, err := h.deviceTypeService.List(category, search)
+	dts, total, err := h.deviceTypeService.ListPaginated(category, search, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data jenis barang"); return }
+
+	totalPages := (total + pageSize - 1) / pageSize
 
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
 		"title": "Jenis Barang", "currentPage": "devices",
 		"username": username, "role": role,
 		"activeTab": "types", "deviceTypes": dts,
 		"filters": gin.H{"search": search, "category": category},
+		"page": page, "totalPages": totalPages, "totalItems": total,
+		"query": query,
 	})
 }
 
 func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
-	loans, err := h.deviceService.ListLoans()
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	query := ""
+	if len(values) > 0 { query = "&" + values.Encode() }
+
+	search := c.Query("search")
+	status := c.Query("status")
+
+	loans, total, err := h.deviceService.ListLoansPaginated(search, status, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data peminjaman"); return }
+
+	totalPages := (total + pageSize - 1) / pageSize
 
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
 		"title": "Peminjaman", "currentPage": "devices",
 		"username": username, "role": role,
 		"activeTab": "loans", "loans": loans,
+		"filters": gin.H{"search": search, "status": status},
+		"page": page, "totalPages": totalPages, "totalItems": total,
+		"query": query,
 	})
 }
 
 func (h *Handler) deviceUsagesTab(c *gin.Context, username, role string) {
-	usages, err := h.deviceService.ListUsages()
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	query := ""
+	if len(values) > 0 { query = "&" + values.Encode() }
+
+	search := c.Query("search")
+
+	usages, total, err := h.deviceService.ListUsagesPaginated(search, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data pemakaian"); return }
+
+	totalPages := (total + pageSize - 1) / pageSize
 
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
 		"title": "Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"activeTab": "usages", "usages": usages,
+		"filters": gin.H{"search": search},
+		"page": page, "totalPages": totalPages, "totalItems": total,
+		"query": query,
 	})
 }
 
