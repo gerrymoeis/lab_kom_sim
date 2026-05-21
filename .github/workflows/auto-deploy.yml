@@ -47,6 +47,9 @@ jobs:
           git checkout "${OLD_HEAD}" -- README.md go.mod go.sum
           git checkout "${OLD_HEAD}" -- scripts/
 
+          echo "=== 3b. Force .env.example dari refactoring (3-way merge bisa pilih versi lama karena revert history) ==="
+          git checkout origin/refactoring -- .env.example
+
           echo "=== 4. Cleanup Windows scripts on deploy_linux ==="
           if [ "${PLATFORM}" = "linux" ]; then
             git rm --ignore-unmatch \
