@@ -9,7 +9,7 @@
         {{ $p := add $i 1 }}
         {{ if or (le $p 3) (and (ge $p (sub $curr 1)) (le $p (add $curr 1))) (ge $p (sub $last 2)) }}
         <li class="page-item {{ if eq $p $curr }}active{{ end }}">
-            <a class="page-link" href="?page={{ $p }}{{ .query }}">{{ $p }}</a>
+            <a class="page-link" href="?page={{ $p }}{{ $.query }}">{{ $p }}</a>
         </li>
         {{ else if or (eq $p 4) (eq $p (sub $last 3)) }}
         <li class="page-item disabled"><span class="page-link">...</span></li>
