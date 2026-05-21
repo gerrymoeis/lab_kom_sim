@@ -15,14 +15,52 @@ func NewDeviceTypeRepository(db *database.DB) *DeviceTypeRepository {
 	return &DeviceTypeRepository{db: db}
 }
 
-func (r *DeviceTypeRepository) List(category string) ([]models.DeviceType, error) {
+func (r *DeviceTypeRepository) List(category, search string) ([]models.DeviceType, error) {
+	return r.listWithQuery(category, search, "", 0, 0)
+}
+
+func (r *DeviceTypeRepository) ListPaginated(category, search string, page, pageSize int) ([]models.DeviceType, int, error) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 { pageSize = 20 }
+
+	var total int
+	countQuery := `SELECT COUNT(*) FROM device_types WHERE 1=1`
+	var args []any
+	if category != "" {
+		countQuery += ` AND category = ?`
+		args = append(args, category)
+	}
+	if search != "" {
+		countQuery += ` AND (name LIKE ? OR category LIKE ?)`
+		s := "%" + search + "%"
+		args = append(args, s, s)
+	}
+	r.db.QueryRow(countQuery, args...).Scan(&total)
+
+	dts, err := r.listWithQuery(category, search, ` LIMIT ? OFFSET ?`, pageSize, (page-1)*pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	return dts, total, nil
+}
+
+func (r *DeviceTypeRepository) listWithQuery(category, search string, suffix string, limit, offset int) ([]models.DeviceType, error) {
 	query := `SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template, created_at FROM device_types WHERE 1=1`
 	var args []any
 	if category != "" {
 		query += ` AND category = ?`
 		args = append(args, category)
 	}
+	if search != "" {
+		query += ` AND (name LIKE ? OR category LIKE ?)`
+		s := "%" + search + "%"
+		args = append(args, s, s)
+	}
 	query += ` ORDER BY category, name`
+	query += suffix
+	if suffix != "" {
+		args = append(args, limit, offset)
+	}
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {

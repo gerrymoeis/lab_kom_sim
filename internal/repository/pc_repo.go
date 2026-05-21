@@ -26,19 +26,53 @@ type PCFilters struct {
 }
 
 func (r *PCRepository) List(filters PCFilters) ([]models.PC, error) {
-	query := `SELECT id, pc_number, "row", "column", status, processor, ram, storage, operating_system,
-		serial_number, brand_model, device_type, accessories, notes, action_notes, last_checked FROM pcs WHERE 1=1`
-	var args []any
+	return r.listWithQuery(filters, "", 0, 0)
+}
 
+func (r *PCRepository) ListPaginated(filters PCFilters, page, pageSize int) ([]models.PC, int, error) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 { pageSize = 20 }
+
+	var total int
+	r.db.QueryRow(r.buildCountQuery(filters), r.buildCountArgs(filters)...).Scan(&total)
+
+	pcs, err := r.listWithQuery(filters, ` LIMIT ? OFFSET ?`, pageSize, (page-1)*pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	return pcs, total, nil
+}
+
+func (r *PCRepository) buildWhereClause(filters PCFilters) (string, []any) {
+	var clause string
+	var args []any
 	if filters.Status != "" {
-		query += ` AND status = ?`
+		clause += ` AND status = ?`
 		args = append(args, filters.Status)
 	}
 	if filters.Search != "" {
-		query += ` AND (CAST(pc_number AS TEXT) LIKE ? OR serial_number LIKE ? OR brand_model LIKE ?)`
+		clause += ` AND (CAST(pc_number AS TEXT) LIKE ? OR serial_number LIKE ? OR brand_model LIKE ?)`
 		s := "%" + filters.Search + "%"
 		args = append(args, s, s, s)
 	}
+	return clause, args
+}
+
+func (r *PCRepository) buildCountQuery(filters PCFilters) string {
+	clause, _ := r.buildWhereClause(filters)
+	return `SELECT COUNT(*) FROM pcs WHERE 1=1` + clause
+}
+
+func (r *PCRepository) buildCountArgs(filters PCFilters) []any {
+	_, args := r.buildWhereClause(filters)
+	return args
+}
+
+func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, offset int) ([]models.PC, error) {
+	query := `SELECT id, pc_number, "row", "column", status, processor, ram, storage, operating_system,
+		serial_number, brand_model, device_type, accessories, notes, action_notes, last_checked FROM pcs WHERE 1=1`
+	clause, args := r.buildWhereClause(filters)
+	query += clause
 
 	sortBy := filters.SortBy
 	validSort := map[string]bool{"pc_number": true, "status": true, "brand_model": true, "operating_system": true}
@@ -50,6 +84,10 @@ func (r *PCRepository) List(filters PCFilters) ([]models.PC, error) {
 		sortOrder = "ASC"
 	}
 	query += fmt.Sprintf(` ORDER BY %s %s`, sortBy, sortOrder)
+	query += suffix
+	if suffix != "" {
+		args = append(args, limit, offset)
+	}
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {

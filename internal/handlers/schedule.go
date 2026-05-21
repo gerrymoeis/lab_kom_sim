@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -20,13 +21,24 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	query := ""
+	if len(values) > 0 { query = "&" + values.Encode() }
+
 	dayFilter := c.DefaultQuery("day", "")
 	search := c.Query("search")
 
-	schedules, err := h.scheduleService.List(search, dayFilter)
+	schedules, total, err := h.scheduleService.ListPaginated(search, dayFilter, page, pageSize)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data jadwal"); return
 	}
+
+	totalPages := (total + pageSize - 1) / pageSize
 
 	c.HTML(http.StatusOK, "schedule/list.html", gin.H{
 		"title": "Jadwal Mata Kuliah", "currentPage": "schedules",
@@ -34,6 +46,8 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 		"schedules": schedules, "today": dayNames[time.Now().Weekday()],
 		"dayFilter": dayFilter, "search": search,
 		"days": []string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"},
+		"page": page, "totalPages": totalPages, "totalItems": total,
+		"query": query,
 		"error": c.Query("error"),
 	})
 }

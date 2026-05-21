@@ -35,6 +35,10 @@ func (s *PCService) List(filters repository.PCFilters) ([]models.PC, error) {
 	return s.pcRepo.List(filters)
 }
 
+func (s *PCService) ListPaginated(filters repository.PCFilters, page, pageSize int) ([]models.PC, int, error) {
+	return s.pcRepo.ListPaginated(filters, page, pageSize)
+}
+
 func (s *PCService) GetByPCNumber(num int) (*models.PC, error) {
 	return s.pcRepo.GetByPCNumber(num)
 }

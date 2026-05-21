@@ -3,6 +3,7 @@
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,12 +19,28 @@ func (h *Handler) PCList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	pcs, err := h.pcService.List(repository.PCFilters{})
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	query := ""
+	if len(values) > 0 { query = "&" + values.Encode() }
+
+	filters := repository.PCFilters{
+		Search: c.Query("search"),
+	}
+	pcs, total, err := h.pcService.ListPaginated(filters, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
+
+	totalPages := (total + pageSize - 1) / pageSize
 
 	c.HTML(http.StatusOK, "pc/list.html", gin.H{
 		"title": "Manajemen PC", "currentPage": "pc",
 		"username": username, "role": role, "pcs": pcs,
+		"page": page, "totalPages": totalPages, "totalItems": total,
+		"query": query, "search": filters.Search,
 	})
 }
 
