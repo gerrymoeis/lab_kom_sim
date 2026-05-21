@@ -162,7 +162,7 @@ func downloadReleaseAsset(releaseURL, token string) (string, error) {
 	}
 	owner, repo, tag, filename := matches[1], matches[2], matches[3], matches[4]
 
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := &http.Client{Timeout: 300 * time.Second}
 
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", owner, repo, tag)
 	req, err := http.NewRequest("GET", apiURL, nil)
