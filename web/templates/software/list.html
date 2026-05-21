@@ -4,10 +4,12 @@
         <h2><i class="bi bi-app-indicator"></i> Software Catalog</h2>
         <p class="text-muted">Master daftar software — atur software required dan others</p>
     </div>
-    <div class="col-md-6 d-flex flex-wrap gap-2 justify-content-end">
+    <div class="col-md-6">
         {{ if eq .role "admin" }}
+        {{ template "layout/header_actions_start" $ }}
         <button type="button" class="btn btn-primary flex-fill" data-bs-toggle="modal" data-bs-target="#addSoftwareModal"><i class="bi bi-plus-circle"></i> Tambah Software</button>
         <a href="/software/export" class="btn btn-success flex-fill"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
+        {{ template "layout/header_actions_end" }}
         {{ end }}
     </div>
 </div>

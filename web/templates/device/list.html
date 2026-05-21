@@ -7,8 +7,9 @@
             <h2><i class="bi bi-hdd-rack"></i> Manajemen Perangkat</h2>
             <p class="text-muted">Kelola perangkat, jenis barang, peminjaman, dan pemakaian</p>
         </div>
-        <div class="col-md-6 d-flex flex-wrap gap-2 justify-content-end">
+        <div class="col-md-6">
             {{ if eq .role "admin" }}
+            {{ template "layout/header_actions_start" $ }}
             {{ if eq .activeTab "list" }}
             <a href="/devices/create" class="btn btn-primary flex-fill">
                 <i class="bi bi-plus-circle"></i> Tambah Perangkat
@@ -29,6 +30,7 @@
             <a href="/devices/export" class="btn btn-success flex-fill">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
+            {{ template "layout/header_actions_end" }}
             {{ end }}
         </div>
     </div>
