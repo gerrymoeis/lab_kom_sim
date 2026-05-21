@@ -103,6 +103,7 @@ func (h *Handler) LogbookList(c *gin.Context) {
 			"sort_order": f.SortOrder,
 		},
 		"pageSize":   pageSize,
+		"totalPages": 0,
 		"hasMore":    hasMore,
 		"prevCursor": prevCursor,
 		"nextCursor": nextCursor,
