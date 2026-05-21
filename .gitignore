@@ -56,4 +56,7 @@ uploads/*
 tmp/
 temp/
 
+# Build artifacts
+*.zip
+
 app-simlab
