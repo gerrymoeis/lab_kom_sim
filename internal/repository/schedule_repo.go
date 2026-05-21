@@ -17,13 +17,17 @@ func NewScheduleRepository(db *database.DB) *ScheduleRepository {
 
 var dayOrder = `CASE day WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 ELSE 7 END`
 
-func (r *ScheduleRepository) List(search string) ([]models.CourseSchedule, error) {
+func (r *ScheduleRepository) List(search, dayFilter string) ([]models.CourseSchedule, error) {
 	query := `SELECT id, course_name, lecturer, day, class, time_start, time_end, notes FROM course_schedules WHERE 1=1`
 	var args []any
 	if search != "" {
 		query += ` AND (course_name LIKE ? OR lecturer LIKE ? OR class LIKE ?)`
 		s := "%" + search + "%"
 		args = append(args, s, s, s)
+	}
+	if dayFilter != "" {
+		query += ` AND day = ?`
+		args = append(args, dayFilter)
 	}
 	query += ` ORDER BY ` + dayOrder + `, time_start`
 

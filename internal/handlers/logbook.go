@@ -19,23 +19,94 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
-	if page < 1 { page = 1 }
+	cursor := c.Query("cursor")
+	direction := c.DefaultQuery("dir", "next")
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "50"))
 	if pageSize < 1 { pageSize = 50 }
 
-	entries, total, err := h.logbookService.List(repository.LogbookFilters{
-		Search: c.Query("search"), Page: page, PageSize: pageSize,
-	})
-	if err != nil { h.errHTML(c, "Gagal mengambil data logbook"); return }
+	cursorID, cursorDate, cursorTimeIn := parseLogbookCursor(cursor)
+	sortBy := c.DefaultQuery("sort_by", "date")
+	sortOrder := c.DefaultQuery("sort_order", "ASC")
 
-	totalPages := (total + pageSize - 1) / pageSize
+	f := repository.LogbookFilters{
+		StartDate:    c.Query("date_from"),
+		EndDate:      c.Query("date_to"),
+		Search:       c.Query("search"),
+		SortBy:       sortBy,
+		SortOrder:    sortOrder,
+		PageSize:     pageSize,
+		CursorID:     cursorID,
+		CursorDate:   cursorDate,
+		CursorTimeIn: cursorTimeIn,
+		Direction:    direction,
+	}
+
+	var hasMore bool
+	var prevCursor, nextCursor string
+
+	if sortBy != "date" || sortOrder != "ASC" {
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		if page < 1 {
+			page = 1
+		}
+		f.Page = page
+		entries, total, err := h.logbookService.List(f)
+		if err != nil {
+			h.errHTML(c, "Gagal mengambil data logbook")
+			return
+		}
+		totalPages := (total + pageSize - 1) / pageSize
+		hasMore = page < totalPages
+		c.HTML(http.StatusOK, "logbook/list.html", gin.H{
+			"title": "Logbook", "currentPage": "logbook",
+			"username": username, "role": role,
+			"entries":   entries,
+			"total":     total,
+			"page":      page,
+			"totalPages": totalPages,
+			"filters": gin.H{
+				"date_from":  f.StartDate, "date_to": f.EndDate,
+				"search": f.Search, "sort_by": sortBy, "sort_order": sortOrder,
+			},
+			"pageSize":   pageSize,
+			"hasMore":    hasMore,
+			"prevCursor": "",
+			"nextCursor": "",
+			"success":    c.Query("success"),
+		})
+		return
+	}
+
+	entries, kMore, err := h.logbookService.ListCursor(f)
+	if err != nil { h.errHTML(c, "Gagal mengambil data logbook"); return }
+	hasMore = kMore
+	if len(entries) > 0 {
+		if direction == "next" && cursor != "" {
+			prevCursor = buildLogbookCursor(entries[0])
+		} else if direction == "prev" && hasMore {
+			prevCursor = buildLogbookCursor(entries[0])
+		}
+		if hasMore {
+			nextCursor = buildLogbookCursor(entries[len(entries)-1])
+		}
+	}
+
 	c.HTML(http.StatusOK, "logbook/list.html", gin.H{
 		"title": "Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
-		"entries": entries, "page": page,
-		"totalPages": totalPages, "search": c.Query("search"),
-		"date": c.Query("date"), "success": c.Query("success"),
+		"entries": entries,
+		"filters": gin.H{
+			"date_from":  f.StartDate,
+			"date_to":    f.EndDate,
+			"search":     f.Search,
+			"sort_by":    f.SortBy,
+			"sort_order": f.SortOrder,
+		},
+		"pageSize":   pageSize,
+		"hasMore":    hasMore,
+		"prevCursor": prevCursor,
+		"nextCursor": nextCursor,
+		"success":    c.Query("success"),
 	})
 }
 
