@@ -10,13 +10,13 @@
             <div class="col-md-6">
                 {{ if eq .role "admin" }}
                 <div class="d-flex flex-wrap gap-2 justify-content-end mt-3 mt-md-0">
-                    <a href="/logbook/create" class="btn btn-primary flex-grow-1">
+                    <a href="/logbook/create" class="btn btn-primary flex-fill">
                         <i class="bi bi-plus-circle"></i> Tambah Manual
                     </a>
-                    <a href="/logbook/upload" class="btn btn-primary flex-grow-1">
+                    <a href="/logbook/upload" class="btn btn-primary flex-fill">
                         <i class="bi bi-upload"></i> Upload (OCR)
                     </a>
-                    <button type="button" class="btn btn-success flex-grow-1" onclick="exportLogbook()">
+                    <button type="button" class="btn btn-success flex-fill" onclick="exportLogbook()">
                         <i class="bi bi-file-earmark-excel"></i> Export Excel
                     </button>
                 </div>
