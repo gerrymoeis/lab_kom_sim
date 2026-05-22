@@ -8,11 +8,23 @@ import (
 	"time"
 )
 
+type ExecInterceptor func(query string, args ...any) (sql.Result, error)
+
 type DB struct {
 	writer  *sql.DB
 	reader  *sql.DB
 	rewrite bool
+	execInt ExecInterceptor
 }
+
+func (db *DB) SetExecInterceptor(int ExecInterceptor) {
+	db.execInt = int
+}
+
+type noopResult struct{}
+
+func (noopResult) LastInsertId() (int64, error) { return 0, nil }
+func (noopResult) RowsAffected() (int64, error) { return 0, nil }
 
 func wrapPG(db *sql.DB) *DB {
 	return &DB{writer: db, reader: db, rewrite: true}
@@ -67,7 +79,11 @@ func (db *DB) QueryRow(query string, args ...any) *sql.Row {
 	return db.reader.QueryRow(db.maybeRewrite(query), args...)
 }
 func (db *DB) Exec(query string, args ...any) (sql.Result, error) {
-	return db.writer.Exec(db.maybeRewrite(query), args...)
+	q := db.maybeRewrite(query)
+	if db.execInt != nil {
+		return db.execInt(q, args...)
+	}
+	return db.writer.Exec(q, args...)
 }
 func (db *DB) Prepare(query string) (*sql.Stmt, error) {
 	return db.writer.Prepare(db.maybeRewrite(query))
