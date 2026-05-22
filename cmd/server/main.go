@@ -8,6 +8,7 @@ import (
 
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
+	"inventaris-lab-kom/internal/queue"
 	"inventaris-lab-kom/internal/server"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,18 @@ func main() {
 	}
 	if err := database.SeedDefaultUser(db); err != nil {
 		log.Printf("Warning: Failed to seed default user: %v", err)
+	}
+
+	var wq *queue.Queue
+	if cfg.WriteMode == "async" {
+		wq = db.NewWriteQueue(50000, 200, 200*time.Millisecond)
+		wq.Start()
+		log.Println("⚡ Write mode: async (queue-based batch writer)")
+	} else {
+		log.Println("🔒 Write mode: sync (direct writer)")
+	}
+	if wq != nil {
+		defer wq.Stop()
 	}
 
 	if cfg.Environment == "production" { gin.SetMode(gin.ReleaseMode) }
