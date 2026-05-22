@@ -1,0 +1,49 @@
+name: Auto-Sync deploy_test
+
+on:
+  push:
+    branches: [refactoring]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Sync deploy_test = refactoring (exact match)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== 1. Switch to deploy_test ==="
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -B deploy_test origin/deploy_test
+
+          echo "=== 2. Reset index to refactoring (exact match) ==="
+          git rm -r --cached .
+          git checkout origin/refactoring -- .
+
+          echo "=== 3. Verify build ==="
+          go build -tags sqlite_fts5 ./cmd/server/
+          go vet -tags sqlite_fts5 ./cmd/server/
+
+          echo "=== 4. Commit and push ==="
+          if ! git diff --cached --quiet; then
+            git commit -m "sync: align deploy_test with refactoring"
+            git push origin deploy_test
+            echo "✓ deploy_test synced and pushed"
+          else
+            echo "· No changes for deploy_test"
+          fi
