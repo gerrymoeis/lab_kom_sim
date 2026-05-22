@@ -18,6 +18,7 @@ type Config struct {
 	UploadPath       string
 	GeminiAPIKey     string
 	OpenRouterAPIKey string
+	WriteMode        string
 }
 
 // Load loads configuration from environment variables with defaults
@@ -37,6 +38,7 @@ func Load() *Config {
 		UploadPath:    getEnv("UPLOAD_PATH", "uploads"),
 		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
+		WriteMode:        getEnv("WRITE_MODE", "sync"),
 	}
 }
 
