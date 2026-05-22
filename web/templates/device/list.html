@@ -1,16 +1,4 @@
-{{ define "device/list.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
     <!-- Header -->
@@ -21,26 +9,28 @@
         </div>
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
+            {{ template "layout/header_actions_start.html" $ }}
             {{ if eq .activeTab "list" }}
-            <a href="/devices/create" class="btn btn-primary">
+            <a href="/devices/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Perangkat
             </a>
             {{ else if eq .activeTab "types" }}
-            <a href="/device-types/create" class="btn btn-primary">
+            <a href="/device-types/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Jenis Barang
             </a>
             {{ else if eq .activeTab "loans" }}
-            <a href="/device-loans/create" class="btn btn-primary">
+            <a href="/device-loans/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-box-arrow-right"></i> Pinjam Perangkat
             </a>
             {{ else if eq .activeTab "usages" }}
-            <a href="/device-usages/create" class="btn btn-primary">
+            <a href="/device-usages/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-clipboard-check"></i> Catat Pemakaian
             </a>
             {{ end }}
-            <a href="/devices/export" class="btn btn-success">
+            <a href="/devices/export" class="btn btn-success flex-grow-1">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
+            {{ template "layout/header_actions_end.html" }}
             {{ end }}
         </div>
     </div>
@@ -83,17 +73,9 @@
                 <div class="col-md-2">
                     <select class="form-select" name="category">
                         <option value="">Semua Kategori</option>
-                        <option value="peripheral" {{ if eq .filters.category "peripheral" }}selected{{ end }}>Peripheral</option>
-                        <option value="network" {{ if eq .filters.category "network" }}selected{{ end }}>Network</option>
-                        <option value="consumable" {{ if eq .filters.category "consumable" }}selected{{ end }}>Consumable</option>
-                        <option value="power" {{ if eq .filters.category "power" }}selected{{ end }}>Power</option>
-                        <option value="display" {{ if eq .filters.category "display" }}selected{{ end }}>Display</option>
-                        <option value="printer" {{ if eq .filters.category "printer" }}selected{{ end }}>Printer</option>
-                        <option value="audio" {{ if eq .filters.category "audio" }}selected{{ end }}>Audio</option>
-                        <option value="tools" {{ if eq .filters.category "tools" }}selected{{ end }}>Tools</option>
-                        <option value="server" {{ if eq .filters.category "server" }}selected{{ end }}>Server</option>
-                        <option value="security" {{ if eq .filters.category "security" }}selected{{ end }}>Security</option>
-                        <option value="stationery" {{ if eq .filters.category "stationery" }}selected{{ end }}>Stationery</option>
+                        {{ range $cat := allCategories }}
+                        <option value="{{ $cat.Value }}" {{ if eq $.filters.category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
+                        {{ end }}
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -160,7 +142,7 @@
                                 </span>
                             </td>
                             <td>{{ if .Location }}{{ .Location }}{{ else }}-{{ end }}</td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 <a href="/devices/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
@@ -185,6 +167,8 @@
                 </table>
             </div>
 
+            {{ template "layout/pagination.html" . }}
+
             {{ else if eq .activeTab "types" }}
             <!-- TAB 2: Jenis Barang -->
             <!-- Filter & Search -->
@@ -196,17 +180,9 @@
                 <div class="col-md-3">
                     <select class="form-select" name="category">
                         <option value="">Semua Kategori</option>
-                        <option value="peripheral" {{ if eq .filters.category "peripheral" }}selected{{ end }}>Peripheral</option>
-                        <option value="network" {{ if eq .filters.category "network" }}selected{{ end }}>Network</option>
-                        <option value="consumable" {{ if eq .filters.category "consumable" }}selected{{ end }}>Consumable</option>
-                        <option value="power" {{ if eq .filters.category "power" }}selected{{ end }}>Power</option>
-                        <option value="display" {{ if eq .filters.category "display" }}selected{{ end }}>Display</option>
-                        <option value="printer" {{ if eq .filters.category "printer" }}selected{{ end }}>Printer</option>
-                        <option value="audio" {{ if eq .filters.category "audio" }}selected{{ end }}>Audio</option>
-                        <option value="tools" {{ if eq .filters.category "tools" }}selected{{ end }}>Tools</option>
-                        <option value="server" {{ if eq .filters.category "server" }}selected{{ end }}>Server</option>
-                        <option value="security" {{ if eq .filters.category "security" }}selected{{ end }}>Security</option>
-                        <option value="stationery" {{ if eq .filters.category "stationery" }}selected{{ end }}>Stationery</option>
+                        {{ range $cat := allCategories }}
+                        <option value="{{ $cat.Value }}" {{ if eq $.filters.category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
+                        {{ end }}
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -231,7 +207,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{ $index := 0 }}
+                        {{ $index := sub $.startRow 1 }}
                         {{ range .deviceTypes }}
                         {{ $index = add $index 1 }}
                         <tr>
@@ -245,7 +221,7 @@
                                 </span>
                             </td>
                             <td><code>{{ .AssetCodePrefix }}</code></td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 <a href="/device-types/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
@@ -274,6 +250,8 @@
             <div class="mt-2 text-muted">
                 <small>Total: <strong>{{ len .deviceTypes }}</strong> jenis barang</small>
             </div>
+
+            {{ template "layout/pagination.html" . }}
 
             {{ else if eq .activeTab "loans" }}
             <!-- TAB 3: Peminjaman -->
@@ -345,7 +323,7 @@
                                     </span>
                                 {{ end }}
                             </td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 {{ if eq $.role "admin" }}
                                 <a href="/device-loans/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
@@ -366,6 +344,8 @@
                     </tbody>
                 </table>
             </div>
+
+            {{ template "layout/pagination.html" . }}
 
             {{ else if eq .activeTab "usages" }}
             <!-- TAB 4: Pemakaian -->
@@ -390,8 +370,9 @@
                             <th>Perangkat</th>
                             <th>Asset Code</th>
                             <th>Pengguna</th>
-                            <th>Tipe</th>
+                            <th>Kategori</th>
                             <th>Tanggal Pemakaian</th>
+                            <th>Masih Ada?</th>
                             <th>Jumlah</th>
                             <th>Keperluan</th>
                             <th>Aksi</th>
@@ -405,14 +386,20 @@
                             <td>{{ .UserName }}</td>
                             <td><span class="badge bg-secondary">{{ .UserType }}</span></td>
                             <td>{{ .UsageDate.Format "02/01/2006" }}</td>
+                            <td>
+                                <select class="form-select form-select-sm availability-select" data-usage-id="{{ .ID }}" style="width:auto;">
+                                    <option value="yes" {{ if eq .IsAvailable "yes" }}selected{{ end }}>Ada</option>
+                                    <option value="no" {{ if eq .IsAvailable "no" }}selected{{ end }}>Habis</option>
+                                </select>
+                            </td>
                             <td><span class="badge bg-warning">{{ .Quantity }}</span></td>
                             <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>
-                            <td>
+                            <td class="d-flex gap-1 flex-wrap align-items-center">
                                 {{ if eq $.role "admin" }}
                                 <a href="/device-usages/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/device-usages/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini? Stok akan dikembalikan.')">
+                                <form method="POST" action="/device-usages/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -422,19 +409,18 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="8" class="text-center text-muted">Belum ada data pemakaian</td>
+                            <td colspan="9" class="text-center text-muted">Belum ada data pemakaian</td>
                         </tr>
                         {{ end }}
                     </tbody>
                 </table>
             </div>
+
+            {{ template "layout/pagination.html" . }}
+
             {{ end }}
         </div>
     </div>
 </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
-</body>
-</html>
-{{ end }}
+{{ template "layout/footer.html" . }}

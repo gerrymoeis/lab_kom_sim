@@ -27,18 +27,17 @@ type CleanupRequest struct {
 
 // UploadImage handles immediate image upload and processing for preview
 func (h *Handler) UploadImage(c *gin.Context) {
-	// Get form data
 	file, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, UploadResponse{
 			Success: false,
-			Message: "No file uploaded",
+			Message: "File tidak ditemukan",
 		})
 		return
 	}
 
-	imageType := c.PostForm("type") // "serial" or "front"
-	pcNumber := c.PostForm("pc_number")
+	var req UploadImageRequest
+	c.ShouldBind(&req)
 
 	// Validate file size (max 5MB)
 	if file.Size > 5*1024*1024 {
@@ -67,18 +66,18 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	// Generate unique filename
 	now := time.Now()
-	var finalFilename string
-	if pcNumber != "" {
-		finalFilename = fmt.Sprintf("pc_%s_%s_%s.jpeg", pcNumber, imageType, now.Format("150405_02012006"))
+	var fileBase string
+	if req.PCNumber != "" {
+		fileBase = fmt.Sprintf("pc_%s_%s_%s", req.PCNumber, req.Type, now.Format("150405_02012006"))
 	} else {
-		finalFilename = fmt.Sprintf("temp_%s_%s.jpeg", imageType, now.Format("150405_02012006"))
+		fileBase = fmt.Sprintf("temp_%s_%s", req.Type, now.Format("150405_02012006"))
 	}
+	finalFilename := fileBase + ".jpeg"
 
 	// Paths
-	tempOriginal := filepath.Join("uploads", "temp", "original_"+finalFilename+ext)
-	finalPath := filepath.Join("uploads", "temp", finalFilename) // Temp location first
+	tempOriginal := filepath.Join("uploads", "temp", "original_"+fileBase+ext)
+	finalPath := filepath.Join("uploads", "temp", finalFilename)
 
 	// Ensure temp directory exists
 	tempDir := filepath.Join("uploads", "temp")
@@ -101,7 +100,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 
 	// Compress and convert using existing ImageService
 	maxDimension := 1280
-	if imageType == "front" {
+	if req.Type == "front" {
 		maxDimension = 1920
 	}
 
@@ -109,7 +108,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		os.Remove(tempOriginal)
 		c.JSON(http.StatusInternalServerError, UploadResponse{
 			Success: false,
-			Message: "Gagal memproses gambar: " + err.Error(),
+			Message: "Gagal memproses gambar",
 		})
 		return
 	}
@@ -130,7 +129,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 func (h *Handler) DeleteTempFile(c *gin.Context) {
 	var req CleanupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		h.errJSON(c, http.StatusBadRequest, "Request tidak valid")
 		return
 	}
 
@@ -146,7 +145,7 @@ func (h *Handler) DeleteTempFile(c *gin.Context) {
 func (h *Handler) CleanupTempFiles(c *gin.Context) {
 	var req CleanupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		h.errJSON(c, http.StatusBadRequest, "Request tidak valid")
 		return
 	}
 

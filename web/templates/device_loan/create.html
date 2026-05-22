@@ -1,29 +1,7 @@
-{{ define "device_loan/create.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-box-arrow-right"></i> Pinjam Perangkat</h5>
-                </div>
-                <div class="card-body">
-                    {{ if .error }}
-                    <div class="alert alert-danger">{{ .error }}</div>
-                    {{ end }}
-
+    {{ template "layout/card_create.html" . }}
                     <form method="POST" action="/device-loans/create">
                         <div class="mb-3">
                             <label for="device_id" class="form-label">Perangkat *</label>
@@ -60,7 +38,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="loan_date" class="form-label">Tanggal Pinjam *</label>
-                                <input type="date" class="form-control" id="loan_date" name="loan_date" required>
+                                <input type="date" class="form-control" id="loan_date" name="loan_date" required data-default-date>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="expected_return_date" class="form-label">Target Tanggal Kembali</label>
@@ -88,18 +66,6 @@
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{{ template "layout/card_close.html" . }}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
-    <script>
-        // Set today as default loan date
-        document.getElementById('loan_date').valueAsDate = new Date();
-    </script>
-</body>
-</html>
-{{ end }}
+{{ template "layout/footer.html" . }}

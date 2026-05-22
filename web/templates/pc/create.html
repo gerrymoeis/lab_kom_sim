@@ -1,491 +1,391 @@
-{{ define "pc/create.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Tambah PC Baru</h5>
-                </div>
-                <div class="card-body">
-                    {{ if .error }}
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle"></i> {{ .error }}
+{{ template "layout/card_create.html" . }}
+
+                <form
+                    method="POST"
+                    action="/pc/create"
+                    enctype="multipart/form-data"
+                >
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="pc_number" class="form-label"
+                                >Nomor PC *</label
+                            >
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="pc_number"
+                                name="pc_number"
+                                min="1"
+                                max="40"
+                                required
+                            />
+                            <small class="text-muted">1-40</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="column" class="form-label">Baris *</label>
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="column"
+                                name="column"
+                                min="1"
+                                max="8"
+                                required
+                            />
+                            <small class="text-muted">1-8</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="row" class="form-label"
+                                >Kolom *</label
+                            >
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="row"
+                                name="row"
+                                min="1"
+                                max="5"
+                                required
+                            />
+                            <small class="text-muted">1-5</small>
+                        </div>
                     </div>
-                    {{ end }}
 
-                    <form method="POST" action="/pc/create" enctype="multipart/form-data">
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="pc_number" class="form-label">Nomor PC *</label>
-                                <input type="number" class="form-control" id="pc_number" name="pc_number" min="1" max="40" required>
-                                <small class="text-muted">1-40</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="row" class="form-label">Baris *</label>
-                                <input type="number" class="form-control" id="row" name="row" min="1" max="5" required>
-                                <small class="text-muted">1-5</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="column" class="form-label">Kolom *</label>
-                                <input type="number" class="form-control" id="column" name="column" min="1" max="8" required>
-                                <small class="text-muted">1-8</small>
-                            </div>
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status *</label>
+                        <select
+                            class="form-select"
+                            id="status"
+                            name="status"
+                            required
+                        >
+                            <option value="normal">Normal</option>
+                            <option value="warning">Warning</option>
+                            <option value="broken">Rusak</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+
+                    <hr class="my-4" />
+                    <h6 class="text-primary mb-3">
+                        <i class="bi bi-info-circle"></i> Informasi Perangkat
+                    </h6>
+
+                    <div class="mb-3">
+                        <label for="device_type" class="form-label"
+                            >Jenis Data *</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="device_type"
+                            name="device_type"
+                            value="PC All-in-one"
+                            required
+                        />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="serial_number" class="form-label"
+                            >Serial Number (S/N) *</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="serial_number"
+                            name="serial_number"
+                            placeholder="Contoh: 0A23460005250060214"
+                            required
+                        />
+                        <small class="text-muted"
+                            >Nomor seri unik perangkat</small
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="brand_model" class="form-label"
+                            >Merek dan Model *</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="brand_model"
+                            name="brand_model"
+                            value="Axioo Mypc One Pro K7-24 (16N9)"
+                            required
+                        />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="accessories" class="form-label"
+                            >Perangkat Tambahan *</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="accessories"
+                            name="accessories"
+                            value="Keyboard & Mouse Axioo (Wired Set)"
+                            required
+                        />
+                    </div>
+
+                    <hr class="my-4" />
+                    <h6 class="text-primary mb-3">
+                        <i class="bi bi-cpu"></i> Spesifikasi
+                    </h6>
+
+                    <div class="mb-3">
+                        <label for="processor" class="form-label"
+                            >Processor *</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="processor"
+                            name="processor"
+                            value="Intel Core i7"
+                            required
+                        />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="ram" class="form-label"
+                                >Memory (RAM) *</label
+                            >
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="ram"
+                                name="ram"
+                                value="16GB DDR4"
+                                required
+                            />
                         </div>
-
-                        <div class="mb-3">
-                            <label for="status" class="form-label">Status *</label>
-                            <select class="form-select" id="status" name="status" required>
-                                <option value="normal">Normal</option>
-                                <option value="warning">Warning</option>
-                                <option value="broken">Rusak</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
+                        <div class="col-md-6 mb-3">
+                            <label for="storage" class="form-label"
+                                >Storage *</label
+                            >
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="storage"
+                                name="storage"
+                                value="1TB NVMe"
+                                required
+                            />
                         </div>
+                    </div>
 
-                        <hr class="my-4">
-                        <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Informasi Perangkat</h6>
+                    <div class="mb-3">
+                        <label for="operating_system" class="form-label"
+                            >Sistem Operasi *</label
+                        >
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="operating_system"
+                            name="operating_system"
+                            placeholder="Contoh: Windows 11 Pro 25H2"
+                            required
+                        />
+                        <small class="text-muted"
+                            >Contoh: Windows 11 Pro 25H2, Windows 10 Pro 23H2,
+                            Ubuntu 22.04 LTS</small
+                        >
+                    </div>
 
-                        <div class="mb-3">
-                            <label for="device_type" class="form-label">Jenis Data *</label>
-                            <input type="text" class="form-control" id="device_type" name="device_type" value="PC All-in-one" required>
-                        </div>
+                    <hr class="my-4" />
+                    <h6 class="text-primary mb-3">
+                        <i class="bi bi-camera"></i> Dokumentasi Foto (Optional)
+                    </h6>
 
-                        <div class="mb-3">
-                            <label for="serial_number" class="form-label">Serial Number (S/N) *</label>
-                            <input type="text" class="form-control" id="serial_number" name="serial_number" placeholder="Contoh: 0A23460005250060214" required>
-                            <small class="text-muted">Nomor seri unik perangkat</small>
-                        </div>
+                    <!-- Photo Serial Number -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold mb-3"
+                            >Foto Serial Number + Barcode</label
+                        >
+                        <p class="text-muted mb-3">
+                            Close-up foto S/N dan barcode (biasanya di belakang
+                            monitor). Max 5MB, format JPEG/PNG/HEIC
+                        </p>
 
-                        <div class="mb-3">
-                            <label for="brand_model" class="form-label">Merek dan Model *</label>
-                            <input type="text" class="form-control" id="brand_model" name="brand_model" value="Axioo Mypc One Pro K7-24 (16N9)" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="accessories" class="form-label">Perangkat Tambahan *</label>
-                            <input type="text" class="form-control" id="accessories" name="accessories" value="Keyboard & Mouse Axioo (Wired Set)" required>
-                        </div>
-
-                        <hr class="my-4">
-                        <h6 class="text-primary mb-3"><i class="bi bi-cpu"></i> Spesifikasi</h6>
-
-                        <div class="mb-3">
-                            <label for="processor" class="form-label">Processor *</label>
-                            <input type="text" class="form-control" id="processor" name="processor" value="Intel Core i7" required>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="ram" class="form-label">Memory (RAM) *</label>
-                                <input type="text" class="form-control" id="ram" name="ram" value="16GB DDR4" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="storage" class="form-label">Storage *</label>
-                                <input type="text" class="form-control" id="storage" name="storage" value="1TB NVMe" required>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="operating_system" class="form-label">Sistem Operasi *</label>
-                            <input type="text" class="form-control" id="operating_system" name="operating_system" placeholder="Contoh: Windows 11 Pro 25H2" required>
-                            <small class="text-muted">Contoh: Windows 11 Pro 25H2, Windows 10 Pro 23H2, Ubuntu 22.04 LTS</small>
-                        </div>
-
-                        <hr class="my-4">
-                        <h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Dokumentasi Foto (Optional)</h6>
-
-                        <!-- Photo Serial Number -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold mb-3">Foto Serial Number + Barcode</label>
-                            <p class="text-muted mb-3">Close-up foto S/N dan barcode (biasanya di belakang monitor). Max 5MB, format JPEG/PNG/HEIC</p>
-                            
-                            <div class="row g-3">
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <i class="bi bi-camera-fill text-primary me-2"></i>
-                                        <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
-                                    </div>
-                                    <input type="file" 
-                                           id="photo_serial_camera" 
-                                           accept="image/*" 
-                                           capture="environment"
-                                           class="form-control">
+                        <div class="row g-3">
+                            <div class="col-6 d-flex flex-column">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-camera-fill text-primary me-2"></i>
+                                    <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
                                 </div>
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <i class="bi bi-images text-secondary me-2"></i>
-                                        <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
-                                    </div>
-                                    <input type="file" 
-                                           id="photo_serial_gallery" 
-                                           accept="image/jpeg,image/png,image/heic,image/heif" 
-                                           class="form-control">
-                                </div>
+                                <input type="file" id="photo_serial_camera" accept="image/*" capture="environment" class="form-control mt-auto">
                             </div>
-                            
-                            <!-- Preview area -->
-                            <div id="previewSerial" class="mt-3 d-none">
-                                <div class="border rounded-3 p-3 bg-light">
-                                    <img id="imagePreviewSerial" src="" alt="Preview" class="img-fluid rounded" style="max-height: 200px; object-fit: contain;">
-                                    <div class="mt-3 text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearImage('serial')">
-                                            <i class="bi bi-x-circle me-1"></i> Hapus
-                                        </button>
-                                    </div>
+                            <div class="col-6 d-flex flex-column">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-images text-secondary me-2"></i>
+                                    <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
                                 </div>
+                                <input type="file" id="photo_serial_gallery" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
                             </div>
                         </div>
 
-                        <!-- Photo Front -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold mb-3">Foto Tampilan Depan</label>
-                            <p class="text-muted mb-3">Full view PC menyala dengan monitor, keyboard, dan mouse terlihat. Max 5MB, format JPEG/PNG/HEIC</p>
-                            
-                            <div class="row g-3">
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <i class="bi bi-camera-fill text-primary me-2"></i>
-                                        <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
-                                    </div>
-                                    <input type="file" 
-                                           id="photo_front_camera" 
-                                           accept="image/*" 
-                                           capture="environment"
-                                           class="form-control">
-                                </div>
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <i class="bi bi-images text-secondary me-2"></i>
-                                        <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
-                                    </div>
-                                    <input type="file" 
-                                           id="photo_front_gallery" 
-                                           accept="image/jpeg,image/png,image/heic,image/heif" 
-                                           class="form-control">
-                                </div>
-                            </div>
-                            
-                            <!-- Preview area -->
-                            <div id="previewFront" class="mt-3 d-none">
-                                <div class="border rounded-3 p-3 bg-light">
-                                    <img id="imagePreviewFront" src="" alt="Preview" class="img-fluid rounded" style="max-height: 200px; object-fit: contain;">
-                                    <div class="mt-3 text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearImage('front')">
-                                            <i class="bi bi-x-circle me-1"></i> Hapus
-                                        </button>
-                                    </div>
+                        <!-- Preview area -->
+                        <div id="previewSerial" class="mt-3 d-none">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <img
+                                    id="imagePreviewSerial"
+                                    src=""
+                                    alt="Preview"
+                                    class="img-fluid rounded"
+                                    style="
+                                        max-height: 200px;
+                                        object-fit: contain;
+                                    "
+                                />
+                                <div class="mt-3 text-center">
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        onclick="clearImage('serial')"
+                                    >
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        Hapus
+                                    </button>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <hr class="my-4">
-                        <h6 class="text-primary mb-3"><i class="bi bi-clipboard-data"></i> Informasi Tambahan</h6>
+                    <!-- Photo Front -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-3"
+                            >Foto Tampilan Depan</label
+                        >
+                        <p class="text-muted mb-3">
+                            Full view PC menyala dengan monitor, keyboard, dan
+                            mouse terlihat. Max 5MB, format JPEG/PNG/HEIC
+                        </p>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
-                                <input type="date" class="form-control" id="purchase_date" name="purchase_date">
+                        <div class="row g-3">
+                            <div class="col-6 d-flex flex-column">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-camera-fill text-primary me-2"></i>
+                                    <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
+                                </div>
+                                <input type="file" id="photo_front_camera" accept="image/*" capture="environment" class="form-control mt-auto">
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="last_checked" class="form-label">Waktu Terakhir Dicek</label>
-                                <input type="datetime-local" class="form-control" id="last_checked" name="last_checked">
-                                <small class="text-muted">Tanggal dan waktu terakhir pengecekan kondisi PC</small>
+                            <div class="col-6 d-flex flex-column">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-images text-secondary me-2"></i>
+                                    <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
+                                </div>
+                                <input type="file" id="photo_front_gallery" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Catatan</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Catatan tambahan..."></textarea>
+                        <!-- Preview area -->
+                        <div id="previewFront" class="mt-3 d-none">
+                            <div class="border rounded-3 p-3 bg-light">
+                                <img
+                                    id="imagePreviewFront"
+                                    src=""
+                                    alt="Preview"
+                                    class="img-fluid rounded"
+                                    style="
+                                        max-height: 200px;
+                                        object-fit: contain;
+                                    "
+                                />
+                                <div class="mt-3 text-center">
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        onclick="clearImage('front')"
+                                    >
+                                        <i class="bi bi-x-circle me-1"></i>
+                                        Hapus
+                                    </button>
+                                </div>
+                            </div>
                         </div>
+                    </div>
 
-                        <div class="mb-3">
-                            <label for="action_notes" class="form-label">Catatan Tindakan</label>
-                            <textarea class="form-control" id="action_notes" name="action_notes" rows="2" placeholder="Catatan tindakan perbaikan atau maintenance (jika ada)"></textarea>
-                            <small class="text-muted">Optional: Catat tindakan perbaikan, upgrade, atau maintenance yang dilakukan</small>
+                    <hr class="my-4" />
+                    <h6 class="text-primary mb-3">
+                        <i class="bi bi-clipboard-data"></i> Informasi Tambahan
+                    </h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="purchase_date" class="form-label"
+                                >Tanggal Pembelian</label
+                            >
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="purchase_date"
+                                name="purchase_date"
+                            />
                         </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Simpan
-                            </button>
-                            <a href="/pc" class="btn btn-secondary">
-                                <i class="bi bi-x-circle"></i> Batal
-                            </a>
+                        <div class="col-md-6 mb-3">
+                            <label for="last_checked" class="form-label"
+                                >Waktu Terakhir Dicek</label
+                            >
+                            <input
+                                type="datetime-local"
+                                class="form-control"
+                                id="last_checked"
+                                name="last_checked"
+                            />
+                            <small class="text-muted"
+                                >Tanggal dan waktu terakhir pengecekan kondisi
+                                PC</small
+                            >
                         </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/heic-to@1.4.2/dist/iife/heic-to.js"></script>
-<script src="/static/js/main.js"></script>
-<script>
-// File references for form submission
-let serialFileRef = null;
-let frontFileRef = null;
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Catatan</label>
+                        <textarea
+                            class="form-control"
+                            id="notes"
+                            name="notes"
+                            rows="3"
+                            placeholder="Catatan tambahan..."
+                        ></textarea>
+                    </div>
 
-async function heicToJpeg(file) {
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (ext !== 'heic' && ext !== 'heif') return file;
+                    <div class="mb-3">
+                        <label for="action_notes" class="form-label"
+                            >Catatan Tindakan</label
+                        >
+                        <textarea
+                            class="form-control"
+                            id="action_notes"
+                            name="action_notes"
+                            rows="2"
+                            placeholder="Catatan tindakan perbaikan atau maintenance (jika ada)"
+                        ></textarea>
+                        <small class="text-muted"
+                            >Optional: Catat tindakan perbaikan, upgrade, atau
+                            maintenance yang dilakukan</small
+                        >
+                    </div>
 
-    if (typeof HeicTo === 'undefined') {
-        return file;
-    }
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Simpan
+                        </button>
+                        <a href="/pc" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Batal
+                        </a>
+                    </div>
+                </form>
+{{ template "layout/card_close.html" . }}
 
-    try {
-        const blob = await HeicTo({
-            blob: file,
-            type: 'image/jpeg',
-            quality: 0.88
-        });
-        return new File([blob],
-            file.name.replace(/\.(heic|heif)$/i, '.jpg'),
-            { type: 'image/jpeg', lastModified: Date.now() }
-        );
-    } catch (e) {
-        console.warn('HEIC conversion failed, uploading original:', e);
-        return file;
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    setupFileHandlers();
-    setupPageLeaveCleanup();
-});
-
-function setupPageLeaveCleanup() {
-    // Note: Removed automatic cleanup on page unload and tab switch
-    // to prevent files being deleted before form submission completes.
-    // Only manual cleanup via "Hapus" button is now active.
-    // Background cleanup process will handle orphaned files.
-}
-
-function setupFileHandlers() {
-    // Serial photo handlers
-    const serialCamera = document.getElementById('photo_serial_camera');
-    const serialGallery = document.getElementById('photo_serial_gallery');
-    
-    if (serialCamera) {
-        serialCamera.addEventListener('change', (e) => handleFileSelect(e.target.files[0], 'serial', 'camera'));
-    }
-    if (serialGallery) {
-        serialGallery.addEventListener('change', (e) => handleFileSelect(e.target.files[0], 'serial', 'gallery'));
-    }
-    
-    // Front photo handlers
-    const frontCamera = document.getElementById('photo_front_camera');
-    const frontGallery = document.getElementById('photo_front_gallery');
-    
-    if (frontCamera) {
-        frontCamera.addEventListener('change', (e) => handleFileSelect(e.target.files[0], 'front', 'camera'));
-    }
-    if (frontGallery) {
-        frontGallery.addEventListener('change', (e) => handleFileSelect(e.target.files[0], 'front', 'gallery'));
-    }
-}
-
-async function handleFileSelect(file, type, source) {
-    if (!file) return;
-
-    const ext = file.name.split('.').pop().toLowerCase();
-    const isHeic = ext === 'heic' || ext === 'heif';
-    showLoadingState(type, isHeic);
-
-    try {
-        file = await heicToJpeg(file);
-        const result = await uploadForProcessing(file, type);
-        
-        if (result.success) {
-            showPreview(result.preview_url, type);
-            storeFileReference(result.file_ref, type);
-            clearOtherInput(type, source);
-        } else {
-            throw new Error(result.message);
-        }
-    } catch (error) {
-        showError(type, error.message);
-    }
-}
-
-async function uploadForProcessing(file, type) {
-    const formData = new FormData();
-    formData.append('image', file);
-    formData.append('type', type);
-    
-    // Get PC number if available
-    const pcNumberInput = document.querySelector('input[name="pc_number"]');
-    if (pcNumberInput) {
-        formData.append('pc_number', pcNumberInput.value);
-    }
-    
-    const response = await fetch('/api/upload-image', {
-        method: 'POST',
-        body: formData
-    });
-    
-    return await response.json();
-}
-
-function showPreview(previewUrl, type) {
-    const area = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    
-    if (area) {
-        // Replace loading state with proper preview structure
-        area.innerHTML = `
-            <div class="border rounded-3 p-4 bg-light text-center">
-                <img id="imagePreview${type === 'serial' ? 'Serial' : 'Front'}" 
-                     src="${previewUrl}" 
-                     alt="Preview" 
-                     class="img-fluid rounded shadow-sm" 
-                     style="max-width: 100%; max-height: 400px; object-fit: contain; display: block; margin: 0 auto;">
-                <div class="mt-3">
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearImage('${type}')">
-                        <i class="bi bi-x-circle me-1"></i> Hapus
-                    </button>
-                </div>
-                <small class="text-muted d-block mt-2">
-                    <i class="bi bi-check-circle text-success me-1"></i>
-                    File berhasil diproses dan siap untuk disimpan
-                </small>
-            </div>
-        `;
-        area.classList.remove('d-none');
-    }
-}
-
-function storeFileReference(fileRef, type) {
-    if (type === 'serial') {
-        serialFileRef = fileRef;
-        // Store in hidden input for form submission
-        let hiddenInput = document.getElementById('serial_file_ref');
-        if (!hiddenInput) {
-            hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.id = 'serial_file_ref';
-            hiddenInput.name = 'serial_file_ref';
-            document.querySelector('form').appendChild(hiddenInput);
-        }
-        hiddenInput.value = fileRef;
-    } else {
-        frontFileRef = fileRef;
-        // Store in hidden input for form submission
-        let hiddenInput = document.getElementById('front_file_ref');
-        if (!hiddenInput) {
-            hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.id = 'front_file_ref';
-            hiddenInput.name = 'front_file_ref';
-            document.querySelector('form').appendChild(hiddenInput);
-        }
-        hiddenInput.value = fileRef;
-    }
-}
-
-function showLoadingState(type, isHeic) {
-    const area = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    const msg = isHeic ? 'Mengkonversi HEIC ke JPEG...' : 'Memproses gambar...';
-    if (area) {
-        area.innerHTML = `
-            <div class="text-center p-4">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <div class="mt-2 small text-muted">${msg}</div>
-            </div>
-        `;
-        area.classList.remove('d-none');
-    }
-}
-
-function showError(type, message) {
-    const area = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    if (area) {
-        area.innerHTML = `
-            <div class="alert alert-danger text-center">
-                <i class="bi bi-exclamation-triangle"></i>
-                <div class="mt-1 small">${message}</div>
-            </div>
-        `;
-        area.classList.remove('d-none');
-    }
-}
-
-function clearOtherInput(type, source) {
-    if (type === 'serial') {
-        if (source === 'camera') {
-            const galleryInput = document.getElementById('photo_serial_gallery');
-            if (galleryInput) galleryInput.value = '';
-        } else {
-            const cameraInput = document.getElementById('photo_serial_camera');
-            if (cameraInput) cameraInput.value = '';
-        }
-    } else {
-        if (source === 'camera') {
-            const galleryInput = document.getElementById('photo_front_gallery');
-            if (galleryInput) galleryInput.value = '';
-        } else {
-            const cameraInput = document.getElementById('photo_front_camera');
-            if (cameraInput) cameraInput.value = '';
-        }
-    }
-}
-
-async function clearImage(type) {
-    // Get file reference before clearing
-    const fileRef = type === 'serial' ? serialFileRef : frontFileRef;
-    
-    // Clear file references
-    if (type === 'serial') {
-        serialFileRef = null;
-        const hiddenInput = document.getElementById('serial_file_ref');
-        if (hiddenInput) hiddenInput.remove();
-    } else {
-        frontFileRef = null;
-        const hiddenInput = document.getElementById('front_file_ref');
-        if (hiddenInput) hiddenInput.remove();
-    }
-    
-    // Clear inputs and preview
-    const cameraInput = document.getElementById(`photo_${type}_camera`);
-    const galleryInput = document.getElementById(`photo_${type}_gallery`);
-    const previewArea = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    
-    if (cameraInput) cameraInput.value = '';
-    if (galleryInput) galleryInput.value = '';
-    if (previewArea) previewArea.classList.add('d-none');
-    
-    // Delete file from server temp folder
-    if (fileRef) {
-        try {
-            await fetch('/api/delete-temp-file', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ file_ref: fileRef })
-            });
-        } catch (error) {
-            // Silent fail - file might already be deleted or cleanup will handle it
-        }
-    }
-}
-</script>
-</body>
-</html>
+{{ define "page-scripts" }}
+<script src="/static/vendor/heic-to.js"></script>
+<script src="/static/js/photo-upload.js"></script>
 {{ end }}
+{{ template "layout/footer.html" . }}

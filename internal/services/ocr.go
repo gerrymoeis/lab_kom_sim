@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"bytes"
@@ -83,10 +83,14 @@ type GeminiResponse struct {
 }
 
 // ExtractLogbookFromImage extracts logbook data from image using AI vision API
-// Strategy: OpenRouter (primary) → Gemini (fallback)
+// Strategy: OpenRouter (primary)  ->  Gemini (fallback)
 func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, error) {
 	totalStart := time.Now()
 	log.Printf("[OCR] Starting OCR for %s", imagePath)
+
+	if s.geminiKey == "" && s.openRouterKey == "" {
+		return nil, fmt.Errorf("OCR tidak dapat diproses: API key tidak dikonfigurasi")
+	}
 
 	imageData, err := os.ReadFile(imagePath)
 	if err != nil {
@@ -103,7 +107,7 @@ func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, erro
 	var responseText string
 
 	if s.openRouterKey != "" {
-		log.Printf("[OCR] Trying OpenRouter (openrouter/free) primary...")
+		log.Printf("[OCR] Trying OpenRouter (openrouter/auto) primary...")
 		responseText, err = s.tryProvider(s.callOpenRouter, "OpenRouter", base64Image, mimeType, totalStart)
 		if err == nil {
 			return s.parseOCRResponse(responseText)
@@ -198,8 +202,8 @@ func (s *OCRService) parseOCRResponse(responseText string) (*OCRResult, error) {
 
 	for i := range result.Entries {
 		normalizeTimeEntry(&result.Entries[i])
-		result.Entries[i].StudentName = toTitleCase(result.Entries[i].StudentName)
-		result.Entries[i].Purpose = toTitleCase(result.Entries[i].Purpose)
+		result.Entries[i].StudentName = ToTitleCaseWithAbbr(result.Entries[i].StudentName)
+		result.Entries[i].Purpose = ToTitleCaseWithAbbr(result.Entries[i].Purpose)
 		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
 		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
 	}
@@ -214,55 +218,26 @@ func (s *OCRService) parseOCRResponse(responseText string) (*OCRResult, error) {
 // callGemini sends image to Gemini API and returns response text
 func (s *OCRService) callGemini(base64Image, mimeType string) (string, error) {
 	prompt := buildOCRPrompt()
-
 	reqBody := GeminiRequest{
-		Contents: []GeminiContent{
-			{
-				Parts: []GeminiPart{
-					{Text: prompt},
-					{InlineData: &GeminiInlineData{MimeType: mimeType, Data: base64Image}},
-				},
-			},
-		},
+		Contents: []GeminiContent{{Parts: []GeminiPart{
+			{Text: prompt},
+			{InlineData: &GeminiInlineData{MimeType: mimeType, Data: base64Image}},
+		}}},
 	}
-
-	jsonData, err := json.Marshal(reqBody)
+	jsonData, _ := json.Marshal(reqBody)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=%s", s.geminiKey)
+	body, err := s.doAPIRequest("POST", url, jsonData, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=%s", s.geminiKey)
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to call Gemini API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Gemini API error (status %d): %s", resp.StatusCode, string(body))
+		return "", err
 	}
 
 	var geminiResp GeminiResponse
 	if err := json.Unmarshal(body, &geminiResp); err != nil {
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
-
 	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
 		return "", fmt.Errorf("no response from Gemini API")
 	}
-
 	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
 }
 
@@ -275,63 +250,60 @@ type OpenRouterResponse struct {
 	} `json:"choices"`
 }
 
-// callOpenRouter sends image to OpenRouter (openrouter/free) and returns response text
+// callOpenRouter sends image to OpenRouter API and returns response text
 func (s *OCRService) callOpenRouter(base64Image, mimeType string) (string, error) {
 	prompt := buildOCRPrompt()
-
 	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image)
-
-	reqBody := map[string]interface{}{
-		"model": "openrouter/free",
-		"messages": []map[string]interface{}{
-			{
-				"role": "user",
-				"content": []map[string]interface{}{
-					{"type": "text", "text": prompt},
-					{"type": "image_url", "image_url": map[string]string{"url": dataURL}},
-				},
+	reqBody := map[string]any{
+		"model": "openrouter/auto",
+		"messages": []map[string]any{{
+			"role": "user",
+			"content": []map[string]any{
+				{"type": "text", "text": prompt},
+				{"type": "image_url", "image_url": map[string]string{"url": dataURL}},
 			},
-		},
+		}},
 	}
-
-	jsonData, err := json.Marshal(reqBody)
+	jsonData, _ := json.Marshal(reqBody)
+	body, err := s.doAPIRequest("POST", "https://openrouter.ai/api/v1/chat/completions", jsonData, map[string]string{"Authorization": "Bearer " + s.openRouterKey})
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+s.openRouterKey)
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to call OpenRouter: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("OpenRouter API error (status %d): %s", resp.StatusCode, string(body))
+		return "", err
 	}
 
 	var orResp OpenRouterResponse
 	if err := json.Unmarshal(body, &orResp); err != nil {
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
-
 	if len(orResp.Choices) == 0 {
 		return "", fmt.Errorf("no response from OpenRouter")
 	}
-
 	return orResp.Choices[0].Message.Content, nil
+}
+
+func (s *OCRService) doAPIRequest(method, url string, jsonData []byte, extraHeaders map[string]string) ([]byte, error) {
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range extraHeaders {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+	}
+	return body, nil
 }
 
 func buildOCRPrompt() string {
@@ -361,8 +333,8 @@ CRITICAL RULES - READ CAREFULLY:
    - If you see spelling errors or typos, CORRECT them intelligently based on context
 
 3. NAME ABBREVIATIONS:
-   - For middle abbreviations (initials), add dots between letters: "Herman SW" → "Herman S.W"
-   - NEVER add trailing dot at the end: "Herman S.W." → "Herman S.W"
+   - For middle abbreviations (initials), add dots between letters: "Herman SW"  ->  "Herman S.W"
+   - NEVER add trailing dot at the end: "Herman S.W."  ->  "Herman S.W"
    - Apply this consistently to all names
 
 4. DATE HANDLING:
@@ -372,7 +344,7 @@ CRITICAL RULES - READ CAREFULLY:
 5. NIM (STUDENT ID) VALIDATION:
    - NIM format: 11 digits (example: 24091397XXX)
    - If same student name appears multiple times, NIM MUST be EXACTLY the same
-   - Common OCR errors: 4↔9, 3↔8, 1↔7, 0↔6
+   - Common OCR errors: 4 -> 9, 3 -> 8, 1 -> 7, 0 -> 6
 
 6. TIME FIELDS:
    - If you see a combined time range like "13.00 - 14.40":
@@ -383,7 +355,7 @@ CRITICAL RULES - READ CAREFULLY:
 7. TEXT QUALITY:
    - Fix obvious spelling mistakes
    - Standardize capitalization (Title Case)
-   - Be intelligent about abbreviations (e.g., "Pemrog Web" → "Pemrograman Web")
+   - Be intelligent about abbreviations (e.g., "Pemrog Web"  ->  "Pemrograman Web")
 
 8. RETURN ONLY valid JSON, no additional text or explanations
 
@@ -440,7 +412,7 @@ func normalizeTimeFormat(timeStr string) string {
 	}
 
 	// Try to parse and reformat
-	// Handle formats like "9:00" → "09:00"
+	// Handle formats like "9:00"  ->  "09:00"
 	parts := strings.Split(timeStr, ":")
 	if len(parts) == 2 {
 		hour := strings.TrimSpace(parts[0])
@@ -464,72 +436,4 @@ func normalizeTimeFormat(timeStr string) string {
 
 	// If cannot parse, return as is
 	return timeStr
-}
-
-// normalizeText normalizes text by:
-// - Trimming leading/trailing whitespace
-// - Removing double spaces
-// - Converting to Title Case for proper names
-func normalizeText(text string) string {
-	if text == "" {
-		return ""
-	}
-
-	// Trim leading and trailing whitespace
-	text = strings.TrimSpace(text)
-
-	// Replace multiple spaces with single space
-	re := regexp.MustCompile(`\s+`)
-	text = re.ReplaceAllString(text, " ")
-
-	return text
-}
-
-// toTitleCase converts text to Title Case (proper capitalization)
-func toTitleCase(text string) string {
-	if text == "" {
-		return ""
-	}
-
-	// Normalize first
-	text = normalizeText(text)
-
-	// Split by space and capitalize each word
-	words := strings.Fields(text)
-	for i, word := range words {
-		if len(word) > 0 {
-			// Convert to lowercase first, then capitalize first letter
-			words[i] = strings.ToUpper(string(word[0])) + strings.ToLower(word[1:])
-		}
-	}
-
-	result := strings.Join(words, " ")
-
-	// Normalize abbreviations (singkatan)
-	result = normalizeAbbreviations(result)
-
-	return result
-}
-
-// normalizeAbbreviations normalizes abbreviations in names
-// Rules:
-// - Middle abbreviations get dots: "Herman SW" → "Herman S.W"
-// - No trailing dot at end: "Herman S.W." → "Herman S.W"
-func normalizeAbbreviations(text string) string {
-	if text == "" {
-		return ""
-	}
-
-	// Pattern: single uppercase letter followed by space or another uppercase letter
-	// This handles cases like "SW", "SH", "A", etc.
-	re := regexp.MustCompile(`\b([A-Z])([A-Z])\b`)
-
-	// Add dots between consecutive uppercase letters
-	// "SW" → "S.W", "SH" → "S.H"
-	text = re.ReplaceAllString(text, "$1.$2")
-
-	// Remove trailing dot at the end of text
-	text = strings.TrimSuffix(text, ".")
-
-	return text
 }

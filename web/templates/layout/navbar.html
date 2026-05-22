@@ -1,4 +1,3 @@
-{{ define "layout/navbar.html" }}
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand" href="/dashboard">
@@ -10,40 +9,10 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav me-auto">
+                {{ range $item := navItems $.currentPage $.role }}
                 <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "dashboard" }}active{{ end }}" href="/dashboard">
-                        <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "pc" }}active{{ end }}" href="/pc">
-                        <i class="bi bi-pc-display" aria-hidden="true"></i> PC
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "devices" }}active{{ end }}" href="/devices">
-                        <i class="bi bi-hdd-rack" aria-hidden="true"></i> Perangkat
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "software" }}active{{ end }}" href="/software">
-                        <i class="bi bi-app-indicator" aria-hidden="true"></i> Software
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "logbook" }}active{{ end }}" href="/logbook">
-                        <i class="bi bi-journal-text" aria-hidden="true"></i> Logbook
-                    </a>
-                </li>
-                {{ if eq .role "admin" }}
-                <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "users" }}active{{ end }}" href="/admin/users">
-                        <i class="bi bi-people" aria-hidden="true"></i> Users
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "activity_logs" }}active{{ end }}" href="/admin/activity-logs">
-                        <i class="bi bi-clock-history" aria-hidden="true"></i> Activity Logs
+                    <a class="nav-link {{ if eq $.currentPage $item.Page }}active{{ end }}" href="{{ $item.URL }}">
+                        <i class="bi {{ $item.Icon }}" aria-hidden="true"></i> {{ $item.Label }}
                     </a>
                 </li>
                 {{ end }}
@@ -69,4 +38,3 @@ body {
     padding-top: 56px; /* Height of navbar */
 }
 </style>
-{{ end }}

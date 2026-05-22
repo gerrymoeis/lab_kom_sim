@@ -1,47 +1,17 @@
-{{ define "device/create.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Tambah Perangkat Baru</h5>
-                </div>
-                <div class="card-body">
-                    {{ if .error }}
-                    <div class="alert alert-danger">{{ .error }}</div>
-                    {{ end }}
-
+    {{ template "layout/card_create.html" . }}
                     <form method="POST" action="/devices/create">
                         <!-- Step 1: Pilih Kategori -->
                         <div class="mb-3">
                             <label for="category_filter" class="form-label">Kategori *</label>
-                            <select class="form-select" id="category_filter" required>
-                                <option value="">Pilih kategori...</option>
-                                <option value="peripheral">Peripheral</option>
-                                <option value="network">Network</option>
-                                <option value="consumable">Consumable</option>
-                                <option value="power">Power</option>
-                                <option value="display">Display</option>
-                                <option value="printer">Printer</option>
-                                <option value="audio">Audio</option>
-                                <option value="tools">Tools</option>
-                                <option value="server">Server</option>
-                                <option value="security">Security</option>
-                                <option value="stationery">Stationery</option>
-                            </select>
+<select class="form-select" id="category_filter" required>
+    <option value="">Pilih kategori...</option>
+    {{ range $cat := allCategories }}
+    <option value="{{ $cat.Value }}">{{ $cat.Label }}</option>
+    {{ end }}
+</select>
                             <small class="text-muted">Pilih kategori untuk menampilkan template yang sesuai</small>
                         </div>
 
@@ -105,19 +75,13 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Properti</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_loanable" name="is_loanable" value="1" checked>
-                                <label class="form-check-label" for="is_loanable">
-                                    Dapat dipinjam
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_consumable" name="is_consumable" value="1">
-                                <label class="form-check-label" for="is_consumable">
-                                    Barang habis pakai
-                                </label>
-                            </div>
+                            <label for="item_mode" class="form-label">Mode Penggunaan *</label>
+                            <select class="form-select" id="item_mode" name="item_mode" required>
+                                <option value="loanable" selected>Dapat Dipinjam</option>
+                                <option value="consumable">Barang Habis Pakai</option>
+                                <option value="none">Tidak Keduanya</option>
+                            </select>
+                            <small class="text-muted">Tentukan apakah barang dapat dipinjam atau habis pakai</small>
                         </div>
 
                         <div class="row mb-3">
@@ -172,14 +136,8 @@
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{{ template "layout/card_close.html" . }}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
     <script>
         // Store all template options for filtering
         const allTemplateOptions = [];
@@ -256,8 +214,9 @@
                 document.getElementById('brand').value = option.dataset.brand || '';
                 document.getElementById('model').value = option.dataset.model || '';
                 document.getElementById('item_type').value = option.dataset.itemType || 'individual';
-                document.getElementById('is_loanable').checked = option.dataset.loanable === 'true';
-                document.getElementById('is_consumable').checked = option.dataset.consumable === 'true';
+                const loanable = option.dataset.loanable === 'true';
+                const consumable = option.dataset.consumable === 'true';
+                document.getElementById('item_mode').value = consumable ? 'consumable' : (loanable ? 'loanable' : 'none');
                 document.getElementById('location').value = option.dataset.location || '';
                 document.getElementById('notes').value = option.dataset.notes || '';
                 
@@ -285,42 +244,25 @@
             const qtyAvailInput = document.getElementById('quantity_available');
             
             if (this.value === 'consumable') {
-                // Consumable: show consumable help text
                 qtyHelpIndividual.style.display = 'none';
                 qtyHelpConsumable.style.display = 'inline';
                 availHelpIndividual.style.display = 'none';
                 availHelpConsumable.style.display = 'inline';
-                
-                document.getElementById('is_consumable').checked = true;
-                
-                // Reset to 0 for consumable (user must input)
+                document.getElementById('item_mode').value = 'consumable';
                 qtyTotalInput.value = '0';
                 qtyAvailInput.value = '0';
                 qtyTotalInput.min = '0';
             } else {
-                // Individual: show individual help text
                 qtyHelpIndividual.style.display = 'inline';
                 qtyHelpConsumable.style.display = 'none';
                 availHelpIndividual.style.display = 'inline';
                 availHelpConsumable.style.display = 'none';
-                
-                document.getElementById('is_consumable').checked = false;
-                
-                // Default to 1 for individual
+                if (document.getElementById('item_mode').value === 'consumable') {
+                    document.getElementById('item_mode').value = 'loanable';
+                }
                 qtyTotalInput.value = '1';
                 qtyAvailInput.value = '1';
                 qtyTotalInput.min = '1';
             }
         });
-
-        // Sync is_consumable checkbox with item_type
-        document.getElementById('is_consumable').addEventListener('change', function() {
-            if (this.checked) {
-                document.getElementById('item_type').value = 'consumable';
-                document.getElementById('item_type').dispatchEvent(new Event('change'));
-            }
-        });
-    </script>
-</body>
-</html>
-{{ end }}
+    </script>{{ template "layout/footer.html" . }}

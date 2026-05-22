@@ -1,25 +1,7 @@
-{{ define "device_type/edit.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Jenis Barang</h5>
-                </div>
-                <div class="card-body">
+    {{ template "layout/card_edit.html" . }}
                     <form method="POST" action="/device-types/{{ .deviceType.ID }}/edit">
                         <div class="mb-3">
                             <label for="name" class="form-label">Nama Jenis Barang *</label>
@@ -29,14 +11,12 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="category" class="form-label">Kategori *</label>
-                                <select class="form-select" id="category" name="category" required>
-                                    <option value="peripheral" {{ if eq .deviceType.Category "peripheral" }}selected{{ end }}>Peripheral</option>
-                                    <option value="network" {{ if eq .deviceType.Category "network" }}selected{{ end }}>Network</option>
-                                    <option value="consumable" {{ if eq .deviceType.Category "consumable" }}selected{{ end }}>Consumable</option>
-                                    <option value="power" {{ if eq .deviceType.Category "power" }}selected{{ end }}>Power</option>
-                                    <option value="display" {{ if eq .deviceType.Category "display" }}selected{{ end }}>Display</option>
-                                    <option value="printer" {{ if eq .deviceType.Category "printer" }}selected{{ end }}>Printer</option>
-                                </select>
+<select class="form-select" id="category" name="category" required>
+    <option value="">Pilih kategori...</option>
+    {{ range $cat := dtCategories }}
+    <option value="{{ $cat.Value }}" {{ if eq $.deviceType.Category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
+    {{ end }}
+</select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="item_type" class="form-label">Tipe Item *</label>
@@ -64,19 +44,13 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Properti</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_loanable" name="is_loanable" value="1" {{ if .deviceType.IsLoanable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_loanable">
-                                    Dapat dipinjam
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_consumable" name="is_consumable" value="1" {{ if .deviceType.IsConsumable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_consumable">
-                                    Barang habis pakai
-                                </label>
-                            </div>
+                            <label for="item_mode" class="form-label">Mode Penggunaan *</label>
+                            <select class="form-select" id="item_mode" name="item_mode" required>
+                                <option value="loanable" {{ if .deviceType.IsLoanable }}selected{{ end }}>Dapat Dipinjam</option>
+                                <option value="consumable" {{ if .deviceType.IsConsumable }}selected{{ end }}>Barang Habis Pakai</option>
+                                <option value="none" {{ if not .deviceType.IsLoanable }}{{ if not .deviceType.IsConsumable }}selected{{ end }}{{ end }}>Tidak Keduanya</option>
+                            </select>
+                            <small class="text-muted">Tentukan apakah barang dapat dipinjam atau habis pakai</small>
                         </div>
 
                         <div class="mb-3">
@@ -98,14 +72,6 @@
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{{ template "layout/card_close.html" . }}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
-</body>
-</html>
-{{ end }}
+    {{ template "layout/footer.html" . }}

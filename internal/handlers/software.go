@@ -1,109 +1,232 @@
-package handlers
+﻿package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 
-	"inventaris-lab-kom/internal/middleware"
-	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/repository"
+	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-// SoftwareList renders list of all software
 func (h *Handler) SoftwareList(c *gin.Context) {
-	_, username, role, ok := middleware.GetCurrentUser(c)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
+	_, username, role, ok := h.user(c)
+	if !ok { return }
 
-	rows, err := h.db.Query(`
-		SELECT s.id, s.pc_id, s.name, s.version, s.license, s.install_date, s.notes,
-		       p.pc_number
-		FROM software s
-		JOIN pcs p ON s.pc_id = p.id
-		ORDER BY s.name, p.pc_number
-	`)
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	query := ""
+	if len(values) > 0 { query = "&" + values.Encode() }
+
+	search := c.Query("search")
+	filterCategory := c.Query("category")
+
+	stats, total, err := h.softwareService.ListPaginated(search, filterCategory, page, pageSize)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengambil data software",
-		})
+		h.errHTML(c, "Gagal mengambil data software")
 		return
 	}
-	defer rows.Close()
 
-	type SoftwareWithPC struct {
-		models.Software
-		PCNumber int `json:"pc_number"`
-	}
-
-	var software []SoftwareWithPC
-	for rows.Next() {
-		var sw SoftwareWithPC
-		err := rows.Scan(&sw.ID, &sw.PCID, &sw.Name, &sw.Version, &sw.License,
-			&sw.InstallDate, &sw.Notes, &sw.PCNumber)
-		if err != nil {
-			continue
-		}
-		software = append(software, sw)
-	}
-
-	// Get list of PCs for the form
-	pcRows, err := h.db.Query("SELECT id, pc_number FROM pcs ORDER BY pc_number")
-	var pcs []models.PC
-	if err == nil {
-		defer pcRows.Close()
-		for pcRows.Next() {
-			var pc models.PC
-			if err := pcRows.Scan(&pc.ID, &pc.PCNumber); err == nil {
-				pcs = append(pcs, pc)
-			}
-		}
-	}
+	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
 
 	c.HTML(http.StatusOK, "software/list.html", gin.H{
-		"title":       "Tracking Software - Sistem Inventaris Lab",
-		"currentPage": "software",
-		"username":    username,
-		"role":        role,
-		"software":    software,
-		"pcs":         pcs,
+		"title": "Software Catalog", "currentPage": "software",
+		"username": username, "role": role,
+		"catalog": stats, "search": search, "filterCat": filterCategory,
+		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
+		"query": query,
+		"error": c.Query("error"),
 	})
 }
 
-// SoftwareCreate handles software creation
-func (h *Handler) SoftwareCreate(c *gin.Context) {
-	pcID := c.PostForm("pc_id")
-	name := c.PostForm("name")
-	version := c.PostForm("version")
-	license := c.PostForm("license")
-	installDate := c.PostForm("install_date")
-	notes := c.PostForm("notes")
+func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
+	items, err := h.softwareService.GetOtherCatalog()
+	if err != nil { h.errJSON(c, http.StatusInternalServerError, "Gagal mengambil data"); return }
+	c.JSON(http.StatusOK, items)
+}
 
-	if pcID == "" || name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "PC dan nama software harus diisi",
-		})
+func buildSoftwareGrid(pcList []repository.PCInstallStatus) [][]repository.PCInstallStatus {
+	grid := make([][]repository.PCInstallStatus, 5)
+	for i := range grid {
+		grid[i] = make([]repository.PCInstallStatus, 8)
+	}
+	for _, p := range pcList {
+		if p.Row >= 1 && p.Row <= 5 && p.Column >= 1 && p.Column <= 8 {
+			grid[p.Row-1][p.Column-1] = p
+		}
+	}
+	return grid
+}
+
+func (h *Handler) SoftwareDetail(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok { return }
+
+	id, _ := strconv.Atoi(c.Param("id"))
+	sw, err := h.softwareService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Software tidak ditemukan")
 		return
 	}
 
-	var installDatePtr *string
-	if installDate != "" {
-		installDatePtr = &installDate
+	pcList, err := h.softwareService.GetPCInstallStatus(id)
+	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
+
+	installedCount := 0
+	for _, p := range pcList {
+		if p.Installed { installedCount++ }
 	}
 
-	_, err := h.db.Exec(`
-		INSERT INTO software (pc_id, name, version, license, install_date, notes)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, pcID, name, version, license, installDatePtr, notes)
+	c.HTML(http.StatusOK, "software/detail.html", gin.H{
+		"title": "Detail Software - " + sw.Name, "currentPage": "software",
+		"username": username, "role": role,
+		"software": sw, "pcGrid": buildSoftwareGrid(pcList),
+		"installedCount": installedCount,
+		"totalPCs": len(pcList),
+	})
+}
 
+func (h *Handler) SoftwareEditPage(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok { return }
+	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat mengedit software"); return }
+
+	id, _ := strconv.Atoi(c.Param("id"))
+	sw, err := h.softwareService.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal menyimpan data software",
-		})
+		h.errHTML(c, "Software tidak ditemukan")
+		return
+	}
+
+	pcList, err := h.softwareService.GetPCInstallStatus(id)
+	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
+
+	installedCount := 0
+	for _, p := range pcList {
+		if p.Installed { installedCount++ }
+	}
+
+	c.HTML(http.StatusOK, "software/edit.html", gin.H{
+		"title": "Edit Software - " + sw.Name, "currentPage": "software",
+		"username": username, "role": role,
+		"software": sw, "pcGrid": buildSoftwareGrid(pcList),
+		"installedCount": installedCount,
+		"totalPCs": len(pcList),
+	})
+}
+
+func (h *Handler) SoftwareEdit(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	sw, err := h.softwareService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Software tidak ditemukan")
+		return
+	}
+
+	var req struct {
+		Name        string   `form:"name"`
+		Category    string   `form:"category"`
+		Description string   `form:"description"`
+		PCIDs       []string `form:"pc_ids[]"`
+	}
+	c.ShouldBind(&req)
+
+	if req.Name == "" {
+		req.Name = sw.Name
+	}
+	if req.Category == "" {
+		req.Category = sw.Category
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	if err := h.softwareService.Update(id, req.Name, req.Category, req.Description, req.PCIDs, uid, u, r, ip, ua); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			h.redirectWithError(c, "/software/"+c.Param("id")+"/edit", "Nama software sudah ada")
+			return
+		}
+		h.redirectWithError(c, "/software/"+c.Param("id")+"/edit", "Gagal mengupdate software")
 		return
 	}
 
 	c.Redirect(http.StatusFound, "/software")
+}
+
+func (h *Handler) SoftwareDelete(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	if err := h.softwareService.Delete(id, uid, u, r, ip, ua); err != nil {
+		h.redirectWithError(c, "/software", "Gagal menghapus software")
+		return
+	}
+	c.Redirect(http.StatusFound, "/software")
+}
+
+func (h *Handler) SoftwareCreate(c *gin.Context) {
+	var req CreateSoftwareRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.redirectWithError(c, "/software", "Nama software harus diisi")
+		return
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	err := h.softwareService.Create(services.SoftwareCreateInput{
+		Name: req.Name, Category: req.Category, Description: req.Description,
+	}, uid, u, r, ip, ua)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			h.redirectWithError(c, "/software", "Software dengan nama tersebut sudah ada")
+			return
+		}
+		h.redirectWithError(c, "/software", "Gagal menyimpan software")
+		return
+	}
+	c.Redirect(http.StatusFound, "/software")
+}
+
+func (h *Handler) SoftwareExport(c *gin.Context) {
+	_, _, role, ok := h.user(c)
+	if !ok { return }
+	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data software"); return }
+
+	stats, err := h.softwareService.Export()
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data software")
+		return
+	}
+
+	data := [][]any{}
+	for i, s := range stats {
+		desc := s.Description
+		if desc == "" { desc = "-" }
+		cat := "Other"
+		if s.Category == "required" { cat = "Required" }
+		data = append(data, []any{i + 1, s.Name, cat, desc, fmt.Sprintf("%d / %d PC", s.InstalledCount, s.TotalPCs)})
+	}
+
+	svc := services.NewExcelService()
+	f, _ := svc.GenerateExcel(services.ExcelExportConfig{
+		SheetName: "Software Catalog",
+		Headers:   []string{"No", "Nama Software", "Kategori", "Deskripsi", "PC Terinstall"},
+		Data:      data,
+		ColumnWidths: map[string]float64{"A": 5, "B": 30, "C": 12, "D": 40, "E": 15},
+	})
+	defer f.Close()
+
+	filename := svc.GenerateFilename("software_catalog_export")
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	f.Write(c.Writer)
 }

@@ -1,14 +1,9 @@
-// Main JavaScript for Inventaris Lab Kom
-
-// Initialize tooltips
 document.addEventListener('DOMContentLoaded', function() {
-    // Bootstrap tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    // Auto-dismiss alerts after 5 seconds
     const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
     alerts.forEach(alert => {
         setTimeout(() => {
@@ -16,14 +11,22 @@ document.addEventListener('DOMContentLoaded', function() {
             bsAlert.close();
         }, 5000);
     });
+
+    document.querySelectorAll('.availability-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+            updateAvailability(this);
+        });
+    });
+
+    document.querySelectorAll('[data-default-date]').forEach(el => {
+        el.valueAsDate = new Date();
+    });
 });
 
-// Confirm delete actions
 function confirmDelete(message) {
     return confirm(message || 'Apakah Anda yakin ingin menghapus data ini?');
 }
 
-// Show loading spinner
 function showLoading(button) {
     const originalText = button.innerHTML;
     button.disabled = true;
@@ -32,75 +35,12 @@ function showLoading(button) {
     button.dataset.originalText = originalText;
 }
 
-// Hide loading spinner
 function hideLoading(button) {
     button.disabled = false;
     button.removeAttribute('aria-busy');
     button.innerHTML = button.dataset.originalText;
 }
 
-// Format date to Indonesian format
-function formatDate(dateString) {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return date.toLocaleDateString('id-ID', options);
-}
-
-// Format time
-function formatTime(timeString) {
-    if (!timeString) return '-';
-    return timeString;
-}
-
-// Copy to clipboard
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        alert('Berhasil disalin ke clipboard!');
-    }).catch(err => {
-        console.error('Gagal menyalin:', err);
-    });
-}
-
-// Print page
-function printPage() {
-    window.print();
-}
-
-// Export table to CSV
-function exportTableToCSV(tableId, filename) {
-    const table = document.getElementById(tableId);
-    if (!table) return;
-
-    let csv = [];
-    const rows = table.querySelectorAll('tr');
-
-    for (let i = 0; i < rows.length; i++) {
-        const row = [];
-        const cols = rows[i].querySelectorAll('td, th');
-
-        for (let j = 0; j < cols.length; j++) {
-            row.push(cols[j].innerText);
-        }
-
-        csv.push(row.join(','));
-    }
-
-    downloadCSV(csv.join('\n'), filename);
-}
-
-function downloadCSV(csv, filename) {
-    const csvFile = new Blob([csv], { type: 'text/csv' });
-    const downloadLink = document.createElement('a');
-    downloadLink.download = filename;
-    downloadLink.href = window.URL.createObjectURL(csvFile);
-    downloadLink.style.display = 'none';
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-}
-
-// Search/Filter table
 function filterTable(inputId, tableId) {
     const input = document.getElementById(inputId);
     const filter = input.value.toUpperCase();
@@ -125,37 +65,37 @@ function filterTable(inputId, tableId) {
     }
 }
 
-// Validate form
-function validateForm(formId) {
-    const form = document.getElementById(formId);
-    if (!form) return false;
+function updateAvailability(selectEl) {
+    const usageId = selectEl.dataset.usageId;
+    const formData = new FormData();
+    formData.append('is_available', selectEl.value);
 
-    if (!form.checkValidity()) {
-        form.classList.add('was-validated');
-        return false;
-    }
-
-    return true;
+    fetch('/device-usages/' + usageId + '/availability', {
+        method: 'POST',
+        body: formData
+    }).then(r => r.json()).then(d => {
+        if (!d.success) alert('Error: ' + (d.error || 'Gagal'));
+    }).catch(() => alert('Gagal menyimpan'));
 }
 
-// Enhanced Form Validation System
 const FormValidator = {
-    // Initialize validation for all forms
     init: function() {
-        document.addEventListener('DOMContentLoaded', () => {
-            const forms = document.querySelectorAll('form[data-validate="true"]');
-            forms.forEach(form => {
-                this.setupFormValidation(form);
-            });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this._setupForms());
+        } else {
+            this._setupForms();
+        }
+    },
+
+    _setupForms: function() {
+        document.querySelectorAll('form[data-validate="true"]').forEach(form => {
+            this.setupFormValidation(form);
         });
     },
-    
-    // Setup validation for a specific form
+
     setupFormValidation: function(form) {
-        // Prevent default HTML5 validation bubbles
         form.setAttribute('novalidate', 'novalidate');
         
-        // Add real-time validation on input
         const inputs = form.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
             input.addEventListener('blur', () => {
@@ -169,22 +109,18 @@ const FormValidator = {
             });
         });
         
-        // Validate on submit
         form.addEventListener('submit', (e) => {
             if (!this.validateFormFields(form)) {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Focus on first invalid field
                 const firstInvalid = form.querySelector('.is-invalid');
                 if (firstInvalid) {
                     firstInvalid.focus();
                 }
                 
-                // Show error toast
                 showToast('Mohon perbaiki kesalahan pada form', 'error');
             } else {
-                // Show loading state on submit button
                 const submitBtn = form.querySelector('button[type="submit"]');
                 if (submitBtn) {
                     showLoading(submitBtn);
@@ -193,38 +129,29 @@ const FormValidator = {
         });
     },
     
-    // Validate all fields in a form
     validateFormFields: function(form) {
         let isValid = true;
-        const inputs = form.querySelectorAll('input, select, textarea');
-        
-        inputs.forEach(input => {
+        form.querySelectorAll('input, select, textarea').forEach(input => {
             if (!this.validateField(input)) {
                 isValid = false;
             }
         });
-        
         return isValid;
     },
     
-    // Validate a single field
     validateField: function(field) {
-        // Skip if field is disabled or readonly
         if (field.disabled || field.readOnly) {
             return true;
         }
         
-        // Remove previous validation state
         field.classList.remove('is-valid', 'is-invalid');
         this.clearFieldError(field);
         
-        // Check required
         if (field.hasAttribute('required') && !field.value.trim()) {
             this.setFieldError(field, 'Field ini wajib diisi');
             return false;
         }
         
-        // Check minlength
         if (field.hasAttribute('minlength')) {
             const minLength = parseInt(field.getAttribute('minlength'));
             if (field.value.length > 0 && field.value.length < minLength) {
@@ -233,7 +160,6 @@ const FormValidator = {
             }
         }
         
-        // Check maxlength
         if (field.hasAttribute('maxlength')) {
             const maxLength = parseInt(field.getAttribute('maxlength'));
             if (field.value.length > maxLength) {
@@ -242,7 +168,6 @@ const FormValidator = {
             }
         }
         
-        // Check pattern
         if (field.hasAttribute('pattern') && field.value) {
             const pattern = new RegExp(field.getAttribute('pattern'));
             if (!pattern.test(field.value)) {
@@ -252,7 +177,6 @@ const FormValidator = {
             }
         }
         
-        // Check email
         if (field.type === 'email' && field.value) {
             const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailPattern.test(field.value)) {
@@ -261,7 +185,6 @@ const FormValidator = {
             }
         }
         
-        // Check number
         if (field.type === 'number' && field.value) {
             const value = parseFloat(field.value);
             
@@ -282,7 +205,6 @@ const FormValidator = {
             }
         }
         
-        // Check custom validation
         if (field.hasAttribute('data-validate-match')) {
             const matchFieldId = field.getAttribute('data-validate-match');
             const matchField = document.getElementById(matchFieldId);
@@ -292,18 +214,15 @@ const FormValidator = {
             }
         }
         
-        // Field is valid
         if (field.value.trim()) {
             field.classList.add('is-valid');
         }
         return true;
     },
     
-    // Set field error
     setFieldError: function(field, message) {
         field.classList.add('is-invalid');
         
-        // Create or update error message
         let feedback = field.parentElement.querySelector('.invalid-feedback');
         if (!feedback) {
             feedback = document.createElement('div');
@@ -313,7 +232,6 @@ const FormValidator = {
         feedback.textContent = message;
     },
     
-    // Clear field error
     clearFieldError: function(field) {
         const feedback = field.parentElement.querySelector('.invalid-feedback');
         if (feedback) {
@@ -322,10 +240,8 @@ const FormValidator = {
     }
 };
 
-// Initialize form validation system
 FormValidator.init();
 
-// Show toast notification
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toastContainer');
     if (!toastContainer) {

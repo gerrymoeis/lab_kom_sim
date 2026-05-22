@@ -1,239 +1,135 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
-	"inventaris-lab-kom/internal/middleware"
-	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 )
 
-// UserList renders list of all users (admin only)
 func (h *Handler) UserList(c *gin.Context) {
-	_, username, role, ok := middleware.GetCurrentUser(c)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
+	_, username, role, ok := h.user(c)
+	if !ok { return }
 
-	rows, err := h.db.Query(`
-		SELECT id, username, full_name, role, created_at
-		FROM users
-		ORDER BY created_at DESC
-	`)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengambil data user",
-		})
-		return
-	}
-	defer rows.Close()
-
-	var users []models.User
-	for rows.Next() {
-		var user models.User
-		err := rows.Scan(&user.ID, &user.Username, &user.FullName, &user.Role, &user.CreatedAt)
-		if err != nil {
-			continue
-		}
-		users = append(users, user)
-	}
+	users, err := h.userService.List()
+	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
 
 	c.HTML(http.StatusOK, "user/list.html", gin.H{
-		"title":       "Manajemen User - Sistem Inventaris Lab",
-		"currentPage": "users",
-		"username":    username,
-		"role":        role,
-		"users":       users,
+		"title": "Manajemen User", "currentPage": "users",
+		"username": username, "role": role, "users": users,
+		"error": c.Query("error"),
 	})
 }
 
-// UserCreatePage renders user creation form
 func (h *Handler) UserCreatePage(c *gin.Context) {
-	_, username, role, ok := middleware.GetCurrentUser(c)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
-
+	_, username, role, ok := h.user(c)
+	if !ok { return }
 	c.HTML(http.StatusOK, "user/create.html", gin.H{
-		"title":       "Tambah User Baru - Sistem Inventaris Lab",
-		"currentPage": "users",
-		"username":    username,
-		"role":        role,
+		"title": "Tambah User Baru", "currentPage": "users",
+		"username": username, "role": role,
 	})
 }
 
-// UserCreate handles user creation
 func (h *Handler) UserCreate(c *gin.Context) {
-	username := c.PostForm("username")
-	password := c.PostForm("password")
-	fullName := c.PostForm("full_name")
-	role := c.PostForm("role")
-
-	if username == "" || password == "" || fullName == "" {
-		c.HTML(http.StatusBadRequest, "user/create.html", gin.H{
-			"title": "Tambah User Baru",
-			"error": "Semua field harus diisi",
-		})
+	var req CreateUserRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.HTML(http.StatusBadRequest, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Semua field harus diisi"})
 		return
 	}
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
 
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "user/create.html", gin.H{
-			"title": "Tambah User Baru",
-			"error": "Gagal mengenkripsi password",
-		})
+	if err := h.userService.CreateUser(uid, u, r, req.Username, req.Password, req.FullName, req.Role, ip, ua); err != nil {
+		c.HTML(http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal menyimpan user. Username mungkin sudah digunakan."})
 		return
 	}
-
-	_, err = h.db.Exec(`
-		INSERT INTO users (username, password, full_name, role)
-		VALUES (?, ?, ?, ?)
-	`, username, string(hashedPassword), fullName, role)
-
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "user/create.html", gin.H{
-			"title": "Tambah User Baru",
-			"error": "Gagal menyimpan user. Username mungkin sudah digunakan.",
-		})
-		return
-	}
-
 	c.Redirect(http.StatusFound, "/admin/users")
 }
 
-// UserDelete handles user deletion
 func (h *Handler) UserDelete(c *gin.Context) {
-	id := c.Param("id")
-	
-	// Prevent deleting own account
-	session := sessions.Default(c)
-	currentUserID := session.Get("user_id")
-	if currentUserID == id {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Tidak dapat menghapus akun sendiri",
-		})
-		return
-	}
-
-	_, err := h.db.Exec("DELETE FROM users WHERE id = ?", id)
+	targetID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal menghapus user",
-		})
+		h.redirectWithError(c, "/admin/users", "ID tidak valid")
 		return
 	}
+	sess := sessions.Default(c)
+	currentUserID, _ := sess.Get("user_id").(int)
+	u, _ := sess.Get("username").(string)
+	r, _ := sess.Get("role").(string)
+	ip, ua := getRequestContext(c)
 
+	if err := h.userService.DeleteUser(currentUserID, targetID, u, r, ip, ua); err != nil {
+		msg := "Gagal menghapus user"
+		if errors.Is(err, services.ErrSelfDelete) { msg = "Tidak dapat menghapus akun sendiri" }
+		if errors.Is(err, services.ErrProtectedDelete) { msg = "Tidak dapat menghapus akun admin utama" }
+		if errors.Is(err, services.ErrUserNotFound) { msg = "User tidak ditemukan" }
+		h.redirectWithError(c, "/admin/users", msg)
+		return
+	}
 	c.Redirect(http.StatusFound, "/admin/users")
 }
 
-// Profile renders user profile page
 func (h *Handler) Profile(c *gin.Context) {
-	userID, username, role, ok := middleware.GetCurrentUser(c)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
-		return
-	}
+	userID, username, role, ok := h.user(c)
+	if !ok { return }
 
-	var user models.User
-	err := h.db.QueryRow(`
-		SELECT id, username, full_name, role, created_at
-		FROM users WHERE id = ?
-	`, userID).Scan(&user.ID, &user.Username, &user.FullName, &user.Role, &user.CreatedAt)
-
+	user, err := h.userService.GetByID(userID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"title":   "Error",
-			"message": "Gagal mengambil data profil",
-		})
+		h.redirectWithError(c, "/profile", "User tidak ditemukan")
 		return
 	}
-
 	c.HTML(http.StatusOK, "user/profile.html", gin.H{
-		"title":       "Profil - Sistem Inventaris Lab",
-		"currentPage": "profile",
-		"username":    username,
-		"role":        role,
-		"user":        user,
+		"title": "Profil", "currentPage": "profile",
+		"username": username, "role": role, "user": user,
+		"success": c.Query("success"), "error": c.Query("error"),
 	})
 }
 
-// ChangePassword handles password change
+func (h *Handler) UpdateProfile(c *gin.Context) {
+	var req UpdateProfileRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.Redirect(http.StatusFound, "/profile?error=Username dan Nama Lengkap harus diisi")
+		return
+	}
+	userID, u, r, ok := h.user(c)
+	if !ok { return }
+	ip, ua := getRequestContext(c)
+
+	newUsername, newFullName, err := h.userService.UpdateProfile(userID, req.Username, req.FullName, u, r, ip, ua)
+	if err != nil {
+		msg := "Gagal mengupdate profil"
+		if errors.Is(err, services.ErrUsernameTaken) { msg = "Username sudah digunakan" }
+		c.Redirect(http.StatusFound, "/profile?error="+msg)
+		return
+	}
+
+	sess := sessions.Default(c)
+	sess.Set("username", newUsername)
+	sess.Set("full_name", newFullName)
+	sess.Save()
+	c.Redirect(http.StatusFound, "/profile?success=Profil berhasil diupdate")
+}
+
 func (h *Handler) ChangePassword(c *gin.Context) {
-	userID, _, _, ok := middleware.GetCurrentUser(c)
-	if !ok {
-		c.Redirect(http.StatusFound, "/login")
+	var req ChangePasswordRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.Redirect(http.StatusFound, "/profile?error=Semua field harus diisi")
 		return
 	}
+	userID, u, r, ok := h.user(c)
+	if !ok { return }
+	ip, ua := getRequestContext(c)
 
-	oldPassword := c.PostForm("old_password")
-	newPassword := c.PostForm("new_password")
-	confirmPassword := c.PostForm("confirm_password")
-
-	if oldPassword == "" || newPassword == "" || confirmPassword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Semua field harus diisi",
-		})
+	if err := h.userService.ChangePassword(userID, req.OldPassword, req.NewPassword, req.ConfirmPassword, u, r, ip, ua); err != nil {
+		msg := "Gagal mengubah password"
+		if errors.Is(err, services.ErrPasswordMismatch) { msg = "Password baru dan konfirmasi tidak cocok" }
+		if errors.Is(err, services.ErrWrongPassword) { msg = "Password lama salah" }
+		c.Redirect(http.StatusFound, "/profile?error="+msg)
 		return
 	}
-
-	if newPassword != confirmPassword {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Password baru dan konfirmasi tidak cocok",
-		})
-		return
-	}
-
-	// Get current password hash
-	var currentHash string
-	err := h.db.QueryRow("SELECT password FROM users WHERE id = ?", userID).Scan(&currentHash)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal mengambil data user",
-		})
-		return
-	}
-
-	// Verify old password
-	if err := bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(oldPassword)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Password lama salah",
-		})
-		return
-	}
-
-	// Hash new password
-	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal mengenkripsi password baru",
-		})
-		return
-	}
-
-	// Update password
-	_, err = h.db.Exec(`
-		UPDATE users 
-		SET password = ?, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ?
-	`, string(newHash), userID)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Gagal mengupdate password",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Password berhasil diubah",
-	})
+	c.Redirect(http.StatusFound, "/profile?success=Password berhasil diubah")
 }

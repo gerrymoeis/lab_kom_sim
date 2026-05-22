@@ -1,25 +1,7 @@
-{{ define "device/edit.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Perangkat</h5>
-                </div>
-                <div class="card-body">
+    {{ template "layout/card_edit.html" . }}
                     <form method="POST" action="/devices/{{ .device.ID }}/edit">
                         <div class="mb-3">
                             <label class="form-label">Kategori (dari template)</label>
@@ -65,19 +47,13 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Properti</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_loanable" name="is_loanable" value="1" {{ if .device.IsLoanable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_loanable">
-                                    Dapat dipinjam
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_consumable" name="is_consumable" value="1" {{ if .device.IsConsumable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_consumable">
-                                    Barang habis pakai
-                                </label>
-                            </div>
+                            <label for="item_mode" class="form-label">Mode Penggunaan *</label>
+                            <select class="form-select" id="item_mode" name="item_mode" required>
+                                <option value="loanable" {{ if .device.IsLoanable }}selected{{ end }}>Dapat Dipinjam</option>
+                                <option value="consumable" {{ if .device.IsConsumable }}selected{{ end }}>Barang Habis Pakai</option>
+                                <option value="none" {{ if not .device.IsLoanable }}{{ if not .device.IsConsumable }}selected{{ end }}{{ end }}>Tidak Keduanya</option>
+                            </select>
+                            <small class="text-muted">Tentukan apakah barang dapat dipinjam atau habis pakai</small>
                         </div>
 
                         <div class="row mb-3">
@@ -146,14 +122,8 @@
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{{ template "layout/card_close.html" . }}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
     <script>
         // Show/hide quantity fields based on item type
         document.getElementById('item_type').addEventListener('change', function() {
@@ -164,40 +134,25 @@
             const qtyTotalInput = document.getElementById('quantity_total');
             
             if (this.value === 'consumable') {
-                // Consumable: show consumable help text
                 qtyHelpIndividual.style.display = 'none';
                 qtyHelpConsumable.style.display = 'inline';
                 availHelpIndividual.style.display = 'none';
                 availHelpConsumable.style.display = 'inline';
-                
-                document.getElementById('is_consumable').checked = true;
+                document.getElementById('item_mode').value = 'consumable';
                 qtyTotalInput.min = '0';
             } else {
-                // Individual: show individual help text
                 qtyHelpIndividual.style.display = 'inline';
                 qtyHelpConsumable.style.display = 'none';
                 availHelpIndividual.style.display = 'inline';
                 availHelpConsumable.style.display = 'none';
-                
-                document.getElementById('is_consumable').checked = false;
+                if (document.getElementById('item_mode').value === 'consumable') {
+                    document.getElementById('item_mode').value = 'loanable';
+                }
                 qtyTotalInput.min = '1';
-                
-                // Ensure minimum 1 for individual
                 if (parseInt(qtyTotalInput.value) < 1) {
                     qtyTotalInput.value = '1';
                     document.getElementById('quantity_available').value = '1';
                 }
             }
         });
-
-        // Sync is_consumable checkbox with item_type
-        document.getElementById('is_consumable').addEventListener('change', function() {
-            if (this.checked) {
-                document.getElementById('item_type').value = 'consumable';
-                document.getElementById('item_type').dispatchEvent(new Event('change'));
-            }
-        });
-    </script>
-</body>
-</html>
-{{ end }}
+    </script>{{ template "layout/footer.html" . }}

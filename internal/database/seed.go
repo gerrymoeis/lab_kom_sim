@@ -2,39 +2,49 @@ package database
 
 import (
 	"fmt"
+	"os"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-// SeedDefaultUser creates default admin user if not exists
 func SeedDefaultUser(db *DB) error {
-	// Check if admin user exists
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", "admin").Scan(&count)
-	if err != nil {
-		return fmt.Errorf("failed to check admin user: %w", err)
+	admins := []struct {
+		Username string
+		Password string
+		FullName string
+	}{
+		{"admin", env("ADMIN_PASSWORD", "admin123"), "Administrator"},
+		{"rekan", env("REKAN_PASSWORD", "rekan123"), "Rekan Administrator"},
 	}
 
-	if count > 0 {
-		return nil // Admin already exists
+	for _, a := range admins {
+		var count int
+		err := db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", a.Username).Scan(&count)
+		if err != nil {
+			return fmt.Errorf("failed to check user %s: %w", a.Username, err)
+		}
+		if count > 0 {
+			continue
+		}
+
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(a.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("failed to hash password for %s: %w", a.Username, err)
+		}
+
+		_, err = db.Exec(`INSERT INTO users (username, password, full_name, role, session_token) VALUES (?, ?, ?, 'admin', NULL)`,
+			a.Username, string(hashedPassword), a.FullName)
+		if err != nil {
+			return fmt.Errorf("failed to create user %s: %w", a.Username, err)
+		}
+
+		fmt.Printf("✅ Default user created: %s\n", a.Username)
 	}
 
-	// Hash default password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
-	}
-
-	// Insert default admin user
-	_, err = db.Exec(`
-		INSERT INTO users (username, password, full_name, role)
-		VALUES (?, ?, ?, ?)
-	`, "admin", string(hashedPassword), "Administrator", "admin")
-
-	if err != nil {
-		return fmt.Errorf("failed to create admin user: %w", err)
-	}
-
-	fmt.Println("✅ Default admin user created (username: admin, password: admin123)")
 	return nil
+}
+
+func env(key, fallback string) string {
+	if v := os.Getenv(key); v != "" { return v }
+	return fallback
 }

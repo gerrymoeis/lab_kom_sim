@@ -1,7 +1,6 @@
 package services
 
 import (
-	"bytes"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -117,53 +116,12 @@ func (s *ImageService) CompressAndSave(sourcePath, destPath string, maxDimension
 
 // getOrientationFromFile extracts EXIF orientation from JPEG/PNG file
 func (s *ImageService) getOrientationFromFile(file *os.File) int {
-	// Try to decode EXIF
 	x, err := exif.Decode(file)
-	if err != nil {
-		return 1 // Default orientation if EXIF not found
-	}
-
-	// Get orientation tag
+	if err != nil { return 1 }
 	tag, err := x.Get(exif.Orientation)
-	if err != nil {
-		return 1 // Default orientation if tag not found
-	}
-
+	if err != nil { return 1 }
 	orient, err := tag.Int(0)
-	if err != nil {
-		return 1
-	}
-
-	return orient
-}
-
-// getOrientationFromExif extracts orientation from EXIF byte data
-func (s *ImageService) getOrientationFromExif(exifData []byte) int {
-	
-	// Create a reader from the EXIF byte data
-	reader := bytes.NewReader(exifData)
-	
-	// Try to decode EXIF
-	x, err := exif.Decode(reader)
-	if err != nil {
-		log.Printf("[ImageService] Failed to decode EXIF from byte data: %v", err)
-		return 1 // Default orientation if EXIF parsing fails
-	}
-
-	// Get orientation tag
-	tag, err := x.Get(exif.Orientation)
-	if err != nil {
-		log.Printf("[ImageService] Orientation tag not found in EXIF: %v", err)
-		return 1 // Default orientation if tag not found
-	}
-
-	orient, err := tag.Int(0)
-	if err != nil {
-		log.Printf("[ImageService] Failed to parse orientation value: %v", err)
-		return 1
-	}
-
-	log.Printf("[ImageService] Successfully extracted orientation from EXIF: %d", orient)
+	if err != nil { return 1 }
 	return orient
 }
 

@@ -112,32 +112,75 @@ type DeviceLoan struct {
 
 // DeviceUsage represents a device usage/consumption record
 type DeviceUsage struct {
-	ID        int       `json:"id"`
-	DeviceID  int       `json:"device_id"`
-	UserName  string    `json:"user_name"`
-	UserType  string    `json:"user_type"`  // "dosen", "mahasiswa", "staff", "lainnya"
-	UsageDate time.Time `json:"usage_date"`
-	Quantity  int       `json:"quantity"`
-	Purpose   string    `json:"purpose"`
-	Notes     string    `json:"notes"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          int       `json:"id"`
+	DeviceID    int       `json:"device_id"`
+	UserName    string    `json:"user_name"`
+	UserType    string    `json:"user_type"`     // "dosen", "mahasiswa", "staff", "lainnya"
+	UsageDate   time.Time `json:"usage_date"`
+	Quantity    int       `json:"quantity"`
+	IsAvailable string    `json:"is_available"` // "yes" (masih ada) or "no" (habis)
+	Purpose     string    `json:"purpose"`
+	Notes       string    `json:"notes"`
+	CreatedAt   time.Time `json:"created_at"`
 	// Display fields (not in database)
 	DeviceAssetCode string `json:"device_asset_code,omitempty"`
 	DeviceName      string `json:"device_name,omitempty"`
 }
 
 
-// Software represents software installed on PCs
-type Software struct {
+// LostItem represents a lost item report
+type LostItem struct {
+	ID               int        `json:"id"`
+	DeviceID         *int       `json:"device_id"`
+	ItemName         string     `json:"item_name"`
+	ItemDescription  string     `json:"item_description"`
+	ReportedBy       string     `json:"reported_by"`
+	ReportedDate     time.Time  `json:"reported_date"`
+	LastSeenAt       *time.Time `json:"last_seen_at"`
+	LocationLastSeen string     `json:"location_last_seen"`
+	Status           string     `json:"status"`
+	OwnerName        string     `json:"owner_name"`
+	OwnerClass       string     `json:"owner_class"`
+	OwnerNim         string     `json:"owner_nim"`
+	ReturnedDate     *time.Time `json:"returned_date"`
+	Photo            string     `json:"photo"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+}
+
+// SoftwareCatalog represents a software entry in the master catalog
+type SoftwareCatalog struct {
 	ID          int       `json:"id"`
-	PCID        int       `json:"pc_id"`
-	Name        string    `json:"name"`
-	Version     string    `json:"version"`
-	License     string    `json:"license"`
-	InstallDate *time.Time `json:"install_date"`
-	Notes       string    `json:"notes"`
+	Name        string    `json:"name"`     // UNIQUE
+	Category    string    `json:"category"` // "required" or "other"
+	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// PCSoftware represents the many-to-many relation between PCs and software
+type PCSoftware struct {
+	PCID       int    `json:"pc_id"`
+	SoftwareID int    `json:"software_id"`
+	Installed  bool   `json:"installed"`
+	// Joined fields (not in DB)
+	SoftwareName string `json:"software_name,omitempty"`
+	Category     string `json:"category,omitempty"`
+	Description  string `json:"description,omitempty"`
+}
+
+// CourseSchedule represents a course schedule in the lab
+type CourseSchedule struct {
+	ID         int       `json:"id"`
+	CourseName string    `json:"course_name"`
+	Lecturer   string    `json:"lecturer"`
+	Day        string    `json:"day"`
+	Class      string    `json:"class"`
+	TimeStart  string    `json:"time_start"`
+	TimeEnd    string    `json:"time_end"`
+	Notes      string    `json:"notes"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // LogbookEntry represents an attendance logbook entry
@@ -152,24 +195,6 @@ type LogbookEntry struct {
 	SourceFile string    `json:"source_file"` // Original uploaded file
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
-}
-
-// MaintenanceLog represents maintenance history for PCs
-type MaintenanceLog struct {
-	ID          int       `json:"id"`
-	PCID        int       `json:"pc_id"`
-	Date        time.Time `json:"date"`
-	Type        string    `json:"type"` // "repair", "upgrade", "cleaning", "check"
-	Description string    `json:"description"`
-	Technician  string    `json:"technician"`
-	Cost        float64   `json:"cost"`
-	CreatedAt   time.Time `json:"created_at"`
-}
-
-// StatusCount represents count of PCs by status
-type StatusCount struct {
-	Status string `json:"status"`
-	Count  int    `json:"count"`
 }
 
 // ActivityLog represents an audit trail entry

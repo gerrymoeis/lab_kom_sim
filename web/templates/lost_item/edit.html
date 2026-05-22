@@ -1,0 +1,182 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4">
+    {{ template "layout/card_edit.html" . }}
+                    <div class="alert alert-info">
+                        <strong>Pelapor:</strong> {{ .lostItem.ReportedBy }}<br>
+                        <strong>Tanggal Lapor:</strong> {{ .lostItem.ReportedDate.Format "02/01/2006" }}<br>
+                        <strong>Status:</strong>
+                        {{ if eq .lostItem.Status "hilang" }}
+                        <span class="badge bg-danger">Hilang</span>
+                        {{ else if eq .lostItem.Status "ditemukan" }}
+                        <span class="badge bg-success">Ditemukan</span>
+                        {{ else if eq .lostItem.Status "dilaporkan" }}
+                        <span class="badge bg-warning text-dark">Dilaporkan</span>
+                        {{ end }}
+                    </div>
+
+                    <form method="POST" action="/lost-items/{{ .lostItem.ID }}/edit">
+                        <input type="hidden" id="photo" name="photo" value="">
+
+                        <div class="mb-3">
+                            <label for="item_name" class="form-label">Nama Barang *</label>
+                            <input type="text" class="form-control" id="item_name" name="item_name" value="{{ .lostItem.ItemName }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="item_description" class="form-label">Deskripsi Barang</label>
+                            <textarea class="form-control" id="item_description" name="item_description" rows="3">{{ .lostItem.ItemDescription }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="reported_by" class="form-label">Nama Pelapor *</label>
+                            <input type="text" class="form-control" id="reported_by" name="reported_by" value="{{ .lostItem.ReportedBy }}" required>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="reported_date" class="form-label">Tanggal Lapor</label>
+                                <input type="date" class="form-control" id="reported_date" name="reported_date" value="{{ .lostItem.ReportedDate }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_seen_at" class="form-label">Terakhir Terlihat</label>
+                                <input type="datetime-local" class="form-control" id="last_seen_at" name="last_seen_at" value="{{ if .lostItem.LastSeenAt }}{{ .lostItem.LastSeenAt.Format "2006-01-02T15:04" }}{{ end }}">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status" onchange="toggleOwnerFields()">
+                                <option value="hilang" {{ if eq .lostItem.Status "hilang" }}selected{{ end }}>Hilang</option>
+                                <option value="dilaporkan" {{ if eq .lostItem.Status "dilaporkan" }}selected{{ end }}>Dilaporkan</option>
+                                <option value="ditemukan" {{ if eq .lostItem.Status "ditemukan" }}selected{{ end }}>Ditemukan</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="location_last_seen" class="form-label">Lokasi Terakhir Dilihat</label>
+                            <input type="text" class="form-control" id="location_last_seen" name="location_last_seen" value="{{ .lostItem.LocationLastSeen }}" placeholder="Misal: Meja PC-01, di bawah meja PC-07">
+                        </div>
+
+                        <hr>
+                        <h6 class="text-muted"><i class="bi bi-person"></i> Informasi Pemilik (jika sudah ditemukan)</h6>
+
+                        <div id="ownerFields" class="{{ if ne .lostItem.Status "ditemukan" }}d-none{{ end }}">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="owner_name" class="form-label">Nama Pemilik</label>
+                                    <input type="text" class="form-control" id="owner_name" name="owner_name" value="{{ .lostItem.OwnerName }}">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="owner_class" class="form-label">Kelas</label>
+                                    <input type="text" class="form-control" id="owner_class" name="owner_class" value="{{ .lostItem.OwnerClass }}" placeholder="Misal: XII-RPL-1">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="owner_nim" class="form-label">NIS/NIM</label>
+                                    <input type="text" class="form-control" id="owner_nim" name="owner_nim" value="{{ .lostItem.OwnerNim }}">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="returned_date" class="form-label">Tanggal Dikembalikan</label>
+                                <input type="date" class="form-control" id="returned_date" name="returned_date" value="{{ if .lostItem.ReturnedDate }}{{ .lostItem.ReturnedDate.Format "2006-01-02" }}{{ end }}">
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h6 class="text-muted"><i class="bi bi-camera"></i> Foto Barang</h6>
+
+                        <div class="mb-3">
+                            <p class="text-muted mb-3">Max 5MB, format JPEG/PNG/HEIC</p>
+
+                            <div class="row g-3">
+                                <div class="col-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-camera-fill text-primary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
+                                    </div>
+                                    <input type="file" id="photoCamera" accept="image/*" capture="environment" class="form-control mt-auto">
+                                </div>
+                                <div class="col-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-images text-secondary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
+                                    </div>
+                                    <input type="file" id="photoGallery" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
+                                </div>
+                            </div>
+
+                            <div class="mt-3 position-relative d-inline-block" id="photoPreviewWrapper"{{ if not .lostItem.Photo }} style="display: none;"{{ end }}>
+                                <img src="{{ if .lostItem.Photo }}/uploads/lost_items/{{ .lostItem.Photo }}{{ end }}" class="img-thumbnail" style="max-height: 120px;" id="photoPreview">
+                                {{ if .lostItem.Photo }}
+                                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0" onclick="removePhoto()" title="Hapus foto">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {{ end }}
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-save"></i> Update
+                            </button>
+                            <a href="/lost-items" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Batal
+                            </a>
+                        </div>
+                    </form>
+{{ template "layout/card_close.html" . }}
+
+<script>
+function toggleOwnerFields() {
+    var status = document.getElementById('status').value;
+    var fields = document.getElementById('ownerFields');
+    if (status === 'ditemukan') {
+        fields.classList.remove('d-none');
+    } else {
+        fields.classList.add('d-none');
+    }
+}
+
+function handleLostItemPhotoUpload(input) {
+    var file = input.files[0];
+    if (!file) return;
+
+    var formData = new FormData();
+    formData.append('image', file);
+    formData.append('type', 'lost_item');
+
+    fetch('/api/upload-image', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            document.getElementById('photo').value = data.file_ref;
+            document.getElementById('photoPreview').src = data.preview_url;
+            document.getElementById('photoPreviewWrapper').style.display = '';
+        } else {
+            alert('Gagal upload foto: ' + data.message);
+        }
+    })
+    .catch(function() { alert('Gagal upload foto'); });
+}
+
+document.getElementById('photoCamera').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
+document.getElementById('photoGallery').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
+
+function removePhoto() {
+    var ref = document.getElementById('photo').value;
+    if (ref) {
+        fetch('/api/delete-temp-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_ref: ref })
+        });
+    }
+    document.getElementById('photo').value = '';
+    document.getElementById('photoCamera').value = '';
+    document.getElementById('photoGallery').value = '';
+    document.getElementById('photoPreview').src = '';
+    document.getElementById('photoPreviewWrapper').style.display = 'none';
+}
+</script>
+
+{{ template "layout/footer.html" . }}

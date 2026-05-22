@@ -1,0 +1,66 @@
+{{ template "layout/base.html" . }}
+<div class="row mb-3">
+    <div class="col-md-6">
+        <h2><i class="bi bi-calendar-event"></i> Jadwal Mata Kuliah</h2>
+        <p class="mb-0"><span class="badge bg-primary-subtle text-primary-emphasis rounded-pill px-3 py-1 small fw-normal"><i class="bi bi-calendar-check me-1"></i> Hari ini: <strong>{{ .today }}</strong></span></p>
+    </div>
+    <div class="col-md-6 text-end">
+        {{ if eq .role "admin" }}
+        <a href="/schedules/create" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Tambah Jadwal</a>
+        {{ end }}
+    </div>
+</div>
+
+{{ template "layout/alert.html" . }}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <form method="GET" action="/schedules" class="d-flex gap-2 flex-wrap">
+                    <select name="day" class="form-select" style="width:auto;">
+                        <option value="">Semua Hari</option>
+                        {{ range .days }}<option value="{{ . }}" {{ if eq $.dayFilter . }}selected{{ end }}>{{ . }}</option>{{ end }}
+                    </select>
+                    <input type="text" name="search" class="form-control" placeholder="Cari..." value="{{ .search }}" style="max-width:300px;">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
+                </form>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th><th>Hari</th><th>Mata Kuliah</th><th>Kelas</th><th>Dosen</th><th>Jam Mulai</th><th>Jam Selesai</th>
+                        {{ if eq .role "admin" }}<th>Aksi</th>{{ end }}
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range $i, $s := .schedules }}
+                    <tr class="{{ if eq $s.Day $.today }}table-primary{{ end }}">
+                        <td>{{ add $i $.startRow }}</td>
+                        <td>{{ if eq $s.Day $.today }}<span class="badge bg-primary">{{ $s.Day }}</span>{{ else }}{{ $s.Day }}{{ end }}</td>
+                        <td><strong>{{ $s.CourseName }}</strong></td>
+                        <td>{{ $s.Class }}</td>
+                        <td>{{ $s.Lecturer }}</td>
+                        <td>{{ $s.TimeStart }}</td>
+                        <td>{{ $s.TimeEnd }}</td>
+                        {{ if eq $.role "admin" }}
+                        <td class="d-flex gap-1 flex-wrap align-items-center">
+                            <a href="/schedules/{{ $s.ID }}/edit" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="if(confirm('Hapus?')){ document.getElementById('del-{{ $s.ID }}').submit(); }"><i class="bi bi-trash"></i></button>
+                            <form id="del-{{ $s.ID }}" method="POST" action="/schedules/{{ $s.ID }}/delete" style="display:none;"></form>
+                        </td>
+                        {{ end }}
+                    </tr>
+                    {{ else }}
+                    <tr><td colspan="{{ if eq .role "admin" }}8{{ else }}7{{ end }}" class="text-center text-muted">Belum ada jadwal</td></tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+
+        {{ template "layout/pagination.html" . }}
+    </div>
+</div>
+{{ template "layout/footer.html" . }}

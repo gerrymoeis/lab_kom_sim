@@ -25,19 +25,37 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 	}
 
 	log.Println("Using SQLite (local)")
-	db, err := sql.Open("sqlite3", dbPath)
+	dsn := dbPath + "?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL&_foreign_keys=ON"
+
+	reader, err := sql.Open("sqlite3", dsn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open sqlite: %w", err)
+		return nil, fmt.Errorf("failed to open sqlite reader: %w", err)
 	}
-	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
-		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+	writer, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open sqlite writer: %w", err)
 	}
-	return wrapSQLite(db), nil
+
+	for _, db := range []*sql.DB{reader, writer} {
+		if _, err := db.Exec("PRAGMA temp_store=MEMORY"); err != nil {
+			return nil, fmt.Errorf("failed to set temp_store: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA cache_size=-64000"); err != nil {
+			return nil, fmt.Errorf("failed to set cache_size: %w", err)
+		}
+	}
+	return wrapSQLite(reader, writer), nil
 }
 
 func RunMigrations(db *DB, isPostgres bool) error {
-	if isPostgres {
-		return runPostgresMigrations(db)
+	if err := runMigrations(db, isPostgres); err != nil {
+		return err
 	}
-	return runSQLiteMigrations(db)
+	if err := seedRequiredSoftware(db); err != nil {
+		return err
+	}
+	if err := seedPCs(db); err != nil {
+		return err
+	}
+	return seedPCPhotos(db)
 }

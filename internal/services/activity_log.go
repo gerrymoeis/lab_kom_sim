@@ -1,8 +1,10 @@
-package services
+﻿package services
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"inventaris-lab-kom/internal/database"
@@ -11,466 +13,328 @@ import (
 
 // ActivityLogService handles activity logging operations
 type ActivityLogService struct {
-	db *database.DB
+	db      *database.DB
+	logChan chan *models.ActivityLog
+	stmt    *sql.Stmt
+	close   chan struct{}
 }
 
 // NewActivityLogService creates a new activity log service
 func NewActivityLogService(db *database.DB) *ActivityLogService {
-	return &ActivityLogService{db: db}
-}
-
-// Log creates a new activity log entry
-func (s *ActivityLogService) Log(log *models.ActivityLog) error {
-	query := `
+	stmt, err := db.Prepare(`
 		INSERT INTO activity_logs (
 			user_id, username, user_role, action, entity_type, entity_id,
 			description, old_values, new_values, created_at, ip_address,
 			user_agent, status, error_message
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
-
-	_, err := s.db.Exec(
-		query,
-		log.UserID,
-		log.Username,
-		log.UserRole,
-		log.Action,
-		log.EntityType,
-		log.EntityID,
-		log.Description,
-		log.OldValues,
-		log.NewValues,
-		log.CreatedAt,
-		log.IPAddress,
-		log.UserAgent,
-		log.Status,
-		log.ErrorMessage,
-	)
-
+	`)
 	if err != nil {
-		return fmt.Errorf("failed to insert activity log: %w", err)
+		log.Printf("failed to prepare activity log stmt: %v", err)
+	}
+	s := &ActivityLogService{
+		db:      db,
+		logChan: make(chan *models.ActivityLog, 4096),
+		stmt:    stmt,
+		close:   make(chan struct{}),
+	}
+	go s.logWriter()
+	return s
+}
+
+func (s *ActivityLogService) logWriter() {
+	const batchSize = 100
+	batch := make([]*models.ActivityLog, 0, batchSize)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	flush := func() {
+		if len(batch) == 0 { return }
+		if err := s.batchLog(batch); err != nil {
+			log.Printf("batch log write: %v", err)
+		}
+		batch = batch[:0]
 	}
 
+	for {
+		select {
+		case l, ok := <-s.logChan:
+			if !ok {
+				flush(); return
+			}
+			batch = append(batch, l)
+			if len(batch) >= batchSize { flush() }
+		case <-ticker.C:
+			flush()
+		case <-s.close:
+			flush(); return
+		}
+	}
+}
+
+func (s *ActivityLogService) batchLog(batch []*models.ActivityLog) error {
+	tx, err := s.db.Begin()
+	if err != nil { return err }
+	defer tx.Rollback()
+
+	for _, l := range batch {
+		_, err := tx.Stmt(s.stmt).Exec(
+			l.UserID, l.Username, l.UserRole, l.Action, l.EntityType,
+			l.EntityID, l.Description, l.OldValues, l.NewValues,
+			l.CreatedAt, l.IPAddress, l.UserAgent, l.Status, l.ErrorMessage,
+		)
+		if err != nil { return fmt.Errorf("failed to batch insert activity log: %w", err) }
+	}
+	return tx.Commit()
+}
+
+func (s *ActivityLogService) Close() {
+	close(s.close)
+}
+
+// enqueueLog sends a log entry to the background writer
+func (s *ActivityLogService) enqueueLog(al *models.ActivityLog) {
+	select {
+	case s.logChan <- al:
+	default:
+		log.Printf("async log channel full, dropping entry")
+	}
+}
+
+type logParams struct {
+	userID, entityID int
+	username, role, action, entityType string
+	oldValues, newValues any
+	fileNewValues map[string]string
+	errMsg string
+	ipAddress, userAgent string
+}
+
+func (s *ActivityLogService) logAction(p logParams) error {
+	status, errText := "success", p.errMsg
+	if errText != "" { status = "failed" }
+
+	var oldJSON, newJSON string
+	if p.oldValues != nil { if b, e := json.Marshal(p.oldValues); e == nil { oldJSON = string(b) } }
+	if p.newValues != nil { if b, e := json.Marshal(p.newValues); e == nil { newJSON = string(b) } }
+	if p.fileNewValues != nil { if b, e := json.Marshal(p.fileNewValues); e == nil { newJSON = string(b) } }
+
+	actionLabel := map[string]string{"create": "Created", "update": "Updated", "delete": "Deleted", "upload": "Uploaded"}
+	desc := fmt.Sprintf("%s %s #%d", actionLabel[p.action], p.entityType, p.entityID)
+	if p.action == "upload" && p.fileNewValues != nil {
+		if ft, ok := p.fileNewValues["file_type"]; ok { desc = fmt.Sprintf("Uploaded %s for %s #%d: %s", ft, p.entityType, p.entityID, p.fileNewValues["filename"]) }
+	}
+	if errText != "" { desc = fmt.Sprintf("Failed to %s %s #%d: %s", p.action, p.entityType, p.entityID, errText) }
+
+	s.enqueueLog(&models.ActivityLog{
+		UserID: p.userID, Username: p.username, UserRole: p.role,
+		Action: p.action, EntityType: p.entityType, EntityID: &p.entityID,
+		Description: desc, OldValues: oldJSON, NewValues: newJSON,
+		CreatedAt: time.Now(), IPAddress: p.ipAddress, UserAgent: p.userAgent,
+		Status: status, ErrorMessage: errText,
+	})
 	return nil
 }
 
-// LogCreate logs a create action
-func (s *ActivityLogService) LogCreate(userID int, username, role, entityType string, entityID int, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
-	newValuesJSON, err := json.Marshal(newValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal new values: %w", err)
-	}
-
-	errText := ""
-	if len(errorMsg) > 0 {
-		errText = errorMsg[0]
-	}
-
-	status := "success"
-	if errText != "" {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("Created %s #%d", entityType, entityID)
-	if errText != "" {
-		description = fmt.Sprintf("Failed to create %s #%d: %s", entityType, entityID, errText)
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       "create",
-		EntityType:   entityType,
-		EntityID:     &entityID,
-		Description:  description,
-		OldValues:    "",
-		NewValues:    string(newValuesJSON),
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errText,
-	}
-
-	return s.Log(log)
+func (s *ActivityLogService) LogAction(userID int, username, role, action, entityType string, entityID int, oldValues, newValues any, ipAddress, userAgent string, errorMsg ...string) error {
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: action, entityType: entityType, entityID: entityID, oldValues: oldValues, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-// LogUpdate logs an update action
-func (s *ActivityLogService) LogUpdate(userID int, username, role, entityType string, entityID int, oldValues, newValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
-	oldValuesJSON, err := json.Marshal(oldValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal old values: %w", err)
-	}
-
-	newValuesJSON, err := json.Marshal(newValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal new values: %w", err)
-	}
-
-	errText := ""
-	if len(errorMsg) > 0 {
-		errText = errorMsg[0]
-	}
-
-	status := "success"
-	if errText != "" {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("Updated %s #%d", entityType, entityID)
-	if errText != "" {
-		description = fmt.Sprintf("Failed to update %s #%d: %s", entityType, entityID, errText)
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       "update",
-		EntityType:   entityType,
-		EntityID:     &entityID,
-		Description:  description,
-		OldValues:    string(oldValuesJSON),
-		NewValues:    string(newValuesJSON),
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errText,
-	}
-
-	return s.Log(log)
+func (s *ActivityLogService) LogCreate(userID int, username, role, entityType string, entityID int, newValues any, ipAddress, userAgent string, errorMsg ...string) error {
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: "create", entityType: entityType, entityID: entityID, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-// LogDelete logs a delete action
-func (s *ActivityLogService) LogDelete(userID int, username, role, entityType string, entityID int, oldValues interface{}, ipAddress, userAgent string, errorMsg ...string) error {
-	oldValuesJSON, err := json.Marshal(oldValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal old values: %w", err)
-	}
-
-	errText := ""
-	if len(errorMsg) > 0 {
-		errText = errorMsg[0]
-	}
-
-	status := "success"
-	if errText != "" {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("Deleted %s #%d", entityType, entityID)
-	if errText != "" {
-		description = fmt.Sprintf("Failed to delete %s #%d: %s", entityType, entityID, errText)
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       "delete",
-		EntityType:   entityType,
-		EntityID:     &entityID,
-		Description:  description,
-		OldValues:    string(oldValuesJSON),
-		NewValues:    "",
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errText,
-	}
-
-	return s.Log(log)
+func (s *ActivityLogService) LogUpdate(userID int, username, role, entityType string, entityID int, oldValues, newValues any, ipAddress, userAgent string, errorMsg ...string) error {
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: "update", entityType: entityType, entityID: entityID, oldValues: oldValues, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-// LogUpload logs a file upload action
+func (s *ActivityLogService) LogDelete(userID int, username, role, entityType string, entityID int, oldValues any, ipAddress, userAgent string, errorMsg ...string) error {
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: "delete", entityType: entityType, entityID: entityID, oldValues: oldValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
+}
+
 func (s *ActivityLogService) LogUpload(userID int, username, role, entityType string, entityID int, filename, fileType string, ipAddress, userAgent string, errorMsg ...string) error {
-	errText := ""
-	if len(errorMsg) > 0 {
-		errText = errorMsg[0]
-	}
-
-	status := "success"
-	if errText != "" {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("Uploaded %s for %s #%d: %s", fileType, entityType, entityID, filename)
-	if errText != "" {
-		description = fmt.Sprintf("Failed to upload %s for %s #%d: %s", fileType, entityType, entityID, errText)
-	}
-
-	newValues := map[string]string{
-		"filename":  filename,
-		"file_type": fileType,
-	}
-
-	newValuesJSON, err := json.Marshal(newValues)
-	if err != nil {
-		return fmt.Errorf("failed to marshal new values: %w", err)
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       "upload",
-		EntityType:   entityType,
-		EntityID:     &entityID,
-		Description:  description,
-		OldValues:    "",
-		NewValues:    string(newValuesJSON),
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errText,
-	}
-
-	return s.Log(log)
+	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	return s.logAction(logParams{userID: userID, username: username, role: role, action: "upload", entityType: entityType, entityID: entityID, fileNewValues: map[string]string{"filename": filename, "file_type": fileType}, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
-// LogAuth logs authentication events (login, logout)
 func (s *ActivityLogService) LogAuth(userID int, username, role, action string, success bool, ipAddress, userAgent string, errorMsg string) error {
-	status := "success"
-	if !success {
-		status = "failed"
-	}
-
-	description := fmt.Sprintf("User '%s' %s", username, action)
-	if !success {
-		description += " (failed)"
-	}
-
-	log := &models.ActivityLog{
-		UserID:       userID,
-		Username:     username,
-		UserRole:     role,
-		Action:       action,
-		EntityType:   "auth",
-		EntityID:     nil,
-		Description:  description,
-		OldValues:    "",
-		NewValues:    "",
-		CreatedAt:    time.Now(),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-		Status:       status,
-		ErrorMessage: errorMsg,
-	}
-
-	return s.Log(log)
+	status := "success"; if !success { status = "failed" }
+	desc := fmt.Sprintf("User '%s' %s", username, action)
+	if !success { desc += " (failed)" }
+	s.enqueueLog(&models.ActivityLog{
+		UserID: userID, Username: username, UserRole: role,
+		Action: action, EntityType: "auth", EntityID: nil,
+		Description: desc, OldValues: "", NewValues: "",
+		CreatedAt: time.Now(), IPAddress: ipAddress, UserAgent: userAgent,
+		Status: status, ErrorMessage: errorMsg,
+	})
+	return nil
 }
 
 // ActivityLogFilters represents filters for querying activity logs
 type ActivityLogFilters struct {
-	DateFrom   *time.Time
-	DateTo     *time.Time
-	Action     string
-	EntityType string
-	UserID     *int
-	Username   string
-	Status     string
-	Limit      int
-	Offset     int
+	DateFrom        *time.Time
+	DateTo          *time.Time
+	Action          string
+	EntityType      string
+	UserID          *int
+	Username        string
+	Status          string
+	Limit           int
+	Offset          int
+	CursorID        int64
+	CursorCreatedAt time.Time
+	Direction       string
 }
 
 // GetLogs retrieves activity logs with filters
+func (s *ActivityLogService) GetUsernames() ([]string, error) {
+	rows, err := s.db.Query(`SELECT DISTINCT username FROM activity_logs ORDER BY username`)
+	if err != nil { return nil, err }
+	defer rows.Close()
+	var usernames []string
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil { return nil, err }
+		usernames = append(usernames, u)
+	}
+	return usernames, rows.Err()
+}
+
 func (s *ActivityLogService) GetLogs(filters ActivityLogFilters) ([]models.ActivityLog, int, error) {
-	// Build query with filters
-	query := `
-		SELECT 
-			id, user_id, username, user_role, action, entity_type, entity_id,
+	baseQuery := `
+		SELECT id, user_id, username, user_role, action, entity_type, entity_id,
 			description, old_values, new_values, created_at, ip_address,
-			user_agent, status, error_message
-		FROM activity_logs
-		WHERE 1=1
-	`
+			user_agent, status, error_message FROM activity_logs WHERE 1=1`
+	countQ := "SELECT COUNT(*) FROM activity_logs WHERE 1=1"
+	args := []any{}
 
-	countQuery := "SELECT COUNT(*) FROM activity_logs WHERE 1=1"
-
-	args := []interface{}{}
-	countArgs := []interface{}{}
-
-	// Apply filters
-	if filters.DateFrom != nil {
-		query += " AND created_at >= ?"
-		countQuery += " AND created_at >= ?"
-		args = append(args, filters.DateFrom)
-		countArgs = append(countArgs, filters.DateFrom)
+	addCond := func(cond string, val any) {
+		baseQuery += cond; countQ += cond; args = append(args, val)
 	}
 
-	if filters.DateTo != nil {
-		query += " AND created_at <= ?"
-		countQuery += " AND created_at <= ?"
-		args = append(args, filters.DateTo)
-		countArgs = append(countArgs, filters.DateTo)
-	}
+	if filters.DateFrom != nil { addCond(" AND created_at >= ?", filters.DateFrom) }
+	if filters.DateTo != nil { addCond(" AND created_at <= ?", filters.DateTo) }
+	if filters.Action != "" { addCond(" AND action = ?", filters.Action) }
+	if filters.EntityType != "" { addCond(" AND entity_type = ?", filters.EntityType) }
+	if filters.UserID != nil { addCond(" AND user_id = ?", *filters.UserID) }
+	if filters.Username != "" { addCond(" AND username LIKE ?", "%"+filters.Username+"%") }
+	if filters.Status != "" { addCond(" AND status = ?", filters.Status) }
 
-	if filters.Action != "" {
-		query += " AND action = ?"
-		countQuery += " AND action = ?"
-		args = append(args, filters.Action)
-		countArgs = append(countArgs, filters.Action)
-	}
-
-	if filters.EntityType != "" {
-		query += " AND entity_type = ?"
-		countQuery += " AND entity_type = ?"
-		args = append(args, filters.EntityType)
-		countArgs = append(countArgs, filters.EntityType)
-	}
-
-	if filters.UserID != nil {
-		query += " AND user_id = ?"
-		countQuery += " AND user_id = ?"
-		args = append(args, *filters.UserID)
-		countArgs = append(countArgs, *filters.UserID)
-	}
-
-	if filters.Username != "" {
-		query += " AND username LIKE ?"
-		countQuery += " AND username LIKE ?"
-		searchTerm := "%" + filters.Username + "%"
-		args = append(args, searchTerm)
-		countArgs = append(countArgs, searchTerm)
-	}
-
-	if filters.Status != "" {
-		query += " AND status = ?"
-		countQuery += " AND status = ?"
-		args = append(args, filters.Status)
-		countArgs = append(countArgs, filters.Status)
-	}
-
-	// Get total count
 	var totalCount int
-	err := s.db.QueryRow(countQuery, countArgs...).Scan(&totalCount)
-	if err != nil {
+	if err := s.db.QueryRow(countQ, args...).Scan(&totalCount); err != nil {
 		return nil, 0, fmt.Errorf("failed to count logs: %w", err)
 	}
 
-	// Order by created_at DESC (newest first)
-	query += " ORDER BY created_at DESC"
+	baseQuery += " ORDER BY created_at DESC"
+	if filters.Limit > 0 { baseQuery += " LIMIT ?"; args = append(args, filters.Limit) }
+	if filters.Offset > 0 { baseQuery += " OFFSET ?"; args = append(args, filters.Offset) }
 
-	// Apply pagination
-	if filters.Limit > 0 {
-		query += " LIMIT ?"
-		args = append(args, filters.Limit)
+	rows, err := s.db.Query(baseQuery, args...)
+	if err != nil { return nil, 0, fmt.Errorf("failed to query logs: %w", err) }
+	defer rows.Close()
+
+	return scanLogs(rows, totalCount)
+}
+
+func (s *ActivityLogService) GetLogsCursor(filters ActivityLogFilters) ([]models.ActivityLog, bool, error) {
+	query := `SELECT id, user_id, username, user_role, action, entity_type, entity_id,
+		description, old_values, new_values, created_at, ip_address,
+		user_agent, status, error_message FROM activity_logs WHERE 1=1`
+	args := []any{}
+
+	if filters.DateFrom != nil { query += " AND created_at >= ?"; args = append(args, filters.DateFrom) }
+	if filters.DateTo != nil { query += " AND created_at <= ?"; args = append(args, filters.DateTo) }
+	if filters.Action != "" { query += " AND action = ?"; args = append(args, filters.Action) }
+	if filters.EntityType != "" { query += " AND entity_type = ?"; args = append(args, filters.EntityType) }
+	if filters.UserID != nil { query += " AND user_id = ?"; args = append(args, *filters.UserID) }
+	if filters.Username != "" { query += " AND username LIKE ?"; args = append(args, "%"+filters.Username+"%") }
+	if filters.Status != "" { query += " AND status = ?"; args = append(args, filters.Status) }
+
+	if filters.CursorID > 0 {
+		if filters.Direction == "prev" {
+			query += " AND (created_at, id) > (?, ?)"
+		} else {
+			query += " AND (created_at, id) < (?, ?)"
+		}
+		args = append(args, filters.CursorCreatedAt, filters.CursorID)
 	}
 
-	if filters.Offset > 0 {
-		query += " OFFSET ?"
-		args = append(args, filters.Offset)
+	limit := filters.Limit + 1
+	orderDir := "DESC"
+	if filters.Direction == "prev" {
+		orderDir = "ASC"
 	}
 
-	// Execute query
+	query += " ORDER BY created_at " + orderDir + ", id " + orderDir + " LIMIT ?"
+	args = append(args, limit)
+
 	rows, err := s.db.Query(query, args...)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to query logs: %w", err)
-	}
+	if err != nil { return nil, false, fmt.Errorf("failed to query logs: %w", err) }
 	defer rows.Close()
 
 	logs := []models.ActivityLog{}
-
 	for rows.Next() {
-		var log models.ActivityLog
-		err := rows.Scan(
-			&log.ID,
-			&log.UserID,
-			&log.Username,
-			&log.UserRole,
-			&log.Action,
-			&log.EntityType,
-			&log.EntityID,
-			&log.Description,
-			&log.OldValues,
-			&log.NewValues,
-			&log.CreatedAt,
-			&log.IPAddress,
-			&log.UserAgent,
-			&log.Status,
-			&log.ErrorMessage,
-		)
-		if err != nil {
-			return nil, 0, fmt.Errorf("failed to scan log: %w", err)
+		var l models.ActivityLog
+		if err := rows.Scan(&l.ID, &l.UserID, &l.Username, &l.UserRole, &l.Action,
+			&l.EntityType, &l.EntityID, &l.Description, &l.OldValues, &l.NewValues,
+			&l.CreatedAt, &l.IPAddress, &l.UserAgent, &l.Status, &l.ErrorMessage); err != nil {
+			return nil, false, fmt.Errorf("failed to scan log: %w", err)
 		}
+		logs = append(logs, l)
+	}
+	if err := rows.Err(); err != nil { return nil, false, fmt.Errorf("rows error: %w", err) }
 
-		logs = append(logs, log)
+	hasMore := false
+	if len(logs) > filters.Limit {
+		hasMore = true
+		logs = logs[:filters.Limit]
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("rows error: %w", err)
+	if filters.Direction == "prev" {
+		for i, j := 0, len(logs)-1; i < j; i, j = i+1, j-1 {
+			logs[i], logs[j] = logs[j], logs[i]
+		}
 	}
 
-	return logs, totalCount, nil
+	return logs, hasMore, nil
 }
 
 // SearchLogs searches activity logs by keyword
 func (s *ActivityLogService) SearchLogs(keyword string, limit, offset int) ([]models.ActivityLog, int, error) {
 	searchTerm := "%" + keyword + "%"
-
-	countQuery := `
-		SELECT COUNT(*) FROM activity_logs
-		WHERE description LIKE ? OR username LIKE ? OR entity_type LIKE ?
-	`
-
 	var totalCount int
-	err := s.db.QueryRow(countQuery, searchTerm, searchTerm, searchTerm).Scan(&totalCount)
-	if err != nil {
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM activity_logs WHERE description LIKE ? OR username LIKE ? OR entity_type LIKE ?`,
+		searchTerm, searchTerm, searchTerm).Scan(&totalCount); err != nil {
 		return nil, 0, fmt.Errorf("failed to count search results: %w", err)
 	}
 
-	query := `
-		SELECT 
-			id, user_id, username, user_role, action, entity_type, entity_id,
-			description, old_values, new_values, created_at, ip_address,
-			user_agent, status, error_message
-		FROM activity_logs
+	rows, err := s.db.Query(`SELECT id, user_id, username, user_role, action, entity_type, entity_id,
+		description, old_values, new_values, created_at, ip_address,
+		user_agent, status, error_message FROM activity_logs
 		WHERE description LIKE ? OR username LIKE ? OR entity_type LIKE ?
-		ORDER BY created_at DESC
-		LIMIT ? OFFSET ?
-	`
-
-	rows, err := s.db.Query(query, searchTerm, searchTerm, searchTerm, limit, offset)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to search logs: %w", err)
-	}
+		ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+		searchTerm, searchTerm, searchTerm, limit, offset)
+	if err != nil { return nil, 0, fmt.Errorf("failed to search logs: %w", err) }
 	defer rows.Close()
 
-	logs := []models.ActivityLog{}
+	return scanLogs(rows, totalCount)
+}
 
+func scanLogs(rows *sql.Rows, totalCount int) ([]models.ActivityLog, int, error) {
+	logs := []models.ActivityLog{}
 	for rows.Next() {
 		var log models.ActivityLog
-		err := rows.Scan(
-			&log.ID,
-			&log.UserID,
-			&log.Username,
-			&log.UserRole,
-			&log.Action,
-			&log.EntityType,
-			&log.EntityID,
-			&log.Description,
-			&log.OldValues,
-			&log.NewValues,
-			&log.CreatedAt,
-			&log.IPAddress,
-			&log.UserAgent,
-			&log.Status,
-			&log.ErrorMessage,
-		)
-		if err != nil {
+		if err := rows.Scan(&log.ID, &log.UserID, &log.Username, &log.UserRole, &log.Action,
+			&log.EntityType, &log.EntityID, &log.Description, &log.OldValues, &log.NewValues,
+			&log.CreatedAt, &log.IPAddress, &log.UserAgent, &log.Status, &log.ErrorMessage); err != nil {
 			return nil, 0, fmt.Errorf("failed to scan log: %w", err)
 		}
-
 		logs = append(logs, log)
 	}
-
-	if err = rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("rows error: %w", err)
-	}
-
+	if err := rows.Err(); err != nil { return nil, 0, fmt.Errorf("rows error: %w", err) }
 	return logs, totalCount, nil
 }
