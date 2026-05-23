@@ -38,7 +38,7 @@
                                         </tr>
                                         <tr>
                                             <td class="text-muted">Tanggal Lapor</td>
-                                            <td>{{ .lostItem.ReportedDate.Format "02/01/2006" }}</td>
+                                            <td>{{ (localTime .lostItem.ReportedDate).Format "02/01/2006" }} {{ tzCode }}</td>
                                         </tr>
                                         <tr>
                                             <td class="text-muted">Status</td>
@@ -59,7 +59,7 @@
                                     <table class="table table-borderless">
                                         <tr>
                                             <td width="40%" class="text-muted">Terakhir Terlihat</td>
-                                            <td>{{ if .lostItem.LastSeenAt }}{{ .lostItem.LastSeenAt.Format "02/01/2006 15:04" }}{{ else }}-{{ end }}</td>
+                                            <td>{{ if .lostItem.LastSeenAt }}{{ (localTime .lostItem.LastSeenAt).Format "02/01/2006 15:04" }} {{ tzCode }}{{ else }}-{{ end }}</td>
                                         </tr>
                                         <tr>
                                             <td class="text-muted">Lokasi Terakhir</td>
@@ -87,7 +87,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Dikembalikan</td>
-                                    <td>{{ if .lostItem.ReturnedDate }}{{ .lostItem.ReturnedDate.Format "02/01/2006" }}{{ else }}-{{ end }}</td>
+                                    <td>{{ if .lostItem.ReturnedDate }}{{ (localTime .lostItem.ReturnedDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
                                 </tr>
                             </table>
                             {{ end }}
@@ -110,10 +110,10 @@
                     <hr>
                     <div class="row">
                         <div class="col-md-6">
-                            <small class="text-muted">Dibuat: {{ .lostItem.CreatedAt.Format "02/01/2006 15:04" }}</small>
+                            <small class="text-muted">Dibuat: {{ (localTime .lostItem.CreatedAt).Format "02/01/2006 15:04" }}</small>
                         </div>
                         <div class="col-md-6 text-end">
-                            <small class="text-muted">Diupdate: {{ .lostItem.UpdatedAt.Format "02/01/2006 15:04" }}</small>
+                            <small class="text-muted">Diupdate: {{ (localTime .lostItem.UpdatedAt).Format "02/01/2006 15:04" }}</small>
                         </div>
                     </div>
                 </div>

@@ -52,7 +52,7 @@
                             <td><code>{{ .AssetCode }}</code></td>
                             <td>{{ .UserName }}</td>
                             <td><span class="badge bg-secondary">{{ .UserType }}</span></td>
-                            <td>{{ .UsageDate }}</td>
+                            <td>{{ (localTime .UsageDate).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
                                 <select class="form-select form-select-sm availability-select" data-usage-id="{{ .ID }}" style="width:auto;">
                                     <option value="yes" {{ if eq .IsAvailable "yes" }}selected{{ end }}>Ada</option>

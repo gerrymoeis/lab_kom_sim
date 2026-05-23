@@ -12,6 +12,7 @@ import (
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/handlers"
 	"inventaris-lab-kom/internal/middleware"
+	"inventaris-lab-kom/internal/timeutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -102,6 +103,18 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 		"allCategories":   func() []Category { return loadCategories() },
 		"dtCategories":    func() []Category { return loadDeviceTypeCategories() },
 		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },
+		"localTime": func(t interface{}) interface{} {
+			switch v := t.(type) {
+			case time.Time:
+				if v.IsZero() { return v }
+				return v.In(time.Local)
+			case *time.Time:
+				if v == nil || v.IsZero() { return v }
+				return v.In(time.Local)
+			}
+			return t
+		},
+		"tzCode": func() string { return timeutil.Code() },
 	})
 	err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil { return err }

@@ -25,7 +25,7 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 	}
 
 	log.Println("Using SQLite (local)")
-	dsn := dbPath + "?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL&_foreign_keys=ON"
+	dsn := dbPath + "?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL&_foreign_keys=ON&_loc=UTC"
 
 	reader, err := sql.Open("sqlite3", dsn)
 	if err != nil {

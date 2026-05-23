@@ -129,7 +129,7 @@ func (s *ActivityLogService) logAction(p logParams) error {
 		UserID: p.userID, Username: p.username, UserRole: p.role,
 		Action: p.action, EntityType: p.entityType, EntityID: &p.entityID,
 		Description: desc, OldValues: oldJSON, NewValues: newJSON,
-		CreatedAt: time.Now(), IPAddress: p.ipAddress, UserAgent: p.userAgent,
+		CreatedAt: time.Now().UTC(), IPAddress: p.ipAddress, UserAgent: p.userAgent,
 		Status: status, ErrorMessage: errText,
 	})
 	return nil
@@ -168,7 +168,7 @@ func (s *ActivityLogService) LogAuth(userID int, username, role, action string, 
 		UserID: userID, Username: username, UserRole: role,
 		Action: action, EntityType: "auth", EntityID: nil,
 		Description: desc, OldValues: "", NewValues: "",
-		CreatedAt: time.Now(), IPAddress: ipAddress, UserAgent: userAgent,
+		CreatedAt: time.Now().UTC(), IPAddress: ipAddress, UserAgent: userAgent,
 		Status: status, ErrorMessage: errorMsg,
 	})
 	return nil

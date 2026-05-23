@@ -10,12 +10,17 @@ import (
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/queue"
 	"inventaris-lab-kom/internal/server"
+	"inventaris-lab-kom/internal/timeutil"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	cfg := config.Load()
+
+	locName := timeutil.Code()
+	if locName == "" { locName = time.Now().Location().String() }
+	log.Printf("🌍 Timezone: %s (%s)", time.Now().Location(), locName)
 
 	isPostgres := cfg.DatabaseURL != ""
 	db, err := database.InitDB(cfg.DatabasePath, cfg.DatabaseURL)
