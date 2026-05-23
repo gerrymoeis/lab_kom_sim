@@ -86,20 +86,7 @@
             </div>
         </div>
 
-        <!-- Results Summary -->
-        <div class="row mb-3">
-            <div class="col">
-                <p class="text-muted mb-1">
-                    Menampilkan {{ len .entries }} {{ if .total }}dari {{ .total }}{{ end }} entries
-                    {{ if gt (len .entries) 0 }}
-                    ({{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }})
-                    {{ end }}
-                    {{ if .filters.search }}
-                    (hasil pencarian: "{{ .filters.search }}")
-                    {{ end }}
-                </p>
-            </div>
-        </div>
+        {{ if gt (len .entries) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }} dari {{ .total }} entries{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>{{ end }}
 
         <div class="card shadow-sm">
             <div class="card-body">
