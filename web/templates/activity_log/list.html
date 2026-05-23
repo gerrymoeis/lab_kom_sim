@@ -80,8 +80,11 @@
         <!-- Results Summary -->
         <div class="row mb-3">
             <div class="col">
-                <p class="text-muted">
-                    Menampilkan {{ len .logs }} entries
+                <p class="text-muted mb-1">
+                    Menampilkan {{ len .logs }} dari {{ .totalItems }} entries
+                    {{ if gt (len .logs) 0 }}
+                    ({{ .startRow }} - {{ sub (add .startRow (len .logs)) 1 }})
+                    {{ end }}
                     {{ if .filters.search }}
                     (hasil pencarian: "{{ .filters.search }}")
                     {{ end }}
