@@ -35,7 +35,7 @@ jobs:
           SAVEDIR=$(mktemp -d)
           declare -a deploy_only_files
           for f in $(git diff --diff-filter=AM --name-only origin/refactoring HEAD -- .); do
-            if [ -f "$f" ]; then
+            if [[ "$f" != .github/workflows/* ]] && [ -f "$f" ]; then
               mkdir -p "$SAVEDIR/$(dirname "$f")"
               cp "$f" "$SAVEDIR/$f"
               deploy_only_files+=("$f")
