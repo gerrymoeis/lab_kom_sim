@@ -61,6 +61,10 @@ func (db *DB) NewWriteQueue(bufferSize, batchSize int, flushEvery time.Duration)
 	tracker := newInsertTracker(db)
 
 	db.execInt = func(query string, args ...any) (sql.Result, error) {
+		if strings.Contains(query, "session_token") {
+			return db.writer.Exec(query, args...)
+		}
+
 		q.Enqueue(queue.Task{
 			Label: query,
 			Execute: func() error {
