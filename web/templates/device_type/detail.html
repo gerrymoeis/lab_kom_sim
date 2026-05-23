@@ -102,10 +102,10 @@
                     <hr>
                     <div class="row">
                         <div class="col-md-6">
-                            <small class="text-muted">Dibuat: {{ .deviceType.CreatedAt }}</small>
+                            <small class="text-muted">Dibuat: {{ (localTime .deviceType.CreatedAt).Format "02/01/2006 15:04" }} {{ tzCode }}</small>
                         </div>
                         <div class="col-md-6 text-end">
-                            <small class="text-muted">Diupdate: {{ .deviceType.UpdatedAt }}</small>
+                            <small class="text-muted">Diupdate: {{ (localTime .deviceType.UpdatedAt).Format "02/01/2006 15:04" }}</small>
                         </div>
                     </div>
                 </div>

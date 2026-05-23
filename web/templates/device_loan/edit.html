@@ -5,9 +5,9 @@
                     <div class="alert alert-info">
                         <strong>Perangkat:</strong> {{ .deviceName }} ({{ .assetCode }})<br>
                         <strong>Peminjam:</strong> {{ .loan.BorrowerName }} ({{ .loan.BorrowerType }})<br>
-                        <strong>Tanggal Pinjam:</strong> {{ .loan.LoanDate.Format "02/01/2006" }}<br>
+                        <strong>Tanggal Pinjam:</strong> {{ (localTime .loan.LoanDate).Format "02/01/2006" }} {{ tzCode }}<br>
                         {{ if .loan.ExpectedReturnDate }}
-                        <strong>Target Kembali:</strong> {{ .loan.ExpectedReturnDate.Format "02/01/2006" }}<br>
+                        <strong>Target Kembali:</strong> {{ (localTime .loan.ExpectedReturnDate).Format "02/01/2006" }}<br>
                         {{ end }}
                         <strong>Jumlah:</strong> {{ .loan.Quantity }} unit
                     </div>
@@ -15,7 +15,7 @@
                     {{ if eq .computedStatus "overdue" }}
                     <div class="alert alert-danger">
                         <i class="bi bi-exclamation-triangle"></i> <strong>Perhatian:</strong> 
-                        Peminjaman ini sudah <strong>terlambat</strong>! Target pengembalian: {{ .loan.ExpectedReturnDate.Format "02/01/2006" }}
+                        Peminjaman ini sudah <strong>terlambat</strong>! Target pengembalian: {{ (localTime .loan.ExpectedReturnDate).Format "02/01/2006" }}
                     </div>
                     {{ end }}
 
@@ -41,7 +41,7 @@
                         <div class="mb-3">
                             <label for="actual_return_date" class="form-label">Tanggal Pengembalian Aktual</label>
                             <input type="date" class="form-control" id="actual_return_date" name="actual_return_date" 
-                                   value="{{ if .loan.ActualReturnDate }}{{ .loan.ActualReturnDate }}{{ end }}">
+                                   value="{{ if .loan.ActualReturnDate }}{{ (localTime .loan.ActualReturnDate).Format "2006-01-02" }}{{ end }}">
                             <small class="text-muted">Isi jika perangkat sudah dikembalikan</small>
                         </div>
 

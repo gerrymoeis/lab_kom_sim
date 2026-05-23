@@ -115,7 +115,7 @@
                     <table class="table table-bordered">
                         <tr>
                             <th width="30%">Tanggal Pembelian</th>
-                            <td>{{ if .device.PurchaseDate }}{{ .device.PurchaseDate }}{{ else }}-{{ end }}</td>
+                            <td>{{ if .device.PurchaseDate }}{{ (localTime .device.PurchaseDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
                         </tr>
                         <tr>
                             <th>Catatan</th>
@@ -123,11 +123,11 @@
                         </tr>
                         <tr>
                             <th>Dibuat</th>
-                            <td><small class="text-muted">{{ .device.CreatedAt }}</small></td>
+                            <td><small class="text-muted">{{ (localTime .device.CreatedAt).Format "02/01/2006 15:04" }} {{ tzCode }}</small></td>
                         </tr>
                         <tr>
                             <th>Diupdate</th>
-                            <td><small class="text-muted">{{ .device.UpdatedAt }}</small></td>
+                            <td><small class="text-muted">{{ (localTime .device.UpdatedAt).Format "02/01/2006 15:04" }}</small></td>
                         </tr>
                     </table>
                 </div>
@@ -149,7 +149,7 @@
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <strong>{{ .BorrowerName }}</strong>
-                                    <br><small class="text-muted">{{ .LoanDate }}</small>
+                                    <br><small class="text-muted">{{ (localTime .LoanDate).Format "02/01/2006" }} {{ tzCode }}</small>
                                     <br><span class="badge bg-{{ if eq .Status "dipinjam" }}warning{{ else if eq .Status "dikembalikan" }}success{{ else }}danger{{ end }}">
                                         {{ .Status }}
                                     </span>
@@ -185,7 +185,7 @@
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <strong>{{ .UserName }}</strong>
-                                    <br><small class="text-muted">{{ .UsageDate }}</small>
+                                    <br><small class="text-muted">{{ (localTime .UsageDate).Format "02/01/2006" }} {{ tzCode }}</small>
                                     {{ if .Purpose }}
                                     <br><small>{{ .Purpose }}</small>
                                     {{ end }}

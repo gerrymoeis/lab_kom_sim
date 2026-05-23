@@ -4,7 +4,7 @@
     {{ template "layout/card_edit.html" . }}
                     <div class="alert alert-info">
                         <strong>Pelapor:</strong> {{ .lostItem.ReportedBy }}<br>
-                        <strong>Tanggal Lapor:</strong> {{ .lostItem.ReportedDate.Format "02/01/2006" }}<br>
+                        <strong>Tanggal Lapor:</strong> {{ (localTime .lostItem.ReportedDate).Format "02/01/2006" }} {{ tzCode }}<br>
                         <strong>Status:</strong>
                         {{ if eq .lostItem.Status "hilang" }}
                         <span class="badge bg-danger">Hilang</span>
@@ -36,11 +36,11 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="reported_date" class="form-label">Tanggal Lapor</label>
-                                <input type="date" class="form-control" id="reported_date" name="reported_date" value="{{ .lostItem.ReportedDate }}">
+                                <input type="date" class="form-control" id="reported_date" name="reported_date" value="{{ (localTime .lostItem.ReportedDate).Format "2006-01-02" }}">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="last_seen_at" class="form-label">Terakhir Terlihat</label>
-                                <input type="datetime-local" class="form-control" id="last_seen_at" name="last_seen_at" value="{{ if .lostItem.LastSeenAt }}{{ .lostItem.LastSeenAt.Format "2006-01-02T15:04" }}{{ end }}">
+                                <input type="datetime-local" class="form-control" id="last_seen_at" name="last_seen_at" value="{{ if .lostItem.LastSeenAt }}{{ (localTime .lostItem.LastSeenAt).Format "2006-01-02T15:04" }}{{ end }}">
                             </div>
                         </div>
 
@@ -78,7 +78,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="returned_date" class="form-label">Tanggal Dikembalikan</label>
-                                <input type="date" class="form-control" id="returned_date" name="returned_date" value="{{ if .lostItem.ReturnedDate }}{{ .lostItem.ReturnedDate.Format "2006-01-02" }}{{ end }}">
+                                <input type="date" class="form-control" id="returned_date" name="returned_date" value="{{ if .lostItem.ReturnedDate }}{{ (localTime .lostItem.ReturnedDate).Format "2006-01-02" }}{{ end }}">
                             </div>
                         </div>
 

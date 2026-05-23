@@ -57,7 +57,7 @@
                         <tr>
                             <td><strong>{{ .ItemName }}</strong></td>
                             <td>{{ .ReportedBy }}</td>
-                            <td>{{ .ReportedDate.Format "02/01/2006" }}</td>
+                            <td>{{ (localTime .ReportedDate).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
                                 {{ if eq .Status "hilang" }}
                                 <span class="badge bg-danger">Hilang</span>

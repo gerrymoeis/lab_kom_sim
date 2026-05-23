@@ -60,10 +60,10 @@
                             <td><code>{{ .AssetCode }}</code></td>
                             <td>{{ .BorrowerName }}</td>
                             <td><span class="badge bg-secondary">{{ .BorrowerType }}</span></td>
-                            <td>{{ .LoanDate }}</td>
+                            <td>{{ (localTime .LoanDate).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
                                 {{ if .ExpectedReturnDate }}
-                                    {{ .ExpectedReturnDate }}
+                                    {{ (localTime .ExpectedReturnDate).Format "02/01/2006" }}
                                 {{ else }}
                                     -
                                 {{ end }}
