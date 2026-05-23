@@ -30,7 +30,7 @@ type config struct {
 	rampUp       time.Duration
 	setupUsers   int
 	verbose      bool
-	deviceID     int
+	deviceIDs    []int  // Changed from single deviceID to slice
 }
 
 type entityStore struct {
@@ -149,14 +149,37 @@ func parseFlags() *config {
 	return c
 }
 
-func bodyLogbookCreate(c int64) string {
+func bodyLogbookCreate(c int64, workers int) string {
 	v := url.Values{}
-	v.Set("date", "2026-05-23")
-	v.Set("student_name", pk("STRESS_RANDOM_%d_%d", rand.Int63(), c))
-	v.Set("nim", pk("%010d_%d", rand.Int63n(10000000000), c))
-	v.Set("time_in", pk("%02d:00", 6+int(c%12)))
-	v.Set("time_out", pk("%02d:00", 8+int(c%12)))
-	v.Set("purpose", pk("Stress Test Entry %d", c))
+	
+	// Date variation: workers × 3 days (default: 30 days)
+	// Range: 2026-05-01 to 2026-05-30
+	dayVariations := workers * 3
+	day := 1 + int(c%int64(dayVariations))
+	v.Set("date", pk("2026-05-%02d", day))
+	
+	// Time variation: 48 combinations (12 hours × 4 minutes)
+	hour := 6 + int(c%12)
+	minute := int(c%4) * 15  // 0, 15, 30, 45
+	v.Set("time_in", pk("%02d:%02d", hour, minute))
+	
+	// Time out: +2 hours from time_in
+	outHour := hour + 2
+	v.Set("time_out", pk("%02d:%02d", outHour, minute))
+	
+	// Unique student name
+	v.Set("student_name", pk("STRESS_%d", c))
+	
+	// Unique NIM: 13 digits
+	v.Set("nim", pk("%013d", c))
+	
+	// Purpose variation
+	purposes := []string{
+		"Praktikum", "Tugas", "Belajar", "Diskusi", 
+		"Mengerjakan Tugas", "Browsing", "Coding", "Research",
+	}
+	v.Set("purpose", purposes[int(c)%len(purposes)])
+	
 	return v.Encode()
 }
 
@@ -242,7 +265,10 @@ func bodyDeviceTypeEdit(c int64) string {
 	return v.Encode()
 }
 
-func bodyDeviceLoanCreate(c int64, deviceID int) string {
+func bodyDeviceLoanCreate(c int64, deviceIDs []int) string {
+	// Rotate through devices to distribute load
+	deviceID := deviceIDs[int(c)%len(deviceIDs)]
+	
 	v := url.Values{}
 	v.Set("device_id", strconv.Itoa(deviceID))
 	v.Set("borrower_name", pk("STRESS Borrower %d", c))
@@ -260,7 +286,10 @@ func bodyDeviceLoanEdit(c int64) string {
 	return v.Encode()
 }
 
-func bodyDeviceUsageCreate(c int64, deviceID int) string {
+func bodyDeviceUsageCreate(c int64, deviceIDs []int) string {
+	// Rotate through devices to distribute load
+	deviceID := deviceIDs[int(c)%len(deviceIDs)]
+	
 	v := url.Values{}
 	v.Set("device_id", strconv.Itoa(deviceID))
 	v.Set("user_name", pk("STRESS User %d", c))
@@ -337,12 +366,12 @@ func (w *worker) pickEndpoint(counter int64, stores map[string]*entityStore) end
 	}
 
 	createEndpoints := []endpointDef{
-		{"POST", "/logbook/create", bodyLogbookCreate(counter), "logbook", "create"},
+		{"POST", "/logbook/create", bodyLogbookCreate(counter, cfg.workers), "logbook", "create"},
 		{"POST", "/schedules/create", bodyScheduleCreate(counter), "schedules", "create"},
 		{"POST", "/software/create", bodySoftwareCreate(counter), "software", "create"},
 		{"POST", "/device-types/create", bodyDeviceTypeCreate(counter), "device-types", "create"},
-		{"POST", "/device-loans/create", bodyDeviceLoanCreate(counter, cfg.deviceID), "device-loans", "create"},
-		{"POST", "/device-usages/create", bodyDeviceUsageCreate(counter, cfg.deviceID), "device-usages", "create"},
+		{"POST", "/device-loans/create", bodyDeviceLoanCreate(counter, cfg.deviceIDs), "device-loans", "create"},
+		{"POST", "/device-usages/create", bodyDeviceUsageCreate(counter, cfg.deviceIDs), "device-usages", "create"},
 		{"POST", "/lost-items/create", bodyLostItemCreate(counter), "lost-items", "create"},
 		{"POST", pk("/pc/%d/edit", int(counter%40)+1), bodyPCEdit(counter), "pc", "update"},
 		{"POST", pk("/api/pc/%d/status", int(counter%40)+1), bodyPCStatus(counter), "pc", "create"},
@@ -516,7 +545,7 @@ func clientLogin(client *http.Client, baseURL, username, password string) {
 	}
 }
 
-func setupStressUsers(cfg *config) (*http.Client, int) {
+func setupStressUsers(cfg *config) (*http.Client, []int) {
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{
 		Timeout: 30 * time.Second,
@@ -576,46 +605,115 @@ func setupStressUsers(cfg *config) (*http.Client, int) {
 	}
 	log.Printf("Setup: created %d stress users (total needed: %d)", created, cfg.setupUsers)
 
-	deviceID := 0
+	// Step 1: Create device_type first (required for device foreign key)
+	deviceTypeID := 0
 	v = url.Values{}
-	v.Set("device_type_id", "1")
-	v.Set("name", "STRESS_SETUP_DEVICE")
-	v.Set("brand", "Stress Brand")
-	v.Set("quantity_total", "500")
+	v.Set("name", "STRESS_DEVICE_TYPE")
+	v.Set("category", "peripheral")
 	v.Set("item_type", "individual")
-	v.Set("item_mode", "loanable")
-	v.Set("condition", "baik")
-	req, _ = http.NewRequest("POST", cfg.url+"/devices/create", strings.NewReader(v.Encode()))
+	req, _ = http.NewRequest("POST", cfg.url+"/device-types/create", strings.NewReader(v.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err = client.Do(req)
-	if err == nil {
-		resp.Body.Close()
-		log.Printf("Setup: created setup device")
+	if err != nil {
+		log.Fatalf("Setup: failed to create device type: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 302 {
+		log.Fatalf("Setup: device type creation failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	log.Printf("Setup: created device type")
+
+	// Get device_type_id
+	time.Sleep(200 * time.Millisecond)
+	req, _ = http.NewRequest("GET", cfg.url+"/device-types", nil)
+	resp, err = client.Do(req)
+	if err != nil {
+		log.Fatalf("Setup: failed to get device types: %v", err)
+	}
+	body, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	
+	deviceTypeRE := regexp.MustCompile(`href="/device-types/(\d+)/edit"`)
+	if m := deviceTypeRE.FindStringSubmatch(string(body)); len(m) > 1 {
+		deviceTypeID, _ = strconv.Atoi(m[1])
+		log.Printf("Setup: found device type ID=%d", deviceTypeID)
+	} else {
+		log.Fatalf("Setup: could not find device type ID")
 	}
 
-	time.Sleep(500 * time.Millisecond)
-
-	req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list&search=STRESS_SETUP_DEVICE", nil)
-	resp, err = client.Do(req)
-	if err == nil {
-		body, _ := io.ReadAll(resp.Body)
+	// Step 2: Create multiple devices (workers × 2)
+	deviceCount := cfg.workers * 2
+	quantityPerDevice := 50
+	deviceIDs := []int{}
+	
+	log.Printf("Setup: creating %d devices with %d quantity each (total: %d)", 
+		deviceCount, quantityPerDevice, deviceCount*quantityPerDevice)
+	
+	for i := 1; i <= deviceCount; i++ {
+		v = url.Values{}
+		v.Set("device_type_id", strconv.Itoa(deviceTypeID))
+		v.Set("name", pk("STRESS_DEVICE_%d", i))
+		v.Set("brand", "Stress Brand")
+		v.Set("quantity_total", strconv.Itoa(quantityPerDevice))
+		v.Set("item_type", "individual")
+		v.Set("item_mode", "loanable")
+		v.Set("condition", "baik")
+		
+		req, _ = http.NewRequest("POST", cfg.url+"/devices/create", strings.NewReader(v.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Fatalf("Setup: failed to create device %d: %v", i, err)
+		}
+		body, _ = io.ReadAll(resp.Body)
 		resp.Body.Close()
-		if m := deviceIDRE.FindStringSubmatch(string(body)); len(m) > 1 {
-			deviceID, _ = strconv.Atoi(m[1])
-			log.Printf("Setup: found setup device ID=%d", deviceID)
-		} else {
-			log.Printf("Setup: WARNING - could not find setup device ID on list page")
+		if resp.StatusCode != 302 {
+			log.Fatalf("Setup: device %d creation failed with status %d: %s", 
+				i, resp.StatusCode, string(body))
+		}
+		
+		// Get device ID with retry logic
+		var deviceID int
+		var found bool
+		
+		for retry := 0; retry < 5; retry++ {
+			time.Sleep(200 * time.Millisecond)
+			
+			req, _ = http.NewRequest("GET", 
+				cfg.url+"/devices?tab=list&search=STRESS_DEVICE_"+strconv.Itoa(i), nil)
+			resp, err = client.Do(req)
+			if err != nil {
+				log.Printf("Setup: retry %d - failed to search device %d: %v", retry+1, i, err)
+				continue
+			}
+			body, _ = io.ReadAll(resp.Body)
+			resp.Body.Close()
+			
+			if m := deviceIDRE.FindStringSubmatch(string(body)); len(m) > 1 {
+				deviceID, _ = strconv.Atoi(m[1])
+				deviceIDs = append(deviceIDs, deviceID)
+				found = true
+				break
+			}
+		}
+		
+		if !found {
+			log.Fatalf("Setup: could not find device %d ID after 5 retries", i)
+		}
+		
+		if i%5 == 0 || i == deviceCount {
+			log.Printf("Setup: created %d/%d devices", i, deviceCount)
 		}
 	}
+	
+	log.Printf("Setup: successfully created %d devices (IDs: %d-%d)", 
+		len(deviceIDs), deviceIDs[0], deviceIDs[len(deviceIDs)-1])
 
-	req, _ = http.NewRequest("GET", cfg.url+"/logout", nil)
-	resp, err = client.Do(req)
-	if err == nil {
-		resp.Body.Close()
-	}
-	log.Printf("Setup: logged out rekan")
+	// Don't logout - keep session for discovery phase
+	log.Printf("Setup: keeping rekan session for discovery")
 
-	return client, deviceID
+	return client, deviceIDs
 }
 
 func runWorkers(cfg *config, stores map[string]*entityStore) []result {
@@ -672,6 +770,13 @@ func runWorkers(cfg *config, stores map[string]*entityStore) []result {
 				if cfg.verbose && n <= 20 {
 					log.Printf("[%d] %s %s → %d (%v)", n, ep.method, ep.path, r.statusCode, latency)
 				}
+				
+				// Log CREATE failures for debugging
+				if ep.op == "create" && (r.statusCode < 200 || r.statusCode >= 400) && n <= 50 {
+					log.Printf("[%d] CREATE FAILED: %s %s\nBody: %s\n→ Status: %d (%v)", 
+						n, ep.method, ep.path, ep.body, r.statusCode, latency)
+				}
+				
 				results <- r
 			}
 		}(workers[i])
@@ -864,9 +969,16 @@ func main() {
 
 	var discoveryClient *http.Client
 	if cfg.setupUsers > 0 {
-		var deviceID int
-		discoveryClient, deviceID = setupStressUsers(cfg)
-		cfg.deviceID = deviceID
+		var deviceIDs []int
+		discoveryClient, deviceIDs = setupStressUsers(cfg)
+		cfg.deviceIDs = deviceIDs
+		
+		// Validate deviceIDs
+		if len(deviceIDs) == 0 {
+			log.Fatalf("Setup: no devices created")
+		}
+		log.Printf("Setup: validated %d devices", len(deviceIDs))
+		
 		time.Sleep(1 * time.Second)
 	} else {
 		jar, _ := cookiejar.New(nil)
