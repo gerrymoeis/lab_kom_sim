@@ -71,6 +71,7 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 		"page":       page,
 		"totalPages": totalPages,
 		"totalItems": totalCount,
+		"startRow":   (page-1)*pageSize + 1,
 		"query":      query,
 		"filters":    filterMap,
 		"usernames":  usernames,

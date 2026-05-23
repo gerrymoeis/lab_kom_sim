@@ -107,6 +107,7 @@
                 </div>
             </form>
 
+            {{ if gt (len .devices) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .devices)) 1 }} dari {{ .totalItems }} perangkat</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
             <!-- Table -->
@@ -194,6 +195,7 @@
                 </div>
             </form>
 
+            {{ if gt (len .deviceTypes) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceTypes)) 1 }} dari {{ .totalItems }} jenis barang</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
             <!-- Table -->
@@ -250,11 +252,6 @@
                 </table>
             </div>
             
-            <!-- Total Count -->
-            <div class="mt-2 text-muted">
-                <small>Total: <strong>{{ len .deviceTypes }}</strong> jenis barang</small>
-            </div>
-
             {{ template "layout/pagination.html" . }}
 
             {{ else if eq .activeTab "loans" }}
@@ -280,6 +277,7 @@
                 </div>
             </form>
 
+            {{ if gt (len .deviceLoans) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceLoans)) 1 }} dari {{ .totalItems }} peminjaman</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
             <!-- Table -->
@@ -368,6 +366,7 @@
                 </div>
             </form>
 
+            {{ if gt (len .deviceUsages) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceUsages)) 1 }} dari {{ .totalItems }} pemakaian</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
             <!-- Table -->

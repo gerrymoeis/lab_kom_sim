@@ -27,6 +27,7 @@
                 </form>
             </div>
         </div>
+        {{ if gt (len .schedules) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .schedules)) 1 }} dari {{ .totalItems }} jadwal</p>{{ end }}
         {{ template "layout/pagination.html" . }}
         <div class="table-responsive">
             <table class="table table-hover align-middle">
