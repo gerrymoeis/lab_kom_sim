@@ -24,6 +24,7 @@ Sistem manajemen inventaris laboratorium komputer dengan visualisasi grid PC, OC
 ```
 poc_prototype/
 ├── cmd/server/          # Entry point aplikasi
+├── cmd/stress_test/     # Stress test tool (pure Go HTTP client)
 ├── internal/
 │   ├── config/          # Konfigurasi (.env)
 │   ├── database/        # Database (SQLite + PostgreSQL)
@@ -107,6 +108,46 @@ OPENROUTER_API_KEY=sk-or-your-key
 CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
 ./app-simlab
 ```
+
+## Stress Test (cmd/stress_test)
+
+Stress test tool untuk mengirim 1M request dalam 3-5 menit ke server deploy_android via Tailscale. Multi-user auth (login sebagai `rekan` → buat N stress users → per-worker login), 10 entity × 4 CRUD operations (50R/25C/15U/10D), latency percentiles per-operation & per-entity.
+
+### Prasyarat
+- Server `deploy_android` berjalan di HP (Termux) dengan WRITE_MODE=async
+- Laptop dan HP dalam 1 Tailscale network
+- `go` terinstall di laptop
+
+### Cara pakai
+
+```bash
+# Phase 1: 10K request — validasi coverage + error rate
+go run cmd/stress_test/main.go --url http://100.x.y.z:8080 --total-requests 10000
+
+# Phase 2: 100K request — scaling test
+go run cmd/stress_test/main.go --url http://100.x.y.z:8080 --total-requests 100000 --workers 20
+
+# Phase 3: 1M request — target 3-5 menit
+go run cmd/stress_test/main.go --url http://100.x.y.z:8080 --total-requests 1000000 --workers 50 --ramp-up 10s
+```
+
+### Flags
+
+| Flag | Default | Deskripsi |
+|------|---------|-----------|
+| `--url` | `http://localhost:8080` | Target server URL (wajib, pakai Tailscale IP) |
+| `--total-requests` | `10000` | Total request yang dikirim |
+| `--workers` | `10` | Jumlah concurrent workers |
+| `--mode` | `mix` | Test mode: `read`, `write`, `mix` |
+| `--read-pct` | `50` | Persentase read operation di mix mode |
+| `--ramp-up` | `5s` | Durasi ramp-up bertahap |
+| `--setup-users` | `20` | Jumlah stress test users yang dibuat |
+| `--verbose` | `false` | Log tiap request |
+
+### Catatan
+- Login sebagai `rekan` untuk setup users, tiap worker login dengan akun unik
+- Semua entity (PC, device, software, logbook, schedule, dll) akan di-create/diupdate/didelete
+- Report ditampilkan setelah selesai: latency percentiles per-operation & per-entity
 
 ## Fitur
 
