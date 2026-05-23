@@ -19,6 +19,7 @@ import (
 )
 
 var tableRE = regexp.MustCompile(`href="/(?:logbook|schedules|software|devices|device-types|device-loans|device-usages|lost-items|admin/users)/(\d+)(?:/edit|/delete|")`)
+var deviceIDRE = regexp.MustCompile(`href="/devices/(\d+)"`)
 
 type config struct {
 	url          string
@@ -29,6 +30,7 @@ type config struct {
 	rampUp       time.Duration
 	setupUsers   int
 	verbose      bool
+	deviceID     int
 }
 
 type entityStore struct {
@@ -150,8 +152,8 @@ func parseFlags() *config {
 func bodyLogbookCreate(c int64) string {
 	v := url.Values{}
 	v.Set("date", "2026-05-23")
-	v.Set("student_name", pk("STRESS_DB_%d", c))
-	v.Set("nim", pk("STRESS%08d", c))
+	v.Set("student_name", pk("STRESS_RANDOM_%d_%d", rand.Int63(), c))
+	v.Set("nim", pk("%010d", rand.Int63n(10000000000)))
 	v.Set("time_in", "08:00")
 	v.Set("time_out", "10:00")
 	v.Set("purpose", pk("Stress Test Entry %d", c))
@@ -259,9 +261,9 @@ func bodyDeviceEdit(c int64) string {
 	return v.Encode()
 }
 
-func bodyDeviceLoanCreate(c int64) string {
+func bodyDeviceLoanCreate(c int64, deviceID int) string {
 	v := url.Values{}
-	v.Set("device_id", "1")
+	v.Set("device_id", strconv.Itoa(deviceID))
 	v.Set("borrower_name", pk("STRESS Borrower %d", c))
 	v.Set("loan_date", "2026-05-23")
 	v.Set("quantity", "1")
@@ -277,9 +279,9 @@ func bodyDeviceLoanEdit(c int64) string {
 	return v.Encode()
 }
 
-func bodyDeviceUsageCreate(c int64) string {
+func bodyDeviceUsageCreate(c int64, deviceID int) string {
 	v := url.Values{}
-	v.Set("device_id", "1")
+	v.Set("device_id", strconv.Itoa(deviceID))
 	v.Set("user_name", pk("STRESS User %d", c))
 	v.Set("usage_date", "2026-05-23")
 	v.Set("quantity", "1")
@@ -359,8 +361,8 @@ func (w *worker) pickEndpoint(counter int64, stores map[string]*entityStore) end
 		{"POST", "/software/create", bodySoftwareCreate(counter), "software", "create"},
 		{"POST", "/device-types/create", bodyDeviceTypeCreate(counter), "device-types", "create"},
 		{"POST", "/devices/create", bodyDeviceCreate(counter), "devices", "create"},
-		{"POST", "/device-loans/create", bodyDeviceLoanCreate(counter), "device-loans", "create"},
-		{"POST", "/device-usages/create", bodyDeviceUsageCreate(counter), "device-usages", "create"},
+		{"POST", "/device-loans/create", bodyDeviceLoanCreate(counter, cfg.deviceID), "device-loans", "create"},
+		{"POST", "/device-usages/create", bodyDeviceUsageCreate(counter, cfg.deviceID), "device-usages", "create"},
 		{"POST", "/lost-items/create", bodyLostItemCreate(counter), "lost-items", "create"},
 		{"POST", pk("/pc/%d/edit", int(counter%40)+1), bodyPCEdit(counter), "pc", "update"},
 		{"POST", pk("/api/pc/%d/status", int(counter%40)+1), bodyPCStatus(counter), "pc", "create"},
@@ -542,7 +544,7 @@ func clientLogin(client *http.Client, baseURL, username, password string) {
 	}
 }
 
-func setupStressUsers(cfg *config) *http.Client {
+func setupStressUsers(cfg *config) (*http.Client, int) {
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{
 		Timeout: 30 * time.Second,
@@ -602,6 +604,38 @@ func setupStressUsers(cfg *config) *http.Client {
 	}
 	log.Printf("Setup: created %d stress users (total needed: %d)", created, cfg.setupUsers)
 
+	deviceID := 0
+	v = url.Values{}
+	v.Set("device_type_id", "1")
+	v.Set("name", "STRESS_SETUP_DEVICE")
+	v.Set("brand", "Stress Brand")
+	v.Set("quantity_total", "500")
+	v.Set("item_type", "individual")
+	v.Set("item_mode", "loanable")
+	v.Set("condition", "baik")
+	req, _ = http.NewRequest("POST", cfg.url+"/devices/create", strings.NewReader(v.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err = client.Do(req)
+	if err == nil {
+		resp.Body.Close()
+		log.Printf("Setup: created setup device")
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list&search=STRESS_SETUP_DEVICE", nil)
+	resp, err = client.Do(req)
+	if err == nil {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if m := deviceIDRE.FindStringSubmatch(string(body)); len(m) > 1 {
+			deviceID, _ = strconv.Atoi(m[1])
+			log.Printf("Setup: found setup device ID=%d", deviceID)
+		} else {
+			log.Printf("Setup: WARNING - could not find setup device ID on list page")
+		}
+	}
+
 	req, _ = http.NewRequest("GET", cfg.url+"/logout", nil)
 	resp, err = client.Do(req)
 	if err == nil {
@@ -609,7 +643,7 @@ func setupStressUsers(cfg *config) *http.Client {
 	}
 	log.Printf("Setup: logged out rekan")
 
-	return client
+	return client, deviceID
 }
 
 func runWorkers(cfg *config, stores map[string]*entityStore) []result {
@@ -858,7 +892,9 @@ func main() {
 
 	var discoveryClient *http.Client
 	if cfg.setupUsers > 0 {
-		discoveryClient = setupStressUsers(cfg)
+		var deviceID int
+		discoveryClient, deviceID = setupStressUsers(cfg)
+		cfg.deviceID = deviceID
 		time.Sleep(1 * time.Second)
 	} else {
 		jar, _ := cookiejar.New(nil)
