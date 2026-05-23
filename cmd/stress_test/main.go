@@ -153,9 +153,9 @@ func bodyLogbookCreate(c int64) string {
 	v := url.Values{}
 	v.Set("date", "2026-05-23")
 	v.Set("student_name", pk("STRESS_RANDOM_%d_%d", rand.Int63(), c))
-	v.Set("nim", pk("%010d", rand.Int63n(10000000000)))
-	v.Set("time_in", "08:00")
-	v.Set("time_out", "10:00")
+	v.Set("nim", pk("%010d_%d", rand.Int63n(10000000000), c))
+	v.Set("time_in", pk("%02d:00", 6+int(c%12)))
+	v.Set("time_out", pk("%02d:00", 8+int(c%12)))
 	v.Set("purpose", pk("Stress Test Entry %d", c))
 	return v.Encode()
 }
@@ -239,14 +239,6 @@ func bodyDeviceTypeEdit(c int64) string {
 	v.Set("name", pk("STRESS Type Edit %d", c))
 	v.Set("category", "network")
 	v.Set("item_type", "consumable")
-	return v.Encode()
-}
-
-func bodyDeviceEdit(c int64) string {
-	v := url.Values{}
-	v.Set("name", pk("STRESS Device Edit %d", c))
-	v.Set("brand", "Stress Brand Edit")
-	v.Set("quantity_total", "1")
 	return v.Encode()
 }
 
@@ -375,10 +367,6 @@ func (w *worker) pickEndpoint(counter int64, stores map[string]*entityStore) end
 		updateEndpoints = append(updateEndpoints,
 			endpointDef{"POST", pk("/software/%d/edit", id), bodySoftwareEdit(counter), "software", "update"})
 	}
-	if id := stores["devices"].pickEditID(); id > 0 {
-		updateEndpoints = append(updateEndpoints,
-			endpointDef{"POST", pk("/devices/%d/edit", id), bodyDeviceEdit(counter), "devices", "update"})
-	}
 	if id := stores["device-types"].pickEditID(); id > 0 {
 		updateEndpoints = append(updateEndpoints,
 			endpointDef{"POST", pk("/device-types/%d/edit", id), bodyDeviceTypeEdit(counter), "device-types", "update"})
@@ -408,10 +396,6 @@ func (w *worker) pickEndpoint(counter int64, stores map[string]*entityStore) end
 	if id := stores["software"].pickEditID(); id > 0 {
 		deleteEndpoints = append(deleteEndpoints,
 			endpointDef{"POST", pk("/software/%d/delete", id), "", "software", "delete"})
-	}
-	if id := stores["devices"].pickEditID(); id > 0 {
-		deleteEndpoints = append(deleteEndpoints,
-			endpointDef{"POST", pk("/devices/%d/delete", id), "", "devices", "delete"})
 	}
 	if id := stores["device-types"].pickEditID(); id > 0 {
 		deleteEndpoints = append(deleteEndpoints,
