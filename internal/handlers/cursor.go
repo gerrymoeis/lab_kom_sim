@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"strconv"
 	"strings"
-	"time"
 
 	"inventaris-lab-kom/internal/models"
 )
@@ -34,16 +33,4 @@ func buildLogbookCursor(e models.LogbookEntry) string {
 	return encodeCursor(e.Date.Format("2006-01-02"), e.TimeIn, strconv.Itoa(e.ID))
 }
 
-func parseActivityCursor(cursor string) (id int64, createdAt time.Time) {
-	parts, ok := decodeCursor(cursor)
-	if !ok || len(parts) < 2 {
-		return 0, time.Time{}
-	}
-	id, _ = strconv.ParseInt(parts[1], 10, 64)
-	createdAt, _ = time.Parse(time.RFC3339Nano, parts[0])
-	return id, createdAt
-}
 
-func buildActivityCursor(l models.ActivityLog) string {
-	return encodeCursor(l.CreatedAt.Format(time.RFC3339Nano), strconv.Itoa(l.ID))
-}
