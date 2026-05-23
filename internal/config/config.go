@@ -40,7 +40,7 @@ func Load() *Config {
 		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
-		Timezone:         getEnv("TIMEZONE", "Local"),
+		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
 	}
 }
 
