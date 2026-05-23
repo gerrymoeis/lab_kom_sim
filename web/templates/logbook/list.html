@@ -119,7 +119,7 @@
                         <tbody>
                             {{ range .entries }}
                             <tr>
-                                <td>{{ .Date.Format "02/01/2006" }}</td>
+                                <td>{{ (localTime .Date).Format "02/01/2006" }} {{ tzCode }}</td>
                                 <td>{{ .StudentName }}</td>
                                 <td>{{ .NIM }}</td>
                                 <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>

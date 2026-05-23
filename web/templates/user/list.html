@@ -38,7 +38,7 @@
                                     {{ .Role }}
                                 </span>
                             </td>
-                            <td>{{ .CreatedAt.Format "02/01/2006" }}</td>
+                            <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
                                 {{ if and (ne .Username "admin") (ne .Username "rekan") }}
                                 <form method="POST" action="/admin/users/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">

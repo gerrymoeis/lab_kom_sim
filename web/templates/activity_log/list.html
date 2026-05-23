@@ -89,6 +89,8 @@
             </div>
         </div>
 
+        {{ template "layout/pagination.html" . }}
+
         <!-- Activity Logs Table -->
         <div class="card">
             <div class="card-body">
@@ -118,8 +120,8 @@
                             {{ range .logs }}
                             <tr>
                                 <td>
-                                    <small>{{ .CreatedAt.Format "02/01/2006" }}</small><br>
-                                    <small class="text-muted">{{ .CreatedAt.Format "15:04:05" }}</small>
+                                    <small>{{ (localTime .CreatedAt).Format "02/01/2006" }}</small><br>
+                                    <small class="text-muted">{{ (localTime .CreatedAt).Format "15:04:05" }} {{ tzCode }}</small>
                                 </td>
                                 <td>
                                     <span class="badge bg-secondary">{{ .Username }}</span>
@@ -167,7 +169,7 @@
                                             data-bs-toggle="modal" 
                                             data-bs-target="#detailModal"
                                             data-log-id="{{ .ID }}"
-                                            data-log-timestamp="{{ .CreatedAt.Format "02/01/2006 15:04:05" }}"
+                                            data-log-timestamp="{{ (localTime .CreatedAt).Format "02/01/2006 15:04:05" }} {{ tzCode }}"
                                             data-log-username="{{ .Username }}"
                                             data-log-role="{{ .UserRole }}"
                                             data-log-action="{{ .Action }}"
