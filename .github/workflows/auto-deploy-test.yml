@@ -31,18 +31,18 @@ jobs:
           git config user.email "github-actions@github.com"
           git checkout -B deploy_test origin/deploy_test
 
-          echo "=== 2. Save deploy_test-only files (not in refactoring) ==="
+          echo "=== 2. Save deploy_test-specific files (different from refactoring) ==="
           SAVEDIR=$(mktemp -d)
           declare -a deploy_only_files
-          for f in $(git ls-tree HEAD --name-only -r); do
-            if ! git show origin/refactoring:"$f" >/dev/null 2>&1; then
+          for f in $(git diff --diff-filter=AM --name-only origin/refactoring HEAD -- .); do
+            if [ -f "$f" ]; then
               mkdir -p "$SAVEDIR/$(dirname "$f")"
               cp "$f" "$SAVEDIR/$f"
               deploy_only_files+=("$f")
             fi
           done
           if [ ${#deploy_only_files[@]} -gt 0 ]; then
-            echo "Saved ${#deploy_only_files[@]} deploy_test-only file(s):"
+            echo "Saved ${#deploy_only_files[@]} deploy_test-specific file(s):"
             printf '  %s\n' "${deploy_only_files[@]}"
           fi
 
