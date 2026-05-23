@@ -2,6 +2,7 @@
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -16,14 +17,16 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	cursor := c.Query("cursor")
-	direction := c.DefaultQuery("dir", "next")
-	limit := 50
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 50
 
-	cursorID, cursorCreatedAt := parseActivityCursor(cursor)
-	filters := services.ActivityLogFilters{
-		Limit: limit, CursorID: cursorID, CursorCreatedAt: cursorCreatedAt, Direction: direction,
-	}
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	query := ""
+	if len(values) > 0 { query = "&" + values.Encode() }
+
+	filters := services.ActivityLogFilters{Limit: pageSize, Offset: (page - 1) * pageSize}
 
 	if d := c.Query("date_from"); d != "" { if t, err := services.ParseDate(d); err == nil { filters.DateFrom = &t } }
 	if d := c.Query("date_to"); d != "" { if t, err := services.ParseDate(d); err == nil { eod := t.Add(23*time.Hour + 59*time.Minute + 59*time.Second); filters.DateTo = &eod } }
@@ -33,64 +36,42 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 	if s := c.Query("status"); s != "" { filters.Status = s }
 
 	keyword := c.Query("search")
-	searchOffset, _ := strconv.Atoi(c.Query("search_offset"))
 
 	var alogs []models.ActivityLog
-	var hasMore bool
-	var prevCursor, nextCursor string
+	var totalCount int
 
 	if keyword != "" {
-		r, _, err := h.activityLogService.SearchLogs(keyword, limit+1, searchOffset)
+		r, total, err := h.activityLogService.SearchLogs(keyword, pageSize, (page-1)*pageSize)
 		if err != nil { h.errHTML(c, "Gagal mencari activity logs"); return }
-		if len(r) > limit {
-			hasMore = true
-			r = r[:limit]
-		}
 		alogs = r
-		if searchOffset > 0 {
-			prevOffset := searchOffset - limit
-			if prevOffset < 0 { prevOffset = 0 }
-			prevCursor = strconv.Itoa(prevOffset)
-		}
-		if hasMore {
-			nextCursor = strconv.Itoa(searchOffset + limit)
-		}
+		totalCount = total
 	} else {
-		r, hMore, err := h.activityLogService.GetLogsCursor(filters)
+		r, total, err := h.activityLogService.GetLogs(filters)
 		if err != nil { h.errHTML(c, "Gagal mengambil activity logs"); return }
 		alogs = r
-		hasMore = hMore
-		if len(alogs) > 0 {
-			if cursor != "" {
-				prevCursor = buildActivityCursor(alogs[0])
-			}
-			if hasMore {
-				nextCursor = buildActivityCursor(alogs[len(alogs)-1])
-			}
-		}
+		totalCount = total
 	}
+
+	totalPages := (totalCount + pageSize - 1) / pageSize
+	if totalPages < 1 { totalPages = 1 }
 
 	usernames, _ := h.activityLogService.GetUsernames()
 
-	searchMode := keyword != ""
 	filterMap := gin.H{
 		"date_from": c.Query("date_from"), "date_to": c.Query("date_to"),
 		"action": c.Query("action"), "entity_type": c.Query("entity_type"),
 		"username": c.Query("username"), "status": c.Query("status"),
 		"search": keyword,
 	}
-	if searchMode {
-		filterMap["search_offset"] = searchOffset
-	}
 
 	c.HTML(http.StatusOK, "activity_log/list.html", gin.H{
 		"title": "Activity Logs", "currentPage": "activity_logs",
 		"username": username, "role": role,
 		"logs":       alogs,
-		"hasMore":    hasMore,
-		"prevCursor": prevCursor,
-		"nextCursor": nextCursor,
-		"searchMode": searchMode,
+		"page":       page,
+		"totalPages": totalPages,
+		"totalItems": totalCount,
+		"query":      query,
 		"filters":    filterMap,
 		"usernames":  usernames,
 	})
