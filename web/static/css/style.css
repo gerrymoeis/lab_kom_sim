@@ -25,6 +25,7 @@
     box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.25);
 }
 
+.card { margin-top: 1rem; }
 .card:hover { transform: translateY(-2px); }
 
 .form-label.required::after {
