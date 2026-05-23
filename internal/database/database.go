@@ -37,6 +37,12 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 	}
 
 	for _, db := range []*sql.DB{reader, writer} {
+		if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+			return nil, fmt.Errorf("failed to set journal_mode: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
+			return nil, fmt.Errorf("failed to set busy_timeout: %w", err)
+		}
 		if _, err := db.Exec("PRAGMA temp_store=MEMORY"); err != nil {
 			return nil, fmt.Errorf("failed to set temp_store: %w", err)
 		}
