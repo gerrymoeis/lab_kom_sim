@@ -67,6 +67,7 @@ jobs:
           sed -i 's|_busy_timeout=5000|_pragma=busy_timeout(5000)|' internal/database/database.go
           sed -i 's|_synchronous=NORMAL|_pragma=synchronous(NORMAL)|' internal/database/database.go
           sed -i 's|_foreign_keys=ON|_pragma=foreign_keys(ON)|' internal/database/database.go
+          sed -i 's|_loc=UTC|loc=UTC|' internal/database/database.go
 
           echo "=== 6. Resolve dependencies ==="
           go mod tidy
