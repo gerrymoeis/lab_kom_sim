@@ -299,10 +299,10 @@
                             <td><code>{{ .DeviceAssetCode }}</code></td>
                             <td>{{ .BorrowerName }}</td>
                             <td><span class="badge bg-secondary">{{ .BorrowerType }}</span></td>
-                            <td>{{ .LoanDate.Format "02/01/2006" }}</td>
+                            <td>{{ (localTime .LoanDate).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
                                 {{ if .ExpectedReturnDate }}
-                                    {{ .ExpectedReturnDate.Format "02/01/2006" }}
+                                    {{ (localTime .ExpectedReturnDate).Format "02/01/2006" }}
                                 {{ else }}
                                     -
                                 {{ end }}
@@ -385,7 +385,7 @@
                             <td><code>{{ .DeviceAssetCode }}</code></td>
                             <td>{{ .UserName }}</td>
                             <td><span class="badge bg-secondary">{{ .UserType }}</span></td>
-                            <td>{{ .UsageDate.Format "02/01/2006" }}</td>
+                            <td>{{ (localTime .UsageDate).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
                                 <select class="form-select form-select-sm availability-select" data-usage-id="{{ .ID }}" style="width:auto;">
                                     <option value="yes" {{ if eq .IsAvailable "yes" }}selected{{ end }}>Ada</option>

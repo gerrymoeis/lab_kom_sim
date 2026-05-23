@@ -33,7 +33,7 @@
                 {{ end }}
                 <hr><h6 class="text-primary mb-3"><i class="bi bi-clipboard-data"></i> Informasi Tambahan</h6>
                 <table class="table table-bordered">
-                    <tr><th width="30%">Tanggal Pembelian</th><td>{{ if .pc.PurchaseDate }}{{ .pc.PurchaseDate }}{{ else }}-{{ end }}</td></tr>
+                    <tr><th width="30%">Tanggal Pembelian</th><td>{{ if .pc.PurchaseDate }}{{ (localTime .pc.PurchaseDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td></tr>
                     <tr><th>Waktu Terakhir Dicek</th><td>{{ if .pc.LastChecked }}{{ .lastCheckedFormatted }}{{ else }}-{{ end }}</td></tr>
                     <tr><th>Catatan</th><td>{{ if .pc.Notes }}{{ .pc.Notes }}{{ else }}-{{ end }}</td></tr>
                     <tr><th>Catatan Tindakan</th><td>{{ if .pc.ActionNotes }}{{ .pc.ActionNotes }}{{ else }}-{{ end }}</td></tr>
