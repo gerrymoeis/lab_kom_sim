@@ -19,6 +19,7 @@ type Config struct {
 	GeminiAPIKey     string
 	OpenRouterAPIKey string
 	WriteMode        string
+	Timezone         string
 }
 
 // Load loads configuration from environment variables with defaults
@@ -39,6 +40,7 @@ func Load() *Config {
 		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
+		Timezone:         getEnv("TIMEZONE", "Local"),
 	}
 }
 

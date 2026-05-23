@@ -107,10 +107,10 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 			switch v := t.(type) {
 			case time.Time:
 				if v.IsZero() { return v }
-				return v.In(time.Local)
+				return v.In(timeutil.Location())
 			case *time.Time:
 				if v == nil || v.IsZero() { return v }
-				return v.In(time.Local)
+				return v.In(timeutil.Location())
 			}
 			return t
 		},
