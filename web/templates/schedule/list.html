@@ -29,7 +29,7 @@
         </div>
         {{ if gt (len .schedules) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .schedules)) 1 }} dari {{ .totalItems }} jadwal</p>{{ end }}
         {{ template "layout/pagination.html" . }}
-        <div class="table-responsive mt-2">
+        <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
