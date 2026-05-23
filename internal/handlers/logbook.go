@@ -105,6 +105,7 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		},
 		"pageSize":   pageSize,
 		"totalPages": 0,
+		"startRow":   0,
 		"hasMore":    hasMore,
 		"prevCursor": prevCursor,
 		"nextCursor": nextCursor,
