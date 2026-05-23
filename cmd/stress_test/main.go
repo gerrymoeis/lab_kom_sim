@@ -523,7 +523,23 @@ func discoverIDs(url string, client *http.Client) map[string]*entityStore {
 	return stores
 }
 
-func setupStressUsers(cfg *config) {
+func clientLogin(client *http.Client, baseURL, username, password string) {
+	v := url.Values{}
+	v.Set("username", username)
+	v.Set("password", password)
+	req, _ := http.NewRequest("POST", baseURL+"/login", strings.NewReader(v.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatalf("Login as %s failed: %v", username, err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 302 {
+		log.Fatalf("Login as %s returned %d", username, resp.StatusCode)
+	}
+}
+
+func setupStressUsers(cfg *config) *http.Client {
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{
 		Timeout: 30 * time.Second,
@@ -582,6 +598,7 @@ func setupStressUsers(cfg *config) {
 		}
 	}
 	log.Printf("Setup: created %d stress users (total needed: %d)", created, cfg.setupUsers)
+	return client
 }
 
 func runWorkers(cfg *config, stores map[string]*entityStore) []result {
@@ -592,8 +609,16 @@ func runWorkers(cfg *config, stores map[string]*entityStore) []result {
 	for i := 0; i < cfg.workers; i++ {
 		w := newWorker(i+1, cfg, results)
 		username := pk("stress_%d", (i % cfg.setupUsers) + 1)
-		if err := w.login(username, "Stress123!"); err != nil {
-			log.Fatalf("Worker %d login as %s failed: %v", i+1, username, err)
+		var loggedIn bool
+		for retry := 0; retry < 10; retry++ {
+			if err := w.login(username, "Stress123!"); err == nil {
+				loggedIn = true
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		if !loggedIn {
+			log.Fatalf("Worker %d login as %s failed after retries", i+1, username)
 		}
 		if cfg.verbose {
 			log.Printf("Worker %d: logged in as %s", i+1, username)
@@ -831,17 +856,24 @@ func main() {
 	cfg := parseFlags()
 	log.SetFlags(0)
 
+	var discoveryClient *http.Client
 	if cfg.setupUsers > 0 {
-		setupStressUsers(cfg)
+		discoveryClient = setupStressUsers(cfg)
+		time.Sleep(1 * time.Second)
+	} else {
+		jar, _ := cookiejar.New(nil)
+		discoveryClient = &http.Client{
+			Timeout: 30 * time.Second,
+			Jar:     jar,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		clientLogin(discoveryClient, cfg.url, "rekan", "rekan123")
 	}
 
-	adminWorker := newWorker(0, cfg, nil)
-	if err := adminWorker.login("rekan", "rekan123"); err != nil {
-		log.Fatalf("Admin login failed: %v", err)
-	}
-	log.Printf("Admin logged in, discovering existing data...")
-
-	stores := discoverIDs(cfg.url, adminWorker.client)
+	log.Printf("Discovery: reading existing data...")
+	stores := discoverIDs(cfg.url, discoveryClient)
 
 	log.Printf("Discovered IDs:")
 	for name, s := range stores {
