@@ -21,7 +21,7 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Sync deploy_test = refactoring (exact match)
+      - name: Sync refactoring → deploy_test (preserve deploy_test-only files)
         shell: bash
         run: |
           set -euo pipefail
@@ -31,15 +31,38 @@ jobs:
           git config user.email "github-actions@github.com"
           git checkout -B deploy_test origin/deploy_test
 
-          echo "=== 2. Reset index to refactoring (exact match) ==="
+          echo "=== 2. Save deploy_test-only files (not in refactoring) ==="
+          SAVEDIR=$(mktemp -d)
+          declare -a deploy_only_files
+          for f in $(git ls-tree HEAD --name-only -r); do
+            if ! git show origin/refactoring:"$f" >/dev/null 2>&1; then
+              mkdir -p "$SAVEDIR/$(dirname "$f")"
+              cp "$f" "$SAVEDIR/$f"
+              deploy_only_files+=("$f")
+            fi
+          done
+          if [ ${#deploy_only_files[@]} -gt 0 ]; then
+            echo "Saved ${#deploy_only_files[@]} deploy_test-only file(s):"
+            printf '  %s\n' "${deploy_only_files[@]}"
+          fi
+
+          echo "=== 3. Reset index to refactoring ==="
           git rm -r --cached .
           git checkout origin/refactoring -- .
 
-          echo "=== 3. Verify build ==="
+          echo "=== 4. Restore deploy_test-only files ==="
+          for f in "${deploy_only_files[@]}"; do
+            mkdir -p "$(dirname "$f")"
+            cp "$SAVEDIR/$f" "$f"
+            git add "$f"
+          done
+          rm -rf "$SAVEDIR"
+
+          echo "=== 5. Verify build ==="
           go build -tags sqlite_fts5 ./cmd/server/
           go vet -tags sqlite_fts5 ./cmd/server/
 
-          echo "=== 4. Commit and push ==="
+          echo "=== 6. Commit and push ==="
           if ! git diff --cached --quiet; then
             git commit -m "sync: align deploy_test with refactoring"
             git push origin deploy_test
