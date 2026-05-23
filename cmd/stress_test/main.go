@@ -246,6 +246,7 @@ func bodyDeviceCreate(c int64) string {
 	v.Set("name", pk("STRESS Device %d", c))
 	v.Set("brand", "Stress Brand")
 	v.Set("quantity_total", "1")
+	v.Set("item_type", "consumable")
 	return v.Encode()
 }
 
@@ -297,6 +298,7 @@ func bodyLostItemCreate(c int64) string {
 	v.Set("item_name", pk("STRESS Lost Item %d", c))
 	v.Set("reported_by", pk("STRESS Reporter %d", c))
 	v.Set("reported_date", "2026-05-23")
+	v.Set("status", "hilang")
 	return v.Encode()
 }
 
