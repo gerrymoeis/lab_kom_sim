@@ -89,9 +89,11 @@
         <!-- Results Summary -->
         <div class="row mb-3">
             <div class="col">
-                <p class="text-muted">
-                    Menampilkan {{ len .entries }} entries
-                    {{ if .total }}dari {{ .total }}{{ end }}
+                <p class="text-muted mb-1">
+                    Menampilkan {{ len .entries }} {{ if .total }}dari {{ .total }}{{ end }} entries
+                    {{ if gt (len .entries) 0 }}
+                    ({{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }})
+                    {{ end }}
                     {{ if .filters.search }}
                     (hasil pencarian: "{{ .filters.search }}")
                     {{ end }}
