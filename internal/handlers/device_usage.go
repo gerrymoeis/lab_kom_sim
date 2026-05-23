@@ -25,8 +25,10 @@ func (h *Handler) DeviceUsageCreatePage(c *gin.Context) {
 func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	var req CreateDeviceUsageRequest
 	if err := c.ShouldBind(&req); err != nil {
+		_, username, role, _ := h.user(c)
 		c.HTML(http.StatusBadRequest, "device_usage/create.html", gin.H{
-			"title": "Tambah Pemakaian", "error": "Data tidak lengkap",
+			"title": "Tambah Pemakaian", "currentPage": "devices",
+			"username": username, "role": role, "error": "Data tidak lengkap",
 		})
 		return
 	}
@@ -42,7 +44,8 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "device_usage/create.html", gin.H{
-			"title": "Tambah Pemakaian", "error": "Gagal menyimpan pemakaian",
+			"title": "Tambah Pemakaian", "currentPage": "devices",
+			"username": u, "role": r, "error": "Gagal menyimpan pemakaian",
 		})
 		return
 	}

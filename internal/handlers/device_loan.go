@@ -26,8 +26,10 @@ func (h *Handler) DeviceLoanCreatePage(c *gin.Context) {
 func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 	var req CreateDeviceLoanRequest
 	if err := c.ShouldBind(&req); err != nil {
+		_, username, role, _ := h.user(c)
 		c.HTML(http.StatusBadRequest, "device_loan/create.html", gin.H{
-			"title": "Tambah Peminjaman", "error": "Lengkapi data yang diperlukan",
+			"title": "Tambah Peminjaman", "currentPage": "devices",
+			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
 		})
 		return
 	}
@@ -43,7 +45,8 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "device_loan/create.html", gin.H{
-			"title": "Tambah Peminjaman", "error": "Gagal menyimpan peminjaman",
+			"title": "Tambah Peminjaman", "currentPage": "devices",
+			"username": u, "role": r, "error": "Gagal menyimpan peminjaman",
 		})
 		return
 	}

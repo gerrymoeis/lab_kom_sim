@@ -39,11 +39,15 @@ func newInsertTracker(db *DB) *insertTracker {
 	return t
 }
 
-func (t *insertTracker) nextID(table string) int64 {
+func (t *insertTracker) nextID(table string) (int64, bool) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	_, ok := t.counters[table]
+	if !ok {
+		return 0, false
+	}
 	t.counters[table]++
-	return t.counters[table]
+	return t.counters[table], true
 }
 
 var extractTableRE = regexp.MustCompile(`(?i)(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE|DELETE\s+FROM)\s+(\w+)`)
@@ -73,8 +77,8 @@ func (db *DB) NewWriteQueue(bufferSize, batchSize int, flushEvery time.Duration)
 			},
 		})
 		if tbl := extractTableName(query); tbl != "" {
-			if _, ok := tracker.counters[tbl]; ok {
-				return trackedResult{insertID: tracker.nextID(tbl)}, nil
+			if id, ok := tracker.nextID(tbl); ok {
+				return trackedResult{insertID: id}, nil
 			}
 		}
 		return noopResult{}, nil
