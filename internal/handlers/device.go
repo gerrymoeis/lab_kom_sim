@@ -116,7 +116,7 @@ func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
 		"title": "Peminjaman", "currentPage": "devices",
 		"username": username, "role": role,
-		"activeTab": "loans", "loans": loans,
+		"activeTab": "loans", "deviceLoans": loans,
 		"filters": gin.H{"search": search, "status": status},
 		"startRow": (page-1)*pageSize + 1,
 		"page": page, "totalPages": totalPages, "totalItems": total,
@@ -144,7 +144,7 @@ func (h *Handler) deviceUsagesTab(c *gin.Context, username, role string) {
 	c.HTML(http.StatusOK, "device/list.html", gin.H{
 		"title": "Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
-		"activeTab": "usages", "usages": usages,
+		"activeTab": "usages", "deviceUsages": usages,
 		"filters": gin.H{"search": search},
 		"startRow": (page-1)*pageSize + 1,
 		"page": page, "totalPages": totalPages, "totalItems": total,
