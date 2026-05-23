@@ -296,10 +296,13 @@ func (h *Handler) LogbookCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) LogbookCreate(c *gin.Context) {
+	_, username, role, _ := h.user(c)
+
 	var req CreateLogbookRequest
 	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{
-			"title": "Tambah Logbook", "error": "Lengkapi data yang diperlukan",
+			"title": "Tambah Logbook", "currentPage": "logbook",
+			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
 		})
 		return
 	}
@@ -313,13 +316,15 @@ func (h *Handler) LogbookCreate(c *gin.Context) {
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "logbook/create.html", gin.H{
-			"title": "Tambah Logbook", "error": "Gagal menyimpan data",
+			"title": "Tambah Logbook", "currentPage": "logbook",
+			"username": u, "role": r, "error": "Gagal menyimpan data",
 		})
 		return
 	}
 	if id == 0 {
 		c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{
-			"title": "Tambah Logbook", "error": "Data sudah ada (duplikat)",
+			"title": "Tambah Logbook", "currentPage": "logbook",
+			"username": u, "role": r, "error": "Data sudah ada (duplikat)",
 		})
 		return
 	}
