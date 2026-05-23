@@ -157,7 +157,7 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 .badge-logout { background-color: #6c757d; }
 .badge-success { background-color: #28a745; }
 .badge-failed { background-color: #dc3545; }
-.table { margin-top: 1rem; margin-bottom: 2rem; }
+.table { margin-top: 1rem; margin-bottom: 1rem; }
 .activity-log-table { font-size: 0.9rem; }
 .activity-log-table td { vertical-align: middle; }
 .description-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
