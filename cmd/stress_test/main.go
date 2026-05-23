@@ -141,7 +141,7 @@ func parseFlags() *config {
 	flag.StringVar(&c.mode, "mode", "mix", "Test mode: read, write, mix")
 	flag.IntVar(&c.readPct, "read-pct", 50, "Read percentage in mix mode")
 	flag.DurationVar(&c.rampUp, "ramp-up", 5*time.Second, "Ramp-up duration")
-	flag.IntVar(&c.setupUsers, "setup-users", 20, "Create N stress test users")
+	flag.IntVar(&c.setupUsers, "setup-users", 0, "Create N stress test users (default: workers)")
 	flag.BoolVar(&c.verbose, "verbose", false, "Log each request")
 	flag.Parse()
 	return c
@@ -247,6 +247,7 @@ func bodyDeviceCreate(c int64) string {
 	v.Set("brand", "Stress Brand")
 	v.Set("quantity_total", "1")
 	v.Set("item_type", "consumable")
+	v.Set("condition", "baik")
 	return v.Encode()
 }
 
@@ -680,7 +681,7 @@ func runWorkers(cfg *config, stores map[string]*entityStore) []result {
 	return out
 }
 
-func printReport(cfg *config, results []result) {
+func printReport(cfg *config, results []result, testDuration time.Duration) {
 	if len(results) == 0 {
 		fmt.Println("No results collected")
 		return
@@ -729,22 +730,7 @@ func printReport(cfg *config, results []result) {
 		}
 	}
 
-	start := time.Now()
-	end := start
-	if len(results) > 0 {
-		start = start.Add(-time.Hour)
-		end = time.Time{}
-		for _, r := range results {
-			t := time.Now().Add(-r.latency)
-			if t.Before(start) {
-				start = t
-			}
-			if t.After(end) {
-				end = t
-			}
-		}
-	}
-	duration := end.Sub(start).Round(time.Millisecond)
+	duration := testDuration.Round(time.Millisecond)
 
 	sort.Slice(durations, func(i, j int) bool { return durations[i] < durations[j] })
 
@@ -866,6 +852,10 @@ func main() {
 	cfg := parseFlags()
 	log.SetFlags(0)
 
+	if cfg.setupUsers == 0 {
+		cfg.setupUsers = cfg.workers
+	}
+
 	var discoveryClient *http.Client
 	if cfg.setupUsers > 0 {
 		discoveryClient = setupStressUsers(cfg)
@@ -892,6 +882,7 @@ func main() {
 		s.mu.Unlock()
 	}
 
+	testStart := time.Now()
 	results := runWorkers(cfg, stores)
-	printReport(cfg, results)
+	printReport(cfg, results, time.Since(testStart))
 }
