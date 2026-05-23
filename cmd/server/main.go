@@ -18,9 +18,10 @@ import (
 func main() {
 	cfg := config.Load()
 
+	timeutil.SetTimezone(cfg.Timezone)
 	locName := timeutil.Code()
-	if locName == "" { locName = time.Now().Location().String() }
-	log.Printf("🌍 Timezone: %s (%s)", time.Now().Location(), locName)
+	if locName == "" { locName = timeutil.Location().String() }
+	log.Printf("🌍 Timezone: %s (%s)", timeutil.Location(), locName)
 
 	isPostgres := cfg.DatabaseURL != ""
 	db, err := database.InitDB(cfg.DatabasePath, cfg.DatabaseURL)
