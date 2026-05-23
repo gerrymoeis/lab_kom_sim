@@ -107,7 +107,7 @@
                 </div>
             </form>
 
-            {{ if gt (len .devices) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .devices)) 1 }} dari {{ .totalItems }} perangkat</p>{{ end }}
+            {{ if gt (len .devices) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .devices)) 1 }} dari {{ .totalItems }} perangkat</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
             <!-- Table -->
@@ -195,7 +195,7 @@
                 </div>
             </form>
 
-            {{ if gt (len .deviceTypes) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceTypes)) 1 }} dari {{ .totalItems }} jenis barang</p>{{ end }}
+            {{ if gt (len .deviceTypes) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceTypes)) 1 }} dari {{ .totalItems }} jenis barang</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
             <!-- Table -->
@@ -277,7 +277,7 @@
                 </div>
             </form>
 
-            {{ if gt (len .deviceLoans) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceLoans)) 1 }} dari {{ .totalItems }} peminjaman</p>{{ end }}
+            {{ if gt (len .deviceLoans) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceLoans)) 1 }} dari {{ .totalItems }} peminjaman</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
             <!-- Table -->
@@ -366,7 +366,7 @@
                 </div>
             </form>
 
-            {{ if gt (len .deviceUsages) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceUsages)) 1 }} dari {{ .totalItems }} pemakaian</p>{{ end }}
+            {{ if gt (len .deviceUsages) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceUsages)) 1 }} dari {{ .totalItems }} pemakaian</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
             <!-- Table -->

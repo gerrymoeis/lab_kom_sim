@@ -30,7 +30,7 @@
                 </form>
             </div>
         </div>
-        {{ if gt (len .catalog) 0 }}<p class="text-muted mb-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .catalog)) 1 }} dari {{ .totalItems }} software</p>{{ end }}
+        {{ if gt (len .catalog) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .catalog)) 1 }} dari {{ .totalItems }} software</p>{{ end }}
         {{ template "layout/pagination.html" . }}
         <div class="table-responsive">
             <table class="table table-hover">
