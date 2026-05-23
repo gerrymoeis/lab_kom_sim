@@ -598,6 +598,14 @@ func setupStressUsers(cfg *config) *http.Client {
 		}
 	}
 	log.Printf("Setup: created %d stress users (total needed: %d)", created, cfg.setupUsers)
+
+	req, _ = http.NewRequest("GET", cfg.url+"/logout", nil)
+	resp, err = client.Do(req)
+	if err == nil {
+		resp.Body.Close()
+	}
+	log.Printf("Setup: logged out rekan")
+
 	return client
 }
 
