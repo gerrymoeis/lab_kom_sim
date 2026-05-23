@@ -242,17 +242,6 @@ func bodyDeviceTypeEdit(c int64) string {
 	return v.Encode()
 }
 
-func bodyDeviceCreate(c int64) string {
-	v := url.Values{}
-	v.Set("device_type_id", "1")
-	v.Set("name", pk("STRESS Device %d", c))
-	v.Set("brand", "Stress Brand")
-	v.Set("quantity_total", "1")
-	v.Set("item_type", "consumable")
-	v.Set("condition", "baik")
-	return v.Encode()
-}
-
 func bodyDeviceEdit(c int64) string {
 	v := url.Values{}
 	v.Set("name", pk("STRESS Device Edit %d", c))
@@ -360,7 +349,6 @@ func (w *worker) pickEndpoint(counter int64, stores map[string]*entityStore) end
 		{"POST", "/schedules/create", bodyScheduleCreate(counter), "schedules", "create"},
 		{"POST", "/software/create", bodySoftwareCreate(counter), "software", "create"},
 		{"POST", "/device-types/create", bodyDeviceTypeCreate(counter), "device-types", "create"},
-		{"POST", "/devices/create", bodyDeviceCreate(counter), "devices", "create"},
 		{"POST", "/device-loans/create", bodyDeviceLoanCreate(counter, cfg.deviceID), "device-loans", "create"},
 		{"POST", "/device-usages/create", bodyDeviceUsageCreate(counter, cfg.deviceID), "device-usages", "create"},
 		{"POST", "/lost-items/create", bodyLostItemCreate(counter), "lost-items", "create"},
