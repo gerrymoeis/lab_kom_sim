@@ -21,8 +21,12 @@ func SetTimezone(tz string) {
 			loc = l
 			return
 		}
-		log.Printf("timeutil: invalid timezone %q, falling back to Local", tz)
-		loc = time.Local
+		log.Printf("timeutil: invalid timezone %q, falling back to Asia/Jakarta", tz)
+		if l, err := time.LoadLocation("Asia/Jakarta"); err == nil {
+			loc = l
+		} else {
+			loc = time.UTC
+		}
 	})
 }
 
