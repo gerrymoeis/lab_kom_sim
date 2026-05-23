@@ -64,6 +64,7 @@ func (h *Handler) LogbookList(c *gin.Context) {
 			"total":     total,
 			"page":      page,
 			"totalPages": totalPages,
+			"startRow":   (page-1)*pageSize + 1,
 			"filters": gin.H{
 				"date_from":  f.StartDate, "date_to": f.EndDate,
 				"search": f.Search, "sort_by": sortBy, "sort_order": sortOrder,

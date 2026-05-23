@@ -60,6 +60,7 @@ func (h *Handler) deviceListTab(c *gin.Context, username, role string) {
 		"activeTab": "list", "devices": devices,
 		"deviceTypes": h.fetchDeviceTypes(),
 		"filters": gin.H{"search": filters.Search, "category": filters.Category},
+		"startRow": (page-1)*pageSize + 1,
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 	})
@@ -117,6 +118,7 @@ func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
 		"username": username, "role": role,
 		"activeTab": "loans", "loans": loans,
 		"filters": gin.H{"search": search, "status": status},
+		"startRow": (page-1)*pageSize + 1,
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 	})
@@ -144,6 +146,7 @@ func (h *Handler) deviceUsagesTab(c *gin.Context, username, role string) {
 		"username": username, "role": role,
 		"activeTab": "usages", "usages": usages,
 		"filters": gin.H{"search": search},
+		"startRow": (page-1)*pageSize + 1,
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 	})
