@@ -21,6 +21,38 @@ import (
 var tableRE = regexp.MustCompile(`href="/(?:logbook|schedules|software|devices|device-types|device-loans|device-usages|lost-items|admin/users)/(\d+)(?:/edit|/delete|")`)
 var deviceIDRE = regexp.MustCompile(`href="/devices/(\d+)"`)
 
+// Indonesian names for realistic stress test data
+var firstNames = []string{
+	"Ahmad", "Budi", "Citra", "Dewi", "Eko", "Fitri", "Gita", "Hadi",
+	"Indra", "Joko", "Kartika", "Lina", "Made", "Nanda", "Omar", "Putri",
+	"Rizki", "Sari", "Tono", "Umar", "Vina", "Wati", "Yudi", "Zahra",
+	"Andi", "Bayu", "Candra", "Dian", "Eka", "Fajar", "Gilang", "Hendra",
+	"Irfan", "Jaya", "Kiki", "Lestari", "Maya", "Nisa", "Oki", "Pandu",
+}
+
+var lastNames = []string{
+	"Santoso", "Pratama", "Wijaya", "Kusuma", "Putra", "Dewi", "Sari",
+	"Rahman", "Hidayat", "Nugroho", "Setiawan", "Wibowo", "Kurniawan",
+	"Permana", "Saputra", "Lestari", "Maharani", "Purnama", "Cahaya",
+	"Utama", "Hakim", "Firmansyah", "Ramadhan", "Syahputra", "Maulana",
+}
+
+func randomIndonesianName() string {
+	firstName := firstNames[rand.Intn(len(firstNames))]
+	lastName := lastNames[rand.Intn(len(lastNames))]
+	return firstName + " " + lastName
+}
+
+func randomNIM() string {
+	// Format: 21XXXXYYYY
+	// 21 = tahun masuk (2021)
+	// XXXX = kode prodi (1000-9999)
+	// YYYY = nomor urut (0001-9999)
+	prodi := 1000 + rand.Intn(9000)
+	urut := 1 + rand.Intn(9999)
+	return fmt.Sprintf("21%04d%04d", prodi, urut)
+}
+
 type config struct {
 	url          string
 	totalReqs    int
@@ -166,26 +198,32 @@ func parseFlags() *config {
 func bodyLogbookCreate(c int64, workers int) string {
 	v := url.Values{}
 	
-	// Date variation: workers × 3 days (default: 30 days)
-	// Range: 2026-05-01 to 2026-05-30
-	dayVariations := workers * 3
+	// Date variation: workers × 6 days (default: 60 days for more slots)
+	// Range: 2026-05-01 to 2026-06-30 (60 days)
+	dayVariations := workers * 6
 	day := 1 + int(c%int64(dayVariations))
-	v.Set("date", pk("2026-05-%02d", day))
+	month := 5
+	if day > 31 {
+		month = 6
+		day = day - 31
+	}
+	v.Set("date", pk("2026-%02d-%02d", month, day))
 	
-	// Time variation: 48 combinations (12 hours × 4 minutes)
-	hour := 6 + int(c%12)
-	minute := int(c%4) * 15  // 0, 15, 30, 45
+	// Time variation: 96 combinations (24 hours × 4 minutes)
+	// Increased from 48 to 96 to reduce collision rate
+	hour := int(c%24)  // 0-23 (24 hours)
+	minute := int((c/24)%4) * 15  // 0, 15, 30, 45
 	v.Set("time_in", pk("%02d:%02d", hour, minute))
 	
 	// Time out: +2 hours from time_in
-	outHour := hour + 2
+	outHour := (hour + 2) % 24
 	v.Set("time_out", pk("%02d:%02d", outHour, minute))
 	
-	// Unique student name
-	v.Set("student_name", pk("STRESS_%d", c))
+	// Random Indonesian name (realistic)
+	v.Set("student_name", randomIndonesianName())
 	
-	// Unique NIM: 13 digits
-	v.Set("nim", pk("%013d", c))
+	// Random NIM (realistic format: 21XXXXYYYY)
+	v.Set("nim", randomNIM())
 	
 	// Purpose variation
 	purposes := []string{
@@ -285,7 +323,10 @@ func bodyDeviceLoanCreate(c int64, deviceIDs []int) string {
 	
 	v := url.Values{}
 	v.Set("device_id", strconv.Itoa(deviceID))
-	v.Set("borrower_name", pk("STRESS Borrower %d", c))
+	
+	// Random Indonesian name for borrower (realistic)
+	v.Set("borrower_name", randomIndonesianName())
+	
 	v.Set("loan_date", "2026-05-23")
 	v.Set("quantity", "1")
 	return v.Encode()
@@ -306,7 +347,10 @@ func bodyDeviceUsageCreate(c int64, deviceIDs []int) string {
 	
 	v := url.Values{}
 	v.Set("device_id", strconv.Itoa(deviceID))
-	v.Set("user_name", pk("STRESS User %d", c))
+	
+	// Random Indonesian name for user (realistic)
+	v.Set("user_name", randomIndonesianName())
+	
 	v.Set("usage_date", "2026-05-23")
 	v.Set("quantity", "1")
 	return v.Encode()
@@ -323,7 +367,10 @@ func bodyDeviceUsageEdit(c int64) string {
 func bodyLostItemCreate(c int64) string {
 	v := url.Values{}
 	v.Set("item_name", pk("STRESS Lost Item %d", c))
-	v.Set("reported_by", pk("STRESS Reporter %d", c))
+	
+	// Random Indonesian name for reporter (realistic)
+	v.Set("reported_by", randomIndonesianName())
+	
 	v.Set("reported_date", "2026-05-23")
 	v.Set("status", "hilang")
 	return v.Encode()
@@ -504,7 +551,7 @@ func discoverIDs(url string, client *http.Client) map[string]*entityStore {
 		{"logbook", "/logbook?page=1&size=500", `href="/logbook/(\d+)/edit`},
 		{"schedules", "/schedules", `href="/schedules/(\d+)/edit`},
 		{"software", "/software", `href="/software/(\d+)/edit|href="/software/(\d+)"`},
-		{"devices", "/devices?tab=list", `href="/devices/(\d+)(?:/edit|")`},
+		{"devices", "/devices?tab=list&search=STRESS_DEVICE", `href="/devices/(\d+)(?:/edit|")`},
 		{"device-types", "/device-types", `href="/device-types/(\d+)/edit`},
 		{"device-loans", "/devices?tab=loans", `(?s)href="/device-loans/(\d+)/edit`},
 		{"device-usages", "/devices?tab=usages", `(?s)href="/device-usages/(\d+)/edit`},
@@ -698,26 +745,6 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 	// Step 2: Create multiple devices (workers × 2)
 	deviceCount := cfg.workers * 2
 	quantityPerDevice := 50
-	deviceIDs := []int{}
-	
-	// Get current max device ID to calculate new IDs
-	var baseDeviceID int
-	req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list", nil)
-	resp, err = client.Do(req)
-	if err == nil {
-		body, _ = io.ReadAll(resp.Body)
-		resp.Body.Close()
-		
-		// Find all device IDs in the page
-		deviceIDRE := regexp.MustCompile(`/devices/(\d+)`)
-		matches := deviceIDRE.FindAllStringSubmatch(string(body), -1)
-		for _, m := range matches {
-			if id, err := strconv.Atoi(m[1]); err == nil && id > baseDeviceID {
-				baseDeviceID = id
-			}
-		}
-	}
-	log.Printf("Setup: current max device ID=%d, new devices will start from ID=%d", baseDeviceID, baseDeviceID+1)
 	
 	log.Printf("Setup: creating %d devices with %d quantity each (total: %d)", 
 		deviceCount, quantityPerDevice, deviceCount*quantityPerDevice)
@@ -725,7 +752,7 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 	for i := 1; i <= deviceCount; i++ {
 		v = url.Values{}
 		v.Set("device_type_id", strconv.Itoa(deviceTypeID))
-		v.Set("name", pk("STRESS_DEVICE_%d", i))
+		v.Set("name", pk("STRESS_DEVICE_%d_%d", cfg.workers, i))
 		v.Set("brand", "Stress Brand")
 		v.Set("quantity_total", strconv.Itoa(quantityPerDevice))
 		v.Set("item_type", "individual")
@@ -748,13 +775,7 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 			log.Fatalf("Setup: device %d creation failed with status %d", i, resp.StatusCode)
 		}
 		
-		// Calculate device ID based on auto-increment
-		// New device ID = baseDeviceID + i
-		deviceID := baseDeviceID + i
-		deviceIDs = append(deviceIDs, deviceID)
-		
-		// Add small delay between creates to avoid overwhelming server
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 		
 		if i%5 == 0 || i == deviceCount {
 			log.Printf("Setup: created %d/%d devices", i, deviceCount)
@@ -763,38 +784,51 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 	
 	log.Printf("Setup: successfully created %d devices", deviceCount)
 	
-	// Query actual device IDs after creation
-	time.Sleep(1 * time.Second)  // Wait for DB commit
-	req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list", nil)
-	resp, err = client.Do(req)
-	if err != nil {
-		log.Fatalf("Setup: failed to get devices after creation: %v", err)
-	}
-	body, _ = io.ReadAll(resp.Body)
-	resp.Body.Close()
-	
-	// Find all STRESS_DEVICE IDs
+	// Query actual device IDs after creation using search filter + page iteration
+	time.Sleep(1 * time.Second)
 	actualDeviceIDs := []int{}
-	for i := 1; i <= deviceCount; i++ {
-		deviceName := pk("STRESS_DEVICE_%d", i)
-		// Look for device name and extract ID from same context
-		pattern := regexp.MustCompile(`<strong>` + deviceName + `</strong>[\s\S]{0,800}?/devices/(\d+)`)
-		if m := pattern.FindStringSubmatch(string(body)); len(m) > 1 {
-			if id, err := strconv.Atoi(m[1]); err == nil {
+	page := 1
+	for page <= 50 {
+		req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list&search=STRESS_DEVICE&page="+strconv.Itoa(page), nil)
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Fatalf("Setup: failed to get devices after creation: %v", err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		
+		re := regexp.MustCompile(`<strong>(STRESS_DEVICE_\d+_\d+)</strong>[\s\S]{0,800}?/devices/(\d+)`)
+		matches := re.FindAllStringSubmatch(string(body), -1)
+		if len(matches) == 0 {
+			break
+		}
+		for _, m := range matches {
+			if id, err := strconv.Atoi(m[2]); err == nil {
 				actualDeviceIDs = append(actualDeviceIDs, id)
 			}
 		}
+		if len(matches) < 20 {
+			break
+		}
+		page++
 	}
 	
-	if len(actualDeviceIDs) != deviceCount {
-		log.Fatalf("Setup: expected %d devices but found %d in HTML", deviceCount, len(actualDeviceIDs))
+	sort.Ints(actualDeviceIDs)
+	seen := map[int]bool{}
+	uniqueIDs := []int{}
+	for _, id := range actualDeviceIDs {
+		if !seen[id] {
+			seen[id] = true
+			uniqueIDs = append(uniqueIDs, id)
+		}
 	}
 	
-	deviceIDs = actualDeviceIDs
-	log.Printf("Setup: actual device IDs: %v", deviceIDs)
+	if len(uniqueIDs) < deviceCount {
+		log.Fatalf("Setup: expected %d devices but found %d in HTML", deviceCount, len(uniqueIDs))
+	}
 	
-	// Debug: print all device IDs
-	log.Printf("Setup: device IDs detail: %v", deviceIDs)
+	deviceIDs := uniqueIDs[len(uniqueIDs)-deviceCount:]
+	log.Printf("Setup: device IDs (last %d): %v", deviceCount, deviceIDs)
 
 	// Don't logout - keep session for discovery phase
 	log.Printf("Setup: keeping rekan session for discovery")
