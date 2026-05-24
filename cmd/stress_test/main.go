@@ -365,9 +365,12 @@ func bodyDeviceLoanCreate(c int64, deviceIDs []int) string {
 	
 	// Random Indonesian name for borrower (realistic)
 	v.Set("borrower_name", randomIndonesianName())
+	v.Set("borrower_type", "mahasiswa")
 	
 	v.Set("loan_date", "2026-05-23")
+	v.Set("expected_return_date", "2026-05-30")
 	v.Set("quantity", "1")
+	v.Set("purpose", "Praktikum")
 	return v.Encode()
 }
 
@@ -389,9 +392,12 @@ func bodyDeviceUsageCreate(c int64, deviceIDs []int) string {
 	
 	// Random Indonesian name for user (realistic)
 	v.Set("user_name", randomIndonesianName())
+	v.Set("user_type", "mahasiswa")
 	
 	v.Set("usage_date", "2026-05-23")
 	v.Set("quantity", "1")
+	v.Set("is_available", "yes")
+	v.Set("purpose", "Praktikum")
 	return v.Encode()
 }
 
