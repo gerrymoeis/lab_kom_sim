@@ -700,6 +700,25 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 	quantityPerDevice := 50
 	deviceIDs := []int{}
 	
+	// Get current max device ID to calculate new IDs
+	var baseDeviceID int
+	req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list", nil)
+	resp, err = client.Do(req)
+	if err == nil {
+		body, _ = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		
+		// Find all device IDs in the page
+		deviceIDRE := regexp.MustCompile(`/devices/(\d+)`)
+		matches := deviceIDRE.FindAllStringSubmatch(string(body), -1)
+		for _, m := range matches {
+			if id, err := strconv.Atoi(m[1]); err == nil && id > baseDeviceID {
+				baseDeviceID = id
+			}
+		}
+	}
+	log.Printf("Setup: current max device ID=%d, new devices will start from ID=%d", baseDeviceID, baseDeviceID+1)
+	
 	log.Printf("Setup: creating %d devices with %d quantity each (total: %d)", 
 		deviceCount, quantityPerDevice, deviceCount*quantityPerDevice)
 	
@@ -726,121 +745,10 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 				i, resp.StatusCode, string(body))
 		}
 		
-		// Try to get device ID from redirect Location header
-		var deviceID int
-		var found bool
-		
-		if location := resp.Header.Get("Location"); location != "" {
-			// Try to extract ID from redirect URL
-			// Possible formats: /devices/123, /devices?id=123
-			re := regexp.MustCompile(`/devices/(\d+)`)
-			if m := re.FindStringSubmatch(location); len(m) > 1 {
-				deviceID, _ = strconv.Atoi(m[1])
-				deviceIDs = append(deviceIDs, deviceID)
-				found = true
-				log.Printf("Setup: device %d created with ID=%d (from redirect)", i, deviceID)
-			}
-		}
-		
-		// Fallback: Search for device by name with EXACT match
-		if !found {
-			deviceName := pk("STRESS_DEVICE_%d", i)
-			
-			for retry := 0; retry < 5; retry++ {
-				time.Sleep(500 * time.Millisecond)  // Increased delay for DB commit
-				
-				// Search ALL devices (no filter) to ensure we get the new device
-				req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list", nil)
-				resp, err = client.Do(req)
-				if err != nil {
-					log.Printf("Setup: retry %d - failed to get devices list: %v", retry+1, err)
-					continue
-				}
-				body, _ = io.ReadAll(resp.Body)
-				resp.Body.Close()
-				
-				// Strategy: Find exact device name in HTML, then extract ID from nearby href
-				// Look for pattern: >STRESS_DEVICE_1< ... href="/devices/123"
-				
-				// Pattern 1: Exact name match with ID in same row
-				pattern1 := regexp.MustCompile(`>` + deviceName + `<.*?href="/devices/(\d+)`)
-				if m := pattern1.FindStringSubmatch(string(body)); len(m) > 1 {
-					deviceID, _ = strconv.Atoi(m[1])
-					deviceIDs = append(deviceIDs, deviceID)
-					found = true
-					log.Printf("Setup: device %d found with ID=%d (exact name match)", i, deviceID)
-					break
-				}
-				
-				// Pattern 2: href before name (reverse order)
-				pattern2 := regexp.MustCompile(`href="/devices/(\d+)[^>]*>.*?>` + deviceName + `<`)
-				if m := pattern2.FindStringSubmatch(string(body)); len(m) > 1 {
-					deviceID, _ = strconv.Atoi(m[1])
-					deviceIDs = append(deviceIDs, deviceID)
-					found = true
-					log.Printf("Setup: device %d found with ID=%d (reverse pattern)", i, deviceID)
-					break
-				}
-				
-				// Pattern 3: Look for device name in table cell, then find ID in same row
-				// <tr>...<td><strong>STRESS_DEVICE_1</strong></td>...<a href="/devices/123/edit">
-				// Use simpler pattern without negative lookahead (not supported in Go)
-				// Increase range to 800 chars to capture entire row including action column
-				pattern3 := regexp.MustCompile(`<strong>` + deviceName + `</strong>[\s\S]{0,800}?/devices/(\d+)`)
-				if m := pattern3.FindStringSubmatch(string(body)); len(m) > 1 {
-					deviceID, _ = strconv.Atoi(m[1])
-					deviceIDs = append(deviceIDs, deviceID)
-					found = true
-					log.Printf("Setup: device %d found with ID=%d (strong tag pattern)", i, deviceID)
-					break
-				}
-				
-				// Pattern 4: Alternative - look for asset code pattern, then device name, then ID
-				// <code>XXX-XXX-001</code>...<strong>STRESS_DEVICE_1</strong>...href="/devices/123"
-				pattern4 := regexp.MustCompile(`<code>[^<]+</code>[\s\S]{0,600}?<strong>` + deviceName + `</strong>[\s\S]{0,600}?/devices/(\d+)`)
-				if m := pattern4.FindStringSubmatch(string(body)); len(m) > 1 {
-					deviceID, _ = strconv.Atoi(m[1])
-					deviceIDs = append(deviceIDs, deviceID)
-					found = true
-					log.Printf("Setup: device %d found with ID=%d (asset code pattern)", i, deviceID)
-					break
-				}
-				
-				// Debug on last retry
-				if retry == 4 {
-					log.Printf("Setup: device %d (%s) not found after 5 retries", i, deviceName)
-					log.Printf("Setup: Response length: %d bytes", len(body))
-					
-					// Check if device name exists in response
-					if strings.Contains(string(body), deviceName) {
-						log.Printf("Setup: Device name '%s' FOUND in response but ID extraction failed", deviceName)
-						// Print LARGER context around device name (500 chars before and after)
-						idx := strings.Index(string(body), deviceName)
-						start := max(0, idx-500)
-						end := min(len(body), idx+500)
-						log.Printf("Setup: Extended context around device name:\n%s", string(body)[start:end])
-						
-						// Try to find any /devices/(\d+) pattern in the context
-						contextStr := string(body)[start:end]
-						deviceLinkRE := regexp.MustCompile(`/devices/(\d+)`)
-						if matches := deviceLinkRE.FindAllStringSubmatch(contextStr, -1); len(matches) > 0 {
-							log.Printf("Setup: Found %d device links in context:", len(matches))
-							for _, m := range matches {
-								log.Printf("  - /devices/%s", m[1])
-							}
-						}
-					} else {
-						log.Printf("Setup: Device name '%s' NOT FOUND in response", deviceName)
-						// Print sample of device list to see structure
-						log.Printf("Setup: Response preview (first 1500 chars):\n%s", string(body)[:min(1500, len(body))])
-					}
-				}
-			}
-		}
-		
-		if !found {
-			log.Fatalf("Setup: could not find device %d ID after 5 retries", i)
-		}
+		// Calculate device ID based on auto-increment
+		// New device ID = baseDeviceID + i
+		deviceID := baseDeviceID + i
+		deviceIDs = append(deviceIDs, deviceID)
 		
 		if i%5 == 0 || i == deviceCount {
 			log.Printf("Setup: created %d/%d devices", i, deviceCount)
