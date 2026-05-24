@@ -43,7 +43,7 @@ func (h *Handler) PCList(c *gin.Context) {
 		"username": username, "role": role, "pcs": pcs,
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"startRow": startRow,
-		"query": query, "search": filters.Search,
+		"query": query, "filters": gin.H{"search": filters.Search},
 	})
 }
 

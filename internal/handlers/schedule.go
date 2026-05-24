@@ -47,7 +47,7 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 		"title": "Jadwal Mata Kuliah", "currentPage": "schedules",
 		"username": username, "role": role,
 		"schedules": schedules, "today": dayNames[time.Now().In(timeutil.Location()).Weekday()],
-		"dayFilter": dayFilter, "search": search,
+		"filters": gin.H{"search": search, "day": dayFilter},
 		"days": []string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,

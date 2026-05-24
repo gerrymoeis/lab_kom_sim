@@ -48,7 +48,7 @@ func (h *Handler) LostItemList(c *gin.Context) {
 	c.HTML(http.StatusOK, "lost_item/list.html", gin.H{
 		"title": "Barang Hilang", "currentPage": "lost_items",
 		"username": username, "role": role,
-		"lostItems": items, "status": status, "search": search,
+		"lostItems": items, "filters": gin.H{"search": search, "status": status},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 	})

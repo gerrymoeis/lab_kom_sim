@@ -23,13 +23,13 @@
         <div class="card-body">
             <form method="GET" action="/device-types" class="row g-3 mb-3">
                 <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Cari jenis barang..." value="{{ .search }}">
+                    <input type="text" class="form-control" name="search" placeholder="Cari jenis barang..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-3">
                     <select class="form-select" name="category">
                         <option value="">Semua Kategori</option>
                         {{ range $cat := allCategories }}
-                        <option value="{{ $cat.Value }}" {{ if eq $.category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
+                        <option value="{{ $cat.Value }}" {{ if eq $.filters.category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
                         {{ end }}
                     </select>
                 </div>
@@ -45,7 +45,7 @@
                 </div>
             </form>
 
-            {{ if gt (len .deviceTypes) 0 }}<p class="text-muted my-2">Total {{ len .deviceTypes }} jenis barang{{ if .search }} (hasil pencarian: "{{ .search }}"){{ end }}</p>{{ end }}
+            {{ if gt (len .deviceTypes) 0 }}<p class="text-muted my-2">Total {{ len .deviceTypes }} jenis barang{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>{{ end }}
 
             <div class="table-responsive">
                 <table class="table table-hover">
