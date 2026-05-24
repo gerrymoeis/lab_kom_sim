@@ -3,7 +3,9 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"inventaris-lab-kom/internal/services"
@@ -19,8 +21,14 @@ func (h *Handler) UserList(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if page < 1 { page = 1 }
 	pageSize := 20
+	search := c.Query("search")
 
-	users, total, err := h.userService.ListPaginated(page, pageSize)
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	var query interface{} = ""
+	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
+
+	users, total, err := h.userService.ListPaginated(search, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
 
 	totalPages := (total + pageSize - 1) / pageSize
@@ -30,7 +38,7 @@ func (h *Handler) UserList(c *gin.Context) {
 		"title": "Manajemen User", "currentPage": "users",
 		"username": username, "role": role, "users": users,
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
-		"query": "",
+		"query": query, "filters": gin.H{"search": search},
 		"error": c.Query("error"),
 	})
 }
