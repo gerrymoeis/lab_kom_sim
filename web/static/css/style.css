@@ -63,6 +63,9 @@
 .pc-card.status-inactive { border-color: #6c757d; background: #f8f9fa; }
 .pc-card.pc-empty { border-style: dashed; background: #f8f9fa; cursor: default; }
 .pc-card.pc-empty:hover { transform: none; box-shadow: none; }
+.pc-card.pc-card-special { border-color: #6610f2; background: linear-gradient(135deg, #f0e6ff, #f8f4ff); border-width: 3px; width: 140px; height: 130px; }
+.pc-card.pc-card-special:hover { border-color: #520dc2; box-shadow: 0 5px 15px rgba(102, 16, 242, 0.3); }
+.pc-card.pc-card-special .pc-number { font-size: 13px; }
 .pc-number { font-weight: bold; font-size: 14px; margin-bottom: 5px; }
 .pc-icon { font-size: 2rem; }
 .pc-status-badge { position: absolute; top: 5px; right: 5px; font-size: 1.2rem; }
@@ -157,6 +160,7 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 .badge-logout { background-color: #6c757d; }
 .badge-success { background-color: #28a745; }
 .badge-failed { background-color: #dc3545; }
+.table { margin-top: 1rem; margin-bottom: 1rem; }
 .activity-log-table { font-size: 0.9rem; }
 .activity-log-table td { vertical-align: middle; }
 .description-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

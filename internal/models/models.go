@@ -35,6 +35,7 @@ type PC struct {
 	PhysicalCondition string     `json:"physical_condition"` // "baik", "cukup", "rusak"
 	// New fields for PC refinement
 	DeviceType        string     `json:"device_type"`       // "PC All-in-one", etc
+	Label             string     `json:"label"`              // Display label (e.g. "PC-Dosen")
 	BrandModel        string     `json:"brand_model"`       // Combined brand + model
 	Accessories       string     `json:"accessories"`       // "Keyboard & Mouse Axioo (Wired Set)"
 	ActionNotes       string     `json:"action_notes"`      // Catatan tindakan perbaikan

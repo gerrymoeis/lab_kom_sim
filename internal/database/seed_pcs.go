@@ -174,6 +174,9 @@ func seedPCs(db *DB) error {
 			[]string{"7zip", "Counter strike condition 0", "Discord", "Docker Desktop", "Google Chrome", "Internet Download Manager (IDM)", "Riot Client", "Roblox", "SPSS", "Stremio", "Valorant", "Windsurf", "Winrar"},
 			"broken", "Layar retak dalam, retaknya hampir setengah layar"},
 		{40, "0A23190003722018185", "", nil, nil, "broken", "PC Black Screen, tidak bisa load ke Windows, kalau yg ini tidak looping nyala lagi saat ditekan tombol power di kanan monitornya. Juga bagian laci keyboard susah dibuka (sepertinya agak stuck)"},
+		{41, "", "", nil, nil, "normal", "PC Dosen - Milik dosen, khusus untuk keperluan mengajar"},
+		{42, "", "", nil, nil, "normal", "PC Laboran - Milik laboran, khusus untuk keperluan administrasi laboratorium"},
+		{43, "", "", nil, nil, "normal", "PC CCTV - Milik petugas keamanan/CCTV, khusus untuk memonitor CCTV laboratorium"},
 	}
 
 	// Default values
@@ -188,8 +191,15 @@ func seedPCs(db *DB) error {
 		defCondition   = "baik"
 	)
 
-	rowFor := func(n int) int { return ((n - 1) / 8) + 1 }
-	colFor := func(n int) int { return ((n - 1) % 8) + 1 }
+	rowFor := func(n int) int {
+		if n >= 41 { return 0 }
+		return ((n - 1) / 8) + 1
+	}
+	colFor := func(n int) int {
+		if n >= 41 { return n - 40 }
+		return ((n - 1) % 8) + 1
+	}
+	specialLabel := map[int]string{41: "PC-Dosen", 42: "PC-Laboran", 43: "PC-CCTV"}
 
 	// Pre-resolve all software IDs from catalog
 	swByName := map[string]int{}
@@ -237,13 +247,20 @@ func seedPCs(db *DB) error {
 			pcStatus = defStatus
 		}
 
+		label := specialLabel[pc.Number]
+		deviceType := defDeviceType
+		brandModel := defBrandModel
+		if label != "" {
+			deviceType = label
+			brandModel = ""
+		}
 		_, execErr := tx.Exec(`INSERT INTO pcs (pc_number, "row", "column", status, processor, ram, storage,
 			serial_number, operating_system, device_type, brand_model, accessories,
-			physical_condition, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			physical_condition, notes, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 			CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 			pc.Number, rowFor(pc.Number), colFor(pc.Number),
 			pcStatus, defProcessor, defRAM, defStorage,
-			pc.SN, pc.OS, defDeviceType, defBrandModel, defAccessories, defCondition, pc.Notes)
+			pc.SN, pc.OS, deviceType, brandModel, defAccessories, defCondition, pc.Notes, label)
 		if execErr != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to seed PC-%d: %w", pc.Number, execErr)

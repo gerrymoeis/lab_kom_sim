@@ -70,7 +70,7 @@ func (r *PCRepository) buildCountArgs(filters PCFilters) []any {
 
 func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, offset int) ([]models.PC, error) {
 	query := `SELECT id, pc_number, "row", "column", status, processor, ram, storage, operating_system,
-		serial_number, brand_model, device_type, accessories, notes, action_notes, last_checked FROM pcs WHERE 1=1`
+		serial_number, brand_model, device_type, accessories, notes, action_notes, last_checked, label FROM pcs WHERE 1=1`
 	clause, args := r.buildWhereClause(filters)
 	query += clause
 
@@ -98,10 +98,10 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 	var pcs []models.PC
 	for rows.Next() {
 		var pc models.PC
-		var processor, ram, storage, os, sn, bm, dt, acc, notes, an sql.NullString
+		var processor, ram, storage, os, sn, bm, dt, acc, notes, an, label sql.NullString
 		var lastChecked sql.NullTime
 		if err := rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &processor, &ram, &storage, &os,
-			&sn, &bm, &dt, &acc, &notes, &an, &lastChecked); err != nil {
+			&sn, &bm, &dt, &acc, &notes, &an, &lastChecked, &label); err != nil {
 			return nil, err
 		}
 		pc.Processor = valStr(processor)
@@ -114,6 +114,7 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 		pc.Accessories = valStr(acc)
 		pc.Notes = valStr(notes)
 		pc.ActionNotes = valStr(an)
+		pc.Label = valStr(label)
 		if lastChecked.Valid {
 			pc.LastChecked = &lastChecked.Time
 		}
@@ -143,15 +144,15 @@ func (r *PCRepository) GetStatusCounts() (map[string]int, error) {
 
 func (r *PCRepository) GetByPCNumber(num int) (*models.PC, error) {
 	var pc models.PC
-	var processor, ram, storage, os, notes, sn, bm, dt, acc, an, ps, pf, aid, brand, model sql.NullString
+	var processor, ram, storage, os, notes, sn, bm, dt, acc, an, ps, pf, aid, brand, model, label sql.NullString
 	var pDate, lc sql.NullTime
 	err := r.db.QueryRow(`SELECT id, pc_number, "row", "column", status, processor, ram, storage,
 		purchase_date, notes, last_checked, asset_id, serial_number, brand, model, operating_system,
 		physical_condition, device_type, brand_model, accessories, action_notes, photo_serial, photo_front,
-		created_at, updated_at FROM pcs WHERE pc_number = ?`, num).
+		created_at, updated_at, label FROM pcs WHERE pc_number = ?`, num).
 		Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &processor, &ram, &storage,
 			&pDate, &notes, &lc, &aid, &sn, &brand, &model, &os,
-			&pc.PhysicalCondition, &dt, &bm, &acc, &an, &ps, &pf, &pc.CreatedAt, &pc.UpdatedAt)
+			&pc.PhysicalCondition, &dt, &bm, &acc, &an, &ps, &pf, &pc.CreatedAt, &pc.UpdatedAt, &label)
 	if err != nil {
 		return nil, err
 	}
@@ -170,6 +171,7 @@ func (r *PCRepository) GetByPCNumber(num int) (*models.PC, error) {
 	pc.AssetID = valStr(aid)
 	pc.Brand = valStr(brand)
 	pc.Model = valStr(model)
+	pc.Label = valStr(label)
 	if pDate.Valid {
 		pc.PurchaseDate = &pDate.Time
 	}
@@ -181,13 +183,13 @@ func (r *PCRepository) GetByPCNumber(num int) (*models.PC, error) {
 
 func (r *PCRepository) GetByPCNumberEdit(num int) (*models.PC, error) {
 	var pc models.PC
-	var processor, ram, storage, os, notes, sn, bm, dt, acc, an, ps, pf sql.NullString
+	var processor, ram, storage, os, notes, sn, bm, dt, acc, an, ps, pf, label sql.NullString
 	var pDate, lc sql.NullString
 	err := r.db.QueryRow(`SELECT id, pc_number, "row", "column", status, processor, ram, storage,
 		purchase_date, last_checked, operating_system, notes, device_type, serial_number, brand_model,
-		accessories, action_notes, photo_serial, photo_front FROM pcs WHERE pc_number = ?`, num).
+		accessories, action_notes, photo_serial, photo_front, label FROM pcs WHERE pc_number = ?`, num).
 		Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &processor, &ram, &storage,
-			&pDate, &lc, &os, &notes, &dt, &sn, &bm, &acc, &an, &ps, &pf)
+			&pDate, &lc, &os, &notes, &dt, &sn, &bm, &acc, &an, &ps, &pf, &label)
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +205,7 @@ func (r *PCRepository) GetByPCNumberEdit(num int) (*models.PC, error) {
 	pc.ActionNotes = valStr(an)
 	pc.PhotoSerial = valStr(ps)
 	pc.PhotoFront = valStr(pf)
+	pc.Label = valStr(label)
 	return &pc, nil
 }
 
@@ -256,22 +259,22 @@ func (r *PCRepository) GetSoftware(pcID int) (requiredSW, otherSW []models.PCSof
 	return requiredSW, otherSW, nil
 }
 
-func (r *PCRepository) Create(num, row, col int, status, processor, ram, storage, sn, os, dt, bm, acc, photoSerial, photoFront string) (sql.Result, error) {
+func (r *PCRepository) Create(num, row, col int, status, processor, ram, storage, sn, os, dt, bm, acc, photoSerial, photoFront, label string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO pcs (pc_number, "row", "column", status, processor, ram, storage,
 		serial_number, operating_system, device_type, brand_model, accessories, physical_condition,
-		photo_serial, photo_front)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'baik', ?, ?)`,
-		num, row, col, status, processor, ram, storage, sn, os, dt, bm, acc, photoSerial, photoFront)
+		photo_serial, photo_front, label)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'baik', ?, ?, ?)`,
+		num, row, col, status, processor, ram, storage, sn, os, dt, bm, acc, photoSerial, photoFront, label)
 }
 
-func (r *PCRepository) Update(num int, status, dt, sn, bm, acc, processor, ram, storage, os, notes, an, photoSerial, photoFront string) error {
+func (r *PCRepository) Update(num int, status, dt, sn, bm, acc, processor, ram, storage, os, notes, an, photoSerial, photoFront, label string) error {
 	_, err := r.db.Exec(`UPDATE pcs SET status=?, device_type=?, serial_number=?, brand_model=?, accessories=?,
-		processor=?, ram=?, storage=?, operating_system=?, notes=?, action_notes=?,
+		processor=?, ram=?, storage=?, operating_system=?, notes=?, action_notes=?, label=?,
 		photo_serial=COALESCE(NULLIF(?, ''), photo_serial),
 		photo_front=COALESCE(NULLIF(?, ''), photo_front),
 		updated_at=CURRENT_TIMESTAMP
 		WHERE pc_number=?`,
-		status, dt, sn, bm, acc, processor, ram, storage, os, notes, an, photoSerial, photoFront, num)
+		status, dt, sn, bm, acc, processor, ram, storage, os, notes, an, label, photoSerial, photoFront, num)
 	return err
 }
 
