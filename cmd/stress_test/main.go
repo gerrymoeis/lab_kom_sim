@@ -747,22 +747,20 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 			deviceName := pk("STRESS_DEVICE_%d", i)
 			
 			for retry := 0; retry < 5; retry++ {
-				time.Sleep(300 * time.Millisecond)
+				time.Sleep(500 * time.Millisecond)  // Increased delay for DB commit
 				
-				// Search with exact device name
-				req, _ = http.NewRequest("GET", 
-					cfg.url+"/devices?tab=list&search="+url.QueryEscape(deviceName), nil)
+				// Search ALL devices (no filter) to ensure we get the new device
+				req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list", nil)
 				resp, err = client.Do(req)
 				if err != nil {
-					log.Printf("Setup: retry %d - failed to search device %d: %v", retry+1, i, err)
+					log.Printf("Setup: retry %d - failed to get devices list: %v", retry+1, err)
 					continue
 				}
 				body, _ = io.ReadAll(resp.Body)
 				resp.Body.Close()
 				
-				// Strategy: Find device name in HTML, then extract ID from nearby href
+				// Strategy: Find exact device name in HTML, then extract ID from nearby href
 				// Look for pattern: >STRESS_DEVICE_1< ... href="/devices/123"
-				// Use more specific pattern to avoid matching other devices
 				
 				// Pattern 1: Exact name match with ID in same row
 				pattern1 := regexp.MustCompile(`>` + deviceName + `<.*?href="/devices/(\d+)`)
@@ -784,6 +782,17 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 					break
 				}
 				
+				// Pattern 3: Look for device name in table cell, then find ID in same row
+				// <tr>...<td>STRESS_DEVICE_1</td>...<a href="/devices/123/edit">
+				pattern3 := regexp.MustCompile(`<tr[^>]*>.*?` + deviceName + `.*?href="/devices/(\d+)`)
+				if m := pattern3.FindStringSubmatch(string(body)); len(m) > 1 {
+					deviceID, _ = strconv.Atoi(m[1])
+					deviceIDs = append(deviceIDs, deviceID)
+					found = true
+					log.Printf("Setup: device %d found with ID=%d (table row pattern)", i, deviceID)
+					break
+				}
+				
 				// Debug on last retry
 				if retry == 4 {
 					log.Printf("Setup: device %d (%s) not found after 5 retries", i, deviceName)
@@ -799,7 +808,8 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 						log.Printf("Setup: Context around device name:\n%s", string(body)[start:end])
 					} else {
 						log.Printf("Setup: Device name '%s' NOT FOUND in response", deviceName)
-						log.Printf("Setup: Response preview (first 800 chars):\n%s", string(body)[:min(800, len(body))])
+						// Print sample of device list to see structure
+						log.Printf("Setup: Response preview (first 1000 chars):\n%s", string(body)[:min(1000, len(body))])
 					}
 				}
 			}
