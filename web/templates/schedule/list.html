@@ -1,12 +1,16 @@
 {{ template "layout/base.html" . }}
-<div class="row mb-3">
+
+<div class="container-fluid mt-4">
+<div class="row mb-4">
     <div class="col-md-6">
         <h2><i class="bi bi-calendar-event"></i> Jadwal Mata Kuliah</h2>
         <p class="mb-0"><span class="badge bg-primary-subtle text-primary-emphasis rounded-pill px-3 py-2 fs-6"><i class="bi bi-calendar-check me-1"></i> Hari ini: <strong>{{ .today }}</strong></span></p>
     </div>
     <div class="col-md-6 text-end">
         {{ if eq .role "admin" }}
-        <a href="/schedules/create" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Tambah Jadwal</a>
+        {{ template "layout/header_actions_start.html" $ }}
+        <a href="/schedules/create" class="btn btn-primary flex-grow-1"><i class="bi bi-plus-circle"></i> Tambah Jadwal</a>
+        {{ template "layout/header_actions_end.html" }}
         {{ end }}
     </div>
 </div>
@@ -15,18 +19,23 @@
 
 <div class="card shadow-sm">
     <div class="card-body">
-        <div class="row mb-3">
-            <div class="col-md-8">
-                <form method="GET" action="/schedules" class="d-flex gap-2 flex-wrap">
-                    <select name="day" class="form-select" style="width:auto;">
-                        <option value="">Semua Hari</option>
-                        {{ range .days }}<option value="{{ . }}" {{ if eq $.dayFilter . }}selected{{ end }}>{{ . }}</option>{{ end }}
-                    </select>
-                    <input type="text" name="search" class="form-control" placeholder="Cari..." value="{{ .search }}" style="max-width:300px;">
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
-                </form>
+        <form method="GET" action="/schedules" class="row g-3 mb-3">
+            <div class="col-md-3">
+                <select name="day" class="form-select">
+                    <option value="">Semua Hari</option>
+                    {{ range .days }}<option value="{{ . }}" {{ if eq $.dayFilter . }}selected{{ end }}>{{ . }}</option>{{ end }}
+                </select>
             </div>
-        </div>
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control" placeholder="Cari mata kuliah, dosen..." value="{{ .search }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filter</button>
+            </div>
+            <div class="col-md-2">
+                <a href="/schedules" class="btn btn-secondary w-100"><i class="bi bi-x-circle"></i> Reset</a>
+            </div>
+        </form>
         {{ if gt (len .schedules) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .schedules)) 1 }} dari {{ .totalItems }} jadwal</p>{{ end }}
         {{ template "layout/pagination.html" . }}
         <div class="table-responsive">
@@ -64,5 +73,6 @@
 
         {{ template "layout/pagination.html" . }}
     </div>
+</div>
 </div>
 {{ template "layout/footer.html" . }}
