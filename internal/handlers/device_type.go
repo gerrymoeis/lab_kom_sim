@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"html/template"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -14,19 +16,33 @@ func (h *Handler) DeviceTypeList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
 	search := c.Query("search")
 	category := c.Query("category")
 
-	types, err := h.deviceTypeService.List(category, search)
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	var query interface{} = ""
+	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
+
+	types, total, err := h.deviceTypeService.ListPaginated(category, search, page, pageSize)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data jenis barang")
 		return
 	}
 
+	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
+
 	c.HTML(http.StatusOK, "device_type/list.html", gin.H{
 		"title": "Jenis Barang", "currentPage": "devices",
 		"username": username, "role": role,
-		"deviceTypes": types, "filters": gin.H{"search": search, "category": category},
+		"deviceTypes": types, "page": page, "totalPages": totalPages,
+		"totalItems": total, "startRow": startRow, "query": query,
+		"filters": gin.H{"search": search, "category": category},
 	})
 }
 

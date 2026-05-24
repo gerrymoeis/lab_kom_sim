@@ -30,7 +30,11 @@ func (h *Handler) PCList(c *gin.Context) {
 	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
 	filters := repository.PCFilters{
-		Search: c.Query("search"),
+		Search:    c.Query("search"),
+		Status:    c.Query("status"),
+		SortBy:    c.Query("sort_by"),
+		SortOrder: c.Query("sort_order"),
+		OS:        c.Query("os"),
 	}
 	pcs, total, err := h.pcService.ListPaginated(filters, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
@@ -43,7 +47,7 @@ func (h *Handler) PCList(c *gin.Context) {
 		"username": username, "role": role, "pcs": pcs,
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"startRow": startRow,
-		"query": query, "filters": gin.H{"search": filters.Search},
+		"query": query, "filters": gin.H{"search": filters.Search, "status": filters.Status, "sort_by": filters.SortBy, "sort_order": filters.SortOrder, "os": filters.OS},
 	})
 }
 
