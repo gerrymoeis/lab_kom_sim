@@ -174,9 +174,9 @@ func seedPCs(db *DB) error {
 			[]string{"7zip", "Counter strike condition 0", "Discord", "Docker Desktop", "Google Chrome", "Internet Download Manager (IDM)", "Riot Client", "Roblox", "SPSS", "Stremio", "Valorant", "Windsurf", "Winrar"},
 			"broken", "Layar retak dalam, retaknya hampir setengah layar"},
 		{40, "0A23190003722018185", "", nil, nil, "broken", "PC Black Screen, tidak bisa load ke Windows, kalau yg ini tidak looping nyala lagi saat ditekan tombol power di kanan monitornya. Juga bagian laci keyboard susah dibuka (sepertinya agak stuck)"},
-		{41, "", "", nil, nil, "normal", "PC Dosen - Milik dosen, khusus untuk keperluan mengajar"},
-		{42, "", "", nil, nil, "normal", "PC Laboran - Milik laboran, khusus untuk keperluan administrasi laboratorium"},
-		{43, "", "", nil, nil, "normal", "PC CCTV - Milik petugas keamanan/CCTV, khusus untuk memonitor CCTV laboratorium"},
+		{41, "", "", nil, nil, "normal", "-"},
+		{42, "", "", nil, nil, "normal", "-"},
+		{43, "", "", nil, nil, "normal", "-"},
 	}
 
 	// Default values
