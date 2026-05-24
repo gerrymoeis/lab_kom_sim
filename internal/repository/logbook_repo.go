@@ -163,8 +163,8 @@ func (r *LogbookRepository) ListCursor(filters LogbookFilters) ([]models.Logbook
 
 func (r *LogbookRepository) GetByID(id int) (*models.LogbookEntry, error) {
 	var e models.LogbookEntry
-	err := r.db.QueryRow(`SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file FROM logbook_entries WHERE id = ?`, id).
-		Scan(&e.ID, &e.Date, &e.StudentName, &e.NIM, &e.TimeIn, &e.TimeOut, &e.Purpose, &e.SourceFile)
+	err := r.db.QueryRow(`SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at FROM logbook_entries WHERE id = ?`, id).
+		Scan(&e.ID, &e.Date, &e.StudentName, &e.NIM, &e.TimeIn, &e.TimeOut, &e.Purpose, &e.SourceFile, &e.CreatedAt, &e.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,9 @@
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -19,97 +21,73 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	cursor := c.Query("cursor")
-	direction := c.DefaultQuery("dir", "next")
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "50"))
 	if pageSize < 1 { pageSize = 50 }
 
-	cursorID, cursorDate, cursorTimeIn := parseLogbookCursor(cursor)
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+
 	sortBy := c.DefaultQuery("sort_by", "date")
 	sortOrder := c.DefaultQuery("sort_order", "ASC")
 
 	f := repository.LogbookFilters{
-		StartDate:    c.Query("date_from"),
-		EndDate:      c.Query("date_to"),
-		Search:       c.Query("search"),
-		SortBy:       sortBy,
-		SortOrder:    sortOrder,
-		PageSize:     pageSize,
-		CursorID:     cursorID,
-		CursorDate:   cursorDate,
-		CursorTimeIn: cursorTimeIn,
-		Direction:    direction,
+		StartDate: c.Query("date_from"),
+		EndDate:   c.Query("date_to"),
+		Search:    c.Query("search"),
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
+		PageSize:  pageSize,
+		Page:      page,
 	}
 
-	var hasMore bool
-	var prevCursor, nextCursor string
-
-	if sortBy != "date" || sortOrder != "ASC" {
-		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-		if page < 1 {
-			page = 1
-		}
-		f.Page = page
-		entries, total, err := h.logbookService.List(f)
-		if err != nil {
-			h.errHTML(c, "Gagal mengambil data logbook")
-			return
-		}
-		totalPages := (total + pageSize - 1) / pageSize
-		hasMore = page < totalPages
-		c.HTML(http.StatusOK, "logbook/list.html", gin.H{
-			"title": "Logbook", "currentPage": "logbook",
-			"username": username, "role": role,
-			"entries":   entries,
-			"total":     total,
-			"page":      page,
-			"totalPages": totalPages,
-			"startRow":   (page-1)*pageSize + 1,
-			"filters": gin.H{
-				"date_from":  f.StartDate, "date_to": f.EndDate,
-				"search": f.Search, "sort_by": sortBy, "sort_order": sortOrder,
-			},
-			"pageSize":   pageSize,
-			"hasMore":    hasMore,
-			"prevCursor": "",
-			"nextCursor": "",
-			"success":    c.Query("success"),
-		})
+	entries, total, err := h.logbookService.List(f)
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data logbook")
 		return
 	}
 
-	entries, kMore, err := h.logbookService.ListCursor(f)
-	if err != nil { h.errHTML(c, "Gagal mengambil data logbook"); return }
-	hasMore = kMore
-	if len(entries) > 0 {
-		if direction == "next" && cursor != "" {
-			prevCursor = buildLogbookCursor(entries[0])
-		} else if direction == "prev" && hasMore {
-			prevCursor = buildLogbookCursor(entries[0])
-		}
-		if hasMore {
-			nextCursor = buildLogbookCursor(entries[len(entries)-1])
-		}
+	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	var query interface{} = ""
+	if len(values) > 0 {
+		query = template.URL("&" + values.Encode())
 	}
 
 	c.HTML(http.StatusOK, "logbook/list.html", gin.H{
 		"title": "Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
-		"entries": entries,
+		"entries":    entries,
+		"total":      total,
+		"page":       page,
+		"totalPages": totalPages,
+		"startRow":   startRow,
+		"query":      query,
 		"filters": gin.H{
-			"date_from":  f.StartDate,
-			"date_to":    f.EndDate,
-			"search":     f.Search,
-			"sort_by":    f.SortBy,
-			"sort_order": f.SortOrder,
+			"date_from": f.StartDate, "date_to": f.EndDate,
+			"search": f.Search, "sort_by": sortBy, "sort_order": sortOrder,
 		},
-		"pageSize":   pageSize,
-		"totalPages": 0,
-		"startRow":   0,
-		"hasMore":    hasMore,
-		"prevCursor": prevCursor,
-		"nextCursor": nextCursor,
-		"success":    c.Query("success"),
+		"pageSize": pageSize,
+		"success":  c.Query("success"),
+	})
+}
+
+func (h *Handler) LogbookDetail(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok { return }
+
+	id, _ := strconv.Atoi(c.Param("id"))
+	entry, err := h.logbookService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Entry tidak ditemukan")
+		return
+	}
+
+	c.HTML(http.StatusOK, "logbook/detail.html", gin.H{
+		"title": "Detail Logbook", "currentPage": "logbook",
+		"username": username, "role": role, "entry": entry,
 	})
 }
 
