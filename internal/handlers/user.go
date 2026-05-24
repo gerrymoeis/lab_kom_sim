@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -57,6 +58,80 @@ func (h *Handler) UserCreate(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, "/admin/users")
+}
+
+func (h *Handler) UserDetail(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok { return }
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		h.redirectWithError(c, "/admin/users", "ID tidak valid")
+		return
+	}
+
+	user, err := h.userService.GetByID(id)
+	if err != nil {
+		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
+		return
+	}
+
+	c.HTML(http.StatusOK, "user/detail.html", gin.H{
+		"title": "Detail User", "currentPage": "users",
+		"username": username, "role": role, "user": user,
+		"error": c.Query("error"), "success": c.Query("success"),
+	})
+}
+
+func (h *Handler) UserEditPage(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok { return }
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		h.redirectWithError(c, "/admin/users", "ID tidak valid")
+		return
+	}
+
+	user, err := h.userService.GetByID(id)
+	if err != nil {
+		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
+		return
+	}
+
+	c.HTML(http.StatusOK, "user/edit.html", gin.H{
+		"title": "Edit User", "currentPage": "users",
+		"username": username, "role": role, "user": user,
+		"error": c.Query("error"),
+	})
+}
+
+func (h *Handler) UserEdit(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		h.redirectWithError(c, "/admin/users", "ID tidak valid")
+		return
+	}
+
+	var req UpdateUserRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.Redirect(http.StatusFound, fmt.Sprintf("/admin/users/%d/edit?error=Semua field harus diisi", id))
+		return
+	}
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
+	ip, ua := getRequestContext(c)
+
+	if err := h.userService.UpdateUser(uid, id, u, r, ip, ua, req.Username, req.FullName, req.Role, req.NewPassword); err != nil {
+		msg := "Gagal mengupdate user"
+		if errors.Is(err, services.ErrUsernameTaken) { msg = "Username sudah digunakan" }
+		if errors.Is(err, services.ErrProtectedUpdate) { msg = "Tidak dapat mengubah role user ini" }
+		c.Redirect(http.StatusFound, fmt.Sprintf("/admin/users/%d/edit?error=%s", id, msg))
+		return
+	}
+
+	c.Redirect(http.StatusFound, fmt.Sprintf("/admin/users/%d?success=User berhasil diupdate", id))
 }
 
 func (h *Handler) UserDelete(c *gin.Context) {

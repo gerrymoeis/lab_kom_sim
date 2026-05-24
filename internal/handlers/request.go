@@ -188,6 +188,13 @@ type CreateUserRequest struct {
 	Role     string `form:"role" binding:"required"`
 }
 
+type UpdateUserRequest struct {
+	Username    string `form:"username" binding:"required"`
+	FullName    string `form:"full_name" binding:"required"`
+	Role        string `form:"role" binding:"required"`
+	NewPassword string `form:"new_password"`
+}
+
 type UpdateProfileRequest struct {
 	Username string `form:"username" binding:"required"`
 	FullName string `form:"full_name" binding:"required"`
