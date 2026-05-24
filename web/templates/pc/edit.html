@@ -13,6 +13,11 @@
                                 <input type="text" class="form-control" value="PC-{{ printf "%02d" .pc.PCNumber }}" disabled>
                             </div>
                             <div class="col-md-4">
+                                <label class="form-label">Label Tampilan</label>
+                                <input type="text" class="form-control" id="label" name="label" value="{{ .pc.Label }}" placeholder="Kosongkan jika tidak perlu">
+                                <small class="text-muted">Opsional. Contoh: PC-Dosen, PC-Laboran, PC-CCTV</small>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label">Baris</label>
                                 <input type="text" class="form-control" value="{{ .pc.Column }}" disabled>
                             </div>

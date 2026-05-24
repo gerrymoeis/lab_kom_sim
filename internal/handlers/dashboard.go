@@ -19,5 +19,7 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		"grid": data.Grid, "pcs": data.PCs,
 		"statusCounts": data.StatusCounts,
 		"totalDevices": data.DeviceCount, "totalSoftware": data.SoftwareCount,
+		"pcLecturer": data.PCLecturer, "pcLaboran": data.PCLaboran,
+		"pcCCTV": data.PCCCTV,
 	})
 }

@@ -18,10 +18,21 @@
                                 id="pc_number"
                                 name="pc_number"
                                 min="1"
-                                max="40"
+                                max="43"
                                 required
                             />
-                            <small class="text-muted">1-40</small>
+                            <small class="text-muted">1-40 (PC Biasa), 41-43 (PC Dosen/Laboran/CCTV)</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="label" class="form-label">Label Tampilan</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="label"
+                                name="label"
+                                placeholder="Contoh: PC-Dosen, PC-Laboran, PC-CCTV"
+                            />
+                            <small class="text-muted">Opsional. Jika diisi, akan ditampilkan sebagai nama PC</small>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="column" class="form-label">Baris *</label>
