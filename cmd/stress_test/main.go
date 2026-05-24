@@ -69,11 +69,10 @@ type entityStore struct {
 	mu      sync.Mutex
 	base    int
 	created int64
-	deleted map[int]bool
 }
 
 func newEntityStore() *entityStore {
-	return &entityStore{deleted: make(map[int]bool)}
+	return &entityStore{}
 }
 
 func (s *entityStore) trackMax(id int) {
@@ -99,6 +98,46 @@ func (s *entityStore) pickEditID() int {
 	}
 	offset := rand.Intn(int(s.created))
 	return s.base + offset + 1
+}
+
+// pickUpdateID returns random ID from UPDATE pool (first 70% of base)
+// This ensures UPDATE operations don't collide with DELETE operations
+func (s *entityStore) pickUpdateID() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	if s.base == 0 {
+		return 0
+	}
+	
+	// UPDATE pool: 70% pertama dari base
+	maxID := (s.base * 7) / 10
+	if maxID == 0 {
+		maxID = 1
+	}
+	
+	return rand.Intn(maxID) + 1
+}
+
+// pickDeleteID returns random ID from DELETE pool (last 30% of base)
+// This ensures DELETE operations don't collide with UPDATE operations
+func (s *entityStore) pickDeleteID() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	if s.base == 0 {
+		return 0
+	}
+	
+	// DELETE pool: 30% terakhir dari base
+	minID := ((s.base * 7) / 10) + 1
+	maxID := s.base
+	
+	if minID > maxID {
+		return 0
+	}
+	
+	return rand.Intn(maxID-minID+1) + minID
 }
 
 type worker struct {
@@ -445,61 +484,61 @@ func (w *worker) pickEndpoint(counter int64, stores map[string]*entityStore) end
 		{"POST", "/profile/password", bodyPasswordChange(), "profile", "update"},
 	}
 
-	if id := stores["logbook"].pickEditID(); id > 0 {
+	if id := stores["logbook"].pickUpdateID(); id > 0 {
 		updateEndpoints = append(updateEndpoints,
 			endpointDef{"POST", pk("/logbook/%d/edit", id), bodyLogbookEdit(counter), "logbook", "update"})
 	}
-	if id := stores["schedules"].pickEditID(); id > 0 {
+	if id := stores["schedules"].pickUpdateID(); id > 0 {
 		updateEndpoints = append(updateEndpoints,
 			endpointDef{"POST", pk("/schedules/%d/edit", id), bodyScheduleEdit(counter), "schedules", "update"})
 	}
-	if id := stores["software"].pickEditID(); id > 0 {
+	if id := stores["software"].pickUpdateID(); id > 0 {
 		updateEndpoints = append(updateEndpoints,
 			endpointDef{"POST", pk("/software/%d/edit", id), bodySoftwareEdit(counter), "software", "update"})
 	}
-	if id := stores["device-types"].pickEditID(); id > 0 {
+	if id := stores["device-types"].pickUpdateID(); id > 0 {
 		updateEndpoints = append(updateEndpoints,
 			endpointDef{"POST", pk("/device-types/%d/edit", id), bodyDeviceTypeEdit(counter), "device-types", "update"})
 	}
-	if id := stores["device-loans"].pickEditID(); id > 0 {
+	if id := stores["device-loans"].pickUpdateID(); id > 0 {
 		updateEndpoints = append(updateEndpoints,
 			endpointDef{"POST", pk("/device-loans/%d/edit", id), bodyDeviceLoanEdit(counter), "device-loans", "update"})
 	}
-	if id := stores["device-usages"].pickEditID(); id > 0 {
+	if id := stores["device-usages"].pickUpdateID(); id > 0 {
 		updateEndpoints = append(updateEndpoints,
 			endpointDef{"POST", pk("/device-usages/%d/edit", id), bodyDeviceUsageEdit(counter), "device-usages", "update"})
 	}
-	if id := stores["lost-items"].pickEditID(); id > 0 {
+	if id := stores["lost-items"].pickUpdateID(); id > 0 {
 		updateEndpoints = append(updateEndpoints,
 			endpointDef{"POST", pk("/lost-items/%d/edit", id), bodyLostItemEdit(counter), "lost-items", "update"})
 	}
 
 	deleteEndpoints := []endpointDef{}
-	if id := stores["logbook"].pickEditID(); id > 0 {
+	if id := stores["logbook"].pickDeleteID(); id > 0 {
 		deleteEndpoints = append(deleteEndpoints,
 			endpointDef{"POST", pk("/logbook/%d/delete", id), "", "logbook", "delete"})
 	}
-	if id := stores["schedules"].pickEditID(); id > 0 {
+	if id := stores["schedules"].pickDeleteID(); id > 0 {
 		deleteEndpoints = append(deleteEndpoints,
 			endpointDef{"POST", pk("/schedules/%d/delete", id), "", "schedules", "delete"})
 	}
-	if id := stores["software"].pickEditID(); id > 0 {
+	if id := stores["software"].pickDeleteID(); id > 0 {
 		deleteEndpoints = append(deleteEndpoints,
 			endpointDef{"POST", pk("/software/%d/delete", id), "", "software", "delete"})
 	}
-	if id := stores["device-types"].pickEditID(); id > 0 {
+	if id := stores["device-types"].pickDeleteID(); id > 0 {
 		deleteEndpoints = append(deleteEndpoints,
 			endpointDef{"POST", pk("/device-types/%d/delete", id), "", "device-types", "delete"})
 	}
-	if id := stores["device-loans"].pickEditID(); id > 0 {
+	if id := stores["device-loans"].pickDeleteID(); id > 0 {
 		deleteEndpoints = append(deleteEndpoints,
 			endpointDef{"POST", pk("/device-loans/%d/delete", id), "", "device-loans", "delete"})
 	}
-	if id := stores["device-usages"].pickEditID(); id > 0 {
+	if id := stores["device-usages"].pickDeleteID(); id > 0 {
 		deleteEndpoints = append(deleteEndpoints,
 			endpointDef{"POST", pk("/device-usages/%d/delete", id), "", "device-usages", "delete"})
 	}
-	if id := stores["lost-items"].pickEditID(); id > 0 {
+	if id := stores["lost-items"].pickDeleteID(); id > 0 {
 		deleteEndpoints = append(deleteEndpoints,
 			endpointDef{"POST", pk("/lost-items/%d/delete", id), "", "lost-items", "delete"})
 	}
