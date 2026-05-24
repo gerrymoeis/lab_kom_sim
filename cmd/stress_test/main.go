@@ -142,6 +142,13 @@ func min(a, b int) int {
 	return b
 }
 
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func parseFlags() *config {
 	c := &config{}
 	flag.StringVar(&c.url, "url", "http://localhost:8080", "Target server URL")
@@ -725,7 +732,7 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 		
 		if location := resp.Header.Get("Location"); location != "" {
 			// Try to extract ID from redirect URL
-			// Possible formats: /devices, /devices?tab=list, /devices/123, etc.
+			// Possible formats: /devices/123, /devices?id=123
 			re := regexp.MustCompile(`/devices/(\d+)`)
 			if m := re.FindStringSubmatch(location); len(m) > 1 {
 				deviceID, _ = strconv.Atoi(m[1])
@@ -735,13 +742,16 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 			}
 		}
 		
-		// Fallback: Search for device by name
+		// Fallback: Search for device by name with EXACT match
 		if !found {
+			deviceName := pk("STRESS_DEVICE_%d", i)
+			
 			for retry := 0; retry < 5; retry++ {
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(300 * time.Millisecond)
 				
+				// Search with exact device name
 				req, _ = http.NewRequest("GET", 
-					cfg.url+"/devices?tab=list&search=STRESS_DEVICE_"+strconv.Itoa(i), nil)
+					cfg.url+"/devices?tab=list&search="+url.QueryEscape(deviceName), nil)
 				resp, err = client.Do(req)
 				if err != nil {
 					log.Printf("Setup: retry %d - failed to search device %d: %v", retry+1, i, err)
@@ -750,34 +760,47 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 				body, _ = io.ReadAll(resp.Body)
 				resp.Body.Close()
 				
-				// Try multiple regex patterns to find device ID
-				patterns := []*regexp.Regexp{
-					regexp.MustCompile(`STRESS_DEVICE_` + strconv.Itoa(i) + `.*?href="/devices/(\d+)`),  // Name + href
-					regexp.MustCompile(`href="/devices/(\d+)/edit"`),                                      // href="/devices/123/edit"
-					regexp.MustCompile(`href="/devices/(\d+)"`),                                           // href="/devices/123"
-					regexp.MustCompile(`data-device-id="(\d+)"`),                                          // data-device-id="123"
-				}
+				// Strategy: Find device name in HTML, then extract ID from nearby href
+				// Look for pattern: >STRESS_DEVICE_1< ... href="/devices/123"
+				// Use more specific pattern to avoid matching other devices
 				
-				for _, pattern := range patterns {
-					if m := pattern.FindStringSubmatch(string(body)); len(m) > 1 {
-						deviceID, _ = strconv.Atoi(m[1])
-						deviceIDs = append(deviceIDs, deviceID)
-						found = true
-						log.Printf("Setup: device %d found with ID=%d (pattern matched)", i, deviceID)
-						break
-					}
-				}
-				
-				if found {
+				// Pattern 1: Exact name match with ID in same row
+				pattern1 := regexp.MustCompile(`>` + deviceName + `<.*?href="/devices/(\d+)`)
+				if m := pattern1.FindStringSubmatch(string(body)); len(m) > 1 {
+					deviceID, _ = strconv.Atoi(m[1])
+					deviceIDs = append(deviceIDs, deviceID)
+					found = true
+					log.Printf("Setup: device %d found with ID=%d (exact name match)", i, deviceID)
 					break
 				}
 				
-				// Debug: print response on last retry
+				// Pattern 2: href before name (reverse order)
+				pattern2 := regexp.MustCompile(`href="/devices/(\d+)[^>]*>.*?>` + deviceName + `<`)
+				if m := pattern2.FindStringSubmatch(string(body)); len(m) > 1 {
+					deviceID, _ = strconv.Atoi(m[1])
+					deviceIDs = append(deviceIDs, deviceID)
+					found = true
+					log.Printf("Setup: device %d found with ID=%d (reverse pattern)", i, deviceID)
+					break
+				}
+				
+				// Debug on last retry
 				if retry == 4 {
-					log.Printf("Setup: device %d not found after 5 retries", i)
+					log.Printf("Setup: device %d (%s) not found after 5 retries", i, deviceName)
 					log.Printf("Setup: Response length: %d bytes", len(body))
-					log.Printf("Setup: Response preview (first 800 chars):\n%s", string(body)[:min(800, len(body))])
-					log.Printf("Setup: Searching for: STRESS_DEVICE_%d", i)
+					
+					// Check if device name exists in response
+					if strings.Contains(string(body), deviceName) {
+						log.Printf("Setup: Device name '%s' FOUND in response but ID extraction failed", deviceName)
+						// Print context around device name
+						idx := strings.Index(string(body), deviceName)
+						start := max(0, idx-200)
+						end := min(len(body), idx+200)
+						log.Printf("Setup: Context around device name:\n%s", string(body)[start:end])
+					} else {
+						log.Printf("Setup: Device name '%s' NOT FOUND in response", deviceName)
+						log.Printf("Setup: Response preview (first 800 chars):\n%s", string(body)[:min(800, len(body))])
+					}
 				}
 			}
 		}
