@@ -179,10 +179,10 @@
             <!-- Filter & Search -->
             <form method="GET" action="/devices" class="row g-3 mb-3">
                 <input type="hidden" name="tab" value="types">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <input type="text" class="form-control" name="search" placeholder="Cari jenis barang..." value="{{ .filters.search }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <select class="form-select" name="category">
                         <option value="">Semua Kategori</option>
                         {{ range $cat := allCategories }}
@@ -190,7 +190,13 @@
                         {{ end }}
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <select class="form-select" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
+                        <option value="name" {{ if eq .filters.sort_by "name" }}selected{{ end }}>Nama</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
@@ -261,7 +267,7 @@
             <!-- Filter & Search -->
             <form method="GET" action="/devices" class="row g-3 mb-3">
                 <input type="hidden" name="tab" value="loans">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <input type="text" class="form-control" name="search" placeholder="Cari peminjam atau perangkat..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
@@ -270,6 +276,13 @@
                         <option value="active" {{ if eq .filters.status "active" }}selected{{ end }}>Aktif</option>
                         <option value="returned" {{ if eq .filters.status "returned" }}selected{{ end }}>Dikembalikan</option>
                         <option value="overdue" {{ if eq .filters.status "overdue" }}selected{{ end }}>Terlambat</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
+                        <option value="borrower_name" {{ if eq .filters.sort_by "borrower_name" }}selected{{ end }}>Peminjam</option>
+                        <option value="loan_date" {{ if eq .filters.sort_by "loan_date" }}selected{{ end }}>Tanggal Pinjam</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -360,10 +373,18 @@
             <!-- Filter & Search -->
             <form method="GET" action="/devices" class="row g-3 mb-3">
                 <input type="hidden" name="tab" value="usages">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <input type="text" class="form-control" name="search" placeholder="Cari pengguna atau perangkat..." value="{{ .filters.search }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <select class="form-select" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
+                        <option value="user_name" {{ if eq .filters.sort_by "user_name" }}selected{{ end }}>Pengguna</option>
+                        <option value="usage_date" {{ if eq .filters.sort_by "usage_date" }}selected{{ end }}>Tanggal</option>
+                        <option value="device_name" {{ if eq .filters.sort_by "device_name" }}selected{{ end }}>Perangkat</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>

@@ -24,8 +24,8 @@ func (s *SoftwareService) List(search, filterCategory string) ([]repository.Soft
 	return s.repo.List(search, filterCategory)
 }
 
-func (s *SoftwareService) ListPaginated(search, filterCategory string, page, pageSize int) ([]repository.SoftwareStat, int, error) {
-	return s.repo.ListPaginated(search, filterCategory, page, pageSize)
+func (s *SoftwareService) ListPaginated(search, filterCategory, sortBy string, page, pageSize int) ([]repository.SoftwareStat, int, error) {
+	return s.repo.ListPaginated(search, filterCategory, sortBy, page, pageSize)
 }
 
 func (s *SoftwareService) GetOtherCatalog() ([]repository.SoftwareItem, error) {

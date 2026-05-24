@@ -250,7 +250,7 @@ func (r *DeviceRepository) ListLoans() ([]DeviceLoanRow, error) {
 	return r.listLoansWithQuery("")
 }
 
-func (r *DeviceRepository) ListLoansPaginated(search, status string, page, pageSize int) ([]DeviceLoanRow, int, error) {
+func (r *DeviceRepository) ListLoansPaginated(search, status, sortBy string, page, pageSize int) ([]DeviceLoanRow, int, error) {
 	if page < 1 { page = 1 }
 	if pageSize < 1 { pageSize = 20 }
 
@@ -288,7 +288,12 @@ func (r *DeviceRepository) ListLoansPaginated(search, status string, page, pageS
 		s := "%" + search + "%"
 		dataArgs = append(dataArgs, s, s, s)
 	}
-	query += ` ORDER BY l.loan_date DESC LIMIT ? OFFSET ?`
+	loanSortBy := "l.loan_date"
+	switch sortBy {
+	case "borrower_name":
+		loanSortBy = "l.borrower_name"
+	}
+	query += ` ORDER BY ` + loanSortBy + ` DESC LIMIT ? OFFSET ?`
 	dataArgs = append(dataArgs, pageSize, (page-1)*pageSize)
 
 	rows, err := r.db.Query(query, dataArgs...)
@@ -339,7 +344,7 @@ func (r *DeviceRepository) ListUsages() ([]DeviceUsageRow, error) {
 	return r.listUsagesWithQuery("")
 }
 
-func (r *DeviceRepository) ListUsagesPaginated(search string, page, pageSize int) ([]DeviceUsageRow, int, error) {
+func (r *DeviceRepository) ListUsagesPaginated(search, sortBy string, page, pageSize int) ([]DeviceUsageRow, int, error) {
 	if page < 1 { page = 1 }
 	if pageSize < 1 { pageSize = 20 }
 
@@ -362,7 +367,14 @@ func (r *DeviceRepository) ListUsagesPaginated(search string, page, pageSize int
 		s := "%" + search + "%"
 		dataArgs = append(dataArgs, s, s)
 	}
-	query += ` ORDER BY u.usage_date DESC LIMIT ? OFFSET ?`
+	usageSortBy := "u.usage_date"
+	switch sortBy {
+	case "user_name":
+		usageSortBy = "u.user_name"
+	case "device_name":
+		usageSortBy = "d.name"
+	}
+	query += ` ORDER BY ` + usageSortBy + ` DESC LIMIT ? OFFSET ?`
 	dataArgs = append(dataArgs, pageSize, (page-1)*pageSize)
 
 	rows, err := r.db.Query(query, dataArgs...)

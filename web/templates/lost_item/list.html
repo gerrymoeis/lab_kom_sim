@@ -23,7 +23,7 @@
                 <div class="col-md-4">
                     <input type="text" class="form-control" name="search" placeholder="Cari barang, pelapor, lokasi..." value="{{ .filters.search }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <select class="form-select" name="status">
                         <option value="">Semua Status</option>
                         <option value="hilang" {{ if eq .filters.status "hilang" }}selected{{ end }}>Hilang</option>
@@ -31,7 +31,15 @@
                         <option value="dilaporkan" {{ if eq .filters.status "dilaporkan" }}selected{{ end }}>Dilaporkan</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <select class="form-select" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
+                        <option value="item_name" {{ if eq .filters.sort_by "item_name" }}selected{{ end }}>Nama Barang</option>
+                        <option value="reported_date" {{ if eq .filters.sort_by "reported_date" }}selected{{ end }}>Tanggal Lapor</option>
+                        <option value="status" {{ if eq .filters.sort_by "status" }}selected{{ end }}>Status</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>

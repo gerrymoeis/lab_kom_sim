@@ -50,16 +50,16 @@ func (s *DeviceService) ListLoans() ([]repository.DeviceLoanRow, error) {
 	return s.deviceRepo.ListLoans()
 }
 
-func (s *DeviceService) ListLoansPaginated(search, status string, page, pageSize int) ([]repository.DeviceLoanRow, int, error) {
-	return s.deviceRepo.ListLoansPaginated(search, status, page, pageSize)
+func (s *DeviceService) ListLoansPaginated(search, status, sortBy string, page, pageSize int) ([]repository.DeviceLoanRow, int, error) {
+	return s.deviceRepo.ListLoansPaginated(search, status, sortBy, page, pageSize)
 }
 
 func (s *DeviceService) ListUsages() ([]repository.DeviceUsageRow, error) {
 	return s.deviceRepo.ListUsages()
 }
 
-func (s *DeviceService) ListUsagesPaginated(search string, page, pageSize int) ([]repository.DeviceUsageRow, int, error) {
-	return s.deviceRepo.ListUsagesPaginated(search, page, pageSize)
+func (s *DeviceService) ListUsagesPaginated(search, sortBy string, page, pageSize int) ([]repository.DeviceUsageRow, int, error) {
+	return s.deviceRepo.ListUsagesPaginated(search, sortBy, page, pageSize)
 }
 
 func (s *DeviceService) GetByID(id int) (*models.DeviceWithCategory, error) {
