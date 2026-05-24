@@ -13,10 +13,9 @@
             </div>
         </div>
 
-        <!-- Filters -->
-        <div class="card mb-3">
+        <div class="card shadow-sm">
             <div class="card-body">
-                <form method="GET" action="/admin/activity-logs" class="row g-3">
+                <form method="GET" action="/admin/activity-logs" class="row g-3 mb-3">
                     <div class="col-md-3">
                         <label for="date_from" class="form-label">Tanggal Dari</label>
                         <input type="date" class="form-control" id="date_from" name="date_from" value="{{ .filters.date_from }}">
@@ -74,24 +73,10 @@
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
 
-        <!-- Results Summary -->
-        <div class="row mb-3">
-            <div class="col">
-                <p class="text-muted">
-                    Menampilkan {{ len .logs }} entries
-                    {{ if .filters.search }}
-                    (hasil pencarian: "{{ .filters.search }}")
-                    {{ end }}
-                </p>
-            </div>
-        </div>
+        {{ if gt (len .logs) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .logs)) 1 }} dari {{ .totalItems }} entries{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>{{ end }}
 
-        <!-- Activity Logs Table -->
-        <div class="card">
-            <div class="card-body">
+        {{ template "layout/pagination.html" . }}
                 <div class="table-responsive">
                     <table class="table table-hover activity-log-table">
                         <thead class="table-light">
@@ -118,8 +103,8 @@
                             {{ range .logs }}
                             <tr>
                                 <td>
-                                    <small>{{ .CreatedAt.Format "02/01/2006" }}</small><br>
-                                    <small class="text-muted">{{ .CreatedAt.Format "15:04:05" }}</small>
+                                    <small>{{ (localTime .CreatedAt).Format "02/01/2006" }}</small><br>
+                                    <small class="text-muted">{{ (localTime .CreatedAt).Format "15:04:05" }} {{ tzCode }}</small>
                                 </td>
                                 <td>
                                     <span class="badge bg-secondary">{{ .Username }}</span>
@@ -167,7 +152,7 @@
                                             data-bs-toggle="modal" 
                                             data-bs-target="#detailModal"
                                             data-log-id="{{ .ID }}"
-                                            data-log-timestamp="{{ .CreatedAt.Format "02/01/2006 15:04:05" }}"
+                                            data-log-timestamp="{{ (localTime .CreatedAt).Format "02/01/2006 15:04:05" }} {{ tzCode }}"
                                             data-log-username="{{ .Username }}"
                                             data-log-role="{{ .UserRole }}"
                                             data-log-action="{{ .Action }}"
@@ -190,21 +175,7 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
-                {{ if or .prevCursor .nextCursor }}
-                {{ $q := "" }}{{ if .filters.date_from }}{{ $q = printf "%s&date_from=%s" $q .filters.date_from }}{{ end }}{{ if .filters.date_to }}{{ $q = printf "%s&date_to=%s" $q .filters.date_to }}{{ end }}{{ if .filters.action }}{{ $q = printf "%s&action=%s" $q .filters.action }}{{ end }}{{ if .filters.entity_type }}{{ $q = printf "%s&entity_type=%s" $q .filters.entity_type }}{{ end }}{{ if .filters.username }}{{ $q = printf "%s&username=%s" $q .filters.username }}{{ end }}{{ if .filters.status }}{{ $q = printf "%s&status=%s" $q .filters.status }}{{ end }}{{ if .filters.search }}{{ $q = printf "%s&search=%s" $q .filters.search }}{{ end }}
-                <nav aria-label="Page navigation" class="mt-3">
-                    <ul class="pagination justify-content-center">
-                        {{ if .searchMode }}
-                        <li class="page-item {{ if not .prevCursor }}disabled{{ end }}"><a class="page-link" href="?search_offset={{ .prevCursor }}{{ $q }}">Previous</a></li>
-                        <li class="page-item {{ if not .hasMore }}disabled{{ end }}"><a class="page-link" href="?search_offset={{ .nextCursor }}{{ $q }}">Next</a></li>
-                        {{ else }}
-                        <li class="page-item {{ if not .prevCursor }}disabled{{ end }}"><a class="page-link" href="?cursor={{ .prevCursor }}&dir=prev{{ $q }}">Previous</a></li>
-                        <li class="page-item {{ if not .hasMore }}disabled{{ end }}"><a class="page-link" href="?cursor={{ .nextCursor }}&dir=next{{ $q }}">Next</a></li>
-                        {{ end }}
-                    </ul>
-                </nav>
-                {{ end }}
+                {{ template "layout/pagination.html" . }}
             </div>
         </div>
     </div>

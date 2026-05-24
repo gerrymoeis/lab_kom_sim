@@ -17,19 +17,26 @@
 
 <div class="card shadow-sm">
     <div class="card-body">
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <form method="GET" action="/software" class="d-flex gap-2 flex-wrap">
-                    <input type="text" name="search" class="form-control" placeholder="Cari software..." value="{{ .search }}">
-                    <select name="category" class="form-select" style="width:auto;">
-                        <option value="">Semua</option>
-                        <option value="required" {{ if eq .filterCat "required" }}selected{{ end }}>Required</option>
-                        <option value="other" {{ if eq .filterCat "other" }}selected{{ end }}>Other</option>
-                    </select>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
-                </form>
+        <form method="GET" action="/software" class="row g-3 mb-3">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control" placeholder="Cari software..." value="{{ .search }}">
             </div>
-        </div>
+            <div class="col-md-2">
+                <select name="category" class="form-select">
+                    <option value="">Semua</option>
+                    <option value="required" {{ if eq .filterCat "required" }}selected{{ end }}>Required</option>
+                    <option value="other" {{ if eq .filterCat "other" }}selected{{ end }}>Other</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filter</button>
+            </div>
+            <div class="col-md-2">
+                <a href="/software" class="btn btn-secondary w-100"><i class="bi bi-x-circle"></i> Reset</a>
+            </div>
+        </form>
+        {{ if gt (len .catalog) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .catalog)) 1 }} dari {{ .totalItems }} software</p>{{ end }}
+        {{ template "layout/pagination.html" . }}
         <div class="table-responsive">
             <table class="table table-hover">
                 <thead class="table-light">
@@ -43,9 +50,9 @@
                         <td>{{ if eq .Category "required" }}<span class="badge bg-primary">Required</span>{{ else }}<span class="badge bg-secondary">Other</span>{{ end }}</td>
                         <td>{{ .Description }}</td>
                         <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
-                        <td class="d-flex gap-1 flex-wrap align-items-center">
-                            <a href="/software/{{ .ID }}" class="btn btn-sm btn-info" title="Detail"><i class="bi bi-eye"></i></a>
-                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit"><i class="bi bi-pencil"></i></a>
+                        <td class="text-nowrap">
+                            <a href="/software/{{ .ID }}" class="btn btn-sm btn-info me-1" title="Detail"><i class="bi bi-eye"></i></a>
+                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit"><i class="bi bi-pencil"></i></a>
                             <button type="button" class="btn btn-sm btn-danger" title="Hapus" onclick="if(confirm('Hapus {{ .Name }}?')){ document.getElementById('del-{{ .ID }}').submit(); }"><i class="bi bi-trash"></i></button>
                             <form id="del-{{ .ID }}" method="POST" action="/software/{{ .ID }}/delete" style="display:none;"></form>
                         </td>
