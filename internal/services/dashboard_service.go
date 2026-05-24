@@ -11,6 +11,10 @@ type DashboardData struct {
 	StatusCounts  map[string]int
 	DeviceCount   int
 	SoftwareCount int
+	SpecialPCs    []models.PC
+	PCLecturer    models.PC
+	PCLaboran     models.PC
+	PCCCTV        models.PC
 }
 
 type DashboardService struct {
@@ -36,15 +40,32 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 	for i := range grid {
 		grid[i] = make([]models.PC, 8)
 	}
+
+	var specialPCs []models.PC
+	data := &DashboardData{}
+
 	for _, pc := range pcs {
 		if pc.Row >= 1 && pc.Row <= 5 && pc.Column >= 1 && pc.Column <= 8 {
 			grid[pc.Row-1][pc.Column-1] = pc
+		} else if pc.Label != "" {
+			specialPCs = append(specialPCs, pc)
+			switch pc.Label {
+			case "PC-Dosen":
+				data.PCLecturer = pc
+			case "PC-Laboran":
+				data.PCLaboran = pc
+			case "PC-CCTV":
+				data.PCCCTV = pc
+			}
 		}
 	}
 
 	deviceCount, softwareCount, _ := s.dashboardRepo.CountAll()
-	return &DashboardData{
-		PCs: pcs, Grid: grid, StatusCounts: statusCounts,
-		DeviceCount: deviceCount, SoftwareCount: softwareCount,
-	}, nil
+	data.PCs = pcs
+	data.Grid = grid
+	data.StatusCounts = statusCounts
+	data.DeviceCount = deviceCount
+	data.SoftwareCount = softwareCount
+	data.SpecialPCs = specialPCs
+	return data, nil
 }

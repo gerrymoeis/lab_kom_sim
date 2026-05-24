@@ -97,6 +97,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		SerialNumber: req.SerialNumber, OperatingSystem: req.OperatingSystem,
 		DeviceType: req.DeviceType, BrandModel: req.BrandModel, Accessories: req.Accessories,
 		PhotoSerial: photoSerial, PhotoFront: photoFront,
+		Label: req.Label,
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
@@ -145,6 +146,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		RAM: req.RAM, Storage: req.Storage, OperatingSystem: req.OperatingSystem,
 		Notes: req.Notes, ActionNotes: req.ActionNotes,
 		PhotoSerial: photoSerial, PhotoFront: photoFront,
+		Label: req.Label,
 	}, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, "Gagal mengupdate PC")
 		return
