@@ -243,6 +243,7 @@ func SetupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 		protected.GET("/logbook/export-preview", h.LogbookExportPreview)
 		protected.GET("/logbook/create", h.LogbookCreatePage)
 		protected.POST("/logbook/create", h.LogbookCreate)
+		protected.GET("/logbook/:id", h.LogbookDetail)
 		protected.GET("/logbook/:id/edit", h.LogbookEditPage)
 		protected.POST("/logbook/:id/edit", h.LogbookEdit)
 		protected.POST("/logbook/:id/delete", h.LogbookDelete)
