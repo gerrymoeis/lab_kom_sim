@@ -738,11 +738,14 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 		if err != nil {
 			log.Fatalf("Setup: failed to create device %d: %v", i, err)
 		}
-		body, _ = io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
+		
+		// Check response status
 		if resp.StatusCode != 302 {
-			log.Fatalf("Setup: device %d creation failed with status %d: %s", 
-				i, resp.StatusCode, string(body))
+			log.Printf("Setup: device %d creation returned status %d", i, resp.StatusCode)
+			log.Printf("Setup: response body: %s", string(body)[:min(500, len(body))])
+			log.Fatalf("Setup: device %d creation failed with status %d", i, resp.StatusCode)
 		}
 		
 		// Calculate device ID based on auto-increment
@@ -750,13 +753,45 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 		deviceID := baseDeviceID + i
 		deviceIDs = append(deviceIDs, deviceID)
 		
+		// Add small delay between creates to avoid overwhelming server
+		time.Sleep(50 * time.Millisecond)
+		
 		if i%5 == 0 || i == deviceCount {
 			log.Printf("Setup: created %d/%d devices", i, deviceCount)
 		}
 	}
 	
-	log.Printf("Setup: successfully created %d devices (IDs: %d-%d)", 
-		len(deviceIDs), deviceIDs[0], deviceIDs[len(deviceIDs)-1])
+	log.Printf("Setup: successfully created %d devices", deviceCount)
+	
+	// Query actual device IDs after creation
+	time.Sleep(1 * time.Second)  // Wait for DB commit
+	req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list", nil)
+	resp, err = client.Do(req)
+	if err != nil {
+		log.Fatalf("Setup: failed to get devices after creation: %v", err)
+	}
+	body, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	
+	// Find all STRESS_DEVICE IDs
+	actualDeviceIDs := []int{}
+	for i := 1; i <= deviceCount; i++ {
+		deviceName := pk("STRESS_DEVICE_%d", i)
+		// Look for device name and extract ID from same context
+		pattern := regexp.MustCompile(`<strong>` + deviceName + `</strong>[\s\S]{0,800}?/devices/(\d+)`)
+		if m := pattern.FindStringSubmatch(string(body)); len(m) > 1 {
+			if id, err := strconv.Atoi(m[1]); err == nil {
+				actualDeviceIDs = append(actualDeviceIDs, id)
+			}
+		}
+	}
+	
+	if len(actualDeviceIDs) != deviceCount {
+		log.Fatalf("Setup: expected %d devices but found %d in HTML", deviceCount, len(actualDeviceIDs))
+	}
+	
+	deviceIDs = actualDeviceIDs
+	log.Printf("Setup: actual device IDs: %v", deviceIDs)
 	
 	// Debug: print all device IDs
 	log.Printf("Setup: device IDs detail: %v", deviceIDs)
@@ -1064,6 +1099,29 @@ func main() {
 		s.mu.Lock()
 		log.Printf("  %s: base=%d, created=%d", name, s.base, s.created)
 		s.mu.Unlock()
+	}
+	
+	// Verify devices were actually created
+	if stores["devices"].base < deviceCount {
+		log.Printf("WARNING: Expected %d devices but discovery only found %d!", deviceCount, stores["devices"].base)
+		log.Printf("This means devices were not properly saved to database or not visible in list")
+		
+		// Try to get device list again with more details
+		req, _ := http.NewRequest("GET", cfg.url+"/devices?tab=list", nil)
+		resp, err := discoveryClient.Do(req)
+		if err == nil {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			
+			// Count STRESS_DEVICE occurrences
+			stressDeviceCount := strings.Count(string(body), "STRESS_DEVICE_")
+			log.Printf("Found %d STRESS_DEVICE mentions in HTML", stressDeviceCount)
+			
+			// Check if there's pagination
+			if strings.Contains(string(body), "pagination") || strings.Contains(string(body), "page=") {
+				log.Printf("WARNING: Device list has pagination, discovery may be incomplete")
+			}
+		}
 	}
 
 	testStart := time.Now()
