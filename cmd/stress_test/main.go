@@ -783,13 +783,25 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 				}
 				
 				// Pattern 3: Look for device name in table cell, then find ID in same row
-				// <tr>...<td>STRESS_DEVICE_1</td>...<a href="/devices/123/edit">
-				pattern3 := regexp.MustCompile(`<tr[^>]*>.*?` + deviceName + `.*?href="/devices/(\d+)`)
+				// <tr>...<td><strong>STRESS_DEVICE_1</strong></td>...<a href="/devices/123/edit">
+				// Need to capture entire row first, then extract ID
+				pattern3 := regexp.MustCompile(`<tr[^>]*>(?:(?!</tr>).)*?<strong>` + deviceName + `</strong>(?:(?!</tr>).)*?/devices/(\d+)`)
 				if m := pattern3.FindStringSubmatch(string(body)); len(m) > 1 {
 					deviceID, _ = strconv.Atoi(m[1])
 					deviceIDs = append(deviceIDs, deviceID)
 					found = true
 					log.Printf("Setup: device %d found with ID=%d (table row pattern)", i, deviceID)
+					break
+				}
+				
+				// Pattern 4: Alternative - look for asset code pattern, then device name, then ID
+				// <code>XXX-XXX-001</code>...<strong>STRESS_DEVICE_1</strong>...href="/devices/123"
+				pattern4 := regexp.MustCompile(`<code>[^<]+</code>.*?<strong>` + deviceName + `</strong>.*?/devices/(\d+)`)
+				if m := pattern4.FindStringSubmatch(string(body)); len(m) > 1 {
+					deviceID, _ = strconv.Atoi(m[1])
+					deviceIDs = append(deviceIDs, deviceID)
+					found = true
+					log.Printf("Setup: device %d found with ID=%d (asset code pattern)", i, deviceID)
 					break
 				}
 				
@@ -801,15 +813,25 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 					// Check if device name exists in response
 					if strings.Contains(string(body), deviceName) {
 						log.Printf("Setup: Device name '%s' FOUND in response but ID extraction failed", deviceName)
-						// Print context around device name
+						// Print LARGER context around device name (500 chars before and after)
 						idx := strings.Index(string(body), deviceName)
-						start := max(0, idx-200)
-						end := min(len(body), idx+200)
-						log.Printf("Setup: Context around device name:\n%s", string(body)[start:end])
+						start := max(0, idx-500)
+						end := min(len(body), idx+500)
+						log.Printf("Setup: Extended context around device name:\n%s", string(body)[start:end])
+						
+						// Try to find any /devices/(\d+) pattern in the context
+						contextStr := string(body)[start:end]
+						deviceLinkRE := regexp.MustCompile(`/devices/(\d+)`)
+						if matches := deviceLinkRE.FindAllStringSubmatch(contextStr, -1); len(matches) > 0 {
+							log.Printf("Setup: Found %d device links in context:", len(matches))
+							for _, m := range matches {
+								log.Printf("  - /devices/%s", m[1])
+							}
+						}
 					} else {
 						log.Printf("Setup: Device name '%s' NOT FOUND in response", deviceName)
 						// Print sample of device list to see structure
-						log.Printf("Setup: Response preview (first 1000 chars):\n%s", string(body)[:min(1000, len(body))])
+						log.Printf("Setup: Response preview (first 1500 chars):\n%s", string(body)[:min(1500, len(body))])
 					}
 				}
 			}
