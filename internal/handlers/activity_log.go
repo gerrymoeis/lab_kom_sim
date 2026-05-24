@@ -1,6 +1,7 @@
 ﻿package handlers
 
 import (
+	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -23,8 +24,8 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
-	query := ""
-	if len(values) > 0 { query = "&" + values.Encode() }
+	var query interface{} = ""
+	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
 	filters := services.ActivityLogFilters{Limit: pageSize, Offset: (page - 1) * pageSize}
 
