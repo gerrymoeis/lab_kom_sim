@@ -17,6 +17,7 @@ var (
 	ErrUsernameTaken   = errors.New("username sudah digunakan")
 	ErrPasswordMismatch = errors.New("password baru dan konfirmasi tidak cocok")
 	ErrWrongPassword   = errors.New("password lama salah")
+	ErrProtectedUpdate = errors.New("tidak dapat mengubah role user ini")
 )
 
 type UserService struct {
@@ -67,6 +68,44 @@ func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actor
 		return err
 	}
 	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", targetID, map[string]any{"deleted_username": u.Username}, ipAddress, userAgent)
+	return nil
+}
+
+func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actorRole, ipAddress, userAgent, username, fullName, role, newPassword string) error {
+	username = strings.TrimSpace(username)
+	fullName = strings.TrimSpace(fullName)
+
+	target, err := s.userRepo.GetByID(targetID)
+	if err != nil {
+		return ErrUserNotFound
+	}
+
+	if (target.Username == "admin" || target.Username == "rekan") && role != target.Role {
+		return ErrProtectedUpdate
+	}
+
+	exists, _ := s.userRepo.ExistsUsername(username, targetID)
+	if exists {
+		return ErrUsernameTaken
+	}
+
+	if err := s.userRepo.UpdateUser(targetID, username, fullName, role); err != nil {
+		return err
+	}
+
+	if newPassword != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		if err := s.userRepo.UpdatePassword(targetID, string(hash)); err != nil {
+			return err
+		}
+	}
+
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
+		map[string]any{"id": targetID, "target_username": target.Username},
+		map[string]any{"username": username, "full_name": fullName, "role": role, "password_changed": newPassword != ""}, ipAddress, userAgent)
 	return nil
 }
 

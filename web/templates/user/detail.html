@@ -1,0 +1,50 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-person-circle"></i> Detail User: {{ .user.Username }}</h5>
+                    <div>
+                        <a href="/admin/users/{{ .user.ID }}/edit" class="btn btn-sm btn-warning">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <a href="/admin/users" class="btn btn-sm btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Kembali
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {{ template "layout/alert.html" . }}
+
+                    <table class="table table-bordered">
+                        <tr><th width="30%">ID</th><td>{{ .user.ID }}</td></tr>
+                        <tr><th>Username</th><td><strong>{{ .user.Username }}</strong></td></tr>
+                        <tr><th>Nama Lengkap</th><td>{{ .user.FullName }}</td></tr>
+                        <tr>
+                            <th>Role</th>
+                            <td>
+                                <span class="badge bg-{{ if eq .user.Role "admin" }}danger{{ else }}info{{ end }}">
+                                    {{ .user.Role }}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">Dibuat: {{ (localTime .user.CreatedAt).Format "02/01/2006 15:04" }} {{ tzCode }}</small>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <small class="text-muted">Diupdate: {{ (localTime .user.UpdatedAt).Format "02/01/2006 15:04" }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ template "layout/footer.html" . }}
