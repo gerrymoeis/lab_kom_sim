@@ -89,6 +89,6 @@ func (s *DeviceTypeService) List(category, search string) ([]models.DeviceType, 
 	return s.repo.List(category, search)
 }
 
-func (s *DeviceTypeService) ListPaginated(category, search string, page, pageSize int) ([]models.DeviceType, int, error) {
-	return s.repo.ListPaginated(category, search, page, pageSize)
+func (s *DeviceTypeService) ListPaginated(category, search, sortBy string, page, pageSize int) ([]models.DeviceType, int, error) {
+	return s.repo.ListPaginated(category, search, sortBy, page, pageSize)
 }

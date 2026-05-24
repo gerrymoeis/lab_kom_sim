@@ -29,8 +29,9 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 
 	search := c.Query("search")
 	filterCategory := c.Query("category")
+	sortBy := c.Query("sort_by")
 
-	stats, total, err := h.softwareService.ListPaginated(search, filterCategory, page, pageSize)
+	stats, total, err := h.softwareService.ListPaginated(search, filterCategory, sortBy, page, pageSize)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data software")
 		return
@@ -42,7 +43,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	c.HTML(http.StatusOK, "software/list.html", gin.H{
 		"title": "Software Catalog", "currentPage": "software",
 		"username": username, "role": role,
-		"catalog": stats, "filters": gin.H{"search": search, "category": filterCategory},
+		"catalog": stats, "filters": gin.H{"search": search, "category": filterCategory, "sort_by": sortBy},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 		"error": c.Query("error"),

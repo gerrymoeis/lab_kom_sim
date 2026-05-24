@@ -16,10 +16,10 @@ func NewDeviceTypeRepository(db *database.DB) *DeviceTypeRepository {
 }
 
 func (r *DeviceTypeRepository) List(category, search string) ([]models.DeviceType, error) {
-	return r.listWithQuery(category, search, "", 0, 0)
+	return r.listWithQuery(category, search, "", "", 0, 0)
 }
 
-func (r *DeviceTypeRepository) ListPaginated(category, search string, page, pageSize int) ([]models.DeviceType, int, error) {
+func (r *DeviceTypeRepository) ListPaginated(category, search, sortBy string, page, pageSize int) ([]models.DeviceType, int, error) {
 	if page < 1 { page = 1 }
 	if pageSize < 1 { pageSize = 20 }
 
@@ -37,14 +37,14 @@ func (r *DeviceTypeRepository) ListPaginated(category, search string, page, page
 	}
 	r.db.QueryRow(countQuery, args...).Scan(&total)
 
-	dts, err := r.listWithQuery(category, search, ` LIMIT ? OFFSET ?`, pageSize, (page-1)*pageSize)
+	dts, err := r.listWithQuery(category, search, sortBy, ` LIMIT ? OFFSET ?`, pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, 0, err
 	}
 	return dts, total, nil
 }
 
-func (r *DeviceTypeRepository) listWithQuery(category, search string, suffix string, limit, offset int) ([]models.DeviceType, error) {
+func (r *DeviceTypeRepository) listWithQuery(category, search, sortBy string, suffix string, limit, offset int) ([]models.DeviceType, error) {
 	query := `SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template, created_at FROM device_types WHERE 1=1`
 	var args []any
 	if category != "" {
@@ -56,7 +56,12 @@ func (r *DeviceTypeRepository) listWithQuery(category, search string, suffix str
 		s := "%" + search + "%"
 		args = append(args, s, s)
 	}
-	query += ` ORDER BY category, name`
+	switch sortBy {
+	case "name":
+		query += ` ORDER BY name`
+	default:
+		query += ` ORDER BY category, name`
+	}
 	query += suffix
 	if suffix != "" {
 		args = append(args, limit, offset)

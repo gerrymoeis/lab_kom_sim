@@ -22,10 +22,10 @@ type SoftwareStat struct {
 }
 
 func (r *SoftwareRepository) List(search, category string) ([]SoftwareStat, error) {
-	return r.listWithQuery(search, category, "", 0, 0)
+	return r.listWithQuery(search, category, "", "", 0, 0)
 }
 
-func (r *SoftwareRepository) ListPaginated(search, category string, page, pageSize int) ([]SoftwareStat, int, error) {
+func (r *SoftwareRepository) ListPaginated(search, category, sortBy string, page, pageSize int) ([]SoftwareStat, int, error) {
 	if page < 1 { page = 1 }
 	if pageSize < 1 { pageSize = 20 }
 
@@ -46,14 +46,14 @@ func (r *SoftwareRepository) ListPaginated(search, category string, page, pageSi
 	countQuery += ` GROUP BY sc.id, sc.name, sc.category, sc.description, pc.cnt) sub`
 	r.db.QueryRow(countQuery, args...).Scan(&total)
 
-	stats, err := r.listWithQuery(search, category, ` LIMIT ? OFFSET ?`, pageSize, (page-1)*pageSize)
+	stats, err := r.listWithQuery(search, category, sortBy, ` LIMIT ? OFFSET ?`, pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, 0, err
 	}
 	return stats, total, nil
 }
 
-func (r *SoftwareRepository) listWithQuery(search, category string, suffix string, limit, offset int) ([]SoftwareStat, error) {
+func (r *SoftwareRepository) listWithQuery(search, category, sortBy string, suffix string, limit, offset int) ([]SoftwareStat, error) {
 	query := `SELECT sc.id, sc.name, sc.category, sc.description, COUNT(ps.software_id), pc.cnt
 		FROM software_catalog sc
 		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE
@@ -71,7 +71,15 @@ func (r *SoftwareRepository) listWithQuery(search, category string, suffix strin
 		args = append(args, category)
 	}
 
-	query += ` GROUP BY sc.id, sc.name, sc.category, sc.description, pc.cnt ORDER BY CASE WHEN sc.category = 'required' THEN 0 ELSE 1 END, sc.name`
+	query += ` GROUP BY sc.id, sc.name, sc.category, sc.description, pc.cnt`
+	switch sortBy {
+	case "name":
+		query += ` ORDER BY sc.name`
+	case "category":
+		query += ` ORDER BY sc.category, sc.name`
+	default:
+		query += ` ORDER BY CASE WHEN sc.category = 'required' THEN 0 ELSE 1 END, sc.name`
+	}
 	query += suffix
 	if suffix != "" {
 		args = append(args, limit, offset)

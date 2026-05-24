@@ -183,6 +183,7 @@ type ActivityLogFilters struct {
 	UserID          *int
 	Username        string
 	Status          string
+	SortBy          string
 	Limit           int
 	Offset          int
 	CursorID        int64
@@ -229,7 +230,16 @@ func (s *ActivityLogService) GetLogs(filters ActivityLogFilters) ([]models.Activ
 		return nil, 0, fmt.Errorf("failed to count logs: %w", err)
 	}
 
-	baseQuery += " ORDER BY created_at DESC"
+	switch filters.SortBy {
+	case "username":
+		baseQuery += " ORDER BY username"
+	case "action":
+		baseQuery += " ORDER BY action"
+	case "entity_type":
+		baseQuery += " ORDER BY entity_type"
+	default:
+		baseQuery += " ORDER BY created_at DESC"
+	}
 	if filters.Limit > 0 { baseQuery += " LIMIT ?"; args = append(args, filters.Limit) }
 	if filters.Offset > 0 { baseQuery += " OFFSET ?"; args = append(args, filters.Offset) }
 

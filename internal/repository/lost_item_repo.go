@@ -21,8 +21,10 @@ func (r *LostItemRepository) WithTx(tx *database.Tx) *LostItemRepository {
 }
 
 type LostItemFilters struct {
-	Status string
-	Search string
+	Status    string
+	Search    string
+	SortBy    string
+	SortOrder string
 }
 
 func (r *LostItemRepository) List(filters LostItemFilters) ([]models.LostItem, error) {
@@ -37,7 +39,18 @@ func (r *LostItemRepository) List(filters LostItemFilters) ([]models.LostItem, e
 		s := "%" + filters.Search + "%"
 		args = append(args, s, s, s)
 	}
-	query += ` ORDER BY reported_date DESC`
+	sortBy := "reported_date"
+	switch filters.SortBy {
+	case "item_name":
+		sortBy = "item_name"
+	case "status":
+		sortBy = "status"
+	}
+	sortOrder := "DESC"
+	if filters.SortOrder == "ASC" {
+		sortOrder = "ASC"
+	}
+	query += ` ORDER BY ` + sortBy + ` ` + sortOrder
 
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
@@ -114,7 +127,18 @@ func (r *LostItemRepository) ListPaginated(filters LostItemFilters, page, pageSi
 		s := "%" + filters.Search + "%"
 		args = append(args, s, s, s)
 	}
-	query += ` ORDER BY reported_date DESC LIMIT ? OFFSET ?`
+	sortBy := "reported_date"
+	switch filters.SortBy {
+	case "item_name":
+		sortBy = "item_name"
+	case "status":
+		sortBy = "status"
+	}
+	sortOrder := "DESC"
+	if filters.SortOrder == "ASC" {
+		sortOrder = "ASC"
+	}
+	query += ` ORDER BY ` + sortBy + ` ` + sortOrder + ` LIMIT ? OFFSET ?`
 	offset := (page - 1) * pageSize
 	args = append(args, pageSize, offset)
 
