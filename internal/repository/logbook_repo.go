@@ -163,8 +163,8 @@ func (r *LogbookRepository) ListCursor(filters LogbookFilters) ([]models.Logbook
 
 func (r *LogbookRepository) GetByID(id int) (*models.LogbookEntry, error) {
 	var e models.LogbookEntry
-	err := r.db.QueryRow(`SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file FROM logbook_entries WHERE id = ?`, id).
-		Scan(&e.ID, &e.Date, &e.StudentName, &e.NIM, &e.TimeIn, &e.TimeOut, &e.Purpose, &e.SourceFile)
+	err := r.db.QueryRow(`SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at FROM logbook_entries WHERE id = ?`, id).
+		Scan(&e.ID, &e.Date, &e.StudentName, &e.NIM, &e.TimeIn, &e.TimeOut, &e.Purpose, &e.SourceFile, &e.CreatedAt, &e.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -210,12 +210,12 @@ func (r *LogbookRepository) GetMaxID() (int, error) {
 
 func (r *LogbookRepository) Create(date time.Time, studentName, nim, timeIn, timeOut, purpose string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'manual_entry', ?, ?)`,
-		date, studentName, nim, timeIn, timeOut, purpose, time.Now(), time.Now())
+		date, studentName, nim, timeIn, timeOut, purpose, time.Now().UTC(), time.Now().UTC())
 }
 
 func (r *LogbookRepository) Update(id int, date time.Time, studentName, nim, timeIn, timeOut, purpose string) error {
 	_, err := r.db.Exec(`UPDATE logbook_entries SET date=?, student_name=?, nim=?, time_in=?, time_out=?, purpose=?, updated_at=? WHERE id=?`,
-		date, studentName, nim, timeIn, timeOut, purpose, time.Now(), id)
+		date, studentName, nim, timeIn, timeOut, purpose, time.Now().UTC(), id)
 	return err
 }
 
@@ -238,7 +238,7 @@ func (r *LogbookRepository) BulkImport(entries []BulkEntry, sourceFile string) e
 	}
 	defer stmt.Close()
 
-	now := time.Now()
+	now := time.Now().UTC()
 	for _, e := range entries {
 		if _, err := stmt.Exec(e.Date, e.StudentName, e.NIM, e.TimeIn, e.TimeOut, e.Purpose, sourceFile, now, now); err != nil {
 			return err
