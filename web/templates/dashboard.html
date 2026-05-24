@@ -59,7 +59,7 @@
             <div class="card-body p-4 position-relative">
                 <!-- PC Dosen (Lecturer) — right side above grid -->
                 {{ if .pcLecturer.ID }}
-                <div class="d-flex justify-content-end mb-3">
+                <div class="container d-flex justify-content-end mb-3">
                     <div class="pc-card-wrapper pc-card-wrapper-special">
                         <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLecturer.Status }}"
                              role="button" tabindex="0"
@@ -143,7 +143,7 @@
                 <!-- PC Laboran (bottom left) + PC CCTV (below Laboran) -->
                 <div class="mt-4">
                     {{ if .pcLaboran.ID }}
-                    <div class="d-flex">
+                    <div class="container d-flex">
                         <div class="pc-card-wrapper pc-card-wrapper-special">
                             <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLaboran.Status }}"
                                  role="button" tabindex="0"
@@ -171,7 +171,7 @@
                     </div>
                     {{ end }}
                     {{ if .pcCCTV.ID }}
-                    <div class="d-flex mt-2">
+                    <div class="container d-flex mt-2">
                         <div class="pc-card-wrapper pc-card-wrapper-special">
                             <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcCCTV.Status }}"
                                  role="button" tabindex="0"
