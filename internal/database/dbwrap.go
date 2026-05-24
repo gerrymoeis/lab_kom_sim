@@ -78,9 +78,6 @@ func (db *DB) Query(query string, args ...any) (*sql.Rows, error) {
 func (db *DB) QueryRow(query string, args ...any) *sql.Row {
 	return db.reader.QueryRow(db.maybeRewrite(query), args...)
 }
-func (db *DB) QueryRowWriter(query string, args ...any) *sql.Row {
-	return db.writer.QueryRow(db.maybeRewrite(query), args...)
-}
 func (db *DB) Exec(query string, args ...any) (sql.Result, error) {
 	q := db.maybeRewrite(query)
 	if db.execInt != nil {
