@@ -10,6 +10,7 @@ import (
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/queue"
 	"inventaris-lab-kom/internal/server"
+	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
 
 	"github.com/gin-gonic/gin"
@@ -61,6 +62,10 @@ func main() {
 	go func() {
 		for { time.Sleep(30 * time.Minute); server.CleanupTempFiles() }
 	}()
+
+	backupSvc := services.NewBackupService(db, cfg.Backup)
+	backupSvc.Start()
+	defer backupSvc.Stop()
 
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
 	log.Printf("🚀 Server starting on http://%s", addr)
