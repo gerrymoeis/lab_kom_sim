@@ -66,6 +66,8 @@ func (s *DeviceUsageService) CreateUsage(in CreateUsageInput, actorID int, actor
 	}
 
 	if err := tx.Commit(); err != nil {
+		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device_usage", 0,
+			map[string]any{"user": in.UserName}, ipAddress, userAgent, err.Error())
 		return 0, err
 	}
 
