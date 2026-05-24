@@ -1102,8 +1102,9 @@ func main() {
 	}
 	
 	// Verify devices were actually created
-	if stores["devices"].base < deviceCount {
-		log.Printf("WARNING: Expected %d devices but discovery only found %d!", deviceCount, stores["devices"].base)
+	expectedDevices := len(cfg.deviceIDs)
+	if stores["devices"].base < expectedDevices {
+		log.Printf("WARNING: Expected %d devices but discovery only found %d!", expectedDevices, stores["devices"].base)
 		log.Printf("This means devices were not properly saved to database or not visible in list")
 		
 		// Try to get device list again with more details
