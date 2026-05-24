@@ -36,11 +36,13 @@ func (h *Handler) PCList(c *gin.Context) {
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
 
 	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
 
 	c.HTML(http.StatusOK, "pc/list.html", gin.H{
 		"title": "Manajemen PC", "currentPage": "pc",
 		"username": username, "role": role, "pcs": pcs,
 		"page": page, "totalPages": totalPages, "totalItems": total,
+		"startRow": startRow,
 		"query": query, "search": filters.Search,
 	})
 }
