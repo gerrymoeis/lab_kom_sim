@@ -104,19 +104,12 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 	return devices, nil
 }
 
-func (r *DeviceRepository) queryRow(query string, args ...any) *sql.Row {
-	if dbWithWriter, ok := r.db.(interface{ QueryRowWriter(string, ...any) *sql.Row }); ok {
-		return dbWithWriter.QueryRowWriter(query, args...)
-	}
-	return r.db.QueryRow(query, args...)
-}
-
 func (r *DeviceRepository) GetByID(id int) (*models.DeviceWithCategory, error) {
 	var d models.DeviceWithCategory
 	var brand, model, serial, cond, loc, notes sql.NullString
 	var pDate sql.NullTime
 
-	err := r.queryRow(`SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
+	err := r.db.QueryRow(`SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
 		d.serial_number, d.item_type, d.is_loanable, d.is_consumable, d.quantity_total, d.quantity_available,
 		d.condition, d.location, d.purchase_date, d.notes, d.created_at, d.updated_at
 		FROM devices d JOIN device_types dt ON d.device_type_id = dt.id WHERE d.id = ?`, id).
@@ -142,7 +135,7 @@ func (r *DeviceRepository) GetByIDSimple(id int) (*models.Device, error) {
 	var d models.Device
 	var brand, model, serial, cond, loc, notes sql.NullString
 	var pDate sql.NullTime
-	err := r.queryRow(`SELECT id, device_type_id, asset_code, name, brand, model, serial_number, item_type,
+	err := r.db.QueryRow(`SELECT id, device_type_id, asset_code, name, brand, model, serial_number, item_type,
 		is_loanable, is_consumable, quantity_total, quantity_available, condition, location, purchase_date, notes
 		FROM devices WHERE id = ?`, id).
 		Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.Name, &brand, &model, &serial, &d.ItemType,
