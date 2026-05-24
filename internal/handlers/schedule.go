@@ -34,8 +34,9 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 
 	dayFilter := c.DefaultQuery("day", "")
 	search := c.Query("search")
+	sortBy := c.Query("sort_by")
 
-	schedules, total, err := h.scheduleService.ListPaginated(search, dayFilter, page, pageSize)
+	schedules, total, err := h.scheduleService.ListPaginated(search, dayFilter, sortBy, page, pageSize)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data jadwal"); return
 	}
@@ -47,7 +48,7 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 		"title": "Jadwal Mata Kuliah", "currentPage": "schedules",
 		"username": username, "role": role,
 		"schedules": schedules, "today": dayNames[time.Now().In(timeutil.Location()).Weekday()],
-		"filters": gin.H{"search": search, "day": dayFilter},
+		"filters": gin.H{"search": search, "day": dayFilter, "sort_by": sortBy},
 		"days": []string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,

@@ -84,8 +84,9 @@ func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
 
 	search := c.Query("search")
 	category := c.Query("category")
+	sortBy := c.Query("sort_by")
 
-	dts, total, err := h.deviceTypeService.ListPaginated(category, search, page, pageSize)
+	dts, total, err := h.deviceTypeService.ListPaginated(category, search, sortBy, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data jenis barang"); return }
 
 	totalPages := (total + pageSize - 1) / pageSize
@@ -95,7 +96,7 @@ func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
 		"title": "Jenis Barang", "currentPage": "devices",
 		"username": username, "role": role,
 		"activeTab": "types", "deviceTypes": dts,
-		"filters": gin.H{"search": search, "category": category},
+		"filters": gin.H{"search": search, "category": category, "sort_by": sortBy},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 	})
@@ -113,8 +114,9 @@ func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
 
 	search := c.Query("search")
 	status := c.Query("status")
+	sortBy := c.Query("sort_by")
 
-	loans, total, err := h.deviceService.ListLoansPaginated(search, status, page, pageSize)
+	loans, total, err := h.deviceService.ListLoansPaginated(search, status, sortBy, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data peminjaman"); return }
 
 	totalPages := (total + pageSize - 1) / pageSize
@@ -123,7 +125,7 @@ func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
 		"title": "Peminjaman", "currentPage": "devices",
 		"username": username, "role": role,
 		"activeTab": "loans", "deviceLoans": loans,
-		"filters": gin.H{"search": search, "status": status},
+		"filters": gin.H{"search": search, "status": status, "sort_by": sortBy},
 		"startRow": (page-1)*pageSize + 1,
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"query": query,
@@ -141,8 +143,9 @@ func (h *Handler) deviceUsagesTab(c *gin.Context, username, role string) {
 	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
 	search := c.Query("search")
+	sortBy := c.Query("sort_by")
 
-	usages, total, err := h.deviceService.ListUsagesPaginated(search, page, pageSize)
+	usages, total, err := h.deviceService.ListUsagesPaginated(search, sortBy, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data pemakaian"); return }
 
 	totalPages := (total + pageSize - 1) / pageSize
@@ -151,7 +154,7 @@ func (h *Handler) deviceUsagesTab(c *gin.Context, username, role string) {
 		"title": "Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"activeTab": "usages", "deviceUsages": usages,
-		"filters": gin.H{"search": search},
+		"filters": gin.H{"search": search, "sort_by": sortBy},
 		"startRow": (page-1)*pageSize + 1,
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"query": query,

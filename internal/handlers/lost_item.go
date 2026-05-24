@@ -32,10 +32,14 @@ func (h *Handler) LostItemList(c *gin.Context) {
 
 	status := c.Query("status")
 	search := c.Query("search")
+	sortBy := c.Query("sort_by")
+	sortOrder := c.Query("sort_order")
 
 	items, total, err := h.lostItemService.ListPaginated(repository.LostItemFilters{
-		Status: status,
-		Search: search,
+		Status:    status,
+		Search:    search,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
 	}, page, pageSize)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data barang hilang")
@@ -48,7 +52,7 @@ func (h *Handler) LostItemList(c *gin.Context) {
 	c.HTML(http.StatusOK, "lost_item/list.html", gin.H{
 		"title": "Barang Hilang", "currentPage": "lost_items",
 		"username": username, "role": role,
-		"lostItems": items, "filters": gin.H{"search": search, "status": status},
+		"lostItems": items, "filters": gin.H{"search": search, "status": status, "sort_by": sortBy, "sort_order": sortOrder},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 	})

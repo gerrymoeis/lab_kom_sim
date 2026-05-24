@@ -73,6 +73,6 @@ func (s *ScheduleService) List(search, dayFilter string) ([]models.CourseSchedul
 	return s.repo.List(search, dayFilter)
 }
 
-func (s *ScheduleService) ListPaginated(search, dayFilter string, page, pageSize int) ([]models.CourseSchedule, int, error) {
-	return s.repo.ListPaginated(search, dayFilter, page, pageSize)
+func (s *ScheduleService) ListPaginated(search, dayFilter, sortBy string, page, pageSize int) ([]models.CourseSchedule, int, error) {
+	return s.repo.ListPaginated(search, dayFilter, sortBy, page, pageSize)
 }
