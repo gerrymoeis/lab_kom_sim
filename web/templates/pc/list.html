@@ -25,13 +25,47 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <form method="GET" action="/pc" class="row g-3 mb-3">
-                <div class="col-md-4">
-                    <input type="text" name="search" class="form-control" placeholder="Cari PC..." value="{{ .filters.search }}">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari PC..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Semua Status</option>
+                        <option value="normal" {{ if eq .filters.status "normal" }}selected{{ end }}>Normal</option>
+                        <option value="warning" {{ if eq .filters.status "warning" }}selected{{ end }}>Warning</option>
+                        <option value="broken" {{ if eq .filters.status "broken" }}selected{{ end }}>Rusak</option>
+                        <option value="inactive" {{ if eq .filters.status "inactive" }}selected{{ end }}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="os" class="form-label">Windows Version</label>
+                    <input type="text" class="form-control" id="os" name="os" placeholder="Cth: 25H2, 23H2..." value="{{ .filters.os }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label">Urut Berdasar</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="pc_number" {{ if eq .filters.sort_by "pc_number" }}selected{{ end }}>No. PC</option>
+                        <option value="status" {{ if eq .filters.sort_by "status" }}selected{{ end }}>Status</option>
+                        <option value="brand_model" {{ if eq .filters.sort_by "brand_model" }}selected{{ end }}>Merek</option>
+                        <option value="operating_system" {{ if eq .filters.sort_by "operating_system" }}selected{{ end }}>Windows Version</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label for="sort_order" class="form-label">Arah</label>
+                    <select class="form-select" id="sort_order" name="sort_order">
+                        <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>↑</option>
+                        <option value="DESC" {{ if eq .filters.sort_order "DESC" }}selected{{ end }}>↓</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Cari
+                        <i class="bi bi-search"></i> Filter
                     </button>
+                    <a href="/pc" class="btn btn-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
                 </div>
             </form>
 

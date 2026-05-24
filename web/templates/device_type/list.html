@@ -45,7 +45,8 @@
                 </div>
             </form>
 
-            {{ if gt (len .deviceTypes) 0 }}<p class="text-muted my-2">Total {{ len .deviceTypes }} jenis barang{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>{{ end }}
+            {{ if gt (len .deviceTypes) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceTypes)) 1 }} dari {{ .totalItems }} jenis barang</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
 
             <div class="table-responsive">
                 <table class="table table-hover">

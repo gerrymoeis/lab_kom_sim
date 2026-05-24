@@ -23,6 +23,7 @@ type PCFilters struct {
 	Search    string
 	SortBy    string
 	SortOrder string
+	OS        string
 }
 
 func (r *PCRepository) List(filters PCFilters) ([]models.PC, error) {
@@ -54,6 +55,10 @@ func (r *PCRepository) buildWhereClause(filters PCFilters) (string, []any) {
 		clause += ` AND (CAST(pc_number AS TEXT) LIKE ? OR serial_number LIKE ? OR brand_model LIKE ?)`
 		s := "%" + filters.Search + "%"
 		args = append(args, s, s, s)
+	}
+	if filters.OS != "" {
+		clause += ` AND operating_system LIKE ?`
+		args = append(args, "%"+filters.OS+"%")
 	}
 	return clause, args
 }
