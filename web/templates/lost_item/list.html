@@ -19,14 +19,14 @@
         <div class="card-body">
             <form method="GET" action="/lost-items" class="row g-3 mb-3">
                 <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Cari barang, pelapor, lokasi..." value="{{ .search }}">
+                    <input type="text" class="form-control" name="search" placeholder="Cari barang, pelapor, lokasi..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-3">
                     <select class="form-select" name="status">
                         <option value="">Semua Status</option>
-                        <option value="hilang" {{ if eq .status "hilang" }}selected{{ end }}>Hilang</option>
-                        <option value="ditemukan" {{ if eq .status "ditemukan" }}selected{{ end }}>Ditemukan</option>
-                        <option value="dilaporkan" {{ if eq .status "dilaporkan" }}selected{{ end }}>Dilaporkan</option>
+                        <option value="hilang" {{ if eq .filters.status "hilang" }}selected{{ end }}>Hilang</option>
+                        <option value="ditemukan" {{ if eq .filters.status "ditemukan" }}selected{{ end }}>Ditemukan</option>
+                        <option value="dilaporkan" {{ if eq .filters.status "dilaporkan" }}selected{{ end }}>Dilaporkan</option>
                     </select>
                 </div>
                 <div class="col-md-3">

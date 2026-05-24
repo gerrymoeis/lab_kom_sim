@@ -23,11 +23,11 @@
             <div class="col-md-3">
                 <select name="day" class="form-select">
                     <option value="">Semua Hari</option>
-                    {{ range .days }}<option value="{{ . }}" {{ if eq $.dayFilter . }}selected{{ end }}>{{ . }}</option>{{ end }}
+                    {{ range .days }}<option value="{{ . }}" {{ if eq $.filters.day . }}selected{{ end }}>{{ . }}</option>{{ end }}
                 </select>
             </div>
             <div class="col-md-4">
-                <input type="text" name="search" class="form-control" placeholder="Cari mata kuliah, dosen..." value="{{ .search }}">
+                <input type="text" name="search" class="form-control" placeholder="Cari mata kuliah, dosen..." value="{{ .filters.search }}">
             </div>
             <div class="col-md-2">
                 <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filter</button>

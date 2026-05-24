@@ -26,7 +26,7 @@ func (h *Handler) DeviceTypeList(c *gin.Context) {
 	c.HTML(http.StatusOK, "device_type/list.html", gin.H{
 		"title": "Jenis Barang", "currentPage": "devices",
 		"username": username, "role": role,
-		"deviceTypes": types, "search": search, "category": category,
+		"deviceTypes": types, "filters": gin.H{"search": search, "category": category},
 	})
 }
 
