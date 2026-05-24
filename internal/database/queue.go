@@ -18,6 +18,11 @@ type trackedResult struct {
 func (r trackedResult) LastInsertId() (int64, error) { return r.insertID, nil }
 func (r trackedResult) RowsAffected() (int64, error) { return 1, nil }
 
+type fakeUpdateResult struct{}
+
+func (fakeUpdateResult) LastInsertId() (int64, error) { return 0, nil }
+func (fakeUpdateResult) RowsAffected() (int64, error) { return 1, nil }
+
 type insertTracker struct {
 	mu       sync.Mutex
 	counters map[string]int64
@@ -85,6 +90,8 @@ func (db *DB) NewWriteQueue(bufferSize, batchSize int, flushEvery time.Duration)
 			if id, ok := tracker.nextID(tbl); ok {
 				return trackedResult{insertID: id}, nil
 			}
+			// For UPDATE/DELETE queries, return fake success result
+			return fakeUpdateResult{}, nil
 		}
 		return noopResult{}, nil
 	}
