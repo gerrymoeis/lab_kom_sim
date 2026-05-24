@@ -48,6 +48,10 @@ func (s *LostItemService) List(filters repository.LostItemFilters) ([]models.Los
 	return s.repo.List(filters)
 }
 
+func (s *LostItemService) ListPaginated(filters repository.LostItemFilters, page, pageSize int) ([]models.LostItem, int, error) {
+	return s.repo.ListPaginated(filters, page, pageSize)
+}
+
 func (s *LostItemService) GetByID(id int) (*models.LostItem, error) {
 	return s.repo.GetByID(id)
 }

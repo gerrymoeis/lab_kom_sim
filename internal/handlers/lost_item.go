@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -19,22 +21,36 @@ func (h *Handler) LostItemList(c *gin.Context) {
 		return
 	}
 
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	var query interface{} = ""
+	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
+
 	status := c.Query("status")
 	search := c.Query("search")
 
-	items, err := h.lostItemService.List(repository.LostItemFilters{
+	items, total, err := h.lostItemService.ListPaginated(repository.LostItemFilters{
 		Status: status,
 		Search: search,
-	})
+	}, page, pageSize)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data barang hilang")
 		return
 	}
 
+	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
+
 	c.HTML(http.StatusOK, "lost_item/list.html", gin.H{
 		"title": "Barang Hilang", "currentPage": "lost_items",
 		"username": username, "role": role,
-		"lostItems": items, "status": status, "search": search,
+		"lostItems": items, "filters": gin.H{"search": search, "status": status},
+		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
+		"query": query,
 	})
 }
 

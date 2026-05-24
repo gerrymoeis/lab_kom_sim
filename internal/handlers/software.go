@@ -42,7 +42,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	c.HTML(http.StatusOK, "software/list.html", gin.H{
 		"title": "Software Catalog", "currentPage": "software",
 		"username": username, "role": role,
-		"catalog": stats, "search": search, "filterCat": filterCategory,
+		"catalog": stats, "filters": gin.H{"search": search, "category": filterCategory},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
 		"error": c.Query("error"),

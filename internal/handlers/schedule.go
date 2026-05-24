@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"inventaris-lab-kom/internal/services"
+	"inventaris-lab-kom/internal/timeutil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,8 +46,8 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 	c.HTML(http.StatusOK, "schedule/list.html", gin.H{
 		"title": "Jadwal Mata Kuliah", "currentPage": "schedules",
 		"username": username, "role": role,
-		"schedules": schedules, "today": dayNames[time.Now().Weekday()],
-		"dayFilter": dayFilter, "search": search,
+		"schedules": schedules, "today": dayNames[time.Now().In(timeutil.Location()).Weekday()],
+		"filters": gin.H{"search": search, "day": dayFilter},
 		"days": []string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
