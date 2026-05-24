@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -20,6 +21,17 @@ type Config struct {
 	OpenRouterAPIKey string
 	WriteMode        string
 	Timezone         string
+	Backup           BackupConfig
+}
+
+// BackupConfig holds SQLite auto-backup configuration
+type BackupConfig struct {
+	Enabled   bool
+	Interval  int
+	Dir       string
+	Retention int
+	MinDiskMB int64
+	Compress  bool
 }
 
 // Load loads configuration from environment variables with defaults
@@ -41,6 +53,14 @@ func Load() *Config {
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
 		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
+		Backup: BackupConfig{
+			Enabled:   getEnv("BACKUP_ENABLED", "true") == "true",
+			Interval:  getEnvInt("BACKUP_INTERVAL", 30),
+			Dir:       getEnv("BACKUP_DIR", "./backups"),
+			Retention: getEnvInt("BACKUP_RETENTION", 20),
+			MinDiskMB: int64(getEnvInt("BACKUP_MIN_DISK_MB", 500)),
+			Compress:  getEnv("BACKUP_COMPRESS", "true") == "true",
+		},
 	}
 }
 
@@ -48,6 +68,17 @@ func Load() *Config {
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+// getEnvInt gets environment variable as integer with fallback
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		var i int
+		if _, err := fmt.Sscanf(value, "%d", &i); err == nil {
+			return i
+		}
 	}
 	return defaultValue
 }

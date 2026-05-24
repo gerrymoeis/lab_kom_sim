@@ -85,6 +85,10 @@ func (db *DB) Exec(query string, args ...any) (sql.Result, error) {
 	}
 	return db.writer.Exec(q, args...)
 }
+func (db *DB) RawWriter() *sql.DB {
+	return db.writer
+}
+
 func (db *DB) Prepare(query string) (*sql.Stmt, error) {
 	return db.writer.Prepare(db.maybeRewrite(query))
 }
