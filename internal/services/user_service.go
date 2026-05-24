@@ -44,9 +44,13 @@ func (s *UserService) GetByID(id int) (*models.User, error) {
 func (s *UserService) CreateUser(actorID int, actorUsername, actorRole, username, password, fullName, role, ipAddress, userAgent string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
+		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", 0,
+			map[string]any{"username": username}, ipAddress, userAgent, err.Error())
 		return err
 	}
 	if _, err := s.userRepo.Create(username, string(hash), fullName, role); err != nil {
+		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", 0,
+			map[string]any{"username": username, "full_name": fullName, "role": role}, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", 0, map[string]any{"username": username, "full_name": fullName, "role": role}, ipAddress, userAgent)
@@ -65,6 +69,8 @@ func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actor
 		return ErrProtectedDelete
 	}
 	if err := s.userRepo.Delete(targetID); err != nil {
+		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", targetID,
+			map[string]any{"deleted_username": u.Username}, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", targetID, map[string]any{"deleted_username": u.Username}, ipAddress, userAgent)
@@ -90,15 +96,21 @@ func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actor
 	}
 
 	if err := s.userRepo.UpdateUser(targetID, username, fullName, role); err != nil {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
+			map[string]any{"target_username": target.Username}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 
 	if newPassword != "" {
 		hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 		if err != nil {
+			s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
+				map[string]any{"target_username": target.Username}, nil, ipAddress, userAgent, err.Error())
 			return err
 		}
 		if err := s.userRepo.UpdatePassword(targetID, string(hash)); err != nil {
+			s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
+				map[string]any{"target_username": target.Username}, nil, ipAddress, userAgent, err.Error())
 			return err
 		}
 	}
@@ -145,9 +157,15 @@ func (s *UserService) ChangePassword(userID int, oldPassword, newPassword, confi
 	}
 	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
+		s.activityLogService.LogAction(userID, actorUsername, actorRole, "update", "user", userID,
+			map[string]any{"password_changed": true}, map[string]any{"password_changed": false},
+			ipAddress, userAgent, err.Error())
 		return err
 	}
 	if err := s.userRepo.UpdatePassword(userID, string(newHash)); err != nil {
+		s.activityLogService.LogAction(userID, actorUsername, actorRole, "update", "user", userID,
+			map[string]any{"password_changed": true}, map[string]any{"password_changed": false},
+			ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.activityLogService.LogAction(userID, actorUsername, actorRole, "update", "user", userID,
