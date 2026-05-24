@@ -22,26 +22,26 @@
                         <div class="col-md-8">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <h6 class="text-muted mb-3">Informasi Barang</h6>
-                                    <table class="table table-borderless">
+                                    <h6 class="text-primary mb-3"><i class="bi bi-box"></i> Informasi Barang</h6>
+                                    <table class="table table-bordered">
                                         <tr>
-                                            <td width="40%" class="text-muted">Nama Barang</td>
+                                            <th width="40%">Nama Barang</th>
                                             <td><strong>{{ .lostItem.ItemName }}</strong></td>
                                         </tr>
                                         <tr>
-                                            <td class="text-muted">Deskripsi</td>
+                                            <th>Deskripsi</th>
                                             <td>{{ if .lostItem.ItemDescription }}{{ .lostItem.ItemDescription }}{{ else }}-{{ end }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-muted">Pelapor</td>
+                                            <th>Pelapor</th>
                                             <td>{{ .lostItem.ReportedBy }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-muted">Tanggal Lapor</td>
-                                            <td>{{ .lostItem.ReportedDate.Format "02/01/2006" }}</td>
+                                            <th>Tanggal Lapor</th>
+                                            <td>{{ (localTime .lostItem.ReportedDate).Format "02/01/2006" }} {{ tzCode }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-muted">Status</td>
+                                            <th>Status</th>
                                             <td>
                                                 {{ if eq .lostItem.Status "hilang" }}
                                                 <span class="badge bg-danger">Hilang</span>
@@ -55,14 +55,14 @@
                                     </table>
                                 </div>
                                 <div class="col-md-6">
-                                    <h6 class="text-muted mb-3">Lokasi & Waktu</h6>
-                                    <table class="table table-borderless">
+                                    <h6 class="text-primary mb-3"><i class="bi bi-geo-alt"></i> Lokasi & Waktu</h6>
+                                    <table class="table table-bordered">
                                         <tr>
-                                            <td width="40%" class="text-muted">Terakhir Terlihat</td>
-                                            <td>{{ if .lostItem.LastSeenAt }}{{ .lostItem.LastSeenAt.Format "02/01/2006 15:04" }}{{ else }}-{{ end }}</td>
+                                            <th width="40%">Terakhir Terlihat</th>
+                                            <td>{{ if .lostItem.LastSeenAt }}{{ (localTime .lostItem.LastSeenAt).Format "02/01/2006 15:04" }} {{ tzCode }}{{ else }}-{{ end }}</td>
                                         </tr>
                                         <tr>
-                                            <td class="text-muted">Lokasi Terakhir</td>
+                                            <th>Lokasi Terakhir</th>
                                             <td>{{ if .lostItem.LocationLastSeen }}{{ .lostItem.LocationLastSeen }}{{ else }}-{{ end }}</td>
                                         </tr>
                                     </table>
@@ -70,30 +70,30 @@
                             </div>
 
                             {{ if eq .lostItem.Status "ditemukan" }}
-                            <hr>
-                            <h6 class="text-muted mb-3"><i class="bi bi-person-check"></i> Informasi Pemilik</h6>
-                            <table class="table table-borderless">
+                            <hr class="my-4">
+                            <h6 class="text-primary mb-3"><i class="bi bi-person-check"></i> Informasi Pemilik</h6>
+                            <table class="table table-bordered">
                                 <tr>
-                                    <td width="15%" class="text-muted">Nama</td>
+                                    <th width="15%">Nama</th>
                                     <td><strong>{{ if .lostItem.OwnerName }}{{ .lostItem.OwnerName }}{{ else }}-{{ end }}</strong></td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Kelas</td>
+                                    <th>Kelas</th>
                                     <td>{{ if .lostItem.OwnerClass }}{{ .lostItem.OwnerClass }}{{ else }}-{{ end }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">NIS/NIM</td>
+                                    <th>NIS/NIM</th>
                                     <td>{{ if .lostItem.OwnerNim }}{{ .lostItem.OwnerNim }}{{ else }}-{{ end }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Dikembalikan</td>
-                                    <td>{{ if .lostItem.ReturnedDate }}{{ .lostItem.ReturnedDate.Format "02/01/2006" }}{{ else }}-{{ end }}</td>
+                                    <th>Dikembalikan</th>
+                                    <td>{{ if .lostItem.ReturnedDate }}{{ (localTime .lostItem.ReturnedDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
                                 </tr>
                             </table>
                             {{ end }}
                         </div>
                         <div class="col-md-4">
-                            <h6 class="text-muted mb-3">Foto Barang</h6>
+                            <h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Foto Barang</h6>
                             {{ if .lostItem.Photo }}
                             <a href="/uploads/lost_items/{{ .lostItem.Photo }}" target="_blank">
                                 <img src="/uploads/lost_items/{{ .lostItem.Photo }}" class="img-fluid img-thumbnail" alt="Foto barang">
@@ -110,10 +110,10 @@
                     <hr>
                     <div class="row">
                         <div class="col-md-6">
-                            <small class="text-muted">Dibuat: {{ .lostItem.CreatedAt.Format "02/01/2006 15:04" }}</small>
+                            <small class="text-muted">Dibuat: {{ (localTime .lostItem.CreatedAt).Format "02/01/2006 15:04" }} {{ tzCode }}</small>
                         </div>
                         <div class="col-md-6 text-end">
-                            <small class="text-muted">Diupdate: {{ .lostItem.UpdatedAt.Format "02/01/2006 15:04" }}</small>
+                            <small class="text-muted">Diupdate: {{ (localTime .lostItem.UpdatedAt).Format "02/01/2006 15:04" }}</small>
                         </div>
                     </div>
                 </div>
@@ -122,4 +122,4 @@
     </div>
 </div>
 
-    {{ template "layout/footer.html" . }}
+{{ template "layout/footer.html" . }}

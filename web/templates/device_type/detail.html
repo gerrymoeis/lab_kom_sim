@@ -20,26 +20,26 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <h6 class="text-muted mb-3">Informasi Dasar</h6>
-                            <table class="table table-borderless">
+                            <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Informasi Dasar</h6>
+                            <table class="table table-bordered">
                                 <tr>
-                                    <td width="40%" class="text-muted">Nama</td>
+                                    <th width="40%">Nama</th>
                                     <td><strong>{{ .deviceType.Name }}</strong></td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Kategori</td>
+                                    <th>Kategori</th>
                                     <td><span class="badge bg-secondary">{{ .deviceType.Category }}</span></td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Merk</td>
+                                    <th>Merk</th>
                                     <td>{{ if .deviceType.Brand }}{{ .deviceType.Brand }}{{ else }}-{{ end }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Model</td>
+                                    <th>Model</th>
                                     <td>{{ if .deviceType.Model }}{{ .deviceType.Model }}{{ else }}-{{ end }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Tipe Item</td>
+                                    <th>Tipe Item</th>
                                     <td>
                                         <span class="badge bg-{{ if eq .deviceType.ItemType "individual" }}primary{{ else }}warning{{ end }}">
                                             {{ .deviceType.ItemType }}
@@ -49,10 +49,10 @@
                             </table>
                         </div>
                         <div class="col-md-6">
-                            <h6 class="text-muted mb-3">Properti & Konfigurasi</h6>
-                            <table class="table table-borderless">
+                            <h6 class="text-primary mb-3"><i class="bi bi-gear"></i> Properti & Konfigurasi</h6>
+                            <table class="table table-bordered">
                                 <tr>
-                                    <td width="40%" class="text-muted">Dapat Dipinjam</td>
+                                    <th width="40%">Dapat Dipinjam</th>
                                     <td>
                                         {{ if .deviceType.IsLoanable }}
                                         <span class="badge bg-success"><i class="bi bi-check-circle"></i> Ya</span>
@@ -62,7 +62,7 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Habis Pakai</td>
+                                    <th>Habis Pakai</th>
                                     <td>
                                         {{ if .deviceType.IsConsumable }}
                                         <span class="badge bg-warning"><i class="bi bi-check-circle"></i> Ya</span>
@@ -72,15 +72,15 @@
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Prefix Asset Code</td>
+                                    <th>Prefix Asset Code</th>
                                     <td><code>{{ .deviceType.AssetCodePrefix }}</code></td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Lokasi Default</td>
+                                    <th>Lokasi Default</th>
                                     <td>{{ if .deviceType.DefaultLocation }}{{ .deviceType.DefaultLocation }}{{ else }}-{{ end }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="text-muted">Jumlah Perangkat</td>
+                                    <th>Jumlah Perangkat</th>
                                     <td><strong>{{ .deviceCount }}</strong> perangkat</td>
                                 </tr>
                             </table>
@@ -88,24 +88,20 @@
                     </div>
 
                     {{ if .deviceType.NotesTemplate }}
-                    <hr>
-                    <div class="row">
-                        <div class="col-12">
-                            <h6 class="text-muted mb-2">Template Catatan</h6>
-                            <div class="alert alert-light">
-                                {{ .deviceType.NotesTemplate }}
-                            </div>
-                        </div>
+                    <hr class="my-4">
+                    <h6 class="text-primary mb-3"><i class="bi bi-file-text"></i> Template Catatan</h6>
+                    <div class="alert alert-light">
+                        {{ .deviceType.NotesTemplate }}
                     </div>
                     {{ end }}
 
                     <hr>
                     <div class="row">
                         <div class="col-md-6">
-                            <small class="text-muted">Dibuat: {{ .deviceType.CreatedAt }}</small>
+                            <small class="text-muted">Dibuat: {{ (localTime .deviceType.CreatedAt).Format "02/01/2006 15:04" }} {{ tzCode }}</small>
                         </div>
                         <div class="col-md-6 text-end">
-                            <small class="text-muted">Diupdate: {{ .deviceType.UpdatedAt }}</small>
+                            <small class="text-muted">Diupdate: {{ (localTime .deviceType.UpdatedAt).Format "02/01/2006 15:04" }}</small>
                         </div>
                     </div>
                 </div>
@@ -114,4 +110,4 @@
     </div>
 </div>
 
-    {{ template "layout/footer.html" . }}
+{{ template "layout/footer.html" . }}
