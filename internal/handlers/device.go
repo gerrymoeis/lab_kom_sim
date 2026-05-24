@@ -43,14 +43,18 @@ func (h *Handler) deviceListTab(c *gin.Context, username, role string) {
 	var query interface{} = ""
 	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
-	filters := struct{ Search, Category string }{
-		Search:   c.Query("search"),
-		Category: c.Query("category"),
-	}
+	search := c.Query("search")
+	category := c.Query("category")
+	condition := c.Query("condition")
+	sortBy := c.Query("sort_by")
+	sortOrder := c.DefaultQuery("sort_order", "ASC")
 
 	devices, total, err := h.deviceService.ListPaginated(repository.DeviceFilters{
-		Search:   filters.Search,
-		Category: filters.Category,
+		Search:    search,
+		Category:  category,
+		Condition: condition,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
 	}, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data perangkat"); return }
 
@@ -61,7 +65,7 @@ func (h *Handler) deviceListTab(c *gin.Context, username, role string) {
 		"username": username, "role": role,
 		"activeTab": "list", "devices": devices,
 		"deviceTypes": h.fetchDeviceTypes(),
-		"filters": gin.H{"search": filters.Search, "category": filters.Category},
+		"filters": gin.H{"search": search, "category": category, "condition": condition, "sort_by": sortBy, "sort_order": sortOrder},
 		"startRow": (page-1)*pageSize + 1,
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"query": query,
