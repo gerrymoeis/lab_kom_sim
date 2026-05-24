@@ -17,10 +17,13 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
+            {{ if gt (len .users) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .users)) 1 }} dari {{ .totalItems }} user</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
+                            <th>#</th>
                             <th>Username</th>
                             <th>Nama Lengkap</th>
                             <th>Role</th>
@@ -29,21 +32,25 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range .users }}
+                        {{ range $i, $u := .users }}
                         <tr>
-                            <td><strong>{{ .Username }}</strong></td>
+                            <td>{{ add $i $.startRow }}</td>
+                            <td><strong><a href="/admin/users/{{ .ID }}" class="text-decoration-none">{{ .Username }}</a></strong></td>
                             <td>{{ .FullName }}</td>
                             <td>
                                 <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">
                                     {{ .Role }}
                                 </span>
                             </td>
-                            <td>{{ .CreatedAt.Format "02/01/2006" }}</td>
+                            <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
+                                <a href="/admin/users/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                                 {{ if and (ne .Username "admin") (ne .Username "rekan") }}
                                 <form method="POST" action="/admin/users/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger">
-                                        <i class="bi bi-trash"></i> Hapus
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
                                 {{ else }}
@@ -53,12 +60,14 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="5" class="text-center text-muted">Belum ada user</td>
+                            <td colspan="6" class="text-center text-muted">Belum ada user</td>
                         </tr>
                         {{ end }}
                     </tbody>
                 </table>
             </div>
+
+            {{ template "layout/pagination.html" . }}
         </div>
     </div>
 </div>
