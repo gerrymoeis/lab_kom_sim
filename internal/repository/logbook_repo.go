@@ -9,11 +9,18 @@ import (
 )
 
 type LogbookRepository struct {
-	db *database.DB
+	db       *database.DB
+	hasFTS5  bool
 }
 
 func NewLogbookRepository(db *database.DB) *LogbookRepository {
-	return &LogbookRepository{db: db}
+	r := &LogbookRepository{db: db}
+	if !db.IsPostgres() {
+		var tbl string
+		db.QueryRow(`SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='logbook_fts'`).Scan(&tbl)
+		r.hasFTS5 = tbl != ""
+	}
+	return r
 }
 
 type LogbookFilters struct {
@@ -103,7 +110,7 @@ func (r *LogbookRepository) ListCursor(filters LogbookFilters) ([]models.Logbook
 	}
 	if filters.Search != "" {
 		s := "%" + filters.Search + "%"
-		if r.db.IsPostgres() {
+		if r.db.IsPostgres() || !r.hasFTS5 {
 			where += ` AND (student_name LIKE ? OR nim LIKE ?)`
 			args = append(args, s, s)
 		} else {
