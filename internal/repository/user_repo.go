@@ -66,8 +66,8 @@ func (r *UserRepository) ListPaginated(page, pageSize int) ([]models.User, int, 
 
 func (r *UserRepository) GetByID(id int) (*models.User, error) {
 	var u models.User
-	err := r.db.QueryRow(`SELECT id, username, full_name, role, created_at FROM users WHERE id = ?`, id).
-		Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.CreatedAt)
+	err := r.db.QueryRow(`SELECT id, username, full_name, role, created_at, updated_at FROM users WHERE id = ?`, id).
+		Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +105,12 @@ func (r *UserRepository) ExistsUsername(username string, excludeID int) (bool, e
 func (r *UserRepository) Create(username, passwordHash, fullName, role string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)`,
 		username, passwordHash, fullName, role)
+}
+
+func (r *UserRepository) UpdateUser(id int, username, fullName, role string) error {
+	_, err := r.db.Exec(`UPDATE users SET username = ?, full_name = ?, role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		username, fullName, role, id)
+	return err
 }
 
 func (r *UserRepository) UpdateProfile(id int, username, fullName string) error {
