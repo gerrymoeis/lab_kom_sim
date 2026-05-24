@@ -7,9 +7,11 @@
                 <p class="text-muted">Riwayat aktivitas sistem</p>
             </div>
             <div class="col-md-6 text-end">
-                <button type="button" class="btn btn-success" onclick="exportActivityLogs()">
+                {{ template "layout/header_actions_start.html" $ }}
+                <button type="button" class="btn btn-success flex-grow-1" onclick="exportActivityLogs()">
                     <i class="bi bi-file-earmark-excel"></i> Export Excel
                 </button>
+                {{ template "layout/header_actions_end.html" }}
             </div>
         </div>
 
