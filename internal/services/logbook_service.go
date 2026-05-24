@@ -132,10 +132,14 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 		}
 	}
 	if len(clean) == 0 {
+		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
+			map[string]any{"duplicates": dups, "note": "all_duplicates"}, ipAddress, userAgent)
 		return 0, dups, nil
 	}
 	if err := s.logbookRepo.BulkImport(clean, sourceFile); err != nil {
-		return 0, dups, err
+		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
+			map[string]any{"saved": saved, "duplicates": dups}, ipAddress, userAgent, err.Error())
+		return saved, dups, err
 	}
 	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
 		map[string]any{"saved": saved, "duplicates": dups}, ipAddress, userAgent)
