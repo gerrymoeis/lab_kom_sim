@@ -41,10 +41,13 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
+            {{ if gt (len .lostItems) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .lostItems)) 1 }} dari {{ .totalItems }} barang hilang</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
+                            <th>#</th>
                             <th>Nama Barang</th>
                             <th>Pelapor</th>
                             <th>Tanggal Lapor</th>
@@ -53,8 +56,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range .lostItems }}
+                        {{ range $i, $item := .lostItems }}
                         <tr>
+                            <td>{{ add $i $.startRow }}</td>
                             <td><strong>{{ .ItemName }}</strong></td>
                             <td>{{ .ReportedBy }}</td>
                             <td>{{ (localTime .ReportedDate).Format "02/01/2006" }} {{ tzCode }}</td>
@@ -85,12 +89,14 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="5" class="text-center text-muted">Belum ada laporan barang hilang</td>
+                            <td colspan="6" class="text-center text-muted">Belum ada laporan barang hilang</td>
                         </tr>
                         {{ end }}
                     </tbody>
                 </table>
             </div>
+
+            {{ template "layout/pagination.html" . }}
         </div>
     </div>
 </div>

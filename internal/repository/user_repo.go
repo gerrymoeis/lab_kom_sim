@@ -33,6 +33,37 @@ func (r *UserRepository) List() ([]models.User, error) {
 	return users, nil
 }
 
+func (r *UserRepository) ListPaginated(page, pageSize int) ([]models.User, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+
+	var total int
+	if err := r.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	rows, err := r.db.Query(`SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?`, pageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var u models.User
+		if err := rows.Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		users = append(users, u)
+	}
+	return users, total, nil
+}
+
 func (r *UserRepository) GetByID(id int) (*models.User, error) {
 	var u models.User
 	err := r.db.QueryRow(`SELECT id, username, full_name, role, created_at FROM users WHERE id = ?`, id).

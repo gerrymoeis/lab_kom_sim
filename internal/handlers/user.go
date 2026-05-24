@@ -15,12 +15,21 @@ func (h *Handler) UserList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	users, err := h.userService.List()
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 { page = 1 }
+	pageSize := 20
+
+	users, total, err := h.userService.ListPaginated(page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
+
+	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
 
 	c.HTML(http.StatusOK, "user/list.html", gin.H{
 		"title": "Manajemen User", "currentPage": "users",
 		"username": username, "role": role, "users": users,
+		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
+		"query": "",
 		"error": c.Query("error"),
 	})
 }

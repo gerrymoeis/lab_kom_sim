@@ -78,6 +78,85 @@ func (r *LostItemRepository) List(filters LostItemFilters) ([]models.LostItem, e
 	return items, nil
 }
 
+func (r *LostItemRepository) ListPaginated(filters LostItemFilters, page, pageSize int) ([]models.LostItem, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+
+	countQuery := `SELECT COUNT(*) FROM lost_items WHERE 1=1`
+	var args []any
+	if filters.Status != "" {
+		countQuery += ` AND status = ?`
+		args = append(args, filters.Status)
+	}
+	if filters.Search != "" {
+		countQuery += ` AND (item_name LIKE ? OR reported_by LIKE ? OR location_last_seen LIKE ?)`
+		s := "%" + filters.Search + "%"
+		args = append(args, s, s, s)
+	}
+
+	var total int
+	if err := r.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	query := `SELECT id, device_id, item_name, item_description, reported_by, reported_date, last_seen_at, location_last_seen, status, owner_name, owner_class, owner_nim, returned_date, photo, created_at, updated_at FROM lost_items WHERE 1=1`
+	args = []any{}
+	if filters.Status != "" {
+		query += ` AND status = ?`
+		args = append(args, filters.Status)
+	}
+	if filters.Search != "" {
+		query += ` AND (item_name LIKE ? OR reported_by LIKE ? OR location_last_seen LIKE ?)`
+		s := "%" + filters.Search + "%"
+		args = append(args, s, s, s)
+	}
+	query += ` ORDER BY reported_date DESC LIMIT ? OFFSET ?`
+	offset := (page - 1) * pageSize
+	args = append(args, pageSize, offset)
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var items []models.LostItem
+	for rows.Next() {
+		var li models.LostItem
+		var deviceID sql.NullInt64
+		var itemDesc, loc, ownerName, ownerClass, ownerNim, photo sql.NullString
+		var lastSeenAt, returnedDate sql.NullTime
+		if err := rows.Scan(&li.ID, &deviceID, &li.ItemName, &itemDesc,
+			&li.ReportedBy, &li.ReportedDate, &lastSeenAt, &loc,
+			&li.Status, &ownerName, &ownerClass, &ownerNim,
+			&returnedDate, &photo, &li.CreatedAt, &li.UpdatedAt); err != nil {
+			return nil, 0, err
+		}
+		if deviceID.Valid {
+			v := int(deviceID.Int64)
+			li.DeviceID = &v
+		}
+		li.ItemDescription = itemDesc.String
+		li.LocationLastSeen = loc.String
+		li.OwnerName = ownerName.String
+		li.OwnerClass = ownerClass.String
+		li.OwnerNim = ownerNim.String
+		li.Photo = photo.String
+		if lastSeenAt.Valid {
+			li.LastSeenAt = &lastSeenAt.Time
+		}
+		if returnedDate.Valid {
+			li.ReturnedDate = &returnedDate.Time
+		}
+		items = append(items, li)
+	}
+	return items, total, nil
+}
+
 func (r *LostItemRepository) GetByID(id int) (*models.LostItem, error) {
 	var li models.LostItem
 	var deviceID sql.NullInt64
