@@ -1,6 +1,7 @@
 ﻿package handlers
 
 import (
+	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -38,8 +39,8 @@ func (h *Handler) deviceListTab(c *gin.Context, username, role string) {
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
-	query := ""
-	if len(values) > 0 { query = "&" + values.Encode() }
+	var query interface{} = ""
+	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
 	filters := struct{ Search, Category string }{
 		Search:   c.Query("search"),
@@ -73,8 +74,8 @@ func (h *Handler) deviceTypesTab(c *gin.Context, username, role string) {
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
-	query := ""
-	if len(values) > 0 { query = "&" + values.Encode() }
+	var query interface{} = ""
+	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
 	search := c.Query("search")
 	category := c.Query("category")
@@ -102,8 +103,8 @@ func (h *Handler) deviceLoansTab(c *gin.Context, username, role string) {
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
-	query := ""
-	if len(values) > 0 { query = "&" + values.Encode() }
+	var query interface{} = ""
+	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
 	search := c.Query("search")
 	status := c.Query("status")
@@ -131,8 +132,8 @@ func (h *Handler) deviceUsagesTab(c *gin.Context, username, role string) {
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
-	query := ""
-	if len(values) > 0 { query = "&" + values.Encode() }
+	var query interface{} = ""
+	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
 	search := c.Query("search")
 

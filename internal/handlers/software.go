@@ -2,6 +2,7 @@
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -23,8 +24,8 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
-	query := ""
-	if len(values) > 0 { query = "&" + values.Encode() }
+	var query interface{} = ""
+	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
 	search := c.Query("search")
 	filterCategory := c.Query("category")
