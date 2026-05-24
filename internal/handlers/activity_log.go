@@ -28,6 +28,7 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
 	filters := services.ActivityLogFilters{Limit: pageSize, Offset: (page - 1) * pageSize}
+	filters.SortBy = c.Query("sort_by")
 
 	if d := c.Query("date_from"); d != "" { if t, err := services.ParseDate(d); err == nil { filters.DateFrom = &t } }
 	if d := c.Query("date_to"); d != "" { if t, err := services.ParseDate(d); err == nil { eod := t.Add(23*time.Hour + 59*time.Minute + 59*time.Second); filters.DateTo = &eod } }
@@ -62,7 +63,7 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 		"date_from": c.Query("date_from"), "date_to": c.Query("date_to"),
 		"action": c.Query("action"), "entity_type": c.Query("entity_type"),
 		"username": c.Query("username"), "status": c.Query("status"),
-		"search": keyword,
+		"search": keyword, "sort_by": c.Query("sort_by"),
 	}
 
 	c.HTML(http.StatusOK, "activity_log/list.html", gin.H{

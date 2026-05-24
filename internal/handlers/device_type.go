@@ -22,13 +22,14 @@ func (h *Handler) DeviceTypeList(c *gin.Context) {
 
 	search := c.Query("search")
 	category := c.Query("category")
+	sortBy := c.Query("sort_by")
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
 	var query interface{} = ""
 	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
-	types, total, err := h.deviceTypeService.ListPaginated(category, search, page, pageSize)
+	types, total, err := h.deviceTypeService.ListPaginated(category, search, sortBy, page, pageSize)
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data jenis barang")
 		return
@@ -42,7 +43,7 @@ func (h *Handler) DeviceTypeList(c *gin.Context) {
 		"username": username, "role": role,
 		"deviceTypes": types, "page": page, "totalPages": totalPages,
 		"totalItems": total, "startRow": startRow, "query": query,
-		"filters": gin.H{"search": search, "category": category},
+		"filters": gin.H{"search": search, "category": category, "sort_by": sortBy},
 	})
 }
 

@@ -25,12 +25,18 @@
                 <div class="col-md-4">
                     <input type="text" class="form-control" name="search" placeholder="Cari jenis barang..." value="{{ .filters.search }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <select class="form-select" name="category">
                         <option value="">Semua Kategori</option>
                         {{ range $cat := allCategories }}
                         <option value="{{ $cat.Value }}" {{ if eq $.filters.category $cat.Value }}selected{{ end }}>{{ $cat.Label }}</option>
                         {{ end }}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
+                        <option value="name" {{ if eq .filters.sort_by "name" }}selected{{ end }}>Nama</option>
                     </select>
                 </div>
                 <div class="col-md-2">
