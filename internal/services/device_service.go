@@ -93,6 +93,8 @@ func (s *DeviceService) ExportUsages() ([]repository.DeviceUsageRow, error) {
 func (s *DeviceService) CreateDevice(in CreateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, string, error) {
 	prefix, err := s.deviceTypeRepo.GetPrefix(in.DeviceTypeID)
 	if err != nil {
+		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device", 0,
+			map[string]any{"name": in.Name}, ipAddress, userAgent, err.Error())
 		return 0, "", err
 	}
 	code := s.deviceRepo.GetNextAssetCode(prefix)
@@ -100,6 +102,8 @@ func (s *DeviceService) CreateDevice(in CreateDeviceInput, actorID int, actorUse
 	result, err := s.deviceRepo.Create(in.DeviceTypeID, code, in.Name, in.Brand, in.Model, in.SerialNumber, in.ItemType,
 		in.ItemMode == "loanable", in.ItemMode == "consumable", in.Quantity, in.Condition, in.Location, in.PurchaseDate, in.Notes)
 	if err != nil {
+		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device", 0,
+			map[string]any{"name": in.Name, "asset_code": code}, ipAddress, userAgent, err.Error())
 		return 0, "", err
 	}
 	id, _ := result.LastInsertId()
