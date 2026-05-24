@@ -4,7 +4,7 @@
     <div class="col-md-8">
         <div class="card shadow-sm">
             <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-pc-display"></i> Detail PC-{{ printf "%02d" .pc.PCNumber }}</h5>
+                <h5 class="mb-0"><i class="bi bi-pc-display"></i> Detail {{ if .pc.Label }}{{ .pc.Label }}{{ else }}PC-{{ printf "%02d" .pc.PCNumber }}{{ end }}</h5>
                 <div>
                     {{ if eq .role "admin" }}
                     <a href="/pc/{{ .pc.PCNumber }}/edit" class="btn btn-sm btn-warning">
@@ -18,7 +18,8 @@
             </div>
             <div class="card-body">
                 <table class="table table-bordered">
-                    <tr><th width="30%">Nomor PC</th><td><strong>PC-{{ printf "%02d" .pc.PCNumber }}</strong></td></tr>
+                    <tr><th width="30%">Nomor PC</th><td><strong>{{ if .pc.Label }}{{ .pc.Label }}{{ else }}PC-{{ printf "%02d" .pc.PCNumber }}{{ end }}</strong></td></tr>
+                    {{ if .pc.Label }}<tr><th>PC Number Asli</th><td>PC-{{ printf "%02d" .pc.PCNumber }}</td></tr>{{ end }}
                     {{ if .pc.AssetID }}<tr><th>ID Aset</th><td><span class="badge bg-info">{{ .pc.AssetID }}</span></td></tr>{{ end }}
                     <tr><th>Posisi</th><td>Baris {{ .pc.Column }}, Kolom {{ .pc.Row }}</td></tr>
                     <tr><th>Status</th><td><span class="badge bg-{{ (pcStatusInfo .pc.Status).BadgeClass }}">{{ .pc.Status }}</span></td></tr>

@@ -55,9 +55,9 @@ func runMigrations(db *DB, isPostgres bool) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS pcs (
 			id {{PK}},
-			pc_number INTEGER UNIQUE NOT NULL CHECK(pc_number >= 1 AND pc_number <= 40),
-			{{ROW}} INTEGER NOT NULL CHECK({{ROW}} >= 1 AND {{ROW}} <= 5),
-			{{COL}} INTEGER NOT NULL CHECK({{COL}} >= 1 AND {{COL}} <= 8),
+			pc_number INTEGER UNIQUE NOT NULL CHECK(pc_number >= 1 AND pc_number <= 43),
+			{{ROW}} INTEGER NOT NULL CHECK({{ROW}} >= 0 AND {{ROW}} <= 5),
+			{{COL}} INTEGER NOT NULL CHECK({{COL}} >= 0 AND {{COL}} <= 8),
 			status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken', 'inactive')),
 			processor TEXT,
 			ram TEXT,
@@ -308,6 +308,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		"device_type": "TEXT NOT NULL DEFAULT 'PC All-in-one'",
 		"brand_model": "TEXT NOT NULL DEFAULT 'Axioo Mypc One Pro K7-24 (16N9)'",
 		"accessories": "TEXT NOT NULL DEFAULT 'Keyboard & Mouse Axioo (Wired Set)'",
+		"label": "TEXT DEFAULT ''",
 		"action_notes": "TEXT", "photo_serial": "TEXT", "photo_front": "TEXT",
 	}
 	devicesExtra := map[string]string{

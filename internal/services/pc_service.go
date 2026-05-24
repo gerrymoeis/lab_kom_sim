@@ -11,6 +11,7 @@ type CreatePCInput struct {
 	SerialNumber, OperatingSystem       string
 	DeviceType, BrandModel, Accessories string
 	PhotoSerial, PhotoFront             string
+	Label                               string
 }
 
 type UpdatePCInput struct {
@@ -20,6 +21,7 @@ type UpdatePCInput struct {
 	OperatingSystem, Notes, ActionNotes string
 	PhotoSerial, PhotoFront             string
 	RequiredSW, OtherSW                 []int
+	Label                               string
 }
 
 type PCService struct {
@@ -65,7 +67,7 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 	if in.Storage == "" { in.Storage = "1TB NVMe" }
 
 	result, err := s.pcRepo.Create(in.PCNumber, in.Row, in.Column, in.Status, in.Processor, in.RAM, in.Storage,
-		in.SerialNumber, in.OperatingSystem, in.DeviceType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront)
+		in.SerialNumber, in.OperatingSystem, in.DeviceType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label)
 	if err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "pc", 0,
 			map[string]any{"pc_number": in.PCNumber, "serial_number": in.SerialNumber},
@@ -84,7 +86,7 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 
 func (s *PCService) UpdatePC(pcNumber int, in UpdatePCInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	err := s.pcRepo.Update(pcNumber, in.Status, in.DeviceType, in.SerialNumber, in.BrandModel, in.Accessories,
-		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.ActionNotes, in.PhotoSerial, in.PhotoFront)
+		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.ActionNotes, in.PhotoSerial, in.PhotoFront, in.Label)
 	if err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcNumber,
 			map[string]any{"pc_number": pcNumber}, nil, ipAddress, userAgent, err.Error())
