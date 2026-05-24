@@ -135,6 +135,13 @@ func (w *worker) do(method, path, body string) (*http.Response, error) {
 
 func pk(format string, a ...any) string { return fmt.Sprintf(format, a...) }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func parseFlags() *config {
 	c := &config{}
 	flag.StringVar(&c.url, "url", "http://localhost:8080", "Target server URL")
@@ -605,41 +612,80 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 	}
 	log.Printf("Setup: created %d stress users (total needed: %d)", created, cfg.setupUsers)
 
-	// Step 1: Create device_type first (required for device foreign key)
+	// Step 1: Get or create device_type (required for device foreign key)
 	deviceTypeID := 0
-	v = url.Values{}
-	v.Set("name", "STRESS_DEVICE_TYPE")
-	v.Set("category", "peripheral")
-	v.Set("item_type", "individual")
-	req, _ = http.NewRequest("POST", cfg.url+"/device-types/create", strings.NewReader(v.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err = client.Do(req)
-	if err != nil {
-		log.Fatalf("Setup: failed to create device type: %v", err)
-	}
-	body, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode != 302 {
-		log.Fatalf("Setup: device type creation failed with status %d: %s", resp.StatusCode, string(body))
-	}
-	log.Printf("Setup: created device type")
-
-	// Get device_type_id
-	time.Sleep(200 * time.Millisecond)
+	var body []byte
+	
+	// First, try to find existing STRESS_DEVICE_TYPE
 	req, _ = http.NewRequest("GET", cfg.url+"/device-types", nil)
 	resp, err = client.Do(req)
-	if err != nil {
-		log.Fatalf("Setup: failed to get device types: %v", err)
+	if err == nil {
+		body, _ = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		
+		// Look for STRESS_DEVICE_TYPE in the response
+		if strings.Contains(string(body), "STRESS_DEVICE_TYPE") {
+			// Try to extract ID near STRESS_DEVICE_TYPE
+			re := regexp.MustCompile(`STRESS_DEVICE_TYPE.*?href="/device-types/(\d+)`)
+			if m := re.FindStringSubmatch(string(body)); len(m) > 1 {
+				deviceTypeID, _ = strconv.Atoi(m[1])
+				log.Printf("Setup: found existing device type ID=%d", deviceTypeID)
+			}
+		}
 	}
-	body, _ = io.ReadAll(resp.Body)
-	resp.Body.Close()
 	
-	deviceTypeRE := regexp.MustCompile(`href="/device-types/(\d+)/edit"`)
-	if m := deviceTypeRE.FindStringSubmatch(string(body)); len(m) > 1 {
-		deviceTypeID, _ = strconv.Atoi(m[1])
-		log.Printf("Setup: found device type ID=%d", deviceTypeID)
-	} else {
-		log.Fatalf("Setup: could not find device type ID")
+	// If not found, create new device type
+	if deviceTypeID == 0 {
+		v = url.Values{}
+		v.Set("name", "STRESS_DEVICE_TYPE")
+		v.Set("category", "peripheral")
+		v.Set("item_type", "individual")
+		req, _ = http.NewRequest("POST", cfg.url+"/device-types/create", strings.NewReader(v.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Fatalf("Setup: failed to create device type: %v", err)
+		}
+		body, _ = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != 302 {
+			log.Fatalf("Setup: device type creation failed with status %d: %s", resp.StatusCode, string(body))
+		}
+		log.Printf("Setup: created device type")
+		
+		// Get the ID from redirect location or search again
+		time.Sleep(500 * time.Millisecond)
+		req, _ = http.NewRequest("GET", cfg.url+"/device-types", nil)
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Fatalf("Setup: failed to get device types: %v", err)
+		}
+		body, _ = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		
+		// Try multiple patterns
+		patterns := []*regexp.Regexp{
+			regexp.MustCompile(`STRESS_DEVICE_TYPE.*?href="/device-types/(\d+)`),
+			regexp.MustCompile(`href="/device-types/(\d+)/edit"`),
+			regexp.MustCompile(`href="/device-types/(\d+)"`),
+		}
+		
+		for _, pattern := range patterns {
+			matches := pattern.FindAllStringSubmatch(string(body), -1)
+			if len(matches) > 0 {
+				// Get the last match (most recent)
+				m := matches[len(matches)-1]
+				if len(m) > 1 {
+					deviceTypeID, _ = strconv.Atoi(m[1])
+					log.Printf("Setup: found device type ID=%d", deviceTypeID)
+					break
+				}
+			}
+		}
+	}
+	
+	if deviceTypeID == 0 {
+		log.Fatalf("Setup: could not find or create device type ID")
 	}
 
 	// Step 2: Create multiple devices (workers × 2)
@@ -673,28 +719,66 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 				i, resp.StatusCode, string(body))
 		}
 		
-		// Get device ID with retry logic
+		// Try to get device ID from redirect Location header
 		var deviceID int
 		var found bool
 		
-		for retry := 0; retry < 5; retry++ {
-			time.Sleep(200 * time.Millisecond)
-			
-			req, _ = http.NewRequest("GET", 
-				cfg.url+"/devices?tab=list&search=STRESS_DEVICE_"+strconv.Itoa(i), nil)
-			resp, err = client.Do(req)
-			if err != nil {
-				log.Printf("Setup: retry %d - failed to search device %d: %v", retry+1, i, err)
-				continue
-			}
-			body, _ = io.ReadAll(resp.Body)
-			resp.Body.Close()
-			
-			if m := deviceIDRE.FindStringSubmatch(string(body)); len(m) > 1 {
+		if location := resp.Header.Get("Location"); location != "" {
+			// Try to extract ID from redirect URL
+			// Possible formats: /devices, /devices?tab=list, /devices/123, etc.
+			re := regexp.MustCompile(`/devices/(\d+)`)
+			if m := re.FindStringSubmatch(location); len(m) > 1 {
 				deviceID, _ = strconv.Atoi(m[1])
 				deviceIDs = append(deviceIDs, deviceID)
 				found = true
-				break
+				log.Printf("Setup: device %d created with ID=%d (from redirect)", i, deviceID)
+			}
+		}
+		
+		// Fallback: Search for device by name
+		if !found {
+			for retry := 0; retry < 5; retry++ {
+				time.Sleep(200 * time.Millisecond)
+				
+				req, _ = http.NewRequest("GET", 
+					cfg.url+"/devices?tab=list&search=STRESS_DEVICE_"+strconv.Itoa(i), nil)
+				resp, err = client.Do(req)
+				if err != nil {
+					log.Printf("Setup: retry %d - failed to search device %d: %v", retry+1, i, err)
+					continue
+				}
+				body, _ = io.ReadAll(resp.Body)
+				resp.Body.Close()
+				
+				// Try multiple regex patterns to find device ID
+				patterns := []*regexp.Regexp{
+					regexp.MustCompile(`STRESS_DEVICE_` + strconv.Itoa(i) + `.*?href="/devices/(\d+)`),  // Name + href
+					regexp.MustCompile(`href="/devices/(\d+)/edit"`),                                      // href="/devices/123/edit"
+					regexp.MustCompile(`href="/devices/(\d+)"`),                                           // href="/devices/123"
+					regexp.MustCompile(`data-device-id="(\d+)"`),                                          // data-device-id="123"
+				}
+				
+				for _, pattern := range patterns {
+					if m := pattern.FindStringSubmatch(string(body)); len(m) > 1 {
+						deviceID, _ = strconv.Atoi(m[1])
+						deviceIDs = append(deviceIDs, deviceID)
+						found = true
+						log.Printf("Setup: device %d found with ID=%d (pattern matched)", i, deviceID)
+						break
+					}
+				}
+				
+				if found {
+					break
+				}
+				
+				// Debug: print response on last retry
+				if retry == 4 {
+					log.Printf("Setup: device %d not found after 5 retries", i)
+					log.Printf("Setup: Response length: %d bytes", len(body))
+					log.Printf("Setup: Response preview (first 800 chars):\n%s", string(body)[:min(800, len(body))])
+					log.Printf("Setup: Searching for: STRESS_DEVICE_%d", i)
+				}
 			}
 		}
 		
@@ -709,6 +793,9 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 	
 	log.Printf("Setup: successfully created %d devices (IDs: %d-%d)", 
 		len(deviceIDs), deviceIDs[0], deviceIDs[len(deviceIDs)-1])
+	
+	// Debug: print all device IDs
+	log.Printf("Setup: device IDs detail: %v", deviceIDs)
 
 	// Don't logout - keep session for discovery phase
 	log.Printf("Setup: keeping rekan session for discovery")
@@ -773,8 +860,21 @@ func runWorkers(cfg *config, stores map[string]*entityStore) []result {
 				
 				// Log CREATE failures for debugging
 				if ep.op == "create" && (r.statusCode < 200 || r.statusCode >= 400) && n <= 50 {
-					log.Printf("[%d] CREATE FAILED: %s %s\nBody: %s\n→ Status: %d (%v)", 
-						n, ep.method, ep.path, ep.body, r.statusCode, latency)
+					debugInfo := ""
+					if ep.entity == "device-loans" || ep.entity == "device-usages" {
+						// Extract device_id from body
+						if strings.Contains(ep.body, "device_id=") {
+							parts := strings.Split(ep.body, "&")
+							for _, part := range parts {
+								if strings.HasPrefix(part, "device_id=") {
+									debugInfo = fmt.Sprintf(" [%s]", part)
+									break
+								}
+							}
+						}
+					}
+					log.Printf("[%d] CREATE FAILED: %s %s\nBody: %s%s\n→ Status: %d (%v)", 
+						n, ep.method, ep.path, ep.body, debugInfo, r.statusCode, latency)
 				}
 				
 				results <- r
