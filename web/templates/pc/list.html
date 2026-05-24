@@ -53,7 +53,7 @@
                     <tbody>
                         {{ range .pcs }}
                         <tr>
-                            <td><strong>PC-{{ printf "%02d" .PCNumber }}</strong></td>
+                            <td><strong>{{ if .Label }}{{ .Label }}{{ else }}PC-{{ printf "%02d" .PCNumber }}{{ end }}</strong></td>
                             <td>{{ if .SerialNumber }}<small><code>{{ .SerialNumber }}</code></small>{{ else }}-{{ end }}</td>
                             <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else if .Brand }}{{ .Brand }}{{ if .Model }} {{ .Model }}{{ end }}{{ else }}-{{ end }}</td>
                             <td>Baris {{ .Column }}, Kolom {{ .Row }}</td>
