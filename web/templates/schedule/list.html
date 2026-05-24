@@ -57,8 +57,8 @@
                         <td>{{ $s.TimeStart }}</td>
                         <td>{{ $s.TimeEnd }}</td>
                         {{ if eq $.role "admin" }}
-                        <td class="d-flex gap-1 flex-wrap align-items-center">
-                            <a href="/schedules/{{ $s.ID }}/edit" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                        <td class="text-nowrap">
+                            <a href="/schedules/{{ $s.ID }}/edit" class="btn btn-sm btn-warning me-1"><i class="bi bi-pencil"></i></a>
                             <button type="button" class="btn btn-sm btn-danger" onclick="if(confirm('Hapus?')){ document.getElementById('del-{{ $s.ID }}').submit(); }"><i class="bi bi-trash"></i></button>
                             <form id="del-{{ $s.ID }}" method="POST" action="/schedules/{{ $s.ID }}/delete" style="display:none;"></form>
                         </td>

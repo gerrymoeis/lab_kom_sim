@@ -13,10 +13,9 @@
             </div>
         </div>
 
-        <!-- Filters -->
-        <div class="card mb-3">
+        <div class="card shadow-sm">
             <div class="card-body">
-                <form method="GET" action="/admin/activity-logs" class="row g-3">
+                <form method="GET" action="/admin/activity-logs" class="row g-3 mb-3">
                     <div class="col-md-3">
                         <label for="date_from" class="form-label">Tanggal Dari</label>
                         <input type="date" class="form-control" id="date_from" name="date_from" value="{{ .filters.date_from }}">
@@ -74,16 +73,10 @@
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
 
         {{ if gt (len .logs) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .logs)) 1 }} dari {{ .totalItems }} entries{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>{{ end }}
 
         {{ template "layout/pagination.html" . }}
-
-        <!-- Activity Logs Table -->
-        <div class="card">
-            <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover activity-log-table">
                         <thead class="table-light">
