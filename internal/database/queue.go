@@ -32,8 +32,13 @@ func newInsertTracker(db *DB) *insertTracker {
 	}
 	for _, table := range tables {
 		var maxID sql.NullInt64
-		if err := db.reader.QueryRow(fmt.Sprintf("SELECT MAX(id) FROM %s", table)).Scan(&maxID); err == nil && maxID.Valid {
-			t.counters[table] = maxID.Int64
+		if err := db.reader.QueryRow(fmt.Sprintf("SELECT MAX(id) FROM %s", table)).Scan(&maxID); err == nil {
+			if maxID.Valid {
+				t.counters[table] = maxID.Int64
+			} else {
+				// Initialize with 0 for empty tables to ensure tracking works
+				t.counters[table] = 0
+			}
 		}
 	}
 	return t
