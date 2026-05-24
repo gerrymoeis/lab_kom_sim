@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
@@ -22,8 +23,11 @@ func (r *DeviceRepository) WithTx(tx *database.Tx) *DeviceRepository {
 }
 
 type DeviceFilters struct {
-	Search   string
-	Category string
+	Search    string
+	Category  string
+	Condition string
+	SortBy    string
+	SortOrder string
 }
 
 func (r *DeviceRepository) List(filters DeviceFilters) ([]models.DeviceWithCategory, error) {
@@ -56,6 +60,10 @@ func (r *DeviceRepository) buildDeviceClause(filters DeviceFilters) (string, []a
 		clause += ` AND dt.category = ?`
 		args = append(args, filters.Category)
 	}
+	if filters.Condition != "" {
+		clause += ` AND d.condition = ?`
+		args = append(args, filters.Condition)
+	}
 	return clause, args
 }
 
@@ -75,7 +83,22 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 		FROM devices d JOIN device_types dt ON d.device_type_id = dt.id WHERE 1=1`
 	clause, args := r.buildDeviceClause(filters)
 	query += clause
-	query += ` ORDER BY d.asset_code`
+
+	sortBy := map[string]string{
+		"name":       "d.name",
+		"asset_code": "d.asset_code",
+		"category":   "dt.category",
+		"created_at": "d.created_at",
+	}[filters.SortBy]
+	if sortBy == "" {
+		sortBy = "d.asset_code"
+	}
+	sortOrder := "ASC"
+	if filters.SortOrder == "DESC" {
+		sortOrder = "DESC"
+	}
+	query += ` ORDER BY ` + sortBy + ` ` + sortOrder
+
 	query += suffix
 	if suffix != "" {
 		args = append(args, limit, offset)
@@ -104,10 +127,21 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 	return devices, nil
 }
 
+func parseDate(s sql.NullString) *time.Time {
+	if s.Valid && s.String != "" {
+		t, err := time.Parse("2006-01-02", s.String)
+		if err == nil {
+			return &t
+		}
+	}
+	return nil
+}
+
 func (r *DeviceRepository) GetByID(id int) (*models.DeviceWithCategory, error) {
 	var d models.DeviceWithCategory
 	var brand, model, serial, cond, loc, notes sql.NullString
-	var pDate sql.NullTime
+	var pDate sql.NullString
+
 	err := r.db.QueryRow(`SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
 		d.serial_number, d.item_type, d.is_loanable, d.is_consumable, d.quantity_total, d.quantity_available,
 		d.condition, d.location, d.purchase_date, d.notes, d.created_at, d.updated_at
@@ -124,9 +158,7 @@ func (r *DeviceRepository) GetByID(id int) (*models.DeviceWithCategory, error) {
 	d.Condition = valStr(cond)
 	d.Location = valStr(loc)
 	d.Notes = valStr(notes)
-	if pDate.Valid {
-		d.PurchaseDate = &pDate.Time
-	}
+	d.PurchaseDate = parseDate(pDate)
 	return &d, nil
 }
 
@@ -148,6 +180,7 @@ func (r *DeviceRepository) GetByIDSimple(id int) (*models.Device, error) {
 	d.Condition = valStr(cond)
 	d.Location = valStr(loc)
 	d.Notes = valStr(notes)
+	d.PurchaseDate = parseDate(pDate)
 	return &d, nil
 }
 
