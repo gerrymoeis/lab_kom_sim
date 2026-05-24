@@ -35,7 +35,7 @@
                         {{ range $i, $u := .users }}
                         <tr>
                             <td>{{ add $i $.startRow }}</td>
-                            <td><strong>{{ .Username }}</strong></td>
+                            <td><strong><a href="/admin/users/{{ .ID }}" class="text-decoration-none">{{ .Username }}</a></strong></td>
                             <td>{{ .FullName }}</td>
                             <td>
                                 <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">
@@ -44,10 +44,13 @@
                             </td>
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
+                                <a href="/admin/users/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                                 {{ if and (ne .Username "admin") (ne .Username "rekan") }}
                                 <form method="POST" action="/admin/users/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger">
-                                        <i class="bi bi-trash"></i> Hapus
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
                                 {{ else }}
