@@ -79,6 +79,12 @@ func (db *DB) NewWriteQueue(bufferSize, batchSize int, flushEvery time.Duration)
 			return db.writer.Exec(query, args...)
 		}
 
+		// Bypass async for device operations (critical for loans/usages)
+		tbl := extractTableName(query)
+		if tbl == "devices" {
+			return db.writer.Exec(query, args...)
+		}
+
 		q.Enqueue(queue.Task{
 			Label: query,
 			Execute: func() error {
@@ -86,7 +92,7 @@ func (db *DB) NewWriteQueue(bufferSize, batchSize int, flushEvery time.Duration)
 				return err
 			},
 		})
-		if tbl := extractTableName(query); tbl != "" {
+		if tbl != "" {
 			if id, ok := tracker.nextID(tbl); ok {
 				return trackedResult{insertID: id}, nil
 			}
