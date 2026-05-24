@@ -59,6 +59,8 @@
         </li>
     </ul>
 
+    {{ template "layout/alert.html" . }}
+
     <!-- Tab Content -->
     <div class="card shadow-sm">
         <div class="card-body">
@@ -106,6 +108,9 @@
                     </button>
                 </div>
             </form>
+
+            {{ if gt (len .devices) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .devices)) 1 }} dari {{ .totalItems }} perangkat</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
 
             <!-- Table -->
             <div class="table-responsive">
@@ -192,6 +197,9 @@
                 </div>
             </form>
 
+            {{ if gt (len .deviceTypes) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceTypes)) 1 }} dari {{ .totalItems }} jenis barang</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
+
             <!-- Table -->
             <div class="table-responsive">
                 <table class="table table-hover">
@@ -246,11 +254,6 @@
                 </table>
             </div>
             
-            <!-- Total Count -->
-            <div class="mt-2 text-muted">
-                <small>Total: <strong>{{ len .deviceTypes }}</strong> jenis barang</small>
-            </div>
-
             {{ template "layout/pagination.html" . }}
 
             {{ else if eq .activeTab "loans" }}
@@ -276,11 +279,15 @@
                 </div>
             </form>
 
+            {{ if gt (len .deviceLoans) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceLoans)) 1 }} dari {{ .totalItems }} peminjaman</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
+
             <!-- Table -->
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
+                            <th style="width:50px;">#</th>
                             <th>Perangkat</th>
                             <th>Asset Code</th>
                             <th>Peminjam</th>
@@ -293,27 +300,28 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range .deviceLoans }}
+                        {{ range $i, $loan := .deviceLoans }}
                         <tr>
-                            <td><strong>{{ .DeviceName }}</strong></td>
-                            <td><code>{{ .DeviceAssetCode }}</code></td>
-                            <td>{{ .BorrowerName }}</td>
-                            <td><span class="badge bg-secondary">{{ .BorrowerType }}</span></td>
-                            <td>{{ .LoanDate.Format "02/01/2006" }}</td>
+                            <td class="text-muted">{{ add $i $.startRow }}</td>
+                            <td><strong>{{ $loan.DeviceName }}</strong></td>
+                            <td><code>{{ $loan.DeviceAssetCode }}</code></td>
+                            <td>{{ $loan.BorrowerName }}</td>
+                            <td><span class="badge bg-secondary">{{ $loan.BorrowerType }}</span></td>
+                            <td>{{ (localTime $loan.LoanDate).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
-                                {{ if .ExpectedReturnDate }}
-                                    {{ .ExpectedReturnDate.Format "02/01/2006" }}
+                                {{ if $loan.ExpectedReturnDate }}
+                                    {{ (localTime $loan.ExpectedReturnDate).Format "02/01/2006" }}
                                 {{ else }}
                                     -
                                 {{ end }}
                             </td>
-                            <td>{{ .Quantity }}</td>
+                            <td>{{ $loan.Quantity }}</td>
                             <td>
-                                {{ if eq .ComputedStatus "overdue" }}
+                                {{ if eq $loan.ComputedStatus "overdue" }}
                                     <span class="badge bg-danger">
                                         <i class="bi bi-exclamation-triangle"></i> Terlambat
                                     </span>
-                                {{ else if eq .ComputedStatus "active" }}
+                                {{ else if eq $loan.ComputedStatus "active" }}
                                     <span class="badge bg-success">
                                         <i class="bi bi-check-circle"></i> Aktif
                                     </span>
@@ -325,10 +333,10 @@
                             </td>
                             <td class="d-flex gap-1 flex-wrap align-items-center">
                                 {{ if eq $.role "admin" }}
-                                <a href="/device-loans/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/device-loans/{{ $loan.ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/device-loans/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data peminjaman ini?')">
+                                <form method="POST" action="/device-loans/{{ $loan.ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data peminjaman ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -338,7 +346,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="9" class="text-center text-muted">Belum ada data peminjaman</td>
+                            <td colspan="10" class="text-center text-muted">Belum ada data peminjaman</td>
                         </tr>
                         {{ end }}
                     </tbody>
@@ -362,11 +370,15 @@
                 </div>
             </form>
 
+            {{ if gt (len .deviceUsages) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .deviceUsages)) 1 }} dari {{ .totalItems }} pemakaian</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
+
             <!-- Table -->
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
+                            <th style="width:50px;">#</th>
                             <th>Perangkat</th>
                             <th>Asset Code</th>
                             <th>Pengguna</th>
@@ -379,27 +391,28 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range .deviceUsages }}
+                        {{ range $i, $usage := .deviceUsages }}
                         <tr>
-                            <td><strong>{{ .DeviceName }}</strong></td>
-                            <td><code>{{ .DeviceAssetCode }}</code></td>
-                            <td>{{ .UserName }}</td>
-                            <td><span class="badge bg-secondary">{{ .UserType }}</span></td>
-                            <td>{{ .UsageDate.Format "02/01/2006" }}</td>
+                            <td class="text-muted">{{ add $i $.startRow }}</td>
+                            <td><strong>{{ $usage.DeviceName }}</strong></td>
+                            <td><code>{{ $usage.DeviceAssetCode }}</code></td>
+                            <td>{{ $usage.UserName }}</td>
+                            <td><span class="badge bg-secondary">{{ $usage.UserType }}</span></td>
+                            <td>{{ (localTime $usage.UsageDate).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td>
-                                <select class="form-select form-select-sm availability-select" data-usage-id="{{ .ID }}" style="width:auto;">
-                                    <option value="yes" {{ if eq .IsAvailable "yes" }}selected{{ end }}>Ada</option>
-                                    <option value="no" {{ if eq .IsAvailable "no" }}selected{{ end }}>Habis</option>
+                                <select class="form-select form-select-sm availability-select" data-usage-id="{{ $usage.ID }}" style="width:auto;">
+                                    <option value="yes" {{ if eq $usage.IsAvailable "yes" }}selected{{ end }}>Ada</option>
+                                    <option value="no" {{ if eq $usage.IsAvailable "no" }}selected{{ end }}>Habis</option>
                                 </select>
                             </td>
-                            <td><span class="badge bg-warning">{{ .Quantity }}</span></td>
-                            <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>
+                            <td><span class="badge bg-warning">{{ $usage.Quantity }}</span></td>
+                            <td>{{ if $usage.Purpose }}{{ $usage.Purpose }}{{ else }}-{{ end }}</td>
                             <td class="d-flex gap-1 flex-wrap align-items-center">
                                 {{ if eq $.role "admin" }}
-                                <a href="/device-usages/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/device-usages/{{ $usage.ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/device-usages/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini?')">
+                                <form method="POST" action="/device-usages/{{ $usage.ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -409,7 +422,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="9" class="text-center text-muted">Belum ada data pemakaian</td>
+                            <td colspan="10" class="text-center text-muted">Belum ada data pemakaian</td>
                         </tr>
                         {{ end }}
                     </tbody>
