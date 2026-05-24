@@ -2,6 +2,7 @@
 
 import (
 	"html/template"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -197,6 +198,7 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	data, err := h.deviceService.GetDetail(id)
 	if err != nil {
+		log.Printf("DeviceDetail error for id=%d: %v", id, err)
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
 	}
@@ -214,7 +216,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 
 	id, _ := strconv.Atoi(c.Param("id"))
 	d, err := h.deviceService.GetByID(id)
-	if err != nil { h.errHTML(c, "Perangkat tidak ditemukan"); return }
+	if err != nil { log.Printf("DeviceEditPage error for id=%d: %v", id, err); h.errHTML(c, "Perangkat tidak ditemukan"); return }
 
 	c.HTML(http.StatusOK, "device/edit.html", gin.H{
 		"title": "Edit Perangkat", "currentPage": "devices",
