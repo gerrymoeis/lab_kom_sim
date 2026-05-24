@@ -33,21 +33,33 @@ func (r *UserRepository) List() ([]models.User, error) {
 	return users, nil
 }
 
-func (r *UserRepository) ListPaginated(page, pageSize int) ([]models.User, int, error) {
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 20
-	}
+func (r *UserRepository) ListPaginated(search string, page, pageSize int) ([]models.User, int, error) {
+	if page < 1 { page = 1 }
+	if pageSize < 1 { pageSize = 20 }
 
 	var total int
-	if err := r.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
+	countQuery := `SELECT COUNT(*) FROM users WHERE 1=1`
+	var args []any
+	if search != "" {
+		countQuery += ` AND (username LIKE ? OR full_name LIKE ?)`
+		s := "%" + search + "%"
+		args = append(args, s, s)
+	}
+	if err := r.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * pageSize
-	rows, err := r.db.Query(`SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?`, pageSize, offset)
+	query := `SELECT id, username, full_name, role, created_at FROM users WHERE 1=1`
+	var qArgs []any
+	if search != "" {
+		query += ` AND (username LIKE ? OR full_name LIKE ?)`
+		s := "%" + search + "%"
+		qArgs = append(qArgs, s, s)
+	}
+	query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
+	qArgs = append(qArgs, pageSize, offset)
+	rows, err := r.db.Query(query, qArgs...)
 	if err != nil {
 		return nil, 0, err
 	}
