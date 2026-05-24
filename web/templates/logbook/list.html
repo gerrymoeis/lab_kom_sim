@@ -110,11 +110,11 @@
                             <td>{{ $entry.TimeIn }}</td>
                             <td>{{ if $entry.TimeOut }}{{ $entry.TimeOut }}{{ else }}-{{ end }}</td>
                             {{ if eq $.role "admin" }}
-                            <td class="d-flex gap-1 flex-wrap align-items-center">
-                                <a href="/logbook/{{ $entry.ID }}" class="btn btn-sm btn-info" title="Detail">
+                            <td class="text-nowrap">
+                                <a href="/logbook/{{ $entry.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="/logbook/{{ $entry.ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/logbook/{{ $entry.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <form method="POST" action="/logbook/{{ $entry.ID }}/delete" style="display:inline;"

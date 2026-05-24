@@ -71,12 +71,12 @@
                                 <span class="badge bg-warning text-dark">Dilaporkan</span>
                                 {{ end }}
                             </td>
-                            <td class="d-flex gap-1 flex-wrap align-items-center">
-                                <a href="/lost-items/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
+                            <td class="text-nowrap">
+                                <a href="/lost-items/{{ .ID }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {{ if eq $.role "admin" }}
-                                <a href="/lost-items/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/lost-items/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <form method="POST" action="/lost-items/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus laporan barang hilang ini?')">

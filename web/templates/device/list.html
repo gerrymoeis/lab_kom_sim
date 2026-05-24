@@ -147,12 +147,12 @@
                                 </span>
                             </td>
                             <td>{{ if .Location }}{{ .Location }}{{ else }}-{{ end }}</td>
-                            <td class="d-flex gap-1 flex-wrap align-items-center">
-                                <a href="/devices/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
+                            <td class="text-nowrap">
+                                <a href="/devices/{{ .ID }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {{ if eq $.role "admin" }}
-                                <a href="/devices/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/devices/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <form method="POST" action="/devices/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus perangkat ini?')">
@@ -229,12 +229,12 @@
                                 </span>
                             </td>
                             <td><code>{{ .AssetCodePrefix }}</code></td>
-                            <td class="d-flex gap-1 flex-wrap align-items-center">
-                                <a href="/device-types/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
+                            <td class="text-nowrap">
+                                <a href="/device-types/{{ .ID }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {{ if eq $.role "admin" }}
-                                <a href="/device-types/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/device-types/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <form method="POST" action="/device-types/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus jenis barang ini?')">
@@ -331,9 +331,9 @@
                                     </span>
                                 {{ end }}
                             </td>
-                            <td class="d-flex gap-1 flex-wrap align-items-center">
+                            <td class="text-nowrap">
                                 {{ if eq $.role "admin" }}
-                                <a href="/device-loans/{{ $loan.ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/device-loans/{{ $loan.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <form method="POST" action="/device-loans/{{ $loan.ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data peminjaman ini?')">
@@ -407,9 +407,9 @@
                             </td>
                             <td><span class="badge bg-warning">{{ $usage.Quantity }}</span></td>
                             <td>{{ if $usage.Purpose }}{{ $usage.Purpose }}{{ else }}-{{ end }}</td>
-                            <td class="d-flex gap-1 flex-wrap align-items-center">
+                            <td class="text-nowrap">
                                 {{ if eq $.role "admin" }}
-                                <a href="/device-usages/{{ $usage.ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/device-usages/{{ $usage.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <form method="POST" action="/device-usages/{{ $usage.ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini?')">

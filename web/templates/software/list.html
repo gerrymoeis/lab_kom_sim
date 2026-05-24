@@ -45,9 +45,9 @@
                         <td>{{ if eq .Category "required" }}<span class="badge bg-primary">Required</span>{{ else }}<span class="badge bg-secondary">Other</span>{{ end }}</td>
                         <td>{{ .Description }}</td>
                         <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
-                        <td class="d-flex gap-1 flex-wrap align-items-center">
-                            <a href="/software/{{ .ID }}" class="btn btn-sm btn-info" title="Detail"><i class="bi bi-eye"></i></a>
-                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit"><i class="bi bi-pencil"></i></a>
+                        <td class="text-nowrap">
+                            <a href="/software/{{ .ID }}" class="btn btn-sm btn-info me-1" title="Detail"><i class="bi bi-eye"></i></a>
+                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit"><i class="bi bi-pencil"></i></a>
                             <button type="button" class="btn btn-sm btn-danger" title="Hapus" onclick="if(confirm('Hapus {{ .Name }}?')){ document.getElementById('del-{{ .ID }}').submit(); }"><i class="bi bi-trash"></i></button>
                             <form id="del-{{ .ID }}" method="POST" action="/software/{{ .ID }}/delete" style="display:none;"></form>
                         </td>
