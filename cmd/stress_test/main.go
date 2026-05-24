@@ -785,7 +785,8 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 				// Pattern 3: Look for device name in table cell, then find ID in same row
 				// <tr>...<td><strong>STRESS_DEVICE_1</strong></td>...<a href="/devices/123/edit">
 				// Use simpler pattern without negative lookahead (not supported in Go)
-				pattern3 := regexp.MustCompile(`<strong>` + deviceName + `</strong>[\s\S]{0,500}?/devices/(\d+)`)
+				// Increase range to 800 chars to capture entire row including action column
+				pattern3 := regexp.MustCompile(`<strong>` + deviceName + `</strong>[\s\S]{0,800}?/devices/(\d+)`)
 				if m := pattern3.FindStringSubmatch(string(body)); len(m) > 1 {
 					deviceID, _ = strconv.Atoi(m[1])
 					deviceIDs = append(deviceIDs, deviceID)
@@ -796,7 +797,7 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 				
 				// Pattern 4: Alternative - look for asset code pattern, then device name, then ID
 				// <code>XXX-XXX-001</code>...<strong>STRESS_DEVICE_1</strong>...href="/devices/123"
-				pattern4 := regexp.MustCompile(`<code>[^<]+</code>[\s\S]{0,300}?<strong>` + deviceName + `</strong>[\s\S]{0,300}?/devices/(\d+)`)
+				pattern4 := regexp.MustCompile(`<code>[^<]+</code>[\s\S]{0,600}?<strong>` + deviceName + `</strong>[\s\S]{0,600}?/devices/(\d+)`)
 				if m := pattern4.FindStringSubmatch(string(body)); len(m) > 1 {
 					deviceID, _ = strconv.Atoi(m[1])
 					deviceIDs = append(deviceIDs, deviceID)
