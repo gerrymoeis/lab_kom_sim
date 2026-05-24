@@ -43,13 +43,16 @@
                                 </span>
                             </td>
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
-                            <td>
-                                <a href="/admin/users/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1">
-                                    <i class="bi bi-pencil"></i>
+                            <td class="text-nowrap">
+                                <a href="/admin/users/{{ .ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                    <i class="bi bi-eye"></i>
                                 </a>
                                 {{ if and (ne .Username "admin") (ne .Username "rekan") }}
+                                <a href="/admin/users/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                                 <form method="POST" action="/admin/users/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">
-                                    <button type="submit" class="btn btn-sm btn-danger">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
