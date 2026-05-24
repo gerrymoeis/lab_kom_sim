@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
@@ -104,10 +105,20 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 	return devices, nil
 }
 
+func parseDate(s sql.NullString) *time.Time {
+	if s.Valid && s.String != "" {
+		t, err := time.Parse("2006-01-02", s.String)
+		if err == nil {
+			return &t
+		}
+	}
+	return nil
+}
+
 func (r *DeviceRepository) GetByID(id int) (*models.DeviceWithCategory, error) {
 	var d models.DeviceWithCategory
 	var brand, model, serial, cond, loc, notes sql.NullString
-	var pDate sql.NullTime
+	var pDate sql.NullString
 
 	err := r.db.QueryRow(`SELECT d.id, d.device_type_id, d.asset_code, d.name, dt.category, d.brand, d.model,
 		d.serial_number, d.item_type, d.is_loanable, d.is_consumable, d.quantity_total, d.quantity_available,
@@ -125,16 +136,14 @@ func (r *DeviceRepository) GetByID(id int) (*models.DeviceWithCategory, error) {
 	d.Condition = valStr(cond)
 	d.Location = valStr(loc)
 	d.Notes = valStr(notes)
-	if pDate.Valid {
-		d.PurchaseDate = &pDate.Time
-	}
+	d.PurchaseDate = parseDate(pDate)
 	return &d, nil
 }
 
 func (r *DeviceRepository) GetByIDSimple(id int) (*models.Device, error) {
 	var d models.Device
 	var brand, model, serial, cond, loc, notes sql.NullString
-	var pDate sql.NullTime
+	var pDate sql.NullString
 	err := r.db.QueryRow(`SELECT id, device_type_id, asset_code, name, brand, model, serial_number, item_type,
 		is_loanable, is_consumable, quantity_total, quantity_available, condition, location, purchase_date, notes
 		FROM devices WHERE id = ?`, id).
@@ -149,9 +158,7 @@ func (r *DeviceRepository) GetByIDSimple(id int) (*models.Device, error) {
 	d.Condition = valStr(cond)
 	d.Location = valStr(loc)
 	d.Notes = valStr(notes)
-	if pDate.Valid {
-		d.PurchaseDate = &pDate.Time
-	}
+	d.PurchaseDate = parseDate(pDate)
 	return &d, nil
 }
 
