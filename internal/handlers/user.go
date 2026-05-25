@@ -84,6 +84,11 @@ func (h *Handler) UserDetail(c *gin.Context) {
 		return
 	}
 
+	if !h.canAccessProfile(username, user.Username) {
+		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
+		return
+	}
+
 	c.HTML(http.StatusOK, "user/detail.html", gin.H{
 		"title": "Detail User", "currentPage": "users",
 		"username": username, "role": role, "user": user,
@@ -107,6 +112,11 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 		return
 	}
 
+	if !h.canAccessProfile(username, user.Username) {
+		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
+		return
+	}
+
 	c.HTML(http.StatusOK, "user/edit.html", gin.H{
 		"title": "Edit User", "currentPage": "users",
 		"username": username, "role": role, "user": user,
@@ -118,6 +128,20 @@ func (h *Handler) UserEdit(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		h.redirectWithError(c, "/admin/users", "ID tidak valid")
+		return
+	}
+
+	_, u, _, ok := h.user(c)
+	if !ok { return }
+
+	target, err := h.userService.GetByID(id)
+	if err != nil {
+		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
+		return
+	}
+
+	if !h.canAccessProfile(u, target.Username) {
+		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
 
