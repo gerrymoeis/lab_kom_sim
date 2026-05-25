@@ -156,6 +156,17 @@ func SetupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 	sessionMiddleware := middleware.SessionMiddleware(cfg.SessionSecret)
 	router.Use(sessionMiddleware)
 
+	// writeFlushMiddleware ensures all pending async writes are flushed
+	// before the response is sent, preventing stale data on POST-then-redirect.
+	writeFlushMiddleware := func() gin.HandlerFunc {
+		return func(c *gin.Context) {
+			c.Next()
+			if c.Request.Method == "POST" {
+				db.Flush()
+			}
+		}
+	}
+
 	h := handlers.NewHandler(db, cfg)
 
 	public := router.Group("/")
@@ -167,7 +178,7 @@ func SetupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 	}
 
 	protected := router.Group("/")
-	protected.Use(middleware.AuthRequired(db))
+	protected.Use(middleware.AuthRequired(db), writeFlushMiddleware())
 	{
 		protected.GET("/dashboard", h.Dashboard)
 		protected.GET("/pc", h.PCList)
