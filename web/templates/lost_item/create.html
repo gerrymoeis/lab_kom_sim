@@ -98,12 +98,15 @@
 
 {{ define "page-scripts" }}
 <script>
+console.log('[LOST-ITEM] page-scripts block executing');
 window.ANDROID_MODE = {{ .android }};
+console.log('[LOST-ITEM] ANDROID_MODE = ' + window.ANDROID_MODE);
 </script>
 {{ if .android }}
 <script src="/static/vendor/heic-to.js"></script>
 {{ end }}
 <script>
+console.log('[LOST-ITEM] inline script block executing');
 async function heicToJpeg(file) {
     var ext = file.name.split('.').pop().toLowerCase();
     if (ext !== 'heic' && ext !== 'heif') return file;
@@ -143,39 +146,80 @@ async function compressImage(file, maxDimension, quality) {
 
 var lostItemPreviewUrl = null;
 
-document.getElementById('photoCamera').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
-document.getElementById('photoGallery').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
+console.log('[LOST-ITEM] checking DOM elements:');
+var elCam = document.getElementById('photoCamera');
+var elGal = document.getElementById('photoGallery');
+console.log('[LOST-ITEM] photoCamera=' + (elCam ? 'FOUND' : 'NULL') + ' photoGallery=' + (elGal ? 'FOUND' : 'NULL'));
+var elPhoto = document.getElementById('photo');
+console.log('[LOST-ITEM] hidden photo input=' + (elPhoto ? 'FOUND value=' + elPhoto.value : 'NULL'));
+var elLoading = document.getElementById('loadingLostItem');
+console.log('[LOST-ITEM] loadingLostItem=' + (elLoading ? 'FOUND' : 'NULL'));
+var elError = document.getElementById('errorLostItem');
+console.log('[LOST-ITEM] errorLostItem=' + (elError ? 'FOUND' : 'NULL'));
+var elPreview = document.getElementById('photoPreview');
+console.log('[LOST-ITEM] photoPreview=' + (elPreview ? 'FOUND' : 'NULL'));
+var elWrapper = document.getElementById('photoPreviewWrapper');
+console.log('[LOST-ITEM] photoPreviewWrapper=' + (elWrapper ? 'FOUND' : 'NULL'));
+
+if (elCam) {
+    elCam.addEventListener('change', function() { console.log('[LOST-ITEM] photoCamera change event fired, files=' + (this.files ? this.files.length : 0)); handleLostItemPhotoUpload(this); });
+} else {
+    console.error('[LOST-ITEM] photoCamera element NOT FOUND in DOM!');
+}
+
+if (elGal) {
+    elGal.addEventListener('change', function() { console.log('[LOST-ITEM] photoGallery change event fired, files=' + (this.files ? this.files.length : 0)); handleLostItemPhotoUpload(this); });
+} else {
+    console.error('[LOST-ITEM] photoGallery element NOT FOUND in DOM!');
+}
 
 async function handleLostItemPhotoUpload(input) {
+    console.log('[LOST-ITEM] handleLostItemPhotoUpload called');
     var file = input.files[0];
-    if (!file) return;
+    if (!file) { console.log('[LOST-ITEM] handleLostItemPhotoUpload: no file, returning'); return; }
+    console.log('[LOST-ITEM] handleLostItemPhotoUpload: file=' + file.name + ' size=' + file.size + ' type=' + file.type);
 
+    console.log('[LOST-ITEM] showing loading indicator');
     document.getElementById('loadingLostItem').classList.remove('d-none');
     document.getElementById('errorLostItem').classList.add('d-none');
 
     try {
+        console.log('[LOST-ITEM] STEP1: heicToJpeg starting...');
         file = await heicToJpeg(file);
+        console.log('[LOST-ITEM] STEP1: heicToJpeg done, file=' + file.name + ' size=' + file.size);
 
         if (window.ANDROID_MODE) {
+            console.log('[LOST-ITEM] STEP2: ANDROID_MODE=true, compressImage starting (maxDim=1280)');
             file = await compressImage(file, 1280, 0.75);
+            console.log('[LOST-ITEM] STEP2: compressImage done, file=' + file.name + ' size=' + file.size);
+        } else {
+            console.log('[LOST-ITEM] STEP2: ANDROID_MODE=false, skipping client compress');
         }
 
+        console.log('[LOST-ITEM] STEP3: creating local preview');
         if (lostItemPreviewUrl) URL.revokeObjectURL(lostItemPreviewUrl);
         lostItemPreviewUrl = URL.createObjectURL(file);
         document.getElementById('photoPreview').src = lostItemPreviewUrl;
         document.getElementById('photoPreviewWrapper').classList.remove('d-none');
         document.getElementById('loadingLostItem').classList.add('d-none');
 
+        console.log('[LOST-ITEM] STEP4: fetch POST /api/upload-image starting...');
         var formData = new FormData();
         formData.append('image', file);
         formData.append('type', 'lost_item');
 
         var resp = await fetch('/api/upload-image', { method: 'POST', body: formData });
+        console.log('[LOST-ITEM] STEP4: fetch response status=' + resp.status);
         var data = await resp.json();
+        console.log('[LOST-ITEM] STEP4: response data:', JSON.stringify(data));
         if (data.success) {
             document.getElementById('photo').value = data.file_ref;
+            console.log('[LOST-ITEM] STEP4: stored file_ref=' + data.file_ref + ' in hidden photo input');
+        } else {
+            console.warn('[LOST-ITEM] STEP4: upload failed:', data.message);
         }
     } catch (e) {
+        console.error('[LOST-ITEM] ERROR in handleLostItemPhotoUpload:', e.message, e.stack);
         document.getElementById('loadingLostItem').classList.add('d-none');
         document.getElementById('errorLostItem').textContent = 'Gagal memproses gambar';
         document.getElementById('errorLostItem').classList.remove('d-none');
