@@ -83,7 +83,7 @@ type GeminiResponse struct {
 }
 
 // ExtractLogbookFromImage extracts logbook data from image using AI vision API
-// Strategy: OpenRouter (primary)  ->  Gemini (fallback)
+// Strategy: Gemini (primary)  ->  OpenRouter (fallback)
 func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, error) {
 	totalStart := time.Now()
 	log.Printf("[OCR] Starting OCR for %s", imagePath)
@@ -109,17 +109,17 @@ func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, erro
 
 	var responseText string
 
-	if s.openRouterKey != "" {
-		log.Printf("[OCR] Trying OpenRouter (openrouter/auto) primary...")
-		responseText, err = s.tryProvider(s.callOpenRouter, "OpenRouter", base64Image, mimeType, totalStart)
+	if s.geminiKey != "" {
+		log.Printf("[OCR] Trying Gemini primary...")
+		responseText, err = s.tryProvider(s.callGemini, "Gemini", base64Image, mimeType, totalStart)
 		if err == nil {
 			return s.parseOCRResponse(responseText)
 		}
-		log.Printf("[OCR] OpenRouter failed, falling back to Gemini: %v", err)
+		log.Printf("[OCR] Gemini failed, falling back to OpenRouter: %v", err)
 	}
 
-	if s.geminiKey != "" {
-		responseText, err = s.tryProvider(s.callGemini, "Gemini", base64Image, mimeType, totalStart)
+	if s.openRouterKey != "" {
+		responseText, err = s.tryProvider(s.callOpenRouter, "OpenRouter", base64Image, mimeType, totalStart)
 		if err == nil {
 			return s.parseOCRResponse(responseText)
 		}
@@ -135,22 +135,17 @@ func (s *OCRService) tryProvider(callFn func(string, string) (string, error), na
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
 			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
-			log.Printf("[OCR] %s retry %d/%d after %v (elapsed: %v)", name, attempt, maxRetries, backoff, time.Since(totalStart))
 			time.Sleep(backoff)
 		}
 
-		callStart := time.Now()
 		responseText, err := callFn(base64Image, mimeType)
 		if err == nil {
-			log.Printf("[OCR] %s success on attempt %d in %v (total: %v)", name, attempt+1, time.Since(callStart), time.Since(totalStart))
 			return responseText, nil
 		}
 
 		if !isTransientError(err) {
-			log.Printf("[OCR] %s non-transient error attempt %d in %v: %v", name, attempt+1, time.Since(callStart), err)
 			return "", err
 		}
-		log.Printf("[OCR] %s transient error attempt %d in %v: %v", name, attempt+1, time.Since(callStart), err)
 		lastErr = err
 	}
 	return "", lastErr
@@ -203,7 +198,9 @@ func (s *OCRService) parseOCRResponse(responseText string) (*OCRResult, error) {
 		}, nil
 	}
 
+	stripRowPrefix := regexp.MustCompile(`^\d+\s+`)
 	for i := range result.Entries {
+		result.Entries[i].Date = stripRowPrefix.ReplaceAllString(strings.TrimSpace(result.Entries[i].Date), "")
 		normalizeTimeEntry(&result.Entries[i])
 		result.Entries[i].StudentName = ToTitleCaseWithAbbr(result.Entries[i].StudentName)
 		result.Entries[i].Purpose = ToTitleCaseWithAbbr(result.Entries[i].Purpose)
@@ -310,7 +307,7 @@ func (s *OCRService) doAPIRequest(method, url string, jsonData []byte, extraHead
 }
 
 func buildOCRPrompt() string {
-	return `Analyze this image of a handwritten logbook/attendance table.
+	return 	`Analyze this image of a handwritten logbook/attendance table.
 Extract the data and return it in JSON format with the following structure:
 
 {
@@ -331,7 +328,7 @@ CRITICAL RULES - READ CAREFULLY:
 1. EXTRACT ALL ROWS from the table
 
 2. SMART CONTEXT UNDERSTANDING:
-   - If a field is empty or shows ditto marks ("~~~", "\\", "''", or similar), COPY the value from the row above
+   - If a cell contains ditto/continuation marks ("~~~", "\\", "''", "--- || ---", "---", "||", or similar), COPY the value from the cell above in the same column
    - If date is empty but other rows have dates, INFER the date from context (usually same date for consecutive entries)
    - If you see spelling errors or typos, CORRECT them intelligently based on context
 
@@ -343,6 +340,7 @@ CRITICAL RULES - READ CAREFULLY:
 4. DATE HANDLING:
    - Parse to YYYY-MM-DD format
    - Accept formats: DD/MM/YYYY, DD-MM-YYYY, D/M/YYYY
+   - Ignore leading row numbers (e.g., "4  05/05/2026" -> date="2026-05-05")
 
 5. NIM (STUDENT ID) VALIDATION:
    - NIM format: 11 digits (example: 24091397XXX)

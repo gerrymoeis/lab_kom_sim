@@ -3,7 +3,6 @@
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -103,13 +102,9 @@ func (h *Handler) LogbookUploadPage(c *gin.Context) {
 }
 
 func (h *Handler) LogbookUpload(c *gin.Context) {
-	log.Printf("[DEBUG-LOGBOOK] ===== LogbookUpload CALLED =====")
-	log.Printf("[DEBUG-LOGBOOK] Content-Type: %s", c.Request.Header.Get("Content-Type"))
-	log.Printf("[DEBUG-LOGBOOK] Content-Length: %d", c.Request.ContentLength)
-
 	userID, username, role, ok := h.user(c)
-	if !ok { log.Printf("[DEBUG-LOGBOOK] user not authenticated"); return }
-	if role != "admin" { log.Printf("[DEBUG-LOGBOOK] role=%s not admin", role); h.errHTML(c, "Hanya admin yang dapat mengupload"); return }
+	if !ok { return }
+	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat mengupload"); return }
 	ip, ua := getRequestContext(c)
 
 	var path, fn string
@@ -119,51 +114,32 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 	}
 	c.ShouldBind(&uploadReq)
 	fileRef := strings.TrimSpace(uploadReq.FileRef)
-	log.Printf("[DEBUG-LOGBOOK] file_ref from form: %q", fileRef)
 
 	if fileRef != "" {
-		log.Printf("[DEBUG-LOGBOOK] Using pre-uploaded file_ref: %s", fileRef)
 		fn = fileRef
 		tempPath := filepath.Join("uploads", "temp", fn)
 		path = filepath.Join("uploads", "logbook", fn)
-		log.Printf("[DEBUG-LOGBOOK] Copying from temp %s to logbook %s", tempPath, path)
 		os.MkdirAll(filepath.Dir(path), 0755)
 		if err := services.CopyFile(tempPath, path); err != nil {
-			log.Printf("[DEBUG-LOGBOOK] CopyFile failed: %v", err)
 			h.errHTML(c, "Gagal memproses file: file tidak ditemukan")
 			return
 		}
-		log.Printf("[DEBUG-LOGBOOK] CopyFile done, removing temp")
 		os.Remove(tempPath)
 	} else {
-		log.Printf("[DEBUG-LOGBOOK] No file_ref, trying direct form upload")
 		file, err := c.FormFile("logbook_image")
 		if err != nil {
-			log.Printf("[DEBUG-LOGBOOK] FormFile logbook_image error: %v", err)
-			// Try fallback: check if any file fields exist
-			form, _ := c.MultipartForm()
-			if form != nil && form.File != nil {
-				for k, v := range form.File {
-					log.Printf("[DEBUG-LOGBOOK] Available file fields: %s -> %d files", k, len(v))
-				}
-			}
 			h.errHTML(c, "Gagal mengambil file"); return
 		}
-		log.Printf("[DEBUG-LOGBOOK] Direct upload: file=%s size=%d", file.Filename, file.Size)
 		ext := strings.ToLower(filepath.Ext(file.Filename))
-		log.Printf("[DEBUG-LOGBOOK] Direct upload extension: %s", ext)
 		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".heic" && ext != ".heif" {
-			log.Printf("[DEBUG-LOGBOOK] Invalid extension: %s", ext)
 			h.errHTML(c, "Format file tidak didukung"); return
 		}
 		fn = fmt.Sprintf("logbook_%d%s", time.Now().Unix(), ext)
 		tempPath := filepath.Join("uploads", "temp", fn)
 		os.MkdirAll(filepath.Dir(tempPath), 0755)
 		if err := c.SaveUploadedFile(file, tempPath); err != nil {
-			log.Printf("[DEBUG-LOGBOOK] SaveUploadedFile error: %v", err)
 			h.errHTML(c, "Gagal menyimpan file"); return
 		}
-		log.Printf("[DEBUG-LOGBOOK] Direct upload saved to: %s", tempPath)
 		path = tempPath
 	}
 
