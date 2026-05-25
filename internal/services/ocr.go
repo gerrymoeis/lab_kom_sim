@@ -328,7 +328,15 @@ CRITICAL RULES - READ CAREFULLY:
 1. EXTRACT ALL ROWS from the table
 
 2. SMART CONTEXT UNDERSTANDING:
-   - If a cell contains ditto/continuation marks ("~~~", "\\", "''", "--- || ---", "---", "||", or similar), COPY the value from the cell above in the same column
+   - In handwritten tables, people often use continuation marks to mean "same as above":
+     * Horizontal dashed/squiggly lines (---, ~~~, ~~, --, etc.)
+     * Vertical bar separators (||, |) between dashes (---||---, --|--, etc.)
+     * Quotation marks ('' , "") 
+     * Backslashes (\)
+     * Truly empty cells (especially in the middle/end of a table)
+   - The exact shape varies wildly in handwriting — a faint line, a squiggle, a dash, or just blank space all mean "repeat the value above"
+   - If a cell is EMPTY or contains ANY kind of continuation/ditto mark, COPY the value from the cell directly above in the same column
+   - If a whole row has only continuation marks, it means EVERY field repeats from the row above
    - If date is empty but other rows have dates, INFER the date from context (usually same date for consecutive entries)
    - If you see spelling errors or typos, CORRECT them intelligently based on context
 
