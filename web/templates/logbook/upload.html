@@ -115,7 +115,9 @@
         </div>
     </div>
 
-    <script>
+{{ define "page-scripts" }}
+<script src="/static/vendor/heic-to.js"></script>
+<script>
     let previewUrl = null;
 
     function selectPhoto(source) {
@@ -125,11 +127,14 @@
     document.getElementById('logbookImage').addEventListener('change', onFileChange);
     document.getElementById('galleryInput').addEventListener('change', onFileChange);
 
-    function onFileChange(e) {
+    async function onFileChange(e) {
         const file = e.target.files[0];
         if (!file) return;
         if (previewUrl) URL.revokeObjectURL(previewUrl);
-        previewUrl = URL.createObjectURL(file);
+
+        // Convert HEIC to JPEG for preview (browser can't display HEIC natively)
+        const convertedFile = await heicToJpeg(file);
+        previewUrl = URL.createObjectURL(convertedFile);
         document.getElementById('imagePreview').src = previewUrl;
         document.getElementById('previewArea').classList.remove('d-none');
         document.getElementById('submitBtn').disabled = false;
@@ -153,4 +158,6 @@
         document.getElementById('submitBtn').disabled = true;
         document.getElementById('loadingIndicator').classList.remove('d-none');
     });
-    </script>{{ template "layout/footer.html" . }}
+</script>
+{{ end }}
+{{ template "layout/footer.html" . }}
