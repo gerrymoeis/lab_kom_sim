@@ -99,8 +99,6 @@ async function handleFileSelect(file, type, source) {
         var result = await uploadForProcessing(file, type);
         if (result.success) {
             storeFileReference(result.file_ref, type);
-        } else {
-            console.warn('Photo upload warning:', result.message);
         }
     } catch (error) {
         console.error('Photo upload error:', error.message);
@@ -126,7 +124,7 @@ function showLocalPreview(url, type) {
     var img = document.getElementById(type === 'serial' ? 'imagePreviewSerial' : 'imagePreviewFront');
     var area = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
     var loader = document.getElementById('loading' + (type === 'serial' ? 'Serial' : 'Front'));
-    if (img) img.src = url;
+    if (img) { img.src = url; img.style.display = ''; }
     if (area) area.classList.remove('d-none');
     if (loader) loader.classList.add('d-none');
 }
@@ -148,8 +146,12 @@ function storeFileReference(fileRef, type) {
 }
 
 function showLoadingState(type) {
+    var area = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
     var loader = document.getElementById('loading' + (type === 'serial' ? 'Serial' : 'Front'));
+    var img = document.getElementById(type === 'serial' ? 'imagePreviewSerial' : 'imagePreviewFront');
+    if (area) area.classList.remove('d-none');
     if (loader) loader.classList.remove('d-none');
+    if (img) img.style.display = 'none';
 }
 
 function showError(type, message) {
@@ -159,7 +161,6 @@ function showError(type, message) {
     if (errEl) { errEl.textContent = message; errEl.classList.remove('d-none'); }
     if (loader) loader.classList.add('d-none');
     if (area) area.classList.remove('d-none');
-    console.error('Photo upload error:', message);
 }
 
 function clearOtherInput(type, source) {
