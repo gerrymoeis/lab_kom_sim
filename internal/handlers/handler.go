@@ -71,6 +71,22 @@ func getRequestContext(c *gin.Context) (ipAddress, userAgent string) {
 	return
 }
 
+// canAccessProfile checks cross-profile access rules
+// Primary accounts (admin, rekan) cannot access each other
+// Non-primary accounts can only access their own profile
+func (h *Handler) canAccessProfile(actorUsername, targetUsername string) bool {
+	isActorPrimary := actorUsername == "admin" || actorUsername == "rekan"
+	isTargetPrimary := targetUsername == "admin" || targetUsername == "rekan"
+
+	if isActorPrimary && isTargetPrimary && actorUsername != targetUsername {
+		return false
+	}
+	if !isActorPrimary && actorUsername != targetUsername {
+		return false
+	}
+	return true
+}
+
 // user gets current user info and redirects to login if not authenticated
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {
 	userID, username, role, ok = middleware.GetCurrentUser(c)
