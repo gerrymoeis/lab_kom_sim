@@ -36,8 +36,8 @@ func (s *AuthService) Login(username, password, ipAddress, userAgent string) (us
 
 	existingToken, _ := s.userRepo.GetSessionToken(u.ID)
 	if existingToken != "" {
-		s.activityLogService.LogAuth(u.ID, username, u.Role, "login", false, ipAddress, userAgent, "Account already logged in elsewhere")
-		return 0, "", "", "", ErrAlreadyLoggedIn
+		s.userRepo.ClearSessionToken(u.ID)
+		s.activityLogService.LogAuth(u.ID, username, u.Role, "login_force", true, ipAddress, userAgent, "Previous session terminated for re-login")
 	}
 
 	token = fmt.Sprintf("%d_%s_%s", u.ID, username, u.Role)
