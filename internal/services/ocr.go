@@ -199,11 +199,17 @@ func (s *OCRService) parseOCRResponse(responseText string) (*OCRResult, error) {
 	}
 
 	stripRowPrefix := regexp.MustCompile(`^\d+\s+`)
+	var lastPurpose string
 	for i := range result.Entries {
 		result.Entries[i].Date = stripRowPrefix.ReplaceAllString(strings.TrimSpace(result.Entries[i].Date), "")
 		normalizeTimeEntry(&result.Entries[i])
 		result.Entries[i].StudentName = ToTitleCaseWithAbbr(result.Entries[i].StudentName)
-		result.Entries[i].Purpose = ToTitleCaseWithAbbr(result.Entries[i].Purpose)
+		if p := strings.TrimSpace(result.Entries[i].Purpose); p != "" {
+			lastPurpose = p
+			result.Entries[i].Purpose = ToTitleCaseWithAbbr(p)
+		} else {
+			result.Entries[i].Purpose = ToTitleCaseWithAbbr(lastPurpose)
+		}
 		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
 		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
 	}
