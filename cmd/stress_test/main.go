@@ -62,13 +62,15 @@ type config struct {
 	rampUp       time.Duration
 	setupUsers   int
 	verbose      bool
-	deviceIDs    []int  // Changed from single deviceID to slice
+	deviceIDs    []int
+	pcCount      int
 }
 
 type entityStore struct {
 	mu      sync.Mutex
 	base    int
 	created int64
+	ids     []int // all discovered existing IDs (verified to exist)
 }
 
 func newEntityStore() *entityStore {
@@ -81,6 +83,13 @@ func (s *entityStore) trackMax(id int) {
 	if id > s.base {
 		s.base = id
 	}
+	// Track all discovered IDs to avoid gaps
+	for _, existing := range s.ids {
+		if existing == id {
+			return
+		}
+	}
+	s.ids = append(s.ids, id)
 }
 
 func (s *entityStore) nextCreateID() int {
@@ -90,54 +99,52 @@ func (s *entityStore) nextCreateID() int {
 	return s.base + int(s.created)
 }
 
-func (s *entityStore) pickEditID() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.created == 0 {
-		return s.base
-	}
-	offset := rand.Intn(int(s.created))
-	return s.base + offset + 1
-}
-
-// pickUpdateID returns random ID from UPDATE pool (first 70% of base)
-// This ensures UPDATE operations don't collide with DELETE operations
+// pickUpdateID returns random ID from discovered existing IDs + first 70% of created range
+// This ensures UPDATE only targets IDs known to exist
 func (s *entityStore) pickUpdateID() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	
-	if s.base == 0 {
+	// Prefer known existing IDs for UPDATE
+	if len(s.ids) > 0 {
+		poolSize := len(s.ids)
+		limit := (poolSize * 7) / 10
+		if limit == 0 {
+			limit = 1
+		}
+		if limit > poolSize {
+			limit = poolSize
+		}
+		return s.ids[rand.Intn(limit)]
+	}
+	
+	// No existing IDs, use first 70% of created range
+	if s.created == 0 {
 		return 0
 	}
-	
-	// UPDATE pool: 70% pertama dari base
-	maxID := (s.base * 7) / 10
-	if maxID == 0 {
-		maxID = 1
+	limit := int((s.created * 7) / 10)
+	if limit == 0 {
+		limit = 1
 	}
-	
-	return rand.Intn(maxID) + 1
+	return s.base + rand.Intn(limit) + 1
 }
 
-// pickDeleteID returns random ID from DELETE pool (last 30% of base)
-// This ensures DELETE operations don't collide with UPDATE operations
+// pickDeleteID returns random ID from last 30% of created range
+// This ensures DELETE only targets items created by this test run
 func (s *entityStore) pickDeleteID() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	
-	if s.base == 0 {
+	if s.created == 0 {
 		return 0
 	}
 	
-	// DELETE pool: 30% terakhir dari base
-	minID := ((s.base * 7) / 10) + 1
-	maxID := s.base
-	
-	if minID > maxID {
+	// DELETE pool: 30% terakhir dari created range
+	min := int((s.created * 7) / 10) + 1
+	if min > int(s.created) {
 		return 0
 	}
-	
-	return rand.Intn(maxID-minID+1) + minID
+	return s.base + rand.Intn(int(s.created)-min+1) + min
 }
 
 type worker struct {
@@ -204,6 +211,28 @@ func (w *worker) do(method, path, body string) (*http.Response, error) {
 	return w.client.Do(req)
 }
 
+// doWithRetry wraps do() with retry for transient errors (5xx + network)
+func (w *worker) doWithRetry(method, path, body string) (*http.Response, error) {
+	var lastErr error
+	for attempt := 0; attempt <= 3; attempt++ {
+		resp, err := w.do(method, path, body)
+		if err != nil {
+			lastErr = err
+			time.Sleep(time.Duration(100+attempt*200) * time.Millisecond)
+			continue
+		}
+		// 5xx → retry with backoff
+		if resp.StatusCode >= 500 {
+			lastErr = fmt.Errorf("status %d", resp.StatusCode)
+			resp.Body.Close()
+			time.Sleep(time.Duration(100+attempt*200) * time.Millisecond)
+			continue
+		}
+		return resp, nil
+	}
+	return nil, lastErr
+}
+
 func pk(format string, a ...any) string { return fmt.Sprintf(format, a...) }
 
 func min(a, b int) int {
@@ -229,6 +258,7 @@ func parseFlags() *config {
 	flag.IntVar(&c.readPct, "read-pct", 50, "Read percentage in mix mode")
 	flag.DurationVar(&c.rampUp, "ramp-up", 5*time.Second, "Ramp-up duration")
 	flag.IntVar(&c.setupUsers, "setup-users", 0, "Create N stress test users (default: workers)")
+	flag.IntVar(&c.pcCount, "pc-count", 40, "Number of PCs on the server")
 	flag.BoolVar(&c.verbose, "verbose", false, "Log each request")
 	flag.Parse()
 	return c
@@ -479,13 +509,13 @@ func (w *worker) pickEndpoint(counter int64, stores map[string]*entityStore) end
 		{"POST", "/device-loans/create", bodyDeviceLoanCreate(counter, cfg.deviceIDs), "device-loans", "create"},
 		{"POST", "/device-usages/create", bodyDeviceUsageCreate(counter, cfg.deviceIDs), "device-usages", "create"},
 		{"POST", "/lost-items/create", bodyLostItemCreate(counter), "lost-items", "create"},
-		{"POST", pk("/pc/%d/edit", int(counter%40)+1), bodyPCEdit(counter), "pc", "update"},
-		{"POST", pk("/api/pc/%d/status", int(counter%40)+1), bodyPCStatus(counter), "pc", "create"},
+		{"POST", pk("/pc/%d/edit", int(counter)%cfg.pcCount+1), bodyPCEdit(counter), "pc", "update"},
+		{"POST", pk("/api/pc/%d/status", int(counter)%cfg.pcCount+1), bodyPCStatus(counter), "pc", "create"},
 	}
 
 	updateEndpoints := []endpointDef{
-		{"POST", pk("/pc/%d/edit", int(counter%40)+1), bodyPCEdit(counter), "pc", "update"},
-		{"POST", pk("/api/pc/%d/status", int(counter%40)+1), bodyPCStatus(counter), "pc", "update"},
+		{"POST", pk("/pc/%d/edit", int(counter)%cfg.pcCount+1), bodyPCEdit(counter), "pc", "update"},
+		{"POST", pk("/api/pc/%d/status", int(counter)%cfg.pcCount+1), bodyPCStatus(counter), "pc", "update"},
 		{"POST", "/profile", bodyProfileUpdate(counter), "profile", "update"},
 		{"POST", "/profile/password", bodyPasswordChange(), "profile", "update"},
 	}
@@ -549,7 +579,7 @@ func (w *worker) pickEndpoint(counter int64, stores map[string]*entityStore) end
 			endpointDef{"POST", pk("/lost-items/%d/delete", id), "", "lost-items", "delete"})
 	}
 	deleteEndpoints = append(deleteEndpoints,
-		endpointDef{"POST", pk("/pc/%d/delete", int(counter%40)+1), "", "pc", "delete"})
+		endpointDef{"POST", pk("/pc/%d/delete", int(counter)%cfg.pcCount+1), "", "pc", "delete"})
 
 	var candidates []endpointDef
 	switch cfg.mode {
@@ -671,6 +701,9 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 		log.Fatalf("Setup: login as rekan failed: %v", err)
 	}
 	resp.Body.Close()
+	if resp.StatusCode != 302 {
+		log.Fatalf("Setup: login as rekan returned %d (maybe already logged in?)", resp.StatusCode)
+	}
 	log.Printf("Setup: logged in as rekan")
 
 	existing := map[int]bool{}
@@ -762,17 +795,17 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 		body, _ = io.ReadAll(resp.Body)
 		resp.Body.Close()
 		
-		// Try multiple patterns
+		// Try to find the newly created device type
 		patterns := []*regexp.Regexp{
-			regexp.MustCompile(`STRESS_DEVICE_TYPE.*?href="/device-types/(\d+)`),
-			regexp.MustCompile(`href="/device-types/(\d+)/edit"`),
-			regexp.MustCompile(`href="/device-types/(\d+)"`),
+			// Pattern 1: (?s) enables dot to match newline — find STRESS_DEVICE_TYPE + its detail link
+			regexp.MustCompile(`(?s)STRESS_DEVICE_TYPE.*?href="/device-types/(\d+)(?:/edit|")`),
+			// Pattern 2: fallback — all device type links, take the last (highest ID = newest)
+			regexp.MustCompile(`href="/device-types/(\d+)(?:/edit|")`),
 		}
 		
 		for _, pattern := range patterns {
 			matches := pattern.FindAllStringSubmatch(string(body), -1)
 			if len(matches) > 0 {
-				// Get the last match (most recent)
 				m := matches[len(matches)-1]
 				if len(m) > 1 {
 					deviceTypeID, _ = strconv.Atoi(m[1])
@@ -787,57 +820,19 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 		log.Fatalf("Setup: could not find or create device type ID")
 	}
 
-	// Step 2: Create multiple devices (workers × 2)
+	// Step 2: Create or discover devices (idempotent, with quantity restore)
 	deviceCount := cfg.workers * 2
-	quantityPerDevice := 50
+	quantityPerDevice := 999999 // Large quantity so it never runs out on re-run
+	var deviceIDs []int
 	
-	log.Printf("Setup: creating %d devices with %d quantity each (total: %d)", 
-		deviceCount, quantityPerDevice, deviceCount*quantityPerDevice)
-	
-	for i := 1; i <= deviceCount; i++ {
-		v = url.Values{}
-		v.Set("device_type_id", strconv.Itoa(deviceTypeID))
-		v.Set("name", pk("STRESS_DEVICE_%d_%d", cfg.workers, i))
-		v.Set("brand", "Stress Brand")
-		v.Set("quantity_total", strconv.Itoa(quantityPerDevice))
-		v.Set("item_type", "individual")
-		v.Set("item_mode", "loanable")
-		v.Set("condition", "baik")
-		
-		req, _ = http.NewRequest("POST", cfg.url+"/devices/create", strings.NewReader(v.Encode()))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	// Discover existing stress devices and their names
+	devNameID := map[int]string{}
+	searchPage := 1
+	for searchPage <= 50 {
+		req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list&search=STRESS_DEVICE&page="+strconv.Itoa(searchPage), nil)
 		resp, err = client.Do(req)
 		if err != nil {
-			log.Fatalf("Setup: failed to create device %d: %v", i, err)
-		}
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		
-		// Check response status
-		if resp.StatusCode != 302 {
-			log.Printf("Setup: device %d creation returned status %d", i, resp.StatusCode)
-			log.Printf("Setup: response body: %s", string(body)[:min(500, len(body))])
-			log.Fatalf("Setup: device %d creation failed with status %d", i, resp.StatusCode)
-		}
-		
-		time.Sleep(300 * time.Millisecond)
-		
-		if i%5 == 0 || i == deviceCount {
-			log.Printf("Setup: created %d/%d devices", i, deviceCount)
-		}
-	}
-	
-	log.Printf("Setup: successfully created %d devices", deviceCount)
-	
-	// Query actual device IDs after creation using search filter + page iteration
-	time.Sleep(1 * time.Second)
-	actualDeviceIDs := []int{}
-	page := 1
-	for page <= 50 {
-		req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list&search=STRESS_DEVICE&page="+strconv.Itoa(page), nil)
-		resp, err = client.Do(req)
-		if err != nil {
-			log.Fatalf("Setup: failed to get devices after creation: %v", err)
+			break
 		}
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
@@ -849,31 +844,127 @@ func setupStressUsers(cfg *config) (*http.Client, []int) {
 		}
 		for _, m := range matches {
 			if id, err := strconv.Atoi(m[2]); err == nil {
-				actualDeviceIDs = append(actualDeviceIDs, id)
+				devNameID[id] = m[1] // name -> ID mapping
 			}
 		}
 		if len(matches) < 20 {
 			break
 		}
-		page++
+		searchPage++
 	}
 	
-	sort.Ints(actualDeviceIDs)
-	seen := map[int]bool{}
-	uniqueIDs := []int{}
-	for _, id := range actualDeviceIDs {
-		if !seen[id] {
-			seen[id] = true
-			uniqueIDs = append(uniqueIDs, id)
+	if len(devNameID) > 0 {
+		log.Printf("Setup: found %d existing stress devices, restoring quantities", len(devNameID))
+		
+		// Restore quantity for each existing device
+		restored := 0
+		for id, name := range devNameID {
+			v = url.Values{}
+			v.Set("device_type_id", strconv.Itoa(deviceTypeID))
+			v.Set("name", name)
+			v.Set("quantity_total", strconv.Itoa(quantityPerDevice))
+			v.Set("quantity_available", strconv.Itoa(quantityPerDevice))
+			v.Set("item_type", "individual")
+			v.Set("item_mode", "loanable")
+			v.Set("condition", "baik")
+			
+			req, _ = http.NewRequest("POST", cfg.url+pk("/devices/%d/edit", id), strings.NewReader(v.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			resp, err = client.Do(req)
+			if err == nil && resp.StatusCode == 302 {
+				restored++
+			}
+			if resp != nil {
+				io.Copy(io.Discard, resp.Body)
+				resp.Body.Close()
+			}
 		}
+		
+		// Collect IDs sorted
+		for id := range devNameID {
+			deviceIDs = append(deviceIDs, id)
+		}
+		sort.Ints(deviceIDs)
+		log.Printf("Setup: restored %d/%d devices (IDs: %v)", restored, len(deviceIDs), deviceIDs)
+	} else {
+		log.Printf("Setup: creating %d devices with %d quantity each", 
+			deviceCount, quantityPerDevice)
+		
+		for i := 1; i <= deviceCount; i++ {
+			v = url.Values{}
+			v.Set("device_type_id", strconv.Itoa(deviceTypeID))
+			v.Set("name", pk("STRESS_DEVICE_%d_%d", cfg.workers, i))
+			v.Set("brand", "Stress Brand")
+			v.Set("quantity_total", strconv.Itoa(quantityPerDevice))
+			v.Set("item_type", "individual")
+			v.Set("item_mode", "loanable")
+			v.Set("condition", "baik")
+			
+			req, _ = http.NewRequest("POST", cfg.url+"/devices/create", strings.NewReader(v.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			resp, err = client.Do(req)
+			if err != nil {
+				log.Fatalf("Setup: failed to create device %d: %v", i, err)
+			}
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			
+			if resp.StatusCode != 302 {
+				log.Printf("Setup: device %d creation returned status %d", i, resp.StatusCode)
+				log.Printf("Setup: response body: %s", string(body)[:min(500, len(body))])
+				log.Fatalf("Setup: device %d creation failed with status %d", i, resp.StatusCode)
+			}
+			
+			if i%5 == 0 || i == deviceCount {
+				log.Printf("Setup: created %d/%d devices", i, deviceCount)
+			}
+		}
+		
+		// Query actual device IDs after creation
+		time.Sleep(1 * time.Second)
+		actualDeviceIDs := []int{}
+		searchPage = 1
+		for searchPage <= 50 {
+			req, _ = http.NewRequest("GET", cfg.url+"/devices?tab=list&search=STRESS_DEVICE&page="+strconv.Itoa(searchPage), nil)
+			resp, err = client.Do(req)
+			if err != nil {
+				log.Fatalf("Setup: failed to get devices after creation: %v", err)
+			}
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			
+			re := regexp.MustCompile(`<strong>(STRESS_DEVICE_\d+_\d+)</strong>[\s\S]{0,800}?/devices/(\d+)`)
+			matches := re.FindAllStringSubmatch(string(body), -1)
+			if len(matches) == 0 {
+				break
+			}
+			for _, m := range matches {
+				if id, err := strconv.Atoi(m[2]); err == nil {
+					actualDeviceIDs = append(actualDeviceIDs, id)
+				}
+			}
+			if len(matches) < 20 {
+				break
+			}
+			searchPage++
+		}
+		
+		sort.Ints(actualDeviceIDs)
+		seen := map[int]bool{}
+		for _, id := range actualDeviceIDs {
+			if !seen[id] {
+				seen[id] = true
+				deviceIDs = append(deviceIDs, id)
+			}
+		}
+		
+		if len(deviceIDs) < deviceCount {
+			log.Fatalf("Setup: expected %d devices but found %d in HTML", deviceCount, len(deviceIDs))
+		}
+		
+		deviceIDs = deviceIDs[len(deviceIDs)-deviceCount:]
+		log.Printf("Setup: device IDs (last %d): %v", deviceCount, deviceIDs)
 	}
-	
-	if len(uniqueIDs) < deviceCount {
-		log.Fatalf("Setup: expected %d devices but found %d in HTML", deviceCount, len(uniqueIDs))
-	}
-	
-	deviceIDs := uniqueIDs[len(uniqueIDs)-deviceCount:]
-	log.Printf("Setup: device IDs (last %d): %v", deviceCount, deviceIDs)
 
 	// Don't logout - keep session for discovery phase
 	log.Printf("Setup: keeping rekan session for discovery")
@@ -920,7 +1011,7 @@ func runWorkers(cfg *config, stores map[string]*entityStore) []result {
 				}
 				ep := w.pickEndpoint(n, stores)
 				start := time.Now()
-				resp, err := w.do(ep.method, ep.path, ep.body)
+				resp, err := w.doWithRetry(ep.method, ep.path, ep.body)
 				latency := time.Since(start)
 
 				r := result{entity: ep.entity, op: ep.op, latency: latency}
@@ -1157,6 +1248,25 @@ func main() {
 		}
 		log.Printf("Setup: validated %d devices", len(deviceIDs))
 		
+		// Discover PC count
+		req, _ := http.NewRequest("GET", cfg.url+"/pc?page=1&size=200", nil)
+		resp, err := discoveryClient.Do(req)
+		if err == nil {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			pcRE := regexp.MustCompile(`/pc/(\d+)(?:/edit|/delete|")`)
+			pcSeen := map[int]bool{}
+			for _, m := range pcRE.FindAllStringSubmatch(string(body), -1) {
+				if id, _ := strconv.Atoi(m[1]); id > 0 {
+					pcSeen[id] = true
+				}
+			}
+			if len(pcSeen) > 0 {
+				cfg.pcCount = len(pcSeen)
+				log.Printf("Setup: discovered %d PCs", cfg.pcCount)
+			}
+		}
+		
 		time.Sleep(1 * time.Second)
 	} else {
 		jar, _ := cookiejar.New(nil)
@@ -1207,4 +1317,15 @@ func main() {
 	testStart := time.Now()
 	results := runWorkers(cfg, stores)
 	printReport(cfg, results, time.Since(testStart))
+
+	// Cleanup: logout rekan to clear session token for next run
+	if discoveryClient != nil {
+		req, _ := http.NewRequest("POST", cfg.url+"/logout", nil)
+		resp, err := discoveryClient.Do(req)
+		if err == nil {
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
+		log.Printf("Cleanup: logged out rekan")
+	}
 }
