@@ -149,8 +149,15 @@ async function handleLostItemPhotoUpload(input) {
     var file = input.files[0];
     if (!file) return;
 
-    document.getElementById('loadingLostItem').classList.remove('d-none');
-    document.getElementById('errorLostItem').classList.add('d-none');
+    var wrapper = document.getElementById('photoPreviewWrapper');
+    var loader = document.getElementById('loadingLostItem');
+    var img = document.getElementById('photoPreview');
+    var errEl = document.getElementById('errorLostItem');
+
+    wrapper.classList.remove('d-none');
+    loader.classList.remove('d-none');
+    errEl.classList.add('d-none');
+    img.style.display = 'none';
 
     try {
         file = await heicToJpeg(file);
@@ -161,9 +168,9 @@ async function handleLostItemPhotoUpload(input) {
 
         if (lostItemPreviewUrl) URL.revokeObjectURL(lostItemPreviewUrl);
         lostItemPreviewUrl = URL.createObjectURL(file);
-        document.getElementById('photoPreview').src = lostItemPreviewUrl;
-        document.getElementById('photoPreviewWrapper').classList.remove('d-none');
-        document.getElementById('loadingLostItem').classList.add('d-none');
+        img.src = lostItemPreviewUrl;
+        img.style.display = '';
+        loader.classList.add('d-none');
 
         var formData = new FormData();
         formData.append('image', file);
@@ -175,9 +182,9 @@ async function handleLostItemPhotoUpload(input) {
             document.getElementById('photo').value = data.file_ref;
         }
     } catch (e) {
-        document.getElementById('loadingLostItem').classList.add('d-none');
-        document.getElementById('errorLostItem').textContent = 'Gagal memproses gambar';
-        document.getElementById('errorLostItem').classList.remove('d-none');
+        loader.classList.add('d-none');
+        errEl.textContent = 'Gagal memproses gambar';
+        errEl.classList.remove('d-none');
     }
 }
 
