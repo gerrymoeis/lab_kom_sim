@@ -8,18 +8,20 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type DeviceRepository struct {
-	db DBTX
+	db     DBTX
+	search *search.Builder
 }
 
 func NewDeviceRepository(db *database.DB) *DeviceRepository {
-	return &DeviceRepository{db: db}
+	return &DeviceRepository{db: db, search: search.New(db)}
 }
 
 func (r *DeviceRepository) WithTx(tx *database.Tx) *DeviceRepository {
-	return &DeviceRepository{db: tx}
+	return &DeviceRepository{db: tx, search: r.search}
 }
 
 type DeviceFilters struct {
@@ -52,9 +54,9 @@ func (r *DeviceRepository) buildDeviceClause(filters DeviceFilters) (string, []a
 	var clause string
 	var args []any
 	if filters.Search != "" {
-		clause += ` AND (d.name LIKE ? OR d.asset_code LIKE ? OR d.serial_number LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s, s)
+		sClause, sArgs := r.search.Where("device", filters.Search)
+		clause += sClause
+		args = append(args, sArgs...)
 	}
 	if filters.Category != "" {
 		clause += ` AND dt.category = ?`
@@ -263,9 +265,9 @@ func (r *DeviceRepository) ListLoansPaginated(search, status, sortBy string, pag
 		args = append(args, status)
 	}
 	if search != "" {
-		countQuery += ` AND (l.borrower_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s, s)
+		sClause, sArgs := r.search.Where("device_loan", search)
+		countQuery += sClause
+		args = append(args, sArgs...)
 	}
 	var total int
 	r.db.QueryRow(countQuery, args...).Scan(&total)
@@ -284,9 +286,9 @@ func (r *DeviceRepository) ListLoansPaginated(search, status, sortBy string, pag
 		dataArgs = append(dataArgs, status)
 	}
 	if search != "" {
-		query += ` AND (l.borrower_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
-		s := "%" + search + "%"
-		dataArgs = append(dataArgs, s, s, s)
+		sClause, sArgs := r.search.Where("device_loan", search)
+		query += sClause
+		dataArgs = append(dataArgs, sArgs...)
 	}
 	loanSortBy := "l.loan_date"
 	switch sortBy {
@@ -352,9 +354,9 @@ func (r *DeviceRepository) ListUsagesPaginated(search, sortBy string, page, page
 	countQuery := `SELECT COUNT(*) FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1`
 	var args []any
 	if search != "" {
-		countQuery += ` AND (u.user_name LIKE ? OR d.name LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s)
+		sClause, sArgs := r.search.Where("device_usage", search)
+		countQuery += sClause
+		args = append(args, sArgs...)
 	}
 	r.db.QueryRow(countQuery, args...).Scan(&total)
 
@@ -363,9 +365,9 @@ func (r *DeviceRepository) ListUsagesPaginated(search, sortBy string, page, page
 		FROM device_usages u JOIN devices d ON u.device_id = d.id WHERE 1=1`
 	var dataArgs []any
 	if search != "" {
-		query += ` AND (u.user_name LIKE ? OR d.name LIKE ?)`
-		s := "%" + search + "%"
-		dataArgs = append(dataArgs, s, s)
+		sClause, sArgs := r.search.Where("device_usage", search)
+		query += sClause
+		dataArgs = append(dataArgs, sArgs...)
 	}
 	usageSortBy := "u.usage_date"
 	switch sortBy {

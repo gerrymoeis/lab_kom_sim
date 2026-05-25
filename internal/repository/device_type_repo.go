@@ -5,14 +5,16 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type DeviceTypeRepository struct {
-	db DBTX
+	db     DBTX
+	search *search.Builder
 }
 
 func NewDeviceTypeRepository(db *database.DB) *DeviceTypeRepository {
-	return &DeviceTypeRepository{db: db}
+	return &DeviceTypeRepository{db: db, search: search.New(db)}
 }
 
 func (r *DeviceTypeRepository) List(category, search string) ([]models.DeviceType, error) {
@@ -31,9 +33,9 @@ func (r *DeviceTypeRepository) ListPaginated(category, search, sortBy string, pa
 		args = append(args, category)
 	}
 	if search != "" {
-		countQuery += ` AND (name LIKE ? OR category LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s)
+		sClause, sArgs := r.search.Where("device_type", search)
+		countQuery += sClause
+		args = append(args, sArgs...)
 	}
 	r.db.QueryRow(countQuery, args...).Scan(&total)
 
@@ -52,9 +54,9 @@ func (r *DeviceTypeRepository) listWithQuery(category, search, sortBy string, su
 		args = append(args, category)
 	}
 	if search != "" {
-		query += ` AND (name LIKE ? OR category LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s)
+		sClause, sArgs := r.search.Where("device_type", search)
+		query += sClause
+		args = append(args, sArgs...)
 	}
 	switch sortBy {
 	case "name":

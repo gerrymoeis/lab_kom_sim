@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -28,7 +29,7 @@ type Config struct {
 type BackupConfig struct {
 	Enabled   bool
 	Interval  int
-	Dir       string
+	Dir       []string
 	Retention int
 	MinDiskMB int64
 	Compress  bool
@@ -56,12 +57,29 @@ func Load() *Config {
 		Backup: BackupConfig{
 			Enabled:   getEnv("BACKUP_ENABLED", "true") == "true",
 			Interval:  getEnvInt("BACKUP_INTERVAL", 30),
-			Dir:       getEnv("BACKUP_DIR", "./backups"),
+			Dir:       parseDirs(getEnv("BACKUP_DIR", "./backups")),
 			Retention: getEnvInt("BACKUP_RETENTION", 20),
 			MinDiskMB: int64(getEnvInt("BACKUP_MIN_DISK_MB", 500)),
 			Compress:  getEnv("BACKUP_COMPRESS", "true") == "true",
 		},
 	}
+}
+
+// parseDirs splits comma-separated directory paths, trimming whitespace and quotes
+func parseDirs(raw string) []string {
+	parts := strings.Split(raw, ",")
+	dirs := make([]string, 0, len(parts))
+	for _, p := range parts {
+		d := strings.TrimSpace(p)
+		d = strings.Trim(d, `"'`)
+		if d != "" {
+			dirs = append(dirs, d)
+		}
+	}
+	if len(dirs) == 0 {
+		return []string{"./backups"}
+	}
+	return dirs
 }
 
 // getEnv gets environment variable with fallback to default value

@@ -6,18 +6,20 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type LostItemRepository struct {
-	db DBTX
+	db     DBTX
+	search *search.Builder
 }
 
 func NewLostItemRepository(db *database.DB) *LostItemRepository {
-	return &LostItemRepository{db: db}
+	return &LostItemRepository{db: db, search: search.New(db)}
 }
 
 func (r *LostItemRepository) WithTx(tx *database.Tx) *LostItemRepository {
-	return &LostItemRepository{db: tx}
+	return &LostItemRepository{db: tx, search: r.search}
 }
 
 type LostItemFilters struct {
@@ -35,9 +37,9 @@ func (r *LostItemRepository) List(filters LostItemFilters) ([]models.LostItem, e
 		args = append(args, filters.Status)
 	}
 	if filters.Search != "" {
-		query += ` AND (item_name LIKE ? OR reported_by LIKE ? OR location_last_seen LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s, s)
+		sClause, sArgs := r.search.Where("lost_item", filters.Search)
+		query += sClause
+		args = append(args, sArgs...)
 	}
 	sortBy := "reported_date"
 	switch filters.SortBy {
@@ -106,9 +108,9 @@ func (r *LostItemRepository) ListPaginated(filters LostItemFilters, page, pageSi
 		args = append(args, filters.Status)
 	}
 	if filters.Search != "" {
-		countQuery += ` AND (item_name LIKE ? OR reported_by LIKE ? OR location_last_seen LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s, s)
+		sClause, sArgs := r.search.Where("lost_item", filters.Search)
+		countQuery += sClause
+		args = append(args, sArgs...)
 	}
 
 	var total int
@@ -123,9 +125,9 @@ func (r *LostItemRepository) ListPaginated(filters LostItemFilters, page, pageSi
 		args = append(args, filters.Status)
 	}
 	if filters.Search != "" {
-		query += ` AND (item_name LIKE ? OR reported_by LIKE ? OR location_last_seen LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s, s)
+		sClause, sArgs := r.search.Where("lost_item", filters.Search)
+		query += sClause
+		args = append(args, sArgs...)
 	}
 	sortBy := "reported_date"
 	switch filters.SortBy {

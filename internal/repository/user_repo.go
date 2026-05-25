@@ -5,14 +5,16 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type UserRepository struct {
-	db DBTX
+	db     DBTX
+	search *search.Builder
 }
 
 func NewUserRepository(db *database.DB) *UserRepository {
-	return &UserRepository{db: db}
+	return &UserRepository{db: db, search: search.New(db)}
 }
 
 func (r *UserRepository) List() ([]models.User, error) {
@@ -41,9 +43,9 @@ func (r *UserRepository) ListPaginated(search string, page, pageSize int) ([]mod
 	countQuery := `SELECT COUNT(*) FROM users WHERE 1=1`
 	var args []any
 	if search != "" {
-		countQuery += ` AND (username LIKE ? OR full_name LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s)
+		sClause, sArgs := r.search.Where("user", search)
+		countQuery += sClause
+		args = append(args, sArgs...)
 	}
 	if err := r.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, err
@@ -53,9 +55,9 @@ func (r *UserRepository) ListPaginated(search string, page, pageSize int) ([]mod
 	query := `SELECT id, username, full_name, role, created_at FROM users WHERE 1=1`
 	var qArgs []any
 	if search != "" {
-		query += ` AND (username LIKE ? OR full_name LIKE ?)`
-		s := "%" + search + "%"
-		qArgs = append(qArgs, s, s)
+		sClause, sArgs := r.search.Where("user", search)
+		query += sClause
+		qArgs = append(qArgs, sArgs...)
 	}
 	query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
 	qArgs = append(qArgs, pageSize, offset)
