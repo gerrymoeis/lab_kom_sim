@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/disintegration/imaging"
 	"github.com/rwcarlsen/goexif/exif"
@@ -34,8 +32,6 @@ func NewImageService() *ImageService {
 // Supports JPEG, PNG, and HEIC formats (HEIC only on !android builds).
 // maxDimension: maximum width or height (maintains aspect ratio).
 func (s *ImageService) CompressAndSave(sourcePath, destPath string, maxDimension int) error {
-	tStart := time.Now()
-
 	srcFile, err := os.Open(sourcePath)
 	if err != nil {
 		return fmt.Errorf("failed to open source image: %w", err)
@@ -43,19 +39,13 @@ func (s *ImageService) CompressAndSave(sourcePath, destPath string, maxDimension
 	defer srcFile.Close()
 
 	ext := strings.ToLower(filepath.Ext(sourcePath))
-	log.Printf("[ImageService] Processing file: %s (ext: %s)", sourcePath, ext)
 
 	img, orientation, err := decodeImage(srcFile, ext)
 	if err != nil {
 		return fmt.Errorf("failed to decode image: %w", err)
 	}
-	log.Printf("[ImageService] Decoded: dims %dx%d, orientation %d",
-		img.Bounds().Dx(), img.Bounds().Dy(), orientation)
 
-	t2 := time.Now()
 	img = s.applyOrientation(img, orientation)
-	log.Printf("[ImageService] Orientation transform: %v, new dims: %dx%d",
-		time.Since(t2), img.Bounds().Dx(), img.Bounds().Dy())
 
 	bounds := img.Bounds()
 	width := bounds.Dx()
@@ -63,13 +53,9 @@ func (s *ImageService) CompressAndSave(sourcePath, destPath string, maxDimension
 
 	var resized image.Image
 	if width > maxDimension || height > maxDimension {
-		t3 := time.Now()
 		resized = imaging.Fit(img, maxDimension, maxDimension, imaging.MitchellNetravali)
-		log.Printf("[ImageService] Resize (MitchellNetravali): %v, dims: %dx%d",
-			time.Since(t3), resized.Bounds().Dx(), resized.Bounds().Dy())
 	} else {
 		resized = img
-		log.Printf("[ImageService] No resize needed (within %d)", maxDimension)
 	}
 
 	destDir := filepath.Dir(destPath)
@@ -83,14 +69,11 @@ func (s *ImageService) CompressAndSave(sourcePath, destPath string, maxDimension
 	}
 	defer destFile.Close()
 
-	t4 := time.Now()
 	options := &jpeg.Options{Quality: s.quality}
 	if err := jpeg.Encode(destFile, resized, options); err != nil {
 		return fmt.Errorf("failed to encode JPEG: %w", err)
 	}
-	log.Printf("[ImageService] JPEG encode: %v", time.Since(t4))
 
-	log.Printf("[ImageService] TOTAL: %v — saved to: %s", time.Since(tStart), destPath)
 	return nil
 }
 

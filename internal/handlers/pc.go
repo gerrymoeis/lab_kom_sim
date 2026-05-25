@@ -3,7 +3,6 @@
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -83,11 +82,8 @@ func (h *Handler) PCCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) PCCreate(c *gin.Context) {
-	log.Printf("[DEBUG-PC] ===== PCCreate CALLED =====")
-	log.Printf("[DEBUG-PC] Content-Type: %s", c.Request.Header.Get("Content-Type"))
 	var req CreatePCRequest
 	if err := c.ShouldBind(&req); err != nil {
-		log.Printf("[DEBUG-PC] ShouldBind error: %v", err)
 		_, username, role, _ := h.user(c)
 		c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
 			"title": "Tambah PC Baru", "error": "Lengkapi data yang diperlukan",
@@ -96,12 +92,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		return
 	}
 
-	log.Printf("[DEBUG-PC] form values: pc_number=%d serial_file_ref=%q front_file_ref=%q serial_number=%q os=%q",
-		req.PCNumber, req.SerialFileRef, req.FrontFileRef, req.SerialNumber, req.OperatingSystem)
-
-	log.Printf("[DEBUG-PC] calling processPhotoRefs: serial=%q front=%q", req.SerialFileRef, req.FrontFileRef)
 	photoSerial, photoFront := processPhotoRefs(req.SerialFileRef, req.FrontFileRef)
-	log.Printf("[DEBUG-PC] processPhotoRefs returned: serial=%q front=%q", photoSerial, photoFront)
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
@@ -241,30 +232,23 @@ func (h *Handler) PCExport(c *gin.Context) {
 }
 
 func processPhotoRefs(serialRef, frontRef string) (serial, front string) {
-	log.Printf("[DEBUG-PC] processPhotoRefs: serialRef=%q frontRef=%q", serialRef, frontRef)
 	for _, p := range []struct{ ref string; result *string }{
 		{serialRef, &serial}, {frontRef, &front},
 	} {
 		ref := strings.TrimSpace(p.ref)
 		if ref == "" {
-			log.Printf("[DEBUG-PC] processPhotoRefs: ref empty, skipping")
 			continue
 		}
 		src := filepath.Join("uploads", "temp", ref)
 		dst := filepath.Join("uploads", "pc", ref)
-		log.Printf("[DEBUG-PC] processPhotoRefs: copying %s -> %s", src, dst)
 		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-			log.Printf("[DEBUG-PC] processPhotoRefs: MkdirAll error: %v", err)
 			continue
 		}
 		if err := services.CopyFile(src, dst); err != nil {
-			log.Printf("[DEBUG-PC] processPhotoRefs: CopyFile error: %v", err)
 			continue
 		}
-		log.Printf("[DEBUG-PC] processPhotoRefs: removing source %s", src)
 		os.Remove(src)
 		*p.result = ref
-		log.Printf("[DEBUG-PC] processPhotoRefs: set result=%q", ref)
 	}
 	return
 }
