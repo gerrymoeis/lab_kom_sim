@@ -5,14 +5,16 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type SoftwareRepository struct {
-	db *database.DB
+	db     *database.DB
+	search *search.Builder
 }
 
 func NewSoftwareRepository(db *database.DB) *SoftwareRepository {
-	return &SoftwareRepository{db: db}
+	return &SoftwareRepository{db: db, search: search.New(db)}
 }
 
 type SoftwareStat struct {
@@ -35,9 +37,9 @@ func (r *SoftwareRepository) ListPaginated(search, category, sortBy string, page
 		CROSS JOIN (SELECT COUNT(*) AS cnt FROM pcs) pc WHERE 1=1`
 	var args []any
 	if search != "" {
-		countQuery += ` AND (sc.name LIKE ? OR sc.description LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s)
+		sClause, sArgs := r.search.Where("software", search)
+		countQuery += sClause
+		args = append(args, sArgs...)
 	}
 	if category == "required" || category == "other" {
 		countQuery += ` AND sc.category = ?`
@@ -62,9 +64,9 @@ func (r *SoftwareRepository) listWithQuery(search, category, sortBy string, suff
 	var args []any
 
 	if search != "" {
-		query += ` AND (sc.name LIKE ? OR sc.description LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s)
+		sClause, sArgs := r.search.Where("software", search)
+		query += sClause
+		args = append(args, sArgs...)
 	}
 	if category == "required" || category == "other" {
 		query += ` AND sc.category = ?`

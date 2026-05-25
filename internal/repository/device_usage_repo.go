@@ -5,18 +5,20 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type DeviceUsageRepository struct {
-	db DBTX
+	db     DBTX
+	search *search.Builder
 }
 
 func NewDeviceUsageRepository(db *database.DB) *DeviceUsageRepository {
-	return &DeviceUsageRepository{db: db}
+	return &DeviceUsageRepository{db: db, search: search.New(db)}
 }
 
 func (r *DeviceUsageRepository) WithTx(tx *database.Tx) *DeviceUsageRepository {
-	return &DeviceUsageRepository{db: tx}
+	return &DeviceUsageRepository{db: tx, search: r.search}
 }
 
 type DeviceUsageFilters struct {
@@ -74,9 +76,9 @@ func (r *DeviceUsageRepository) buildUsageClause(filters DeviceUsageFilters) (st
 		args = append(args, filters.DeviceID)
 	}
 	if filters.Search != "" {
-		clause += ` AND (u.user_name LIKE ? OR d.name LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s)
+		sClause, sArgs := r.search.Where("device_usage", filters.Search)
+		clause += sClause
+		args = append(args, sArgs...)
 	}
 	return clause, args
 }
