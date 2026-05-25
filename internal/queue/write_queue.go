@@ -14,6 +14,7 @@ type Task struct {
 
 type Queue struct {
 	tasks      chan Task
+	flushReq   chan chan struct{}
 	batchSize  int
 	flushEvery time.Duration
 	ctx        context.Context
@@ -25,6 +26,7 @@ func New(bufferSize, batchSize int, flushEvery time.Duration) *Queue {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Queue{
 		tasks:      make(chan Task, bufferSize),
+		flushReq:   make(chan chan struct{}),
 		batchSize:  batchSize,
 		flushEvery: flushEvery,
 		ctx:        ctx,
@@ -35,6 +37,16 @@ func New(bufferSize, batchSize int, flushEvery time.Duration) *Queue {
 func (q *Queue) Enqueue(t Task) {
 	select {
 	case q.tasks <- t:
+	case <-q.ctx.Done():
+	}
+}
+
+// Flush blocks until all pending tasks have been executed.
+func (q *Queue) Flush() {
+	done := make(chan struct{})
+	select {
+	case q.flushReq <- done:
+		<-done
 	case <-q.ctx.Done():
 	}
 }
@@ -72,6 +84,9 @@ func (q *Queue) run() {
 			if len(batch) >= q.batchSize {
 				flush()
 			}
+		case done := <-q.flushReq:
+			flush()
+			close(done)
 		case <-ticker.C:
 			flush()
 		}

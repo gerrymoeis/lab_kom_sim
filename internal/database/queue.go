@@ -72,6 +72,7 @@ func extractTableName(query string) string {
 
 func (db *DB) NewWriteQueue(bufferSize, batchSize int, flushEvery time.Duration) *queue.Queue {
 	q := queue.New(bufferSize, batchSize, flushEvery)
+	db.queue = q
 	tracker := newInsertTracker(db)
 
 	db.execInt = func(query string, args ...any) (sql.Result, error) {

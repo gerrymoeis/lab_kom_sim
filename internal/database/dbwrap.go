@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"inventaris-lab-kom/internal/queue"
 )
 
 type ExecInterceptor func(query string, args ...any) (sql.Result, error)
@@ -15,6 +17,7 @@ type DB struct {
 	reader  *sql.DB
 	rewrite bool
 	execInt ExecInterceptor
+	queue   *queue.Queue
 }
 
 func (db *DB) SetExecInterceptor(int ExecInterceptor) {
@@ -65,6 +68,14 @@ func (db *DB) Close() error {
 
 func (db *DB) Ping() error {
 	return db.reader.Ping()
+}
+
+// Flush blocks until all pending writes in the async queue complete.
+// Safe to call even when write mode is sync (no-op).
+func (db *DB) Flush() {
+	if db.queue != nil {
+		db.queue.Flush()
+	}
 }
 
 func (db *DB) maybeRewrite(query string) string {
