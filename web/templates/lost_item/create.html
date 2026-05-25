@@ -98,8 +98,17 @@
 
 {{ define "page-scripts" }}
 <script src="/static/vendor/heic-to.js"></script>
-<script src="/static/js/photo-upload.js"></script>
 <script>
+async function heicToJpeg(file) {
+    var ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'heic' && ext !== 'heif') return file;
+    if (typeof HeicTo === 'undefined') return file;
+    try {
+        var blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
+        return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
+    } catch (e) { console.warn('HEIC conversion failed:', e); return file; }
+}
+
 let lostItemPreviewUrl = null;
 
 document.getElementById('photoCamera').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
@@ -117,7 +126,7 @@ async function handleLostItemPhotoUpload(input) {
         if (lostItemPreviewUrl) URL.revokeObjectURL(lostItemPreviewUrl);
         lostItemPreviewUrl = URL.createObjectURL(convertedFile);
         document.getElementById('photoPreview').src = lostItemPreviewUrl;
-        document.getElementById('photoPreviewWrapper').style.display = '';
+        document.getElementById('photoPreviewWrapper').classList.remove('d-none');
         document.getElementById('loadingLostItem').classList.add('d-none');
 
         var formData = new FormData();
@@ -150,7 +159,7 @@ function clearLostItemPhoto() {
     document.getElementById('photoCamera').value = '';
     document.getElementById('photoGallery').value = '';
     document.getElementById('photoPreview').src = '';
-    document.getElementById('photoPreviewWrapper').style.display = 'none';
+    document.getElementById('photoPreviewWrapper').classList.add('d-none');
 }
 </script>
 {{ end }}
