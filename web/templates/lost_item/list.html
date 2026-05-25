@@ -57,7 +57,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
-                            <th>Foto</th>
+                            <th style="min-width:100px">Foto</th>
                             <th>Nama Barang</th>
                             <th>Pelapor</th>
                             <th>Tanggal Lapor</th>
@@ -71,7 +71,7 @@
                             <td>{{ add $i $.startRow }}</td>
                             <td>
                                 {{ if .Photo }}
-                                <img src="/uploads/lost_items/{{ .Photo }}" alt="Foto" class="img-thumbnail" style="max-height: 50px; width: auto; cursor: pointer;" onclick="window.open('/uploads/lost_items/{{ .Photo }}','_blank')">
+                                <img src="/uploads/lost_items/{{ .Photo }}" alt="Foto" class="img-thumbnail" style="max-height: 80px; width: auto; cursor: pointer;" onclick="window.open('/uploads/lost_items/{{ .Photo }}','_blank')">
                                 {{ else }}
                                 <span class="text-muted small">-</span>
                                 {{ end }}
