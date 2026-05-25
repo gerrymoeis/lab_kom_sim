@@ -105,13 +105,30 @@
                                 </div>
                             </div>
 
-                            <div class="mt-3 position-relative d-inline-block" id="photoPreviewWrapper"{{ if not .lostItem.Photo }} style="display: none;"{{ end }}>
-                                <img src="{{ if .lostItem.Photo }}/uploads/lost_items/{{ .lostItem.Photo }}{{ end }}" class="img-thumbnail" style="max-height: 120px;" id="photoPreview">
-                                {{ if .lostItem.Photo }}
-                                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0" onclick="removePhoto()" title="Hapus foto">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                                {{ end }}
+                            {{ if .lostItem.Photo }}
+                            <div class="mt-3">
+                                <label class="form-label small text-muted">Foto saat ini:</label>
+                                <img src="/uploads/lost_items/{{ .lostItem.Photo }}" alt="Foto Barang" class="img-thumbnail d-block" style="max-height: 150px;">
+                                <p class="text-muted small mb-0 mt-1">{{ .lostItem.Photo }}</p>
+                            </div>
+                            {{ end }}
+
+                            <div id="photoPreviewWrapper" class="mt-3 d-none">
+                                <div class="border rounded-3 p-3 bg-light text-center">
+                                    <img id="photoPreview" src="" alt="Preview" class="img-fluid rounded" style="max-height: 200px; object-fit: contain;">
+                                    <div id="loadingLostItem" class="d-none mt-2">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <small class="text-muted ms-1">Memproses gambar...</small>
+                                    </div>
+                                    <div id="errorLostItem" class="d-none mt-2 text-danger small"></div>
+                                    <div class="mt-3 text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearLostItemPhoto()">
+                                            <i class="bi bi-x-circle me-1"></i> Hapus
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -128,17 +145,14 @@
 
 {{ define "page-scripts" }}
 <script src="/static/vendor/heic-to.js"></script>
+<script src="/static/js/photo-upload.js"></script>
 <script>
 let lostItemPreviewUrl = null;
 
 function toggleOwnerFields() {
     var status = document.getElementById('status').value;
     var fields = document.getElementById('ownerFields');
-    if (status === 'ditemukan') {
-        fields.classList.remove('d-none');
-    } else {
-        fields.classList.add('d-none');
-    }
+    fields.classList.toggle('d-none', status !== 'ditemukan');
 }
 
 document.getElementById('photoCamera').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
@@ -148,32 +162,34 @@ async function handleLostItemPhotoUpload(input) {
     var file = input.files[0];
     if (!file) return;
 
-    // Convert HEIC to JPEG for instant local preview
-    var convertedFile = await heicToJpeg(file);
-    if (lostItemPreviewUrl) URL.revokeObjectURL(lostItemPreviewUrl);
-    lostItemPreviewUrl = URL.createObjectURL(convertedFile);
-    document.getElementById('photoPreview').src = lostItemPreviewUrl;
-    document.getElementById('photoPreviewWrapper').style.display = '';
-
-    // Upload to server for processing & storage
-    var formData = new FormData();
-    formData.append('image', convertedFile);
-    formData.append('type', 'lost_item');
+    document.getElementById('loadingLostItem').classList.remove('d-none');
+    document.getElementById('errorLostItem').classList.add('d-none');
 
     try {
+        var convertedFile = await heicToJpeg(file);
+        if (lostItemPreviewUrl) URL.revokeObjectURL(lostItemPreviewUrl);
+        lostItemPreviewUrl = URL.createObjectURL(convertedFile);
+        document.getElementById('photoPreview').src = lostItemPreviewUrl;
+        document.getElementById('photoPreviewWrapper').classList.remove('d-none');
+        document.getElementById('loadingLostItem').classList.add('d-none');
+
+        var formData = new FormData();
+        formData.append('image', convertedFile);
+        formData.append('type', 'lost_item');
+
         var resp = await fetch('/api/upload-image', { method: 'POST', body: formData });
         var data = await resp.json();
         if (data.success) {
             document.getElementById('photo').value = data.file_ref;
-        } else {
-            console.warn('Server upload warning:', data.message);
         }
     } catch (e) {
-        console.warn('Server upload failed, file saved locally only:', e);
+        document.getElementById('loadingLostItem').classList.add('d-none');
+        document.getElementById('errorLostItem').textContent = 'Gagal memproses gambar';
+        document.getElementById('errorLostItem').classList.remove('d-none');
     }
 }
 
-function removePhoto() {
+function clearLostItemPhoto() {
     var ref = document.getElementById('photo').value;
     if (ref) {
         fetch('/api/delete-temp-file', {
@@ -187,7 +203,7 @@ function removePhoto() {
     document.getElementById('photoCamera').value = '';
     document.getElementById('photoGallery').value = '';
     document.getElementById('photoPreview').src = '';
-    document.getElementById('photoPreviewWrapper').style.display = 'none';
+    document.getElementById('photoPreviewWrapper').classList.add('d-none');
 }
 </script>
 {{ end }}
