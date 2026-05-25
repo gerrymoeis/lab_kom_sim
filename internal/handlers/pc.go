@@ -77,6 +77,7 @@ func (h *Handler) PCCreatePage(c *gin.Context) {
 	c.HTML(http.StatusOK, "pc/create.html", gin.H{
 		"title": "Tambah PC Baru", "currentPage": "pc",
 		"username": username, "role": role,
+		"android": h.cfg.Android,
 	})
 }
 
@@ -127,6 +128,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		"title": "Edit PC", "currentPage": "pc",
 		"username": username, "role": role, "pc": pc,
 		"requiredSW": requiredSW, "otherSW": otherSW,
+		"android": h.cfg.Android,
 	})
 }
 

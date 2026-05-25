@@ -67,6 +67,7 @@ func (h *Handler) LostItemCreatePage(c *gin.Context) {
 	c.HTML(http.StatusOK, "lost_item/create.html", gin.H{
 		"title": "Lapor Barang Hilang", "currentPage": "lost_items",
 		"username": username, "role": role,
+		"android": h.cfg.Android,
 	})
 }
 
@@ -157,6 +158,7 @@ func (h *Handler) LostItemEditPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "lost_item/edit.html", gin.H{
 		"title": "Edit Barang Hilang", "currentPage": "lost_items",
 		"username": username, "role": role, "lostItem": item,
+		"android": h.cfg.Android,
 	})
 }
 

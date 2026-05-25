@@ -382,7 +382,12 @@
 {{ template "layout/card_close.html" . }}
 
 {{ define "page-scripts" }}
+<script>
+window.ANDROID_MODE = {{ .android }};
+</script>
+{{ if .android }}
 <script src="/static/vendor/heic-to.js"></script>
+{{ end }}
 <script src="/static/js/photo-upload.js"></script>
 {{ end }}
 {{ template "layout/footer.html" . }}
