@@ -47,11 +47,12 @@ func (s *BackupService) Start() {
 		log.Println("Backup: PostgreSQL detected — auto-backup skipped (use Neon built-in backup)")
 		return
 	}
-	if err := os.MkdirAll(s.cfg.Dir, 0755); err != nil {
-		log.Printf("Backup: failed to create directory %s: %v", s.cfg.Dir, err)
-		return
+	for _, d := range s.cfg.Dir {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			log.Printf("Backup: failed to create directory %s: %v", d, err)
+		}
 	}
-	log.Printf("Backup: started — interval=%ds dir=%s retention=%d compress=%v",
+	log.Printf("Backup: started — interval=%ds dirs=%v retention=%d compress=%v",
 		s.cfg.Interval, s.cfg.Dir, s.cfg.Retention, s.cfg.Compress)
 
 	go func() {
@@ -109,14 +110,27 @@ func (s *BackupService) backup() {
 }
 
 func (s *BackupService) runBackup() error {
-	if err := os.MkdirAll(s.cfg.Dir, 0755); err != nil {
+	now := time.Now()
+	filename := fmt.Sprintf("backup_%s.db", now.Format("20060102_150405"))
+
+	for _, dir := range s.cfg.Dir {
+		if err := s.backupToDir(dir, filename, now); err != nil {
+			log.Printf("Backup: dir %s — %v", dir, err)
+		}
+	}
+
+	s.lastBackup = now
+	log.Printf("Backup: cycle complete — %d dir(s)", len(s.cfg.Dir))
+	return nil
+}
+
+func (s *BackupService) backupToDir(dir, filename string, now time.Time) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
 
-	now := time.Now()
-	filename := fmt.Sprintf("backup_%s.db", now.Format("20060102_150405"))
-	tmpPath := filepath.Join(s.cfg.Dir, filename+".tmp")
-	finalPath := filepath.Join(s.cfg.Dir, filename)
+	tmpPath := filepath.Join(dir, filename+".tmp")
+	finalPath := filepath.Join(dir, filename)
 
 	escaped := strings.ReplaceAll(tmpPath, "'", "''")
 	_, err := s.db.RawWriter().Exec("VACUUM INTO '" + escaped + "'")
@@ -141,20 +155,19 @@ func (s *BackupService) runBackup() error {
 		}
 	}
 
-	s.enforceRetention()
+	s.enforceRetentionDir(dir)
 
-	s.lastBackup = now
+	var size int64
 	fi, err := os.Stat(finalPath)
 	if err != nil {
 		if fi, err := os.Stat(finalPath + ".gz"); err == nil {
-			s.lastSize = fi.Size()
+			size = fi.Size()
 		}
 	} else {
-		s.lastSize = fi.Size()
+		size = fi.Size()
 	}
-	_ = fi
 
-	log.Printf("Backup: SUCCESS — %s (%s)", filename, formatSize(s.lastSize))
+	log.Printf("Backup: SUCCESS — %s/%s (%s)", dir, filename, formatSize(size))
 	return nil
 }
 
@@ -208,8 +221,8 @@ func gzipFile(path string) error {
 	return nil
 }
 
-func (s *BackupService) enforceRetention() {
-	pattern := filepath.Join(s.cfg.Dir, "backup_*")
+func (s *BackupService) enforceRetentionDir(dir string) {
+	pattern := filepath.Join(dir, "backup_*")
 	matches, err := filepath.Glob(pattern)
 	if err != nil || len(matches) <= s.cfg.Retention {
 		return

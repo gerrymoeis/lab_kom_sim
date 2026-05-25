@@ -5,18 +5,20 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type DeviceLoanRepository struct {
-	db DBTX
+	db     DBTX
+	search *search.Builder
 }
 
 func NewDeviceLoanRepository(db *database.DB) *DeviceLoanRepository {
-	return &DeviceLoanRepository{db: db}
+	return &DeviceLoanRepository{db: db, search: search.New(db)}
 }
 
 func (r *DeviceLoanRepository) WithTx(tx *database.Tx) *DeviceLoanRepository {
-	return &DeviceLoanRepository{db: tx}
+	return &DeviceLoanRepository{db: tx, search: r.search}
 }
 
 type DeviceLoanFilters struct {
@@ -81,9 +83,9 @@ func (r *DeviceLoanRepository) buildLoanClause(filters DeviceLoanFilters) (strin
 		args = append(args, filters.Status)
 	}
 	if filters.Search != "" {
-		clause += ` AND (l.borrower_name LIKE ? OR d.name LIKE ? OR d.asset_code LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s, s)
+		sClause, sArgs := r.search.Where("device_loan", filters.Search)
+		clause += sClause
+		args = append(args, sArgs...)
 	}
 	return clause, args
 }

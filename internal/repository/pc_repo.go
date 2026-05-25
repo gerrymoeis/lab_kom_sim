@@ -8,14 +8,16 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type PCRepository struct {
-	db *database.DB
+	db     *database.DB
+	search *search.Builder
 }
 
 func NewPCRepository(db *database.DB) *PCRepository {
-	return &PCRepository{db: db}
+	return &PCRepository{db: db, search: search.New(db)}
 }
 
 type PCFilters struct {
@@ -52,13 +54,13 @@ func (r *PCRepository) buildWhereClause(filters PCFilters) (string, []any) {
 		args = append(args, filters.Status)
 	}
 	if filters.Search != "" {
-		clause += ` AND (CAST(pc_number AS TEXT) LIKE ? OR serial_number LIKE ? OR brand_model LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s, s)
+		sClause, sArgs := r.search.Where("pc", filters.Search)
+		clause += sClause
+		args = append(args, sArgs...)
 	}
 	if filters.OS != "" {
-		clause += ` AND operating_system LIKE ?`
-		args = append(args, "%"+filters.OS+"%")
+		clause += ` AND operating_system = ?`
+		args = append(args, filters.OS)
 	}
 	return clause, args
 }

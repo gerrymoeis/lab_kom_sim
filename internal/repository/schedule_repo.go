@@ -5,14 +5,16 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type ScheduleRepository struct {
-	db DBTX
+	db     DBTX
+	search *search.Builder
 }
 
 func NewScheduleRepository(db *database.DB) *ScheduleRepository {
-	return &ScheduleRepository{db: db}
+	return &ScheduleRepository{db: db, search: search.New(db)}
 }
 
 var dayOrder = `CASE day WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 ELSE 7 END`
@@ -29,9 +31,9 @@ func (r *ScheduleRepository) ListPaginated(search, dayFilter, sortBy string, pag
 	query := `SELECT COUNT(*) FROM course_schedules WHERE 1=1`
 	var args []any
 	if search != "" {
-		query += ` AND (course_name LIKE ? OR lecturer LIKE ? OR class LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s, s)
+		sClause, sArgs := r.search.Where("schedule", search)
+		query += sClause
+		args = append(args, sArgs...)
 	}
 	if dayFilter != "" {
 		query += ` AND day = ?`
@@ -50,9 +52,9 @@ func (r *ScheduleRepository) listWithQuery(search, dayFilter, sortBy string, suf
 	query := `SELECT id, course_name, lecturer, day, class, time_start, time_end, notes FROM course_schedules WHERE 1=1`
 	var args []any
 	if search != "" {
-		query += ` AND (course_name LIKE ? OR lecturer LIKE ? OR class LIKE ?)`
-		s := "%" + search + "%"
-		args = append(args, s, s, s)
+		sClause, sArgs := r.search.Where("schedule", search)
+		query += sClause
+		args = append(args, sArgs...)
 	}
 	if dayFilter != "" {
 		query += ` AND day = ?`
