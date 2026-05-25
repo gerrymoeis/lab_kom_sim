@@ -143,7 +143,6 @@
                     </form>
 {{ template "layout/card_close.html" . }}
 
-{{ define "page-scripts" }}
 <script>
 window.ANDROID_MODE = {{ .android }};
 </script>
@@ -252,6 +251,5 @@ function clearLostItemPhoto() {
     document.getElementById('photoPreviewWrapper').classList.add('d-none');
 }
 </script>
-{{ end }}
 
 {{ template "layout/footer.html" . }}

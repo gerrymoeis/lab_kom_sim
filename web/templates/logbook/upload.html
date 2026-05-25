@@ -109,17 +109,13 @@
         </div>
     </div>
 
-{{ define "page-scripts" }}
 <script>
-console.log('[LOGBOOK] page-scripts block executing');
 window.ANDROID_MODE = {{ .android }};
-console.log('[LOGBOOK] ANDROID_MODE = ' + window.ANDROID_MODE);
 </script>
 {{ if .android }}
 <script src="/static/vendor/heic-to.js"></script>
 {{ end }}
 <script>
-console.log('[LOGBOOK] inline script block executing');
 async function heicToJpeg(file) {
     var ext = file.name.split('.').pop().toLowerCase();
     if (ext !== 'heic' && ext !== 'heif') return file;
@@ -159,88 +155,46 @@ async function compressImage(file, maxDimension, quality) {
 
 var previewUrl = null;
 
-console.log('[LOGBOOK] checking DOM elements:');
-var elLogbook = document.getElementById('logbookImage');
-var elGallery = document.getElementById('galleryInput');
-console.log('[LOGBOOK] logbookImage=' + (elLogbook ? 'FOUND' : 'NULL') + ' galleryInput=' + (elGallery ? 'FOUND' : 'NULL'));
-var elFileRef = document.getElementById('fileRef');
-console.log('[LOGBOOK] fileRef hidden=' + (elFileRef ? 'FOUND' : 'NULL'));
-var elSubmit = document.getElementById('submitBtn');
-console.log('[LOGBOOK] submitBtn=' + (elSubmit ? 'FOUND' : 'NULL'));
-var elLoading = document.getElementById('loadingIndicator');
-console.log('[LOGBOOK] loadingIndicator=' + (elLoading ? 'FOUND' : 'NULL'));
-var elError = document.getElementById('errorLogbook');
-console.log('[LOGBOOK] errorLogbook=' + (elError ? 'FOUND' : 'NULL'));
-var elPreview = document.getElementById('imagePreview');
-console.log('[LOGBOOK] imagePreview=' + (elPreview ? 'FOUND' : 'NULL'));
-var elPreviewArea = document.getElementById('previewArea');
-console.log('[LOGBOOK] previewArea=' + (elPreviewArea ? 'FOUND' : 'NULL'));
-
-if (elLogbook) {
-    elLogbook.addEventListener('change', function(e) { console.log('[LOGBOOK] logbookImage change event fired, files=' + (e.target.files ? e.target.files.length : 0)); onFileChange(e); });
-} else {
-    console.error('[LOGBOOK] logbookImage element NOT FOUND!');
-}
-
-if (elGallery) {
-    elGallery.addEventListener('change', function(e) { console.log('[LOGBOOK] galleryInput change event fired, files=' + (e.target.files ? e.target.files.length : 0)); onFileChange(e); });
-} else {
-    console.error('[LOGBOOK] galleryInput element NOT FOUND!');
-}
+document.getElementById('logbookImage').addEventListener('change', function(e) { onFileChange(e); });
+document.getElementById('galleryInput').addEventListener('change', function(e) { onFileChange(e); });
 
 async function onFileChange(e) {
-    console.log('[LOGBOOK] onFileChange called');
     var file = e.target.files[0];
-    if (!file) { console.log('[LOGBOOK] onFileChange: no file, returning'); return; }
-    console.log('[LOGBOOK] onFileChange: file=' + file.name + ' size=' + file.size + ' type=' + file.type);
-    
+    if (!file) return;
+
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     clearOtherInput(e.target.id);
 
-    console.log('[LOGBOOK] showing loading indicator');
     document.getElementById('loadingIndicator').classList.remove('d-none');
     document.getElementById('errorLogbook').classList.add('d-none');
 
     try {
-        console.log('[LOGBOOK] STEP1: heicToJpeg starting...');
         file = await heicToJpeg(file);
-        console.log('[LOGBOOK] STEP1: heicToJpeg done, file=' + file.name + ' size=' + file.size);
 
         if (window.ANDROID_MODE) {
-            console.log('[LOGBOOK] STEP2: ANDROID_MODE=true, compressImage starting (maxDim=1280)');
             file = await compressImage(file, 1280, 0.75);
-            console.log('[LOGBOOK] STEP2: compressImage done, file=' + file.name + ' size=' + file.size);
-        } else {
-            console.log('[LOGBOOK] STEP2: ANDROID_MODE=false, skipping client compress');
         }
 
-        console.log('[LOGBOOK] STEP3: creating local preview');
         previewUrl = URL.createObjectURL(file);
         document.getElementById('imagePreview').src = previewUrl;
         document.getElementById('previewArea').classList.remove('d-none');
         document.getElementById('loadingIndicator').classList.add('d-none');
 
-        console.log('[LOGBOOK] STEP4: fetch POST /api/upload-image starting...');
         var formData = new FormData();
         formData.append('image', file);
         formData.append('type', 'logbook');
 
         var resp = await fetch('/api/upload-image', { method: 'POST', body: formData });
-        console.log('[LOGBOOK] STEP4: fetch response status=' + resp.status);
         var data = await resp.json();
-        console.log('[LOGBOOK] STEP4: response data:', JSON.stringify(data));
         if (data.success) {
             document.getElementById('fileRef').value = data.file_ref;
-            console.log('[LOGBOOK] STEP4: stored file_ref=' + data.file_ref + ' enabling submit button');
             document.getElementById('submitBtn').disabled = false;
         } else {
-            console.warn('[LOGBOOK] STEP4: upload failed:', data.message);
             document.getElementById('errorLogbook').textContent = 'Gagal upload: ' + (data.message || 'unknown');
             document.getElementById('errorLogbook').classList.remove('d-none');
             document.getElementById('submitBtn').disabled = true;
         }
     } catch (e) {
-        console.error('[LOGBOOK] ERROR in onFileChange:', e.message, e.stack);
         document.getElementById('loadingIndicator').classList.add('d-none');
         document.getElementById('errorLogbook').textContent = 'Gagal memproses gambar';
         document.getElementById('errorLogbook').classList.remove('d-none');
@@ -285,5 +239,5 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     document.getElementById('loadingIndicator').classList.remove('d-none');
 });
 </script>
-{{ end }}
+
 {{ template "layout/footer.html" . }}
