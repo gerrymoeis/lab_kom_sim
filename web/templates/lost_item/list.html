@@ -57,6 +57,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
+                            <th>Foto</th>
                             <th>Nama Barang</th>
                             <th>Pelapor</th>
                             <th>Tanggal Lapor</th>
@@ -68,6 +69,13 @@
                         {{ range $i, $item := .lostItems }}
                         <tr>
                             <td>{{ add $i $.startRow }}</td>
+                            <td>
+                                {{ if .Photo }}
+                                <img src="/uploads/lost_items/{{ .Photo }}" alt="Foto" class="img-thumbnail" style="max-height: 50px; width: auto; cursor: pointer;" onclick="window.open('/uploads/lost_items/{{ .Photo }}','_blank')">
+                                {{ else }}
+                                <span class="text-muted small">-</span>
+                                {{ end }}
+                            </td>
                             <td><strong>{{ .ItemName }}</strong></td>
                             <td>{{ .ReportedBy }}</td>
                             <td>{{ (localTime .ReportedDate).Format "02/01/2006" }} {{ tzCode }}</td>
@@ -98,7 +106,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="6" class="text-center text-muted">Belum ada laporan barang hilang</td>
+                            <td colspan="7" class="text-center text-muted">Belum ada laporan barang hilang</td>
                         </tr>
                         {{ end }}
                     </tbody>

@@ -26,32 +26,24 @@
 
                             <div class="mb-4">
                                 <label class="form-label fw-bold">Pilih Foto Logbook</label>
-                                
-                                <!-- Custom buttons -->
+                                <p class="text-muted mb-3">Max 5MB, format JPEG/PNG/HEIC</p>
+
                                 <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <button type="button" 
-                                                class="btn btn-lg btn-outline-primary w-100 py-4"
-                                                onclick="selectPhoto('camera')">
-                                            <i class="bi bi-camera-fill" style="font-size: 2rem;"></i>
-                                            <div class="mt-2">Ambil Foto</div>
-                                            <small class="text-muted">Gunakan kamera HP</small>
-                                        </button>
+                                    <div class="col-md-6 d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-camera-fill text-primary me-2"></i>
+                                            <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
+                                        </div>
+                                        <input type="file" id="logbookImage" name="logbook_image" accept="image/*" capture="environment" class="form-control mt-auto">
                                     </div>
-                                    <div class="col-md-6">
-                                        <button type="button" 
-                                                class="btn btn-lg btn-outline-secondary w-100 py-4"
-                                                onclick="selectPhoto('gallery')">
-                                            <i class="bi bi-images" style="font-size: 2rem;"></i>
-                                            <div class="mt-2">Pilih dari Galeri</div>
-                                            <small class="text-muted">Upload foto yang ada</small>
-                                        </button>
+                                    <div class="col-md-6 d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-images text-secondary me-2"></i>
+                                            <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
+                                        </div>
+                                        <input type="file" id="galleryInput" name="logbook_image" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
                                     </div>
                                 </div>
-
-                                <!-- Hidden file inputs -->
-                                <input type="file" id="logbookImage" name="logbook_image" accept="image/*" capture="environment" class="d-none">
-                                <input type="file" id="galleryInput" name="logbook_image" accept="image/*" class="d-none">
                             </div>
 
                             <!-- Preview area -->
@@ -59,6 +51,7 @@
                                 <label class="form-label fw-bold">Preview Foto</label>
                                 <div class="text-center border rounded p-3 bg-light">
                                     <img id="imagePreview" src="" alt="Preview" class="img-fluid" style="max-height: 400px;">
+                                    <div id="errorLogbook" class="d-none mt-2 text-danger small"></div>
                                     <div class="mt-2">
                                         <button type="button" class="btn btn-sm btn-danger" onclick="clearLogbookImage()">
                                             <i class="bi bi-x-circle"></i> Hapus
@@ -117,12 +110,9 @@
 
 {{ define "page-scripts" }}
 <script src="/static/vendor/heic-to.js"></script>
+<script src="/static/js/photo-upload.js"></script>
 <script>
     let previewUrl = null;
-
-    function selectPhoto(source) {
-        document.getElementById(source === 'camera' ? 'logbookImage' : 'galleryInput').click();
-    }
 
     document.getElementById('logbookImage').addEventListener('change', onFileChange);
     document.getElementById('galleryInput').addEventListener('change', onFileChange);
@@ -132,12 +122,21 @@
         if (!file) return;
         if (previewUrl) URL.revokeObjectURL(previewUrl);
 
-        // Convert HEIC to JPEG for preview (browser can't display HEIC natively)
-        const convertedFile = await heicToJpeg(file);
-        previewUrl = URL.createObjectURL(convertedFile);
-        document.getElementById('imagePreview').src = previewUrl;
-        document.getElementById('previewArea').classList.remove('d-none');
-        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('loadingIndicator').classList.remove('d-none');
+        document.getElementById('errorLogbook').classList.add('d-none');
+
+        try {
+            const convertedFile = await heicToJpeg(file);
+            previewUrl = URL.createObjectURL(convertedFile);
+            document.getElementById('imagePreview').src = previewUrl;
+            document.getElementById('previewArea').classList.remove('d-none');
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('loadingIndicator').classList.add('d-none');
+        } catch (e) {
+            document.getElementById('loadingIndicator').classList.add('d-none');
+            document.getElementById('errorLogbook').textContent = 'Gagal memproses gambar';
+            document.getElementById('errorLogbook').classList.remove('d-none');
+        }
     }
 
     function clearLogbookImage() {
@@ -147,6 +146,7 @@
         document.getElementById('galleryInput').value = '';
         document.getElementById('previewArea').classList.add('d-none');
         document.getElementById('submitBtn').disabled = true;
+        document.getElementById('errorLogbook').classList.add('d-none');
     }
 
     document.getElementById('uploadForm').addEventListener('submit', function(e) {
