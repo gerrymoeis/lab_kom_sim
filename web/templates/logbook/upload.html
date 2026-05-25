@@ -23,6 +23,7 @@
                         </div>
 
                         <form id="uploadForm" action="/logbook/upload" method="POST" enctype="multipart/form-data">
+                            <input type="hidden" id="fileRef" name="file_ref" value="">
 
                             <div class="mb-4">
                                 <label class="form-label fw-bold">Pilih Foto Logbook</label>
@@ -34,14 +35,14 @@
                                             <i class="bi bi-camera-fill text-primary me-2"></i>
                                             <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
                                         </div>
-                                        <input type="file" id="logbookImage" name="logbook_image" accept="image/*" capture="environment" class="form-control mt-auto">
+                                        <input type="file" id="logbookImage" accept="image/*" capture="environment" class="form-control mt-auto">
                                     </div>
                                     <div class="col-md-6 d-flex flex-column">
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-images text-secondary me-2"></i>
                                             <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
                                         </div>
-                                        <input type="file" id="galleryInput" name="logbook_image" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
+                                        <input type="file" id="galleryInput" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
                                     </div>
                                 </div>
                             </div>
@@ -110,54 +111,97 @@
 
 {{ define "page-scripts" }}
 <script src="/static/vendor/heic-to.js"></script>
-<script src="/static/js/photo-upload.js"></script>
 <script>
-    let previewUrl = null;
+async function heicToJpeg(file) {
+    var ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'heic' && ext !== 'heif') return file;
+    if (typeof HeicTo === 'undefined') return file;
+    try {
+        var blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
+        return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
+    } catch (e) { console.warn('HEIC conversion failed:', e); return file; }
+}
 
-    document.getElementById('logbookImage').addEventListener('change', onFileChange);
-    document.getElementById('galleryInput').addEventListener('change', onFileChange);
+let previewUrl = null;
 
-    async function onFileChange(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
+document.getElementById('logbookImage').addEventListener('change', onFileChange);
+document.getElementById('galleryInput').addEventListener('change', onFileChange);
 
-        document.getElementById('loadingIndicator').classList.remove('d-none');
-        document.getElementById('errorLogbook').classList.add('d-none');
+async function onFileChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    clearOtherInput(e.target.id);
 
-        try {
-            const convertedFile = await heicToJpeg(file);
-            previewUrl = URL.createObjectURL(convertedFile);
-            document.getElementById('imagePreview').src = previewUrl;
-            document.getElementById('previewArea').classList.remove('d-none');
+    document.getElementById('loadingIndicator').classList.remove('d-none');
+    document.getElementById('errorLogbook').classList.add('d-none');
+
+    try {
+        var convertedFile = await heicToJpeg(file);
+        previewUrl = URL.createObjectURL(convertedFile);
+        document.getElementById('imagePreview').src = previewUrl;
+        document.getElementById('previewArea').classList.remove('d-none');
+        document.getElementById('loadingIndicator').classList.add('d-none');
+
+        // Upload to server for compression
+        var formData = new FormData();
+        formData.append('image', convertedFile);
+        formData.append('type', 'logbook');
+
+        var resp = await fetch('/api/upload-image', { method: 'POST', body: formData });
+        var data = await resp.json();
+        if (data.success) {
+            document.getElementById('fileRef').value = data.file_ref;
             document.getElementById('submitBtn').disabled = false;
-            document.getElementById('loadingIndicator').classList.add('d-none');
-        } catch (e) {
-            document.getElementById('loadingIndicator').classList.add('d-none');
-            document.getElementById('errorLogbook').textContent = 'Gagal memproses gambar';
+        } else {
+            document.getElementById('errorLogbook').textContent = 'Gagal upload: ' + (data.message || 'unknown');
             document.getElementById('errorLogbook').classList.remove('d-none');
+            document.getElementById('submitBtn').disabled = true;
         }
+    } catch (e) {
+        document.getElementById('loadingIndicator').classList.add('d-none');
+        document.getElementById('errorLogbook').textContent = 'Gagal memproses gambar';
+        document.getElementById('errorLogbook').classList.remove('d-none');
+        document.getElementById('submitBtn').disabled = true;
     }
+}
 
-    function clearLogbookImage() {
-        if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
-        document.getElementById('imagePreview').src = '';
-        document.getElementById('logbookImage').value = '';
+function clearOtherInput(activeId) {
+    if (activeId === 'logbookImage') {
         document.getElementById('galleryInput').value = '';
-        document.getElementById('previewArea').classList.add('d-none');
-        document.getElementById('submitBtn').disabled = true;
-        document.getElementById('errorLogbook').classList.add('d-none');
+    } else {
+        document.getElementById('logbookImage').value = '';
     }
+}
 
-    document.getElementById('uploadForm').addEventListener('submit', function(e) {
-        if (!document.getElementById('logbookImage').files.length && !document.getElementById('galleryInput').files.length) {
-            e.preventDefault();
-            alert('Pilih foto terlebih dahulu');
-            return;
-        }
-        document.getElementById('submitBtn').disabled = true;
-        document.getElementById('loadingIndicator').classList.remove('d-none');
-    });
+function clearLogbookImage() {
+    var ref = document.getElementById('fileRef').value;
+    if (ref) {
+        fetch('/api/delete-temp-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_ref: ref })
+        });
+    }
+    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+    document.getElementById('fileRef').value = '';
+    document.getElementById('imagePreview').src = '';
+    document.getElementById('logbookImage').value = '';
+    document.getElementById('galleryInput').value = '';
+    document.getElementById('previewArea').classList.add('d-none');
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('errorLogbook').classList.add('d-none');
+}
+
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    if (!document.getElementById('fileRef').value) {
+        e.preventDefault();
+        alert('Pilih foto terlebih dahulu');
+        return;
+    }
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('loadingIndicator').classList.remove('d-none');
+});
 </script>
 {{ end }}
 {{ template "layout/footer.html" . }}
