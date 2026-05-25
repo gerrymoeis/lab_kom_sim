@@ -56,10 +56,12 @@ var serialPreviewUrl = null;
 var frontPreviewUrl = null;
 
 document.addEventListener('DOMContentLoaded', function () {
+    console.log('[PC-photo-upload] DOMContentLoaded fired');
     setupFileHandlers();
 });
 
 function setupFileHandlers() {
+    console.log('[PC-photo-upload] setupFileHandlers() called');
     var pairs = [
         { camera: 'photo_serial_camera', gallery: 'photo_serial_gallery', type: 'serial' },
         { camera: 'photo_front_camera', gallery: 'photo_front_gallery', type: 'front' }
@@ -68,25 +70,32 @@ function setupFileHandlers() {
         var p = pairs[i];
         var cam = document.getElementById(p.camera);
         var gal = document.getElementById(p.gallery);
-        if (cam) cam.addEventListener('change', function (p) { return function (e) { handleFileSelect(e.target.files[0], p.type, 'camera'); }; }(p));
-        if (gal) gal.addEventListener('change', function (p) { return function (e) { handleFileSelect(e.target.files[0], p.type, 'gallery'); }; }(p));
+        console.log('[PC-photo-upload] type=' + p.type + ' cameraEl=' + (cam ? 'FOUND' : 'NULL') + ' galleryEl=' + (gal ? 'FOUND' : 'NULL'));
+        if (cam) cam.addEventListener('change', function (p) { return function (e) { console.log('[PC-photo-upload] change event type=' + p.type + ' source=camera files=' + (e.target.files ? e.target.files.length : 0)); handleFileSelect(e.target.files[0], p.type, 'camera'); }; }(p));
+        if (gal) gal.addEventListener('change', function (p) { return function (e) { console.log('[PC-photo-upload] change event type=' + p.type + ' source=gallery files=' + (e.target.files ? e.target.files.length : 0)); handleFileSelect(e.target.files[0], p.type, 'gallery'); }; }(p));
     }
 }
 
 async function handleFileSelect(file, type, source) {
-    if (!file) return;
+    console.log('[PC-photo-upload] handleFileSelect called type=' + type + ' source=' + source + ' file=' + (file ? file.name + ' size=' + file.size : 'NULL'));
+    if (!file) { console.log('[PC-photo-upload] handleFileSelect: no file, returning'); return; }
     showLoadingState(type);
 
     try {
-        // HEIC conversion (no-op on ANDROID=false since heic-to.js is not loaded)
+        console.log('[PC-photo-upload] STEP1: heicToJpeg starting...');
         file = await heicToJpeg(file);
+        console.log('[PC-photo-upload] STEP1: heicToJpeg done, file=' + file.name + ' size=' + file.size);
 
         if (window.ANDROID_MODE) {
-            // Client-side: compress before upload
+            console.log('[PC-photo-upload] STEP2: ANDROID_MODE=true, compressImage starting... maxDim=' + getMaxDim(type));
             file = await compressImage(file, getMaxDim(type), 0.75);
+            console.log('[PC-photo-upload] STEP2: compressImage done, file=' + file.name + ' size=' + file.size);
+        } else {
+            console.log('[PC-photo-upload] STEP2: ANDROID_MODE=false, skipping client compress');
         }
 
         // Local preview
+        console.log('[PC-photo-upload] STEP3: creating local preview');
         var previewUrl = URL.createObjectURL(file);
         if (type === 'serial') {
             if (serialPreviewUrl) URL.revokeObjectURL(serialPreviewUrl);
@@ -99,28 +108,36 @@ async function handleFileSelect(file, type, source) {
         clearOtherInput(type, source);
 
         // Upload to server
+        console.log('[PC-photo-upload] STEP4: calling uploadForProcessing...');
         var result = await uploadForProcessing(file, type);
+        console.log('[PC-photo-upload] STEP4: uploadForProcessing result success=' + result.success + ' file_ref=' + (result.file_ref || 'N/A') + ' message=' + (result.message || 'N/A'));
         if (result.success) {
             storeFileReference(result.file_ref, type);
         } else {
-            console.warn('Server upload warning:', result.message);
+            console.warn('[PC-photo-upload] Server upload warning:', result.message);
         }
     } catch (error) {
+        console.error('[PC-photo-upload] ERROR in handleFileSelect:', error.message, error.stack);
         showError(type, error.message);
     }
 }
 
 async function uploadForProcessing(file, type) {
+    console.log('[PC-photo-upload] uploadForProcessing: file=' + file.name + ' size=' + file.size + ' type=' + type);
     var formData = new FormData();
     formData.append('image', file);
     formData.append('type', type);
 
     var pcNumberInput = document.querySelector('input[name="pc_number"]');
     var pcNumber = pcNumberInput ? pcNumberInput.value : window.location.pathname.split('/')[2];
-    if (pcNumber) formData.append('pc_number', pcNumber);
+    if (pcNumber) { formData.append('pc_number', pcNumber); console.log('[PC-photo-upload] uploadForProcessing: pc_number=' + pcNumber); }
 
+    console.log('[PC-photo-upload] uploadForProcessing: POST /api/upload-image starting...');
     var response = await fetch('/api/upload-image', { method: 'POST', body: formData });
-    return await response.json();
+    console.log('[PC-photo-upload] uploadForProcessing: POST /api/upload-image response status=' + response.status);
+    var json = await response.json();
+    console.log('[PC-photo-upload] uploadForProcessing: response json:', JSON.stringify(json));
+    return json;
 }
 
 function showLocalPreview(url, type) {

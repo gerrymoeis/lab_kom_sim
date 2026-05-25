@@ -241,7 +241,7 @@ type UpdateLostItemParams struct {
 }
 
 func (r *LostItemRepository) Update(id int, p UpdateLostItemParams) error {
-	_, err := r.db.Exec(`UPDATE lost_items SET device_id=?, item_name=?, item_description=?, reported_by=?, reported_date=?, last_seen_at=?, location_last_seen=?, status=?, owner_name=?, owner_class=?, owner_nim=?, returned_date=?, photo=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+	_, err := r.db.Exec(`UPDATE lost_items SET device_id=?, item_name=?, item_description=?, reported_by=?, reported_date=?, last_seen_at=?, location_last_seen=?, status=?, owner_name=?, owner_class=?, owner_nim=?, returned_date=?, photo=COALESCE(NULLIF(?, ''), photo), updated_at=CURRENT_TIMESTAMP WHERE id=?`,
 		p.DeviceID, p.ItemName, p.ItemDescription, p.ReportedBy, p.ReportedDate, p.LastSeenAt, p.LocationLastSeen, p.Status, p.OwnerName, p.OwnerClass, p.OwnerNim, p.ReturnedDate, p.Photo, id)
 	return err
 }
