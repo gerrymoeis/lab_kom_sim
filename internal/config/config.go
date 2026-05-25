@@ -20,6 +20,7 @@ type Config struct {
 	UploadPath       string
 	GeminiAPIKey     string
 	OpenRouterAPIKey string
+	Android          bool
 	WriteMode        string
 	Timezone         string
 	Backup           BackupConfig
@@ -52,6 +53,7 @@ func Load() *Config {
 		UploadPath:    getEnv("UPLOAD_PATH", "uploads"),
 		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
+		Android:          getEnv("ANDROID", "false") == "true",
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
 		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
 		Backup: BackupConfig{

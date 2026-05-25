@@ -1,12 +1,12 @@
 // Shared image upload utility
-// Handles HEIC conversion, instant local preview (URL.createObjectURL), API upload
+// Dual-mode: ANDROID_MODE=true → client-side compress, ANDROID_MODE=false → server-side compress
 
 async function heicToJpeg(file) {
-    const ext = file.name.split('.').pop().toLowerCase();
+    var ext = file.name.split('.').pop().toLowerCase();
     if (ext !== 'heic' && ext !== 'heif') return file;
     if (typeof HeicTo === 'undefined') return file;
     try {
-        const blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
+        var blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
         return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'),
             { type: 'image/jpeg', lastModified: Date.now() });
     } catch (e) {
@@ -15,27 +15,61 @@ async function heicToJpeg(file) {
     }
 }
 
+// compressImage resizes and re-encodes image to JPEG via canvas
+async function compressImage(file, maxDimension, quality) {
+    return new Promise(function (resolve, reject) {
+        var img = new Image();
+        img.onload = function () {
+            var width = img.width;
+            var height = img.height;
+            if (width > maxDimension || height > maxDimension) {
+                var ratio = Math.min(maxDimension / width, maxDimension / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(function (blob) {
+                if (!blob) { reject(new Error('Gagal kompresi gambar')); return; }
+                var fileName = file.name.replace(/\.[^.]+$/, '.jpg');
+                resolve(new File([blob], fileName, { type: 'image/jpeg', lastModified: Date.now() }));
+            }, 'image/jpeg', quality);
+        };
+        img.onerror = function () { reject(new Error('Gagal memuat gambar')); };
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+// getMaxDim returns the max dimension based on photo type
+function getMaxDim(type) {
+    return type === 'front' ? 1920 : 1280;
+}
+
 // --- PC-specific: serial & front photo handling ---
 
-let serialFileRef = null;
-let frontFileRef = null;
-let serialPreviewUrl = null;
-let frontPreviewUrl = null;
+var serialFileRef = null;
+var frontFileRef = null;
+var serialPreviewUrl = null;
+var frontPreviewUrl = null;
 
 document.addEventListener('DOMContentLoaded', function () {
     setupFileHandlers();
 });
 
 function setupFileHandlers() {
-    const pairs = [
+    var pairs = [
         { camera: 'photo_serial_camera', gallery: 'photo_serial_gallery', type: 'serial' },
         { camera: 'photo_front_camera', gallery: 'photo_front_gallery', type: 'front' }
     ];
-    for (const p of pairs) {
-        const cam = document.getElementById(p.camera);
-        const gal = document.getElementById(p.gallery);
-        if (cam) cam.addEventListener('change', (e) => handleFileSelect(e.target.files[0], p.type, 'camera'));
-        if (gal) gal.addEventListener('change', (e) => handleFileSelect(e.target.files[0], p.type, 'gallery'));
+    for (var i = 0; i < pairs.length; i++) {
+        var p = pairs[i];
+        var cam = document.getElementById(p.camera);
+        var gal = document.getElementById(p.gallery);
+        if (cam) cam.addEventListener('change', function (p) { return function (e) { handleFileSelect(e.target.files[0], p.type, 'camera'); }; }(p));
+        if (gal) gal.addEventListener('change', function (p) { return function (e) { handleFileSelect(e.target.files[0], p.type, 'gallery'); }; }(p));
     }
 }
 
@@ -44,10 +78,16 @@ async function handleFileSelect(file, type, source) {
     showLoadingState(type);
 
     try {
+        // HEIC conversion (no-op on ANDROID=false since heic-to.js is not loaded)
         file = await heicToJpeg(file);
 
-        // Instant local preview (works for all formats including converted HEIC)
-        const previewUrl = URL.createObjectURL(file);
+        if (window.ANDROID_MODE) {
+            // Client-side: compress before upload
+            file = await compressImage(file, getMaxDim(type), 0.75);
+        }
+
+        // Local preview
+        var previewUrl = URL.createObjectURL(file);
         if (type === 'serial') {
             if (serialPreviewUrl) URL.revokeObjectURL(serialPreviewUrl);
             serialPreviewUrl = previewUrl;
@@ -58,8 +98,8 @@ async function handleFileSelect(file, type, source) {
         showLocalPreview(previewUrl, type);
         clearOtherInput(type, source);
 
-        // Background upload to server for processing + file_ref
-        const result = await uploadForProcessing(file, type);
+        // Upload to server
+        var result = await uploadForProcessing(file, type);
         if (result.success) {
             storeFileReference(result.file_ref, type);
         } else {
@@ -71,52 +111,52 @@ async function handleFileSelect(file, type, source) {
 }
 
 async function uploadForProcessing(file, type) {
-    const formData = new FormData();
+    var formData = new FormData();
     formData.append('image', file);
     formData.append('type', type);
 
-    const pcNumberInput = document.querySelector('input[name="pc_number"]');
-    const pcNumber = pcNumberInput ? pcNumberInput.value : window.location.pathname.split('/')[2];
+    var pcNumberInput = document.querySelector('input[name="pc_number"]');
+    var pcNumber = pcNumberInput ? pcNumberInput.value : window.location.pathname.split('/')[2];
     if (pcNumber) formData.append('pc_number', pcNumber);
 
-    const response = await fetch('/api/upload-image', { method: 'POST', body: formData });
+    var response = await fetch('/api/upload-image', { method: 'POST', body: formData });
     return await response.json();
 }
 
 function showLocalPreview(url, type) {
-    const img = document.getElementById(type === 'serial' ? 'imagePreviewSerial' : 'imagePreviewFront');
-    const area = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
+    var img = document.getElementById(type === 'serial' ? 'imagePreviewSerial' : 'imagePreviewFront');
+    var area = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
     if (img) img.src = url;
     if (area) area.classList.remove('d-none');
 }
 
 function storeFileReference(fileRef, type) {
-    const id = type === 'serial' ? 'serial_file_ref' : 'front_file_ref';
+    var id = type === 'serial' ? 'serial_file_ref' : 'front_file_ref';
     if (type === 'serial') serialFileRef = fileRef; else frontFileRef = fileRef;
 
-    let hiddenInput = document.getElementById(id);
+    var hiddenInput = document.getElementById(id);
     if (!hiddenInput) {
         hiddenInput = document.createElement('input');
         hiddenInput.type = 'hidden';
         hiddenInput.id = id;
         hiddenInput.name = id;
-        const form = document.querySelector('form');
+        var form = document.querySelector('form');
         if (form) form.appendChild(hiddenInput);
     }
     hiddenInput.value = fileRef;
 }
 
 function showLoadingState(type) {
-    const area = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    const loader = document.getElementById(`loading${type === 'serial' ? 'Serial' : 'Front'}`);
+    var area = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
+    var loader = document.getElementById('loading' + (type === 'serial' ? 'Serial' : 'Front'));
     if (loader) loader.classList.remove('d-none');
     if (area) area.classList.remove('d-none');
 }
 
 function showError(type, message) {
-    const area = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    const errEl = document.getElementById(`error${type === 'serial' ? 'Serial' : 'Front'}`);
-    const loader = document.getElementById(`loading${type === 'serial' ? 'Serial' : 'Front'}`);
+    var area = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
+    var errEl = document.getElementById('error' + (type === 'serial' ? 'Serial' : 'Front'));
+    var loader = document.getElementById('loading' + (type === 'serial' ? 'Serial' : 'Front'));
     if (errEl) { errEl.textContent = message; errEl.classList.remove('d-none'); }
     if (loader) loader.classList.add('d-none');
     if (area) area.classList.remove('d-none');
@@ -125,16 +165,16 @@ function showError(type, message) {
 
 function clearOtherInput(type, source) {
     if (type === 'serial') {
-        const other = document.getElementById(source === 'camera' ? 'photo_serial_gallery' : 'photo_serial_camera');
+        var other = document.getElementById(source === 'camera' ? 'photo_serial_gallery' : 'photo_serial_camera');
         if (other) other.value = '';
     } else {
-        const other = document.getElementById(source === 'camera' ? 'photo_front_gallery' : 'photo_front_camera');
+        var other = document.getElementById(source === 'camera' ? 'photo_front_gallery' : 'photo_front_camera');
         if (other) other.value = '';
     }
 }
 
 async function clearImage(type) {
-    const fileRef = type === 'serial' ? serialFileRef : frontFileRef;
+    var fileRef = type === 'serial' ? serialFileRef : frontFileRef;
     if (type === 'serial') {
         serialFileRef = null;
         if (serialPreviewUrl) { URL.revokeObjectURL(serialPreviewUrl); serialPreviewUrl = null; }
@@ -143,15 +183,15 @@ async function clearImage(type) {
         if (frontPreviewUrl) { URL.revokeObjectURL(frontPreviewUrl); frontPreviewUrl = null; }
     }
 
-    const h = document.getElementById(type === 'serial' ? 'serial_file_ref' : 'front_file_ref');
+    var h = document.getElementById(type === 'serial' ? 'serial_file_ref' : 'front_file_ref');
     if (h) h.remove();
 
-    const cameraInput = document.getElementById(`photo_${type}_camera`);
-    const galleryInput = document.getElementById(`photo_${type}_gallery`);
-    const previewArea = document.getElementById(`preview${type === 'serial' ? 'Serial' : 'Front'}`);
-    const img = document.getElementById(type === 'serial' ? 'imagePreviewSerial' : 'imagePreviewFront');
-    const loader = document.getElementById(`loading${type === 'serial' ? 'Serial' : 'Front'}`);
-    const errEl = document.getElementById(`error${type === 'serial' ? 'Serial' : 'Front'}`);
+    var cameraInput = document.getElementById('photo_' + type + '_camera');
+    var galleryInput = document.getElementById('photo_' + type + '_gallery');
+    var previewArea = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
+    var img = document.getElementById(type === 'serial' ? 'imagePreviewSerial' : 'imagePreviewFront');
+    var loader = document.getElementById('loading' + (type === 'serial' ? 'Serial' : 'Front'));
+    var errEl = document.getElementById('error' + (type === 'serial' ? 'Serial' : 'Front'));
 
     if (cameraInput) cameraInput.value = '';
     if (galleryInput) galleryInput.value = '';

@@ -97,6 +97,7 @@ func (h *Handler) LogbookUploadPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "logbook/upload.html", gin.H{
 		"title": "Upload Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
+		"android": h.cfg.Android,
 	})
 }
 
