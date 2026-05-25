@@ -6,21 +6,16 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 type LogbookRepository struct {
-	db       *database.DB
-	hasFTS5  bool
+	db     *database.DB
+	search *search.Builder
 }
 
 func NewLogbookRepository(db *database.DB) *LogbookRepository {
-	r := &LogbookRepository{db: db}
-	if !db.IsPostgres() {
-		var tbl string
-		db.QueryRow(`SELECT name FROM sqlite_master WHERE type='virtual_table' AND name='logbook_fts'`).Scan(&tbl)
-		r.hasFTS5 = tbl != ""
-	}
-	return r
+	return &LogbookRepository{db: db, search: search.New(db)}
 }
 
 type LogbookFilters struct {
@@ -50,9 +45,9 @@ func (r *LogbookRepository) List(filters LogbookFilters) ([]models.LogbookEntry,
 		args = append(args, filters.EndDate)
 	}
 	if filters.Search != "" {
-		where += ` AND (student_name LIKE ? OR nim LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s)
+		sClause, sArgs := r.search.Where("logbook", filters.Search)
+		where += sClause
+		args = append(args, sArgs...)
 	}
 
 	var total int
@@ -109,14 +104,9 @@ func (r *LogbookRepository) ListCursor(filters LogbookFilters) ([]models.Logbook
 		args = append(args, filters.EndDate)
 	}
 	if filters.Search != "" {
-		s := "%" + filters.Search + "%"
-		if r.db.IsPostgres() || !r.hasFTS5 {
-			where += ` AND (student_name LIKE ? OR nim LIKE ?)`
-			args = append(args, s, s)
-		} else {
-			where += ` AND id IN (SELECT rowid FROM logbook_fts WHERE student_name LIKE ? OR nim LIKE ? OR purpose LIKE ?)`
-			args = append(args, s, s, s)
-		}
+		sClause, sArgs := r.search.Where("logbook", filters.Search)
+		where += sClause
+		args = append(args, sArgs...)
 	}
 
 	if filters.CursorID > 0 {
@@ -283,9 +273,9 @@ func (r *LogbookRepository) Export(filters ExportFilters) ([]models.LogbookEntry
 		args = append(args, filters.EndDate)
 	}
 	if filters.Search != "" {
-		query += ` AND (student_name LIKE ? OR nim LIKE ?)`
-		s := "%" + filters.Search + "%"
-		args = append(args, s, s)
+		sClause, sArgs := r.search.Where("logbook", filters.Search)
+		query += sClause
+		args = append(args, sArgs...)
 	}
 	query += ` ORDER BY date DESC, time_in DESC`
 

@@ -9,6 +9,7 @@ import (
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
 )
 
 // ActivityLogService handles activity logging operations
@@ -17,6 +18,7 @@ type ActivityLogService struct {
 	logChan chan *models.ActivityLog
 	stmt    *sql.Stmt
 	close   chan struct{}
+	search  *search.Builder
 }
 
 // NewActivityLogService creates a new activity log service
@@ -36,6 +38,7 @@ func NewActivityLogService(db *database.DB) *ActivityLogService {
 		logChan: make(chan *models.ActivityLog, 4096),
 		stmt:    stmt,
 		close:   make(chan struct{}),
+		search:  search.New(db),
 	}
 	go s.logWriter()
 	return s
@@ -315,19 +318,19 @@ func (s *ActivityLogService) GetLogsCursor(filters ActivityLogFilters) ([]models
 
 // SearchLogs searches activity logs by keyword
 func (s *ActivityLogService) SearchLogs(keyword string, limit, offset int) ([]models.ActivityLog, int, error) {
-	searchTerm := "%" + keyword + "%"
+	whereClause, whereArgs := s.search.Where("activity_log", keyword)
+
 	var totalCount int
-	if err := s.db.QueryRow(`SELECT COUNT(*) FROM activity_logs WHERE description LIKE ? OR username LIKE ? OR entity_type LIKE ?`,
-		searchTerm, searchTerm, searchTerm).Scan(&totalCount); err != nil {
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM activity_logs WHERE 1=1`+whereClause,
+		whereArgs...).Scan(&totalCount); err != nil {
 		return nil, 0, fmt.Errorf("failed to count search results: %w", err)
 	}
 
+	allArgs := append(whereArgs, limit, offset)
 	rows, err := s.db.Query(`SELECT id, user_id, username, user_role, action, entity_type, entity_id,
 		description, old_values, new_values, created_at, ip_address,
-		user_agent, status, error_message FROM activity_logs
-		WHERE description LIKE ? OR username LIKE ? OR entity_type LIKE ?
-		ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-		searchTerm, searchTerm, searchTerm, limit, offset)
+		user_agent, status, error_message FROM activity_logs WHERE 1=1`+whereClause+`
+		ORDER BY created_at DESC LIMIT ? OFFSET ?`, allArgs...)
 	if err != nil { return nil, 0, fmt.Errorf("failed to search logs: %w", err) }
 	defer rows.Close()
 
