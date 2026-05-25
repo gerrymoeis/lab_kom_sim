@@ -100,8 +100,11 @@ func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, erro
 	base64Image := base64.StdEncoding.EncodeToString(imageData)
 
 	mimeType := "image/jpeg"
-	if strings.HasSuffix(strings.ToLower(imagePath), ".png") {
+	lower := strings.ToLower(imagePath)
+	if strings.HasSuffix(lower, ".png") {
 		mimeType = "image/png"
+	} else if strings.HasSuffix(lower, ".heic") || strings.HasSuffix(lower, ".heif") {
+		mimeType = "image/heic"
 	}
 
 	var responseText string

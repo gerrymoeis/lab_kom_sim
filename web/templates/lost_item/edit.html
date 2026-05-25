@@ -126,7 +126,11 @@
                     </form>
 {{ template "layout/card_close.html" . }}
 
+{{ define "page-scripts" }}
+<script src="/static/vendor/heic-to.js"></script>
 <script>
+let lostItemPreviewUrl = null;
+
 function toggleOwnerFields() {
     var status = document.getElementById('status').value;
     var fields = document.getElementById('ownerFields');
@@ -137,30 +141,37 @@ function toggleOwnerFields() {
     }
 }
 
-function handleLostItemPhotoUpload(input) {
+document.getElementById('photoCamera').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
+document.getElementById('photoGallery').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
+
+async function handleLostItemPhotoUpload(input) {
     var file = input.files[0];
     if (!file) return;
 
+    // Convert HEIC to JPEG for instant local preview
+    var convertedFile = await heicToJpeg(file);
+    if (lostItemPreviewUrl) URL.revokeObjectURL(lostItemPreviewUrl);
+    lostItemPreviewUrl = URL.createObjectURL(convertedFile);
+    document.getElementById('photoPreview').src = lostItemPreviewUrl;
+    document.getElementById('photoPreviewWrapper').style.display = '';
+
+    // Upload to server for processing & storage
     var formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', convertedFile);
     formData.append('type', 'lost_item');
 
-    fetch('/api/upload-image', { method: 'POST', body: formData })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
+    try {
+        var resp = await fetch('/api/upload-image', { method: 'POST', body: formData });
+        var data = await resp.json();
         if (data.success) {
             document.getElementById('photo').value = data.file_ref;
-            document.getElementById('photoPreview').src = data.preview_url;
-            document.getElementById('photoPreviewWrapper').style.display = '';
         } else {
-            alert('Gagal upload foto: ' + data.message);
+            console.warn('Server upload warning:', data.message);
         }
-    })
-    .catch(function() { alert('Gagal upload foto'); });
+    } catch (e) {
+        console.warn('Server upload failed, file saved locally only:', e);
+    }
 }
-
-document.getElementById('photoCamera').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
-document.getElementById('photoGallery').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
 
 function removePhoto() {
     var ref = document.getElementById('photo').value;
@@ -171,6 +182,7 @@ function removePhoto() {
             body: JSON.stringify({ file_ref: ref })
         });
     }
+    if (lostItemPreviewUrl) { URL.revokeObjectURL(lostItemPreviewUrl); lostItemPreviewUrl = null; }
     document.getElementById('photo').value = '';
     document.getElementById('photoCamera').value = '';
     document.getElementById('photoGallery').value = '';
@@ -178,5 +190,6 @@ function removePhoto() {
     document.getElementById('photoPreviewWrapper').style.display = 'none';
 }
 </script>
+{{ end }}
 
 {{ template "layout/footer.html" . }}

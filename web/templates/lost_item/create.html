@@ -82,31 +82,43 @@
                     </form>
 {{ template "layout/card_close.html" . }}
 
+{{ define "page-scripts" }}
+<script src="/static/vendor/heic-to.js"></script>
 <script>
-function handleLostItemPhotoUpload(input) {
-    var file = input.files[0];
-    if (!file) return;
-
-    var formData = new FormData();
-    formData.append('image', file);
-    formData.append('type', 'lost_item');
-
-    fetch('/api/upload-image', { method: 'POST', body: formData })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            document.getElementById('photo').value = data.file_ref;
-            document.getElementById('photoPreview').src = data.preview_url;
-            document.getElementById('photoPreviewWrapper').style.display = '';
-        } else {
-            alert('Gagal upload foto: ' + data.message);
-        }
-    })
-    .catch(function() { alert('Gagal upload foto'); });
-}
+let lostItemPreviewUrl = null;
 
 document.getElementById('photoCamera').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
 document.getElementById('photoGallery').addEventListener('change', function() { handleLostItemPhotoUpload(this); });
+
+async function handleLostItemPhotoUpload(input) {
+    var file = input.files[0];
+    if (!file) return;
+
+    // Convert HEIC to JPEG for instant local preview
+    var convertedFile = await heicToJpeg(file);
+    if (lostItemPreviewUrl) URL.revokeObjectURL(lostItemPreviewUrl);
+    lostItemPreviewUrl = URL.createObjectURL(convertedFile);
+    document.getElementById('photoPreview').src = lostItemPreviewUrl;
+    document.getElementById('photoPreviewWrapper').style.display = '';
+
+    // Upload to server for processing & storage
+    var formData = new FormData();
+    formData.append('image', convertedFile);
+    formData.append('type', 'lost_item');
+
+    try {
+        var resp = await fetch('/api/upload-image', { method: 'POST', body: formData });
+        var data = await resp.json();
+        if (data.success) {
+            document.getElementById('photo').value = data.file_ref;
+        } else {
+            console.warn('Server upload warning:', data.message);
+        }
+    } catch (e) {
+        console.warn('Server upload failed, file saved locally only:', e);
+    }
+}
 </script>
+{{ end }}
 
 {{ template "layout/footer.html" . }}
