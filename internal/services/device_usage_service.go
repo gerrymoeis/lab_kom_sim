@@ -80,49 +80,42 @@ func (s *DeviceUsageService) UpdateUsage(id int, in UpdateUsageInput, actorID in
 	if in.IsAvailable != "no" { in.IsAvailable = "yes" }
 	usageDate := MustParseDate(in.UsageDate)
 
-	tx, err := s.db.Begin()
-	if err != nil { return err }
-	defer tx.Rollback()
-
-	usageTx := s.deviceUsageRepo.WithTx(tx)
-	deviceID, oldQty, oldAvail, err := usageTx.GetDeviceAndQuantity(id)
+	// Read old values via reader (no write lock contention)
+	deviceID, oldQty, oldAvail, err := s.deviceUsageRepo.GetDeviceAndQuantity(id)
 	if err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 
-	if err := usageTx.Update(id, in.UserName, in.UserType, usageDate, in.Quantity, in.IsAvailable, in.Purpose, in.Notes); err != nil {
+	// Update usage record via async write queue (non-blocking, no writer lock)
+	if err := s.deviceUsageRepo.Update(id, in.UserName, in.UserType, usageDate, in.Quantity, in.IsAvailable, in.Purpose, in.Notes); err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 
-	deviceTx := s.deviceRepo.WithTx(tx)
+	// Adjust device quantity based on availability/quantity change
 	switch {
 	case oldAvail != in.IsAvailable:
 		if in.IsAvailable == "yes" {
-			if err := deviceTx.RestoreQuantity(deviceID, in.Quantity); err != nil {
+			if err := s.deviceRepo.RestoreQuantity(deviceID, in.Quantity); err != nil {
 				s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id, map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 				return err
 			}
 		} else {
-			if err := deviceTx.DeductQuantity(deviceID, in.Quantity); err != nil {
+			// Use raw Exec to avoid RowsAffected issue through write queue (returns noopResult)
+			if _, err := s.db.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, in.Quantity, deviceID, in.Quantity); err != nil {
 				s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id, map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 				return err
 			}
 		}
 	case in.Quantity != oldQty:
-		if err := deviceTx.SetQuantity(deviceID, oldQty-in.Quantity); err != nil {
+		delta := oldQty - in.Quantity
+		if err := s.deviceRepo.SetQuantity(deviceID, delta); err != nil {
 			s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id, map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 			return err
 		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-		return err
 	}
 
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
