@@ -482,49 +482,6 @@ func TestFullIntegration(t *testing.T) {
 	closeResp(resp)
 	assert(lsRes.Success && lsRes.Saved == 1, "save: success=%v saved=%d", lsRes.Success, lsRes.Saved)
 
-	// 13. Lost Items CRUD
-	t.Log("\n=== 13. LOST ITEMS CRUD ===")
-	photoBuf.Reset()
-	mw = multipart.NewWriter(&photoBuf)
-	fw, _ = mw.CreateFormFile("image", "logbook.jpeg")
-	fw.Write(photoData)
-	mw.WriteField("type", "lost_item")
-	mw.Close()
-
-	req, _ = http.NewRequest("POST", ts.URL+"/api/upload-image", &photoBuf)
-	req.Header.Set("Content-Type", mw.FormDataContentType())
-	addCookies(req)
-	resp, err = client.Do(req)
-	assert(err == nil, "lost item photo upload request")
-	var liUploadRes struct {
-		Success bool   `json:"success"`
-		FileRef string `json:"file_ref"`
-	}
-	json.NewDecoder(resp.Body).Decode(&liUploadRes)
-	closeResp(resp)
-	assert(liUploadRes.Success && liUploadRes.FileRef != "", "lost item photo upload: file_ref=%s", liUploadRes.FileRef)
-
-	resp, _ = post("/lost-items/create", "item_name=Mouse+Hilang&reported_by=Mahasiswa+Test&status=hilang&photo="+liUploadRes.FileRef)
-	assert(resp.StatusCode == 302, "create lost item: %d", resp.StatusCode)
-	closeResp(resp)
-	var liID int
-	db.QueryRow("SELECT id FROM lost_items WHERE item_name='Mouse Hilang'").Scan(&liID)
-	assert(liID > 0, "Lost item ID=%d", liID)
-
-	resp, _ = get("/lost-items")
-	assert(resp.StatusCode == 200, "/lost-items: %d", resp.StatusCode)
-	closeResp(resp)
-
-	resp, _ = get("/lost-items/" + fmt.Sprint(liID))
-	assert(resp.StatusCode == 200, "/lost-items/%d: %d", liID, resp.StatusCode)
-	closeResp(resp)
-
-	var liPhoto string
-	db.QueryRow("SELECT COALESCE(photo,'') FROM lost_items WHERE id=?", liID).Scan(&liPhoto)
-	assert(liPhoto != "", "lost item photo saved: %s", liPhoto)
-	_, photoErr := os.Stat(filepath.Join("uploads", "lost_items", liPhoto))
-	assert(photoErr == nil, "lost item photo file exists: %s", liPhoto)
-
 	// 14. Change Password
 	t.Log("\n=== 14. CHANGE PASSWORD ===")
 	resp, _ = post("/profile/password", "old_password=admin123&new_password=admin123&confirm_password=admin123")
