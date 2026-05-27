@@ -1,6 +1,5 @@
 {{ template "layout/base.html" . }}
 
-    <!-- Main Content -->
     <div class="container-fluid mt-4">
         <div class="row justify-content-center">
             <div class="col-lg-11">
@@ -11,7 +10,7 @@
                     <div class="card-body">
                         {{ if not .success }}
                         <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle"></i> 
+                            <i class="bi bi-exclamation-triangle"></i>
                             <strong>Perhatian:</strong> {{ .error }}
                             <div class="mt-2">
                                 <details>
@@ -23,20 +22,21 @@
                         {{ end }}
 
                         <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i> 
-                            <strong>Instruksi:</strong> Periksa dan koreksi data di bawah ini jika ada kesalahan OCR. 
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Instruksi:</strong> Periksa dan koreksi data di bawah ini jika ada kesalahan OCR.
                             Anda dapat mengedit langsung di tabel. Klik "Simpan ke Database" untuk menyimpan atau "Export Excel" untuk download.
                         </div>
 
                         <div id="duplicateWarning" class="alert alert-warning d-none">
-                            <i class="bi bi-exclamation-triangle"></i> 
-                            <strong>Peringatan Duplikat:</strong> Terdeteksi entry dengan nama/NIM serupa di tanggal dan jam yang sama. 
-                            Sistem menggunakan deteksi similarity untuk menangkap typo OCR. Periksa dan hapus duplikat sebelum menyimpan.
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Peringatan Duplikat:</strong> Terdeteksi potensi data duplikat (ditandai warna).
+                            Klik <strong>×</strong> pada badge jika data bukan duplikat, atau hapus row yang duplikat.
+                            Tombol simpan akan aktif setelah semua indikasi selesai diverifikasi.
                         </div>
 
                         <form id="previewForm" action="/logbook/save" method="POST">
                             <input type="hidden" name="source_file" value="{{ .source_file }}">
-                            
+
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover" id="previewTable">
                                     <thead class="table-light">
@@ -48,106 +48,110 @@
                                             <th>Keperluan</th>
                                             <th>Jam Masuk <span class="text-danger">*</span></th>
                                             <th>Jam Keluar</th>
+                                            <th style="width: 180px;">Indikasi</th>
                                             <th style="width: 80px;">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="entriesTableBody">
                                         {{ if .entries }}
-                                            {{ range $index, $entry := .entries }}
-                                            <tr>
-                                                <td class="text-center">{{ add $index 1 }}</td>
+                                            {{ range $i, $entry := .entries }}
+                                            {{ $info := index $.dupInfo $i }}
+                                            <tr data-index="{{ $i }}" data-dup-group="{{ with $info }}{{ .GroupID }}{{ end }}" data-dup-type="{{ with $info }}{{ .Type }}{{ end }}"
+                                                class="{{ if $info }}{{ if eq $info.Type "intra-batch" }}table-dup-batch{{ else }}table-dup-db{{ end }}{{ end }}">
+                                                <td class="text-center">{{ add $i 1 }}</td>
                                                 <td>
-                                                    <input type="date" 
-                                                           class="form-control form-control-sm" 
-                                                           name="date[]" 
-                                                           value="{{ $entry.Date }}"
-                                                           required>
+                                                    <input type="date" class="form-control form-control-sm" name="date[]"
+                                                        value="{{ $entry.Date }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="student_name[]" 
-                                                           value="{{ $entry.StudentName }}"
-                                                           required>
+                                                    <input type="text" class="form-control form-control-sm" name="student_name[]"
+                                                        value="{{ $entry.StudentName }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="nim[]" 
-                                                           value="{{ $entry.NIM }}"
-                                                           required>
+                                                    <input type="text" class="form-control form-control-sm" name="nim[]"
+                                                        value="{{ $entry.NIM }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="purpose[]" 
-                                                           value="{{ $entry.Purpose }}">
+                                                    <input type="text" class="form-control form-control-sm" name="purpose[]"
+                                                        value="{{ $entry.Purpose }}">
                                                 </td>
                                                 <td>
-                                                    <input type="time" 
-                                                           class="form-control form-control-sm" 
-                                                           name="time_in[]" 
-                                                           value="{{ $entry.TimeIn }}"
-                                                           required>
+                                                    <input type="time" class="form-control form-control-sm" name="time_in[]"
+                                                        value="{{ $entry.TimeIn }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="time" 
-                                                           class="form-control form-control-sm" 
-                                                           name="time_out[]" 
-                                                           value="{{ $entry.TimeOut }}">
+                                                    <input type="time" class="form-control form-control-sm" name="time_out[]"
+                                                        value="{{ $entry.TimeOut }}">
+                                                </td>
+                                                <td class="text-center dup-cell">
+                                                    {{ if $info }}
+                                                    <span class="badge dup-badge rounded-pill"
+                                                        data-index="{{ $i }}"
+                                                        data-group="{{ $info.GroupID }}"
+                                                        data-type="{{ $info.Type }}">
+                                                        {{ if eq $info.Type "intra-batch" }}
+                                                        🟠 Group {{ $info.GroupID }}
+                                                        {{ else }}
+                                                        🔴 Duplikat DB
+                                                        {{ end }}
+                                                        <button type="button" class="btn-close btn-close-white ms-1 dismiss-dup"
+                                                            style="font-size: 0.6em;" aria-label="Bukan duplikat"
+                                                            title="Bukan duplikat"></button>
+                                                    </span>
+                                                    {{ else }}
+                                                    <span class="text-muted small">-</span>
+                                                    {{ end }}
                                                 </td>
                                                 <td class="text-center">
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-danger" 
-                                                            onclick="deleteRow(this)"
-                                                            title="Hapus baris">
+                                                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteRow(this)"
+                                                        title="Hapus baris">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </td>
                                             </tr>
+                                            {{ if $info }}{{ if eq $info.Type "existing-db" }}
+                                            {{ range $ref := $info.Refs }}
+                                            <tr class="table-dup-db-ref">
+                                                <td class="text-center text-muted small">↳</td>
+                                                <td class="small">{{ $ref.Date }}</td>
+                                                <td class="small">{{ $ref.StudentName }}</td>
+                                                <td class="small">{{ $ref.NIM }}</td>
+                                                <td class="small">{{ $ref.Purpose }}</td>
+                                                <td class="small">{{ $ref.TimeIn }}</td>
+                                                <td class="small">{{ $ref.TimeOut }}</td>
+                                                <td class="text-center small text-muted">
+                                                    <i class="bi bi-arrow-up"></i> Referensi DB
+                                                </td>
+                                                <td class="text-center text-muted small">-</td>
+                                            </tr>
+                                            {{ end }}
+                                            {{ end }}{{ end }}
                                             {{ end }}
                                         {{ else }}
                                             <tr>
                                                 <td class="text-center">1</td>
                                                 <td>
-                                                    <input type="date" 
-                                                           class="form-control form-control-sm" 
-                                                           name="date[]" 
-                                                           required>
+                                                    <input type="date" class="form-control form-control-sm" name="date[]" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="student_name[]" 
-                                                           required>
+                                                    <input type="text" class="form-control form-control-sm" name="student_name[]" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="nim[]" 
-                                                           required>
+                                                    <input type="text" class="form-control form-control-sm" name="nim[]" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="purpose[]">
+                                                    <input type="text" class="form-control form-control-sm" name="purpose[]">
                                                 </td>
                                                 <td>
-                                                    <input type="time" 
-                                                           class="form-control form-control-sm" 
-                                                           name="time_in[]" 
-                                                           required>
+                                                    <input type="time" class="form-control form-control-sm" name="time_in[]" required>
                                                 </td>
                                                 <td>
-                                                    <input type="time" 
-                                                           class="form-control form-control-sm" 
-                                                           name="time_out[]">
+                                                    <input type="time" class="form-control form-control-sm" name="time_out[]">
                                                 </td>
+                                                <td class="text-center text-muted small">-</td>
                                                 <td class="text-center">
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-danger" 
-                                                            onclick="deleteRow(this)"
-                                                            title="Hapus baris">
+                                                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteRow(this)"
+                                                        title="Hapus baris">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </td>
@@ -164,7 +168,7 @@
                             </div>
 
                             <div class="d-flex gap-2 flex-wrap">
-                                <button type="submit" class="btn btn-primary btn-lg">
+                                <button type="submit" class="btn btn-primary btn-lg" id="saveBtn" disabled>
                                     <i class="bi bi-save"></i> Simpan ke Database
                                 </button>
                                 <button type="button" class="btn btn-success btn-lg" onclick="exportExcel()">
@@ -184,166 +188,217 @@
         </div>
     </div>
 
+    <style>
+    .table-dup-batch { background-color: #fff3cd !important; }
+    .table-dup-batch td { border-color: #ffc107; }
+    .table-dup-db { background-color: #f8d7da !important; }
+    .table-dup-db td { border-color: #f5c6cb; }
+    .table-dup-db-ref { background-color: #fce4e4 !important; }
+    .table-dup-db-ref td { border-color: #f5c6cb; color: #666; }
+    .table-dup-db-ref td:first-child { text-align: center; }
+    .dup-badge { font-size: 0.75em; cursor: default; display: inline-flex; align-items: center; gap: 4px; }
+    .dup-badge[data-type="intra-batch"] { background-color: #e6a817; }
+    .dup-badge[data-type="existing-db"] { background-color: #dc3545; }
+    .dismiss-dup { cursor: pointer; padding: 0; border: none; background: none; opacity: 0.8; }
+    .dismiss-dup:hover { opacity: 1; }
+    </style>
+
     <script>
     let rowCounter = {{ if .entries }}{{ len .entries }}{{ else }}1{{ end }};
 
-    // Similarity checking functions (matching backend logic)
-    function countCharDifferences(s1, s2) {
-        s1 = s1.toLowerCase().trim();
-        s2 = s2.toLowerCase().trim();
-        
-        if (s1 === s2) return 0;
-        
-        const len1 = s1.length;
-        const len2 = s2.length;
-        
-        // Levenshtein distance
-        const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
-        
-        for (let i = 0; i <= len1; i++) matrix[i][0] = i;
-        for (let j = 0; j <= len2; j++) matrix[0][j] = j;
-        
-        for (let i = 1; i <= len1; i++) {
-            for (let j = 1; j <= len2; j++) {
-                const cost = s1[i-1] === s2[j-1] ? 0 : 1;
-                matrix[i][j] = Math.min(
-                    matrix[i-1][j] + 1,      // deletion
-                    matrix[i][j-1] + 1,      // insertion
-                    matrix[i-1][j-1] + cost  // substitution
-                );
-            }
-        }
-        
-        return matrix[len1][len2];
-    }
-
-    function areNamesSimilar(name1, name2) {
-        // Config matching backend
-        const config = {
-            maxDiffShortWord: 1,
-            maxDiffLongWord: 2,
-            maxLengthDiff: 2
-        };
-        
-        name1 = name1.toLowerCase().trim();
-        name2 = name2.toLowerCase().trim();
-        
-        if (name1 === name2) return true;
-        
-        // Check length difference
-        const lenDiff = Math.abs(name1.length - name2.length);
-        if (lenDiff > config.maxLengthDiff) return false;
-        
-        // Split into words
-        const words1 = name1.split(/\s+/);
-        const words2 = name2.split(/\s+/);
-        
-        // Must have same number of words
-        if (words1.length !== words2.length) return false;
-        
-        // Compare each word pair
-        for (let i = 0; i < words1.length; i++) {
-            const word1 = words1[i];
-            const word2 = words2[i];
-            
-            if (word1 === word2) continue;
-            
-            const diff = countCharDifferences(word1, word2);
-            const wordLen = Math.max(word1.length, word2.length);
-            const threshold = wordLen <= 5 ? config.maxDiffShortWord : config.maxDiffLongWord;
-            
-            if (diff > threshold) return false;
-        }
-        
-        return true;
-    }
-
-    function areNIMsSimilar(nim1, nim2) {
-        const config = {
-            maxDiffNIM: 1
-        };
-        
-        nim1 = nim1.toUpperCase().trim().replace(/\s/g, '');
-        nim2 = nim2.toUpperCase().trim().replace(/\s/g, '');
-        
-        if (nim1 === nim2) return true;
-        if (nim1.length !== nim2.length) return false;
-        
-        const diff = countCharDifferences(nim1, nim2);
-        return diff <= config.maxDiffNIM;
-    }
-
-    // Check for duplicates on page load
     document.addEventListener('DOMContentLoaded', function() {
-        checkDuplicates();
+        updateSaveButton();
+        const warning = document.getElementById('duplicateWarning');
+        if (document.querySelectorAll('.dup-badge').length > 0) {
+            warning.classList.remove('d-none');
+        }
+    });
+
+    function updateSaveButton() {
+        const saveBtn = document.getElementById('saveBtn');
+        const active = document.querySelectorAll('.dup-badge').length === 0;
+        saveBtn.disabled = !active;
+        saveBtn.title = active ? '' : 'Verifikasi semua indikasi duplikat terlebih dahulu';
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('dismiss-dup')) {
+            const badge = e.target.closest('.dup-badge');
+            const row = badge.closest('tr');
+            const cell = badge.closest('.dup-cell');
+            const rowIdx = row.dataset.index;
+
+            const group = badge.dataset.group;
+            const dupType = badge.dataset.type;
+
+            if (dupType === 'intra-batch') {
+                document.querySelectorAll(`tr[data-dup-group="${group}"]`).forEach(function(r) {
+                    r.classList.remove('table-dup-batch');
+                    const b = r.querySelector('.dup-badge');
+                    if (b) b.remove();
+                    r.querySelector('.dup-cell').innerHTML = '<span class="text-muted small">-</span>';
+                });
+            } else {
+                row.classList.remove('table-dup-db');
+                if (badge) badge.remove();
+                cell.innerHTML = '<span class="text-muted small">-</span>';
+                let next = row.nextElementSibling;
+                while (next && next.classList.contains('table-dup-db-ref')) {
+                    const toRemove = next;
+                    next = next.nextElementSibling;
+                    toRemove.remove();
+                }
+            }
+
+            if (document.querySelectorAll('.dup-badge').length === 0) {
+                document.getElementById('duplicateWarning').classList.add('d-none');
+            }
+            updateSaveButton();
+        }
+    });
+
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('input[name="student_name[]"], input[name="date[]"], input[name="time_in[]"], input[name="nim[]"]')) {
+            checkDuplicates();
+        }
     });
 
     function checkDuplicates() {
         const rows = document.querySelectorAll('#entriesTableBody tr');
         const entries = [];
         let hasDuplicate = false;
-        
-        // Collect all entries
+
         rows.forEach((row, index) => {
+            if (row.classList.contains('table-dup-db-ref')) return;
             const name = row.querySelector('input[name="student_name[]"]').value.trim();
             const nim = row.querySelector('input[name="nim[]"]').value.trim();
             const date = row.querySelector('input[name="date[]"]').value;
             const timeIn = row.querySelector('input[name="time_in[]"]').value;
-            
             entries.push({ index, name, nim, date, timeIn, row });
         });
-        
-        // Clear previous warnings
+
         rows.forEach(row => {
-            row.classList.remove('table-warning');
-            const existingBadge = row.querySelector('.duplicate-badge');
-            if (existingBadge) existingBadge.remove();
+            if (row.classList.contains('table-dup-db-ref')) return;
+            const existingBadge = row.querySelector('.dup-badge');
+            if (!existingBadge || existingBadge.dataset.type !== 'js') {
+                return;
+            }
+            const cell = row.querySelector('.dup-cell');
+            const badge = row.querySelector('.dup-badge');
+            if (badge && badge.dataset.type === 'js') {
+                badge.remove();
+                cell.innerHTML = '<span class="text-muted small">-</span>';
+            }
+            row.classList.remove('table-dup-batch', 'table-dup-db');
         });
-        
-        // Check for duplicates using similarity
+
         for (let i = 0; i < entries.length; i++) {
             for (let j = i + 1; j < entries.length; j++) {
-                // Must have same date and time
-                if (entries[i].date !== entries[j].date || 
-                    entries[i].timeIn !== entries[j].timeIn) {
-                    continue;
-                }
-                
-                // Check name similarity OR NIM similarity
-                const nameSimilar = areNamesSimilar(entries[i].name, entries[j].name);
-                const nimSimilar = areNIMsSimilar(entries[i].nim, entries[j].nim);
-                
-                if (nameSimilar || nimSimilar) {
-                    // Mark both rows as potential duplicates
-                    entries[i].row.classList.add('table-warning');
-                    entries[j].row.classList.add('table-warning');
-                    
-                    // Add warning badge if not exists
-                    if (!entries[i].row.querySelector('.duplicate-badge')) {
-                        const badge = document.createElement('span');
-                        badge.className = 'badge bg-warning text-dark duplicate-badge ms-2';
-                        badge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Possible Duplicate';
-                        entries[i].row.querySelector('td:nth-child(2)').appendChild(badge);
-                    }
-                    if (!entries[j].row.querySelector('.duplicate-badge')) {
-                        const badge = document.createElement('span');
-                        badge.className = 'badge bg-warning text-dark duplicate-badge ms-2';
-                        badge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Possible Duplicate';
-                        entries[j].row.querySelector('td:nth-child(2)').appendChild(badge);
-                    }
-                    
-                    hasDuplicate = true;
+                if (entries[i].date !== entries[j].date) continue;
+                if (entries[i].timeIn !== entries[j].timeIn) continue;
+                const nameSim = areNamesSimilar(entries[i].name, entries[j].name);
+                const nimSim = areNIMsSimilar(entries[i].nim, entries[j].nim);
+                if (nameSim || nimSim) {
+                    [entries[i], entries[j]].forEach(function(entry) {
+                        const row = entry.row;
+                        if (row.querySelector('.dup-badge')) return;
+                        row.classList.add('table-dup-batch');
+                        const cell = row.querySelector('.dup-cell');
+                        cell.innerHTML = `<span class="badge dup-badge rounded-pill" data-type="js" data-group="js">
+                            🟠 Duplikat (JS)
+                            <button type="button" class="btn-close btn-close-white ms-1 dismiss-dup"
+                                style="font-size: 0.6em;" aria-label="Bukan duplikat"></button>
+                        </span>`;
+                        hasDuplicate = true;
+                    });
                 }
             }
         }
-        
-        // Show/hide warning alert
-        const warningAlert = document.getElementById('duplicateWarning');
-        if (hasDuplicate) {
-            warningAlert.classList.remove('d-none');
-        } else {
-            warningAlert.classList.add('d-none');
+
+        updateSaveButton();
+        const warning = document.getElementById('duplicateWarning');
+        if (hasDuplicate || document.querySelectorAll('.dup-badge').length > 0) {
+            warning.classList.remove('d-none');
         }
+    }
+
+    function areNamesSimilar(name1, name2) {
+        return jaroWinkler(name1, name2) >= 0.88;
+    }
+
+    function jaroWinkler(s1, s2) {
+        s1 = (s1 || '').toLowerCase().trim();
+        s2 = (s2 || '').toLowerCase().trim();
+        if (s1 === s2) return 1.0;
+        if (s1.length === 0 || s2.length === 0) return 0.0;
+
+        const matchDist = Math.floor(Math.max(s1.length, s2.length) / 2) - 1;
+        const maxDist = Math.max(matchDist, 0);
+        const matched1 = new Array(s1.length).fill(false);
+        const matched2 = new Array(s2.length).fill(false);
+        let matches = 0;
+        const transPositions = [];
+
+        for (let i = 0; i < s1.length; i++) {
+            const start = Math.max(0, i - maxDist);
+            const end = Math.min(s2.length, i + maxDist + 1);
+            for (let j = start; j < end; j++) {
+                if (matched2[j]) continue;
+                if (s1[i] !== s2[j]) continue;
+                matched1[i] = true;
+                matched2[j] = true;
+                matches++;
+                transPositions.push(j);
+                break;
+            }
+        }
+        if (matches === 0) return 0.0;
+
+        let transpositions = 0;
+        let k = 0;
+        for (let i = 0; i < s1.length; i++) {
+            if (!matched1[i]) continue;
+            while (k < transPositions.length && !matched2[transPositions[k]]) { k++; }
+            if (k < transPositions.length) {
+                if (s1[i] !== s2[transPositions[k]]) transpositions++;
+                k++;
+            }
+        }
+
+        const jaro = (matches / s1.length + matches / s2.length + (matches - transpositions / 2) / matches) / 3.0;
+        let prefix = 0;
+        for (let i = 0; i < Math.min(s1.length, s2.length, 4); i++) {
+            if (s1[i] === s2[i]) prefix++;
+            else break;
+        }
+        return jaro + prefix * 0.1 * (1.0 - jaro);
+    }
+
+    function areNIMsSimilar(nim1, nim2) {
+        nim1 = (nim1 || '').toUpperCase().trim().replace(/\s/g, '');
+        nim2 = (nim2 || '').toUpperCase().trim().replace(/\s/g, '');
+        if (nim1 === nim2) return true;
+        const lenDiff = Math.abs(nim1.length - nim2.length);
+        if (lenDiff > 1) return false;
+        const diff = countCharDifferences(nim1, nim2);
+        return diff <= 2;
+    }
+
+    function countCharDifferences(s1, s2) {
+        s1 = s1.toLowerCase().trim();
+        s2 = s2.toLowerCase().trim();
+        if (s1 === s2) return 0;
+        const len1 = s1.length, len2 = s2.length;
+        const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
+        for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+        for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+        for (let i = 1; i <= len1; i++) {
+            for (let j = 1; j <= len2; j++) {
+                const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+            }
+        }
+        return matrix[len1][len2];
     }
 
     function addRow() {
@@ -352,48 +407,14 @@
         const newRow = document.createElement('tr');
         newRow.innerHTML = `
             <td class="text-center">${rowCounter}</td>
-            <td>
-                <input type="date" 
-                       class="form-control form-control-sm" 
-                       name="date[]" 
-                       required>
-            </td>
-            <td>
-                <input type="text" 
-                       class="form-control form-control-sm" 
-                       name="student_name[]" 
-                       required>
-            </td>
-            <td>
-                <input type="text" 
-                       class="form-control form-control-sm" 
-                       name="nim[]" 
-                       required>
-            </td>
-            <td>
-                <input type="text" 
-                       class="form-control form-control-sm" 
-                       name="purpose[]">
-            </td>
-            <td>
-                <input type="time" 
-                       class="form-control form-control-sm" 
-                       name="time_in[]" 
-                       required>
-            </td>
-            <td>
-                <input type="time" 
-                       class="form-control form-control-sm" 
-                       name="time_out[]">
-            </td>
-            <td class="text-center">
-                <button type="button" 
-                        class="btn btn-sm btn-danger" 
-                        onclick="deleteRow(this)"
-                        title="Hapus baris">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
+            <td><input type="date" class="form-control form-control-sm" name="date[]" required></td>
+            <td><input type="text" class="form-control form-control-sm" name="student_name[]" required></td>
+            <td><input type="text" class="form-control form-control-sm" name="nim[]" required></td>
+            <td><input type="text" class="form-control form-control-sm" name="purpose[]"></td>
+            <td><input type="time" class="form-control form-control-sm" name="time_in[]" required></td>
+            <td><input type="time" class="form-control form-control-sm" name="time_out[]"></td>
+            <td class="text-center text-muted small">-</td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="deleteRow(this)" title="Hapus baris"><i class="bi bi-trash"></i></button></td>
         `;
         tbody.appendChild(newRow);
         updateRowNumbers();
@@ -402,49 +423,40 @@
     function deleteRow(btn) {
         const row = btn.closest('tr');
         const tbody = document.getElementById('entriesTableBody');
-        
-        // Don't delete if it's the last row
         if (tbody.children.length <= 1) {
             alert('Minimal harus ada 1 baris');
             return;
         }
-        
+        let next = row.nextElementSibling;
+        while (next && next.classList.contains('table-dup-db-ref')) {
+            const toRemove = next;
+            next = next.nextElementSibling;
+            toRemove.remove();
+        }
         row.remove();
         updateRowNumbers();
-        checkDuplicates(); // Re-check after deletion
+        updateSaveButton();
     }
 
     function updateRowNumbers() {
         const rows = document.querySelectorAll('#entriesTableBody tr');
-        rows.forEach((row, index) => {
-            row.querySelector('td:first-child').textContent = index + 1;
+        let idx = 1;
+        rows.forEach(row => {
+            if (row.classList.contains('table-dup-db-ref')) return;
+            row.querySelector('td:first-child').textContent = idx++;
         });
     }
 
-    // Add event listeners to inputs to check duplicates on change
-    document.addEventListener('input', function(e) {
-        if (e.target.matches('input[name="student_name[]"], input[name="date[]"], input[name="time_in[]"]')) {
-            checkDuplicates();
-        }
-    });
-
     function exportExcel() {
-        // Create form data
         const form = document.getElementById('previewForm');
         const formData = new FormData(form);
-        
-        // Convert to URL params for GET request
         const params = new URLSearchParams();
-        
-        // Get all entries
         const dates = formData.getAll('date[]');
         const names = formData.getAll('student_name[]');
         const nims = formData.getAll('nim[]');
         const timeIns = formData.getAll('time_in[]');
         const timeOuts = formData.getAll('time_out[]');
         const purposes = formData.getAll('purpose[]');
-        
-        // Build query string
         for (let i = 0; i < dates.length; i++) {
             params.append('date[]', dates[i]);
             params.append('student_name[]', names[i]);
@@ -454,42 +466,33 @@
             params.append('purpose[]', purposes[i] || '');
         }
         params.append('source_file', formData.get('source_file'));
-        
-        // Open in new window to trigger download
         window.open('/logbook/export-preview?' + params.toString(), '_blank');
     }
 
-    // Handle form submission with AJAX
     document.getElementById('previewForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
         const formData = new FormData(this);
-        
-        // Show loading
         const submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn.disabled) return;
         const originalText = submitBtn.innerHTML;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...';
-        
-        fetch('/logbook/save', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                window.location.href = '/logbook';
-            } else {
-                alert('Error: ' + (data.error || 'Gagal menyimpan data'));
+        fetch('/logbook/save', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.href = '/logbook';
+                } else {
+                    alert('Error: ' + (data.error || 'Gagal menyimpan data'));
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
-            }
-        })
-        .catch(error => {
-            alert('Error: ' + error.message);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        });
+            });
     });
     </script>{{ template "layout/footer.html" . }}
