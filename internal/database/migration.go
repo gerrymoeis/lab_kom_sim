@@ -356,16 +356,6 @@ func runMigrations(db *DB, isPostgres bool) error {
 		return fmt.Errorf("failed to create unique index: %w", err)
 	}
 
-	// Cleanup deprecated lost_items table
-	for _, idx := range []string{
-		`DROP INDEX IF EXISTS idx_lost_items_status`,
-		`DROP INDEX IF EXISTS idx_lost_items_reported_date`,
-		`DROP INDEX IF EXISTS idx_lost_items_status_date`,
-	} {
-		db.Exec(idx)
-	}
-	db.Exec(`DROP TABLE IF EXISTS lost_items`)
-
 	if !isPostgres {
 		hasFTS := true
 		if _, err := db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS logbook_fts USING fts5(
