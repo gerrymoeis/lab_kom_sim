@@ -32,10 +32,20 @@
                                 name="label"
                                 placeholder="Contoh: PC-Dosen, PC-Laboran, PC-CCTV"
                             />
-                            <small class="text-muted">Opsional. Jika diisi, akan ditampilkan sebagai nama PC</small>
+                            <small class="text-muted">Kosongkan jika tidak perlu. Jika diisi akan tampil sebagai nama PC</small>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label for="column" class="form-label">Baris *</label>
+                            <label for="placement" class="form-label">Penempatan *</label>
+                            <select class="form-select" id="placement" name="placement" required onchange="togglePlacementFields()">
+                                <option value="dipakai">Dipakai (Terpasang)</option>
+                                <option value="cadangan">Cadangan (Belum Terpasang)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row" id="positionFields">
+                        <div class="col-md-4 mb-3">
+                            <label for="column" class="form-label">Baris</label>
                             <input
                                 type="number"
                                 class="form-control"
@@ -43,14 +53,11 @@
                                 name="column"
                                 min="1"
                                 max="8"
-                                required
                             />
                             <small class="text-muted">1-8</small>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label for="row" class="form-label"
-                                >Kolom *</label
-                            >
+                            <label for="row" class="form-label">Kolom</label>
                             <input
                                 type="number"
                                 class="form-control"
@@ -58,14 +65,13 @@
                                 name="row"
                                 min="1"
                                 max="5"
-                                required
                             />
                             <small class="text-muted">1-5</small>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="status" class="form-label">Status *</label>
+                        <label for="status" class="form-label">Kondisi *</label>
                         <select
                             class="form-select"
                             id="status"
@@ -75,7 +81,6 @@
                             <option value="normal">Normal</option>
                             <option value="warning">Warning</option>
                             <option value="broken">Rusak</option>
-                            <option value="inactive">Inactive</option>
                         </select>
                     </div>
 
@@ -85,14 +90,14 @@
                     </h6>
 
                     <div class="mb-3">
-                        <label for="device_type" class="form-label"
-                            >Jenis Data *</label
+                        <label for="pc_type" class="form-label"
+                            >Jenis PC *</label
                         >
                         <input
                             type="text"
                             class="form-control"
-                            id="device_type"
-                            name="device_type"
+                            id="pc_type"
+                            name="pc_type"
                             value="PC All-in-one"
                             required
                         />
@@ -211,7 +216,7 @@
 
                     <hr class="my-4" />
                     <h6 class="text-primary mb-3">
-                        <i class="bi bi-camera"></i> Dokumentasi Foto (Optional)
+                        <i class="bi bi-camera"></i> Dokumentasi Foto
                     </h6>
 
                     <!-- Photo Serial Number -->
@@ -353,23 +358,6 @@
                         ></textarea>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="action_notes" class="form-label"
-                            >Catatan Tindakan</label
-                        >
-                        <textarea
-                            class="form-control"
-                            id="action_notes"
-                            name="action_notes"
-                            rows="2"
-                            placeholder="Catatan tindakan perbaikan atau maintenance (jika ada)"
-                        ></textarea>
-                        <small class="text-muted"
-                            >Optional: Catat tindakan perbaikan, upgrade, atau
-                            maintenance yang dilakukan</small
-                        >
-                    </div>
-
                     <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save"></i> Simpan
@@ -382,6 +370,18 @@
 {{ template "layout/card_close.html" . }}
 
 <script>
+function togglePlacementFields() {
+    const placement = document.getElementById('placement').value;
+    const fields = document.getElementById('positionFields');
+    if (placement === 'cadangan') {
+        fields.style.display = 'none';
+        document.getElementById('row').value = 0;
+        document.getElementById('column').value = 0;
+    } else {
+        fields.style.display = 'flex';
+    }
+}
+document.addEventListener('DOMContentLoaded', togglePlacementFields);
 window.ANDROID_MODE = {{ .android }};
 </script>
 {{ if .android }}

@@ -15,25 +15,36 @@
                             <div class="col-md-4">
                                 <label class="form-label">Label Tampilan</label>
                                 <input type="text" class="form-control" id="label" name="label" value="{{ .pc.Label }}" placeholder="Kosongkan jika tidak perlu">
-                                <small class="text-muted">Opsional. Contoh: PC-Dosen, PC-Laboran, PC-CCTV</small>
+                                <small class="text-muted">Kosongkan jika tidak perlu. Jika diisi akan tampil sebagai nama PC</small>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Baris</label>
-                                <input type="text" class="form-control" value="{{ .pc.Column }}" disabled>
+                                <label for="placement" class="form-label">Penempatan *</label>
+                                <select class="form-select" id="placement" name="placement" required onchange="togglePlacementFields()">
+                                    <option value="dipakai" {{ if eq .pc.Placement "dipakai" }}selected{{ end }}>Dipakai (Terpasang)</option>
+                                    <option value="cadangan" {{ if eq .pc.Placement "cadangan" }}selected{{ end }}>Cadangan (Belum Terpasang)</option>
+                                </select>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Kolom</label>
-                                <input type="text" class="form-control" value="{{ .pc.Row }}" disabled>
+                        </div>
+
+                        <div class="row" id="positionFields">
+                            <div class="col-md-4 mb-3">
+                                <label for="column" class="form-label">Baris</label>
+                                <input type="number" class="form-control" id="column" name="column" min="1" max="8" value="{{ .pc.Column }}">
+                                <small class="text-muted">1-8</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="row" class="form-label">Kolom</label>
+                                <input type="number" class="form-control" id="row" name="row" min="1" max="5" value="{{ .pc.Row }}">
+                                <small class="text-muted">1-5</small>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="status" class="form-label">Status *</label>
+                            <label for="status" class="form-label">Kondisi *</label>
                             <select class="form-select" id="status" name="status" required>
                                 <option value="normal" {{ if eq .pc.Status "normal" }}selected{{ end }}>Normal</option>
                                 <option value="warning" {{ if eq .pc.Status "warning" }}selected{{ end }}>Warning</option>
                                 <option value="broken" {{ if eq .pc.Status "broken" }}selected{{ end }}>Rusak</option>
-                                <option value="inactive" {{ if eq .pc.Status "inactive" }}selected{{ end }}>Inactive</option>
                             </select>
                         </div>
 
@@ -41,8 +52,8 @@
                         <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Informasi Perangkat</h6>
 
                         <div class="mb-3">
-                            <label for="device_type" class="form-label">Jenis Data *</label>
-                            <input type="text" class="form-control" id="device_type" name="device_type" value="{{ .pc.DeviceType }}" required>
+                            <label for="pc_type" class="form-label">Jenis PC *</label>
+                            <input type="text" class="form-control" id="pc_type" name="pc_type" value="{{ .pc.PCType }}" required>
                         </div>
 
                         <div class="mb-3">
@@ -212,12 +223,6 @@
                         <div class="mb-3">
                             <label for="notes" class="form-label">Catatan</label>
                             <textarea class="form-control" id="notes" name="notes" rows="3">{{ .pc.Notes }}</textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="action_notes" class="form-label">Catatan Tindakan</label>
-                            <textarea class="form-control" id="action_notes" name="action_notes" rows="2">{{ .pc.ActionNotes }}</textarea>
-                            <small class="text-muted">Optional: Catat tindakan perbaikan, upgrade, atau maintenance yang dilakukan</small>
                         </div>
 
                         <hr class="my-4">
@@ -421,6 +426,19 @@ function updateNumbers() {
         row.querySelector('td:first-child').textContent = i + 1;
     });
 }
+
+function togglePlacementFields() {
+    const placement = document.getElementById('placement').value;
+    const fields = document.getElementById('positionFields');
+    if (placement === 'cadangan') {
+        fields.style.display = 'none';
+        document.getElementById('row').value = 0;
+        document.getElementById('column').value = 0;
+    } else {
+        fields.style.display = 'flex';
+    }
+}
+document.addEventListener('DOMContentLoaded', togglePlacementFields);
 </script>
 
 <script>

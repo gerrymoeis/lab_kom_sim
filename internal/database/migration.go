@@ -56,9 +56,9 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE TABLE IF NOT EXISTS pcs (
 			id {{PK}},
 			pc_number INTEGER UNIQUE NOT NULL CHECK(pc_number >= 1 AND pc_number <= 43),
-			{{ROW}} INTEGER NOT NULL CHECK({{ROW}} >= 0 AND {{ROW}} <= 5),
-			{{COL}} INTEGER NOT NULL CHECK({{COL}} >= 0 AND {{COL}} <= 8),
-			status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken', 'inactive')),
+			{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0 AND {{ROW}} <= 5),
+			{{COL}} INTEGER NOT NULL DEFAULT 0 CHECK({{COL}} >= 0 AND {{COL}} <= 8),
+			status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken')),
 			processor TEXT,
 			ram TEXT,
 			storage TEXT,
@@ -67,16 +67,14 @@ func runMigrations(db *DB, isPostgres bool) error {
 			last_checked {{TS}},
 			asset_id TEXT,
 			serial_number TEXT,
-			brand TEXT,
-			model TEXT,
 			operating_system TEXT,
-			physical_condition TEXT DEFAULT 'baik' CHECK(physical_condition IN ('baik', 'cukup', 'rusak')),
-			device_type TEXT NOT NULL DEFAULT 'PC All-in-one',
+			pc_type TEXT NOT NULL DEFAULT 'PC All-in-one',
 			brand_model TEXT NOT NULL DEFAULT 'Axioo Mypc One Pro K7-24 (16N9)',
 			accessories TEXT NOT NULL DEFAULT 'Keyboard & Mouse Axioo (Wired Set)',
-			action_notes TEXT,
 			photo_serial TEXT,
 			photo_front TEXT,
+			label TEXT DEFAULT '',
+			placement TEXT NOT NULL DEFAULT 'dipakai' CHECK(placement IN ('dipakai', 'cadangan')),
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
 			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
 		)`,
@@ -302,14 +300,14 @@ func runMigrations(db *DB, isPostgres bool) error {
 
 	// ALTER TABLE for columns that might be missing on existing databases
 	pcsExtra := map[string]string{
-		"asset_id": "TEXT", "serial_number": "TEXT", "brand": "TEXT", "model": "TEXT",
+		"asset_id": "TEXT", "serial_number": "TEXT",
 		"operating_system": "TEXT",
-		"physical_condition": "TEXT DEFAULT 'baik' CHECK(physical_condition IN ('baik', 'cukup', 'rusak'))",
-		"device_type": "TEXT NOT NULL DEFAULT 'PC All-in-one'",
+		"pc_type": "TEXT NOT NULL DEFAULT 'PC All-in-one'",
 		"brand_model": "TEXT NOT NULL DEFAULT 'Axioo Mypc One Pro K7-24 (16N9)'",
 		"accessories": "TEXT NOT NULL DEFAULT 'Keyboard & Mouse Axioo (Wired Set)'",
 		"label": "TEXT DEFAULT ''",
-		"action_notes": "TEXT", "photo_serial": "TEXT", "photo_front": "TEXT",
+		"placement": "TEXT NOT NULL DEFAULT 'dipakai' CHECK(placement IN ('dipakai', 'cadangan'))",
+		"photo_serial": "TEXT", "photo_front": "TEXT",
 	}
 	devicesExtra := map[string]string{
 		"device_type_id": "INTEGER", "asset_code": "TEXT", "model": "TEXT",
@@ -334,6 +332,35 @@ func runMigrations(db *DB, isPostgres bool) error {
 		if !exists {
 			if _, err := db.Exec(fmt.Sprintf("ALTER TABLE devices ADD COLUMN %s %s", colName, colDef)); err != nil {
 				return fmt.Errorf("failed to add devices.%s: %w", colName, err)
+			}
+		}
+	}
+
+	// PC schema migration: status (inactive removed), placement added, device_type→pc_type
+	if colExists, _ := d.columnExists(db, "pcs", "status"); colExists {
+		// Step 1: Add placement column if missing
+		if placedExists, _ := d.columnExists(db, "pcs", "placement"); !placedExists {
+			db.Exec(`ALTER TABLE pcs ADD COLUMN placement TEXT NOT NULL DEFAULT 'dipakai' CHECK(placement IN ('dipakai', 'cadangan'))`)
+		}
+		// Step 2: Migrate old inactive PCs → cadangan
+		db.Exec(`UPDATE pcs SET placement='cadangan', status='normal' WHERE status='inactive'`)
+		db.Exec(`UPDATE pcs SET placement='dipakai' WHERE placement IS NULL OR placement=''`)
+
+		// Step 3: Rename device_type → pc_type (if column exists and not already renamed)
+		if dtExists, _ := d.columnExists(db, "pcs", "device_type"); dtExists {
+			if ptExists, _ := d.columnExists(db, "pcs", "pc_type"); !ptExists {
+				db.Exec(`ALTER TABLE pcs RENAME COLUMN device_type TO pc_type`)
+				db.Exec(`DROP INDEX IF EXISTS idx_pcs_device_type`)
+			}
+		}
+		db.Exec(`CREATE INDEX IF NOT EXISTS idx_pcs_pc_type ON pcs(pc_type)`)
+
+		// Step 4: Drop deprecated columns (best effort — may fail on older SQLite)
+		for _, depCol := range []string{"physical_condition", "brand", "model", "action_notes"} {
+			if cExists, _ := d.columnExists(db, "pcs", depCol); cExists {
+				if _, err := db.Exec(fmt.Sprintf("ALTER TABLE pcs DROP COLUMN %s", depCol)); err != nil {
+					log.Printf("WARN: could not drop pcs.%s (%v), skipping", depCol, err)
+				}
 			}
 		}
 	}

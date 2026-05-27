@@ -7,18 +7,20 @@ import (
 
 type CreatePCInput struct {
 	PCNumber, Row, Column               int
-	Status, Processor, RAM, Storage     string
+	Status, Placement                   string
+	Processor, RAM, Storage             string
 	SerialNumber, OperatingSystem       string
-	DeviceType, BrandModel, Accessories string
+	PCType, BrandModel, Accessories     string
 	PhotoSerial, PhotoFront             string
 	Label                               string
 }
 
 type UpdatePCInput struct {
-	Status, DeviceType, SerialNumber    string
-	BrandModel, Accessories             string
+	Status, Placement                   string
+	SerialNumber                        string
+	PCType, BrandModel, Accessories     string
 	Processor, RAM, Storage             string
-	OperatingSystem, Notes, ActionNotes string
+	OperatingSystem, Notes              string
 	PhotoSerial, PhotoFront             string
 	RequiredSW, OtherSW                 []int
 	Label                               string
@@ -59,15 +61,16 @@ func (s *PCService) ExportAll() ([]models.PC, error) {
 
 func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
 	if in.Status == "" { in.Status = "normal" }
-	if in.DeviceType == "" { in.DeviceType = "PC All-in-one" }
+	if in.Placement == "" { in.Placement = "dipakai" }
+	if in.PCType == "" { in.PCType = "PC All-in-one" }
 	if in.BrandModel == "" { in.BrandModel = "Axioo Mypc One Pro K7-24 (16N9)" }
 	if in.Accessories == "" { in.Accessories = "Keyboard & Mouse Axioo (Wired Set)" }
 	if in.Processor == "" { in.Processor = "Intel Core i7" }
 	if in.RAM == "" { in.RAM = "16GB DDR4" }
 	if in.Storage == "" { in.Storage = "1TB NVMe" }
 
-	result, err := s.pcRepo.Create(in.PCNumber, in.Row, in.Column, in.Status, in.Processor, in.RAM, in.Storage,
-		in.SerialNumber, in.OperatingSystem, in.DeviceType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label)
+	result, err := s.pcRepo.Create(in.PCNumber, in.Row, in.Column, in.Status, in.Placement, in.Processor, in.RAM, in.Storage,
+		in.SerialNumber, in.OperatingSystem, in.PCType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label)
 	if err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "pc", 0,
 			map[string]any{"pc_number": in.PCNumber, "serial_number": in.SerialNumber},
@@ -85,8 +88,8 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 }
 
 func (s *PCService) UpdatePC(pcNumber int, in UpdatePCInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	err := s.pcRepo.Update(pcNumber, in.Status, in.DeviceType, in.SerialNumber, in.BrandModel, in.Accessories,
-		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.ActionNotes, in.PhotoSerial, in.PhotoFront, in.Label)
+	err := s.pcRepo.Update(pcNumber, in.Status, in.Placement, in.PCType, in.SerialNumber, in.BrandModel, in.Accessories,
+		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.PhotoSerial, in.PhotoFront, in.Label)
 	if err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcNumber,
 			map[string]any{"pc_number": pcNumber}, nil, ipAddress, userAgent, err.Error())
@@ -94,7 +97,7 @@ func (s *PCService) UpdatePC(pcNumber int, in UpdatePCInput, actorID int, actorU
 	}
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcNumber,
 		map[string]any{"pc_number": pcNumber},
-		map[string]any{"status": in.Status, "operating_system": in.OperatingSystem},
+		map[string]any{"status": in.Status, "placement": in.Placement, "operating_system": in.OperatingSystem},
 		ipAddress, userAgent)
 	return nil
 }

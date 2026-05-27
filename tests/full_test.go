@@ -164,7 +164,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(uploadRes.Success && uploadRes.FileRef != "", "upload image: file_ref=%s", uploadRes.FileRef)
 
 	resp, _ = post("/pc/1/edit",
-		"status=normal&serial_number=SN001&operating_system=Win11&device_type=PC&brand_model=Dell&accessories=KB&processor=i7&ram=16GB&storage=512GB&notes=&action_notes=&serial_file_ref="+uploadRes.FileRef)
+		"status=normal&placement=dipakai&serial_number=SN001&operating_system=Win11&pc_type=PC&brand_model=Dell&accessories=KB&processor=i7&ram=16GB&storage=512GB&notes=&serial_file_ref="+uploadRes.FileRef)
 	assert(resp.StatusCode == 302, "PC edit with photo: %d", resp.StatusCode)
 	closeResp(resp)
 
@@ -176,8 +176,9 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 2c. PC CREATE + DELETE ===")
 	pcCreateData := url.Values{
 		"pc_number": {"40"}, "row": {"5"}, "column": {"8"},
-		"status": {"normal"}, "serial_number": {"SN-TEST40"},
-		"operating_system": {"Win11"}, "device_type": {"PC"},
+		"status": {"normal"}, "placement": {"dipakai"},
+		"serial_number": {"SN-TEST40"},
+		"operating_system": {"Win11"}, "pc_type": {"PC"},
 		"brand_model": {"Dell"}, "accessories": {"KB"},
 		"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},
 	}.Encode()

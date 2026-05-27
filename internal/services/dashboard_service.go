@@ -9,6 +9,7 @@ type DashboardData struct {
 	PCs           []models.PC
 	Grid          [][]models.PC
 	StatusCounts  map[string]int
+	SpareCount    int
 	DeviceCount   int
 	SoftwareCount int
 	SpecialPCs    []models.PC
@@ -32,8 +33,13 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 	}
 
 	statusCounts := make(map[string]int)
+	var spareCount int
 	for _, pc := range pcs {
-		statusCounts[pc.Status]++
+		if pc.Placement == "cadangan" {
+			spareCount++
+		} else {
+			statusCounts[pc.Status]++
+		}
 	}
 
 	grid := make([][]models.PC, 5)
@@ -45,6 +51,9 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 	data := &DashboardData{}
 
 	for _, pc := range pcs {
+		if pc.Placement == "cadangan" {
+			continue
+		}
 		if pc.Row >= 1 && pc.Row <= 5 && pc.Column >= 1 && pc.Column <= 8 {
 			grid[pc.Row-1][pc.Column-1] = pc
 		} else if pc.Label != "" {
@@ -64,6 +73,7 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 	data.PCs = pcs
 	data.Grid = grid
 	data.StatusCounts = statusCounts
+	data.SpareCount = spareCount
 	data.DeviceCount = deviceCount
 	data.SoftwareCount = softwareCount
 	data.SpecialPCs = specialPCs
