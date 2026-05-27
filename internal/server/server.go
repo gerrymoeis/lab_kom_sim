@@ -88,7 +88,6 @@ func loadNavItems(currentPage, role string) []NavItem {
 	}
 	if role == "admin" {
 		items = append(items,
-			NavItem{"lost_items", "bi-question-circle", "Barang Hilang", "/lost-items"},
 			NavItem{"users", "bi-people", "Users", "/admin/users"},
 			NavItem{"activity_logs", "bi-clock-history", "Activity Logs", "/admin/activity-logs"},
 		)
@@ -238,15 +237,6 @@ func SetupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 		protected.POST("/device-usages/:id/edit", h.DeviceUsageEdit)
 		protected.POST("/device-usages/:id/delete", h.DeviceUsageDelete)
 		protected.POST("/device-usages/:id/availability", h.DeviceUsageUpdateAvailability)
-
-		protected.GET("/lost-items", h.LostItemList)
-		protected.GET("/lost-items/create", h.LostItemCreatePage)
-		protected.POST("/lost-items/create", h.LostItemCreate)
-		protected.GET("/lost-items/:id", h.LostItemDetail)
-		protected.GET("/lost-items/:id/edit", h.LostItemEditPage)
-		protected.POST("/lost-items/:id/edit", h.LostItemEdit)
-		protected.POST("/lost-items/:id/delete", h.LostItemDelete)
-
 		protected.GET("/schedules", h.ScheduleList)
 		protected.GET("/schedules/create", h.ScheduleCreatePage)
 		protected.POST("/schedules/create", h.ScheduleCreate)

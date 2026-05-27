@@ -33,7 +33,7 @@ func newInsertTracker(db *DB) *insertTracker {
 	tables := []string{
 		"users", "pcs", "device_types", "devices",
 		"device_loans", "device_usages", "software_catalog",
-		"course_schedules", "logbook_entries", "lost_items",
+		"course_schedules", "logbook_entries",
 	}
 	for _, table := range tables {
 		var maxID sql.NullInt64
