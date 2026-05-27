@@ -18,6 +18,11 @@ import (
 	"inventaris-lab-kom/internal/database"
 )
 
+// CUDNotifier is notified on every Create/Update/Delete database operation.
+type CUDNotifier interface {
+	NotifyChange()
+}
+
 type BackupService struct {
 	db         *database.DB
 	cfg        config.BackupConfig
@@ -27,6 +32,7 @@ type BackupService struct {
 	lastSize   int64
 	stop       chan struct{}
 	done       chan struct{}
+	trigger    chan struct{}
 }
 
 func NewBackupService(db *database.DB, cfg config.BackupConfig) *BackupService {
@@ -35,6 +41,18 @@ func NewBackupService(db *database.DB, cfg config.BackupConfig) *BackupService {
 		cfg:  cfg,
 		stop: make(chan struct{}),
 		done: make(chan struct{}),
+	}
+}
+
+// NotifyChange implements CUDNotifier. Called on every CUD operation.
+// Triggers a debounced backup (waits cfg.Interval seconds of inactivity).
+func (s *BackupService) NotifyChange() {
+	if s.trigger == nil {
+		return
+	}
+	select {
+	case s.trigger <- struct{}{}:
+	default:
 	}
 }
 
@@ -52,23 +70,48 @@ func (s *BackupService) Start() {
 			log.Printf("Backup: failed to create directory %s: %v", d, err)
 		}
 	}
-	log.Printf("Backup: started — interval=%ds dirs=%v retention=%d compress=%v",
+	s.trigger = make(chan struct{}, 1)
+	log.Printf("Backup: started — debounce=%ds dirs=%v retention=%d compress=%v",
 		s.cfg.Interval, s.cfg.Dir, s.cfg.Retention, s.cfg.Compress)
 
 	go func() {
 		defer close(s.done)
-		s.backup()
-		ticker := time.NewTicker(time.Duration(s.cfg.Interval) * time.Second)
-		defer ticker.Stop()
 		for {
 			select {
-			case <-ticker.C:
-				s.backup()
 			case <-s.stop:
 				return
+			case <-s.trigger:
+				s.debounceLoop()
 			}
 		}
 	}()
+}
+
+// debounceLoop waits for cfg.Interval seconds of inactivity before running a backup.
+func (s *BackupService) debounceLoop() {
+	for {
+		timer := time.NewTimer(time.Duration(s.cfg.Interval) * time.Second)
+		select {
+		case <-timer.C:
+			timer.Stop()
+			s.backup()
+			return
+		case <-s.trigger:
+			timer.Stop()
+			select {
+			case <-timer.C:
+			default:
+			}
+			continue
+		case <-s.stop:
+			timer.Stop()
+			select {
+			case <-timer.C:
+			default:
+			}
+			return
+		}
+	}
 }
 
 func (s *BackupService) Stop() {
