@@ -172,7 +172,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 			id {{PK}},
 			date DATE NOT NULL,
 			student_name TEXT NOT NULL,
-			nim TEXT NOT NULL,
+			nim TEXT NOT NULL CHECK(length(nim) = 11),
 			time_in TEXT NOT NULL,
 			time_out TEXT,
 			purpose TEXT,
@@ -242,7 +242,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE INDEX IF NOT EXISTS idx_device_usages_device_id ON device_usages(device_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_usages_usage_date ON device_usages(usage_date)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_asset_id ON pcs(asset_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_pcs_device_type ON pcs(device_type)`,
+		`CREATE INDEX IF NOT EXISTS idx_pcs_pc_type ON pcs(pc_type)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_brand_model ON pcs(brand_model)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_serial_number ON pcs(serial_number)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_student_name ON logbook_entries(student_name)`,
@@ -346,6 +346,9 @@ func runMigrations(db *DB, isPostgres bool) error {
 
 	// Drop old unique index if exists
 	db.Exec(`DROP INDEX IF EXISTS idx_logbook_unique`)
+
+	// Cleanup NIM: ensure existing data follows 11-digit rule
+	db.Exec(`UPDATE logbook_entries SET nim = '' WHERE length(nim) != 11`)
 
 	// Cleanup duplicates
 	if res, err := db.Exec(`DELETE FROM logbook_entries WHERE id NOT IN (SELECT MIN(id) FROM logbook_entries GROUP BY date, LOWER(TRIM(student_name)), time_in)`); err == nil {

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"inventaris-lab-kom/internal/config"
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
 
@@ -46,6 +48,25 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		return
 	}
 
+	dupFlags := make(map[int]bool)
+	for i := 0; i < len(entries); i++ {
+		if dupFlags[entries[i].ID] {
+			continue
+		}
+		for j := i + 1; j < len(entries); j++ {
+			if !entries[i].Date.Equal(entries[j].Date) {
+				continue
+			}
+			if services.IsDuplicateEntry(entries[i].Date, entries[j].Date,
+				entries[i].TimeIn, entries[j].TimeIn,
+				entries[i].StudentName, entries[j].StudentName,
+				entries[i].NIM, entries[j].NIM, config.DefaultDuplicateConfig) {
+				dupFlags[entries[i].ID] = true
+				dupFlags[entries[j].ID] = true
+			}
+		}
+	}
+
 	totalPages := (total + pageSize - 1) / pageSize
 	startRow := (page-1)*pageSize + 1
 
@@ -60,6 +81,7 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		"title": "Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
 		"entries":    entries,
+		"dupFlags":   dupFlags,
 		"total":      total,
 		"page":       page,
 		"totalPages": totalPages,
@@ -157,11 +179,34 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 
 	h.activityLogService.LogUpload(userID, username, role, "logbook", 0, fn, "image", ip, ua)
 
+	var modelEntries []models.LogbookEntry
+	for _, e := range result.Entries {
+		parsed, _ := services.ParseDate(e.Date)
+		modelEntries = append(modelEntries, models.LogbookEntry{
+			Date: parsed, StudentName: e.StudentName,
+			NIM: e.NIM, TimeIn: e.TimeIn, TimeOut: e.TimeOut, Purpose: e.Purpose,
+		})
+	}
+	dupGroups := h.logbookService.CheckDuplicates(modelEntries)
+
+	type dupItem struct {
+		GroupID string
+		Type    string
+		Refs    []services.DuplicateReference
+	}
+	dupInfo := make([]*dupItem, len(result.Entries))
+	for _, g := range dupGroups {
+		for _, m := range g.Members {
+			dupInfo[m] = &dupItem{GroupID: g.GroupID, Type: g.Type, Refs: g.References}
+		}
+	}
+
 	c.HTML(http.StatusOK, "logbook/preview.html", gin.H{
 		"title": "Upload Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
 		"entries": result.Entries, "total": len(result.Entries),
 		"source_file": fn, "success": "Gambar berhasil diproses",
+		"dupInfo": dupInfo,
 	})
 }
 

@@ -314,6 +314,9 @@ func (s *OCRService) doAPIRequest(method, url string, jsonData []byte, extraHead
 
 func buildOCRPrompt() string {
 	return 	`Analyze this image of a handwritten logbook/attendance table.
+
+This is a logbook table with columns: No, Date, Student Name, NIM, Time In, Time Out, Purpose.
+
 Extract the data and return it in JSON format with the following structure:
 
 {
@@ -373,6 +376,10 @@ CRITICAL RULES - READ CAREFULLY:
    - Be intelligent about abbreviations (e.g., "Pemrog Web"  ->  "Pemrograman Web")
 
 8. RETURN ONLY valid JSON, no additional text or explanations
+
+9. SELF-VERIFICATION: Double-check uncertain characters. If any digit in NIM or any character in a name is unclear, make your best guess and flag the value with [UNCERTAIN].
+
+10. NIM VALIDATION: NIM format is exactly 11 digits (example: 23091397001). If the extracted NIM is not 11 digits, pad or truncate to 11 digits.
 
 Please extract the data now with smart context understanding:`
 }
