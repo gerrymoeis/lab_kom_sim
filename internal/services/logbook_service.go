@@ -1,6 +1,8 @@
 ﻿package services
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -8,6 +10,8 @@ import (
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
+
+var nimRegexp = regexp.MustCompile(`^\d{11}$`)
 
 type CreateLogbookInput struct {
 	Date        string
@@ -25,6 +29,22 @@ type UpdateLogbookInput struct {
 	TimeIn      string
 	TimeOut     string
 	Purpose     string
+}
+
+type DuplicateReference struct {
+	StudentName string
+	NIM         string
+	Date        string
+	TimeIn      string
+	TimeOut     string
+	Purpose     string
+}
+
+type DuplicateGroup struct {
+	GroupID    string
+	Type       string
+	Members    []int
+	References []DuplicateReference
 }
 
 type LogbookService struct {
@@ -48,14 +68,25 @@ func (s *LogbookService) GetByID(id int) (*models.LogbookEntry, error) {
 	return s.logbookRepo.GetByID(id)
 }
 
+func validateNIM(nim string) error {
+	if !nimRegexp.MatchString(nim) {
+		return fmt.Errorf("NIM harus 11 digit angka")
+	}
+	return nil
+}
+
 func (s *LogbookService) CreateEntry(in CreateLogbookInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
 	in.StudentName = ToTitleCaseWithAbbr(in.StudentName)
 	in.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(in.NIM, " ", "")))
 	in.Purpose = ToTitleCaseWithAbbr(in.Purpose)
 
+	if err := validateNIM(in.NIM); err != nil {
+		return 0, err
+	}
+
 	date := MustParseDate(in.Date)
 
-	existing, _ := s.logbookRepo.GetDuplicateCheck(date, in.TimeIn)
+	existing, _ := s.logbookRepo.GetDuplicateCheck(date)
 	for _, e := range existing {
 		if IsDuplicateEntry(date, e.Date, in.TimeIn, e.TimeIn, in.StudentName, e.StudentName, in.NIM, e.NIM, config.DefaultDuplicateConfig) {
 			return 0, nil
@@ -78,6 +109,10 @@ func (s *LogbookService) UpdateEntry(id int, in UpdateLogbookInput, actorID int,
 	in.StudentName = ToTitleCaseWithAbbr(in.StudentName)
 	in.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(in.NIM, " ", "")))
 	in.Purpose = ToTitleCaseWithAbbr(in.Purpose)
+
+	if err := validateNIM(in.NIM); err != nil {
+		return err
+	}
 
 	date := MustParseDate(in.Date)
 
@@ -113,24 +148,41 @@ func (s *LogbookService) DeleteEntry(id, actorID int, actorUsername, actorRole, 
 func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (saved, dups int, err error) {
 	cfg := config.DefaultDuplicateConfig
 	var clean []repository.BulkEntry
+
 	for _, e := range entries {
-		existing, _ := s.logbookRepo.GetDuplicateCheck(e.Date, e.TimeIn)
+		e.StudentName = ToTitleCaseWithAbbr(e.StudentName)
+		e.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(e.NIM, " ", "")))
+		e.Purpose = ToTitleCaseWithAbbr(e.Purpose)
+
+		if err := validateNIM(e.NIM); err != nil {
+			continue
+		}
+
 		dup := false
-		for _, ex := range existing {
-			if IsDuplicateEntry(e.Date, ex.Date, e.TimeIn, ex.TimeIn, e.StudentName, ex.StudentName, e.NIM, ex.NIM, cfg) {
+		for _, c := range clean {
+			if IsDuplicateEntry(e.Date, c.Date, e.TimeIn, c.TimeIn, e.StudentName, c.StudentName, e.NIM, c.NIM, cfg) {
 				dup = true
 				dups++
 				break
 			}
 		}
 		if !dup {
-			e.StudentName = ToTitleCaseWithAbbr(e.StudentName)
-			e.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(e.NIM, " ", "")))
-			e.Purpose = ToTitleCaseWithAbbr(e.Purpose)
+			existing, _ := s.logbookRepo.GetDuplicateCheck(e.Date)
+			for _, ex := range existing {
+				if IsDuplicateEntry(e.Date, ex.Date, e.TimeIn, ex.TimeIn, e.StudentName, ex.StudentName, e.NIM, ex.NIM, cfg) {
+					dup = true
+					dups++
+					break
+				}
+			}
+		}
+
+		if !dup {
 			clean = append(clean, e)
 			saved++
 		}
 	}
+
 	if len(clean) == 0 {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
 			map[string]any{"duplicates": dups, "note": "all_duplicates"}, ipAddress, userAgent)
@@ -144,6 +196,71 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
 		map[string]any{"saved": saved, "duplicates": dups}, ipAddress, userAgent)
 	return saved, dups, nil
+}
+
+func (s *LogbookService) CheckDuplicates(entries []models.LogbookEntry) []DuplicateGroup {
+	cfg := config.DefaultDuplicateConfig
+	var groups []DuplicateGroup
+	grouped := make([]bool, len(entries))
+	groupID := byte('A')
+
+	for i := 0; i < len(entries); i++ {
+		if grouped[i] {
+			continue
+		}
+		var members []int
+		members = append(members, i)
+		for j := i + 1; j < len(entries); j++ {
+			if grouped[j] {
+				continue
+			}
+			if IsDuplicateEntry(entries[i].Date, entries[j].Date, entries[i].TimeIn, entries[j].TimeIn,
+				entries[i].StudentName, entries[j].StudentName, entries[i].NIM, entries[j].NIM, cfg) {
+				members = append(members, j)
+				grouped[j] = true
+			}
+		}
+		if len(members) > 1 {
+			for _, m := range members {
+				grouped[m] = true
+			}
+			groups = append(groups, DuplicateGroup{
+				GroupID: string(groupID),
+				Type:    "intra-batch",
+				Members: members,
+			})
+			groupID++
+			continue
+		}
+
+		existing, _ := s.logbookRepo.GetDuplicateCheck(entries[i].Date)
+		var refs []DuplicateReference
+		for _, ex := range existing {
+			if IsDuplicateEntry(entries[i].Date, ex.Date, entries[i].TimeIn, ex.TimeIn,
+				entries[i].StudentName, ex.StudentName, entries[i].NIM, ex.NIM, cfg) {
+				refs = append(refs, DuplicateReference{
+					StudentName: ex.StudentName,
+					NIM:         ex.NIM,
+					Date:        ex.Date.Format("2006-01-02"),
+					TimeIn:      ex.TimeIn,
+					TimeOut:     ex.TimeOut,
+					Purpose:     ex.Purpose,
+				})
+			}
+		}
+		if len(refs) > 0 {
+			grouped[i] = true
+			groups = append(groups, DuplicateGroup{
+				GroupID:    string(groupID),
+				Type:       "existing-db",
+				Members:    []int{i},
+				References: refs,
+			})
+			groupID++
+		}
+	}
+
+	return groups
 }
 
 type LogbookDeleteInfo struct {
