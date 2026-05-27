@@ -43,9 +43,9 @@
             <div class="col-md-3">
                 <div class="card bg-secondary text-white">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-dash-circle" aria-hidden="true"></i> Inactive</h5>
-                        <h2>{{ index .statusCounts "inactive" }}</h2>
-                        <small>PC tidak aktif</small>
+                        <h5 class="card-title"><i class="bi bi-box-seam" aria-hidden="true"></i> Cadangan</h5>
+                        <h2>{{ .spareCount }}</h2>
+                        <small>PC tidak dipasang</small>
                     </div>
                 </div>
             </div>
@@ -206,7 +206,7 @@
                         <span><i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i> Normal</span>
                         <span><i class="bi bi-exclamation-triangle-fill text-warning" aria-hidden="true"></i> Warning</span>
                         <span><i class="bi bi-x-circle-fill text-danger" aria-hidden="true"></i> Rusak</span>
-                        <span><i class="bi bi-dash-circle-fill text-secondary" aria-hidden="true"></i> Inactive</span>
+                        <span><i class="bi bi-box-seam-fill text-secondary" aria-hidden="true"></i> Cadangan</span>
                     </div>
                 </div>
             </div>

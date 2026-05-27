@@ -32,6 +32,7 @@ func (h *Handler) PCList(c *gin.Context) {
 	filters := repository.PCFilters{
 		Search:    c.Query("search"),
 		Status:    c.Query("status"),
+		Placement: c.Query("placement"),
 		SortBy:    c.Query("sort_by"),
 		SortOrder: c.Query("sort_order"),
 		OS:        c.Query("os"),
@@ -47,7 +48,7 @@ func (h *Handler) PCList(c *gin.Context) {
 		"username": username, "role": role, "pcs": pcs,
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"startRow": startRow,
-		"query": query, "filters": gin.H{"search": filters.Search, "status": filters.Status, "sort_by": filters.SortBy, "sort_order": filters.SortOrder, "os": filters.OS},
+		"query": query, "filters": gin.H{"search": filters.Search, "status": filters.Status, "placement": filters.Placement, "sort_by": filters.SortBy, "sort_order": filters.SortOrder, "os": filters.OS},
 	})
 }
 
@@ -98,9 +99,10 @@ func (h *Handler) PCCreate(c *gin.Context) {
 
 	_, err := h.pcService.CreatePC(services.CreatePCInput{
 		PCNumber: req.PCNumber, Row: req.Row, Column: req.Column,
-		Status: req.Status, Processor: req.Processor, RAM: req.RAM, Storage: req.Storage,
+		Status: req.Status, Placement: req.Placement,
+		Processor: req.Processor, RAM: req.RAM, Storage: req.Storage,
 		SerialNumber: req.SerialNumber, OperatingSystem: req.OperatingSystem,
-		DeviceType: req.DeviceType, BrandModel: req.BrandModel, Accessories: req.Accessories,
+		PCType: req.PCType, BrandModel: req.BrandModel, Accessories: req.Accessories,
 		PhotoSerial: photoSerial, PhotoFront: photoFront,
 		Label: req.Label,
 	}, uid, u, r, ip, ua)
@@ -146,11 +148,12 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	ip, ua := getRequestContext(c)
 
 	if err := h.pcService.UpdatePC(num, services.UpdatePCInput{
-		Status: req.Status, DeviceType: req.DeviceType,
+		Status: req.Status, Placement: req.Placement,
 		SerialNumber: req.SerialNumber, BrandModel: req.BrandModel,
 		Accessories: req.Accessories, Processor: req.Processor,
+		PCType: req.PCType,
 		RAM: req.RAM, Storage: req.Storage, OperatingSystem: req.OperatingSystem,
-		Notes: req.Notes, ActionNotes: req.ActionNotes,
+		Notes: req.Notes,
 		PhotoSerial: photoSerial, PhotoFront: photoFront,
 		Label: req.Label,
 	}, uid, u, r, ip, ua); err != nil {
@@ -213,14 +216,14 @@ func (h *Handler) PCExport(c *gin.Context) {
 		pos := fmt.Sprintf("(%d,%d)", pc.Row, pc.Column)
 		pd := "-"; if pc.PurchaseDate != nil { pd = pc.PurchaseDate.Format("2006-01-02") }
 		ld := "-"; if pc.LastChecked != nil { ld = pc.LastChecked.Format("2006-01-02") }
-		data = append(data, []any{pc.PCNumber, pos, pc.Status, pc.DeviceType, pc.SerialNumber, pc.BrandModel, pc.Processor, pc.RAM, pc.Storage, pc.OperatingSystem, pc.Accessories, pd, ld, pc.Notes, pc.ActionNotes})
+		data = append(data, []any{pc.PCNumber, pos, pc.Status, pc.Placement, pc.PCType, pc.SerialNumber, pc.BrandModel, pc.Processor, pc.RAM, pc.Storage, pc.OperatingSystem, pc.Accessories, pd, ld, pc.Notes})
 	}
 	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
 		{
 			SheetName: "PC",
-			Headers:   []string{"No PC", "Posisi", "Status", "Tipe", "Serial Number", "Brand/Model", "Processor", "RAM", "Storage", "OS", "Accessories", "Tgl Beli", "Tgl Cek", "Catatan", "Tindakan"},
+			Headers:   []string{"No PC", "Posisi", "Status", "Penempatan", "Jenis PC", "Serial Number", "Brand/Model", "Processor", "RAM", "Storage", "OS", "Accessories", "Tgl Beli", "Tgl Cek", "Catatan"},
 			Data:      data,
-			ColumnWidths: map[string]float64{"A": 8, "B": 10, "C": 12, "D": 18, "E": 20, "F": 32, "G": 18, "H": 12, "I": 14, "J": 14, "K": 36, "L": 14, "M": 16, "N": 28, "O": 28},
+			ColumnWidths: map[string]float64{"A": 8, "B": 10, "C": 12, "D": 14, "E": 18, "F": 20, "G": 32, "H": 18, "I": 12, "J": 14, "K": 14, "L": 36, "M": 14, "N": 16, "O": 28},
 		},
 	})
 	defer f.Close()

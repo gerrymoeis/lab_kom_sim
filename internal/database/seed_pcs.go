@@ -181,14 +181,14 @@ func seedPCs(db *DB) error {
 
 	// Default values
 	const (
-		defDeviceType  = "PC All-in-one"
+		defPCType      = "PC All-in-one"
 		defBrandModel  = "Axioo Mypc One Pro K7-24 (16N9)"
 		defProcessor   = "Intel Core i7"
 		defRAM         = "16GB DDR4"
 		defStorage     = "1TB NVMe"
 		defAccessories = "Keyboard & Mouse Axioo (Wired Set)"
 		defStatus      = "normal"
-		defCondition   = "baik"
+		defPlacement   = "dipakai"
 	)
 
 	rowFor := func(n int) int {
@@ -248,19 +248,24 @@ func seedPCs(db *DB) error {
 		}
 
 		label := specialLabel[pc.Number]
-		deviceType := defDeviceType
+		pcType := defPCType
 		brandModel := defBrandModel
 		if label != "" {
-			deviceType = label
+			pcType = label
 			brandModel = ""
 		}
+		placement := defPlacement
+		if pcStatus == "broken" && pc.SN == "" {
+			// PCs with broken status and no SN are spare/cadangan
+			placement = "cadangan"
+		}
 		_, execErr := tx.Exec(`INSERT INTO pcs (pc_number, "row", "column", status, processor, ram, storage,
-			serial_number, operating_system, device_type, brand_model, accessories,
-			physical_condition, notes, label, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			serial_number, operating_system, pc_type, brand_model, accessories,
+			notes, label, placement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 			CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 			pc.Number, rowFor(pc.Number), colFor(pc.Number),
 			pcStatus, defProcessor, defRAM, defStorage,
-			pc.SN, pc.OS, deviceType, brandModel, defAccessories, defCondition, pc.Notes, label)
+			pc.SN, pc.OS, pcType, brandModel, defAccessories, pc.Notes, label, placement)
 		if execErr != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to seed PC-%d: %w", pc.Number, execErr)
