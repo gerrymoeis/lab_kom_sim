@@ -16,7 +16,7 @@ func NewDashboardRepository(db *database.DB) *DashboardRepository {
 }
 
 func (r *DashboardRepository) ListPCs() ([]models.PC, error) {
-	rows, err := r.db.Query(`SELECT id, pc_number, "row", "column", status, 
+	rows, err := r.db.Query(`SELECT id, pc_number, "row", "column", status, placement,
 		processor, ram, storage, operating_system, notes, last_checked, label 
 		FROM pcs ORDER BY "row", "column"`)
 	if err != nil { return nil, err }
@@ -27,7 +27,7 @@ func (r *DashboardRepository) ListPCs() ([]models.PC, error) {
 		var pc models.PC
 		var processor, ram, storage, os, notes, label sql.NullString
 		var lastChecked sql.NullTime
-		if err := rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status,
+		if err := rows.Scan(&pc.ID, &pc.PCNumber, &pc.Row, &pc.Column, &pc.Status, &pc.Placement,
 			&processor, &ram, &storage, &os, &notes, &lastChecked, &label); err != nil {
 			return nil, err
 		}

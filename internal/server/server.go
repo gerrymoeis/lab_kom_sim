@@ -58,7 +58,23 @@ func getPCStatusInfo(status string) PCStatusInfo {
 	if s, ok := pcStatusMap[status]; ok {
 		return s
 	}
-	return PCStatusInfo{"inactive", "secondary", "bi-dash-circle-fill", "text-secondary", "Inactive"}
+	return pcStatusMap["normal"]
+}
+
+type PlacementInfo struct {
+	Placement, BadgeClass, Icon, VisLabel string
+}
+
+var pcPlacementMap = map[string]PlacementInfo{
+	"dipakai":  {"dipakai", "primary", "bi-check-lg", "Dipakai"},
+	"cadangan": {"cadangan", "secondary", "bi-box-seam", "Cadangan"},
+}
+
+func getPCPlacementInfo(placement string) PlacementInfo {
+	if p, ok := pcPlacementMap[placement]; ok {
+		return p
+	}
+	return pcPlacementMap["dipakai"]
 }
 
 func loadNavItems(currentPage, role string) []NavItem {
@@ -103,6 +119,7 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 		"allCategories":   func() []Category { return loadCategories() },
 		"dtCategories":    func() []Category { return loadDeviceTypeCategories() },
 		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },
+		"pcPlacementInfo": func(placement string) PlacementInfo { return getPCPlacementInfo(placement) },
 		"localTime": func(t interface{}) interface{} {
 			switch v := t.(type) {
 			case time.Time:

@@ -8,12 +8,13 @@ type LoginRequest struct {
 type CreatePCRequest struct {
 	PCNumber        int    `form:"pc_number" binding:"required,min=1,max=43"`
 	Label           string `form:"label"`
-	Row             int    `form:"row" binding:"required,min=1,max=5"`
-	Column          int    `form:"column" binding:"required,min=1,max=8"`
+	Row             int    `form:"row"`
+	Column          int    `form:"column"`
 	Status          string `form:"status"`
+	Placement       string `form:"placement"`
 	SerialNumber    string `form:"serial_number" binding:"required"`
 	OperatingSystem string `form:"operating_system" binding:"required"`
-	DeviceType      string `form:"device_type"`
+	PCType          string `form:"pc_type"`
 	BrandModel      string `form:"brand_model"`
 	Accessories     string `form:"accessories"`
 	Processor       string `form:"processor"`
@@ -25,16 +26,16 @@ type CreatePCRequest struct {
 
 type EditPCRequest struct {
 	Status          string   `form:"status"`
+	Placement       string   `form:"placement"`
 	SerialNumber    string   `form:"serial_number" binding:"required"`
 	OperatingSystem string   `form:"operating_system" binding:"required"`
-	DeviceType      string   `form:"device_type"`
+	PCType          string   `form:"pc_type"`
 	BrandModel      string   `form:"brand_model"`
 	Accessories     string   `form:"accessories"`
 	Processor       string   `form:"processor"`
 	RAM             string   `form:"ram"`
 	Storage         string   `form:"storage"`
 	Notes           string   `form:"notes"`
-	ActionNotes     string   `form:"action_notes"`
 	Label           string   `form:"label"`
 	SerialFileRef   string   `form:"serial_file_ref"`
 	FrontFileRef    string   `form:"front_file_ref"`
