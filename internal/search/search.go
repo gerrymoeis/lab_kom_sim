@@ -48,12 +48,6 @@ func defaultConfigs() map[string]Config {
 				"course_name", "lecturer", "class", "notes",
 			},
 		},
-		"lost_item": {
-			Alias: "", Columns: []string{
-				"item_name", "item_description", "reported_by",
-				"location_last_seen", "owner_name", "owner_class", "owner_nim",
-			},
-		},
 		"device_type": {
 			Alias: "", Columns: []string{
 				"name", "category", "brand", "model", "notes_template",
