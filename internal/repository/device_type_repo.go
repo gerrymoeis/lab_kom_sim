@@ -134,9 +134,9 @@ func (r *DeviceTypeRepository) GetByID(id int) (*models.DeviceType, error) {
 
 func (r *DeviceTypeRepository) GetByIDSimple(id int) (*models.DeviceType, error) {
 	var dt models.DeviceType
-	var brand, model, prefix, loc sql.NullString
+	var brand, model, prefix, loc, notes sql.NullString
 	err := r.db.QueryRow(`SELECT id, name, category, brand, model, item_type, is_loanable, is_consumable, asset_code_prefix, default_location, notes_template FROM device_types WHERE id = ?`, id).
-		Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &prefix, &loc, &dt.NotesTemplate)
+		Scan(&dt.ID, &dt.Name, &dt.Category, &brand, &model, &dt.ItemType, &dt.IsLoanable, &dt.IsConsumable, &prefix, &loc, &notes)
 	if err != nil {
 		return nil, err
 	}
@@ -144,6 +144,7 @@ func (r *DeviceTypeRepository) GetByIDSimple(id int) (*models.DeviceType, error)
 	dt.Model = valStr(model)
 	dt.AssetCodePrefix = valStr(prefix)
 	dt.DefaultLocation = valStr(loc)
+	dt.NotesTemplate = valStr(notes)
 	return &dt, nil
 }
 
