@@ -29,7 +29,6 @@ type Handler struct {
 	scheduleService    *services.ScheduleService
 	softwareService    *services.SoftwareService
 	deviceTypeService  *services.DeviceTypeService
-	lostItemService    *services.LostItemService
 }
 
 func NewHandler(db *database.DB, cfg *config.Config) *Handler {
@@ -61,7 +60,6 @@ func NewHandler(db *database.DB, cfg *config.Config) *Handler {
 		scheduleService:    services.NewScheduleService(scheduleRepo, activityLogService),
 		softwareService:    services.NewSoftwareService(softwareRepo, activityLogService),
 		deviceTypeService:  services.NewDeviceTypeService(deviceTypeRepo, activityLogService),
-		lostItemService:    services.NewLostItemService(repository.NewLostItemRepository(db), activityLogService),
 	}
 }
 
