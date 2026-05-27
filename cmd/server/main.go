@@ -51,9 +51,11 @@ func main() {
 		defer wq.Stop()
 	}
 
+	backupSvc := services.NewBackupService(db, cfg.Backup)
+
 	if cfg.Environment == "production" { gin.SetMode(gin.ReleaseMode) }
 
-	router := server.SetupRouter(db, cfg)
+	router := server.SetupRouter(db, cfg, backupSvc)
 
 	if err := os.MkdirAll("uploads", 0755); err != nil {
 		log.Printf("Warning: Failed to create uploads directory: %v", err)
@@ -66,7 +68,6 @@ func main() {
 		for { time.Sleep(30 * time.Minute); server.CleanupTempFiles() }
 	}()
 
-	backupSvc := services.NewBackupService(db, cfg.Backup)
 	backupSvc.Start()
 	defer backupSvc.Stop()
 

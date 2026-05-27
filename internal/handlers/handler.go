@@ -31,8 +31,8 @@ type Handler struct {
 	deviceTypeService  *services.DeviceTypeService
 }
 
-func NewHandler(db *database.DB, cfg *config.Config) *Handler {
-	activityLogService := services.NewActivityLogService(db)
+func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifier) *Handler {
+	activityLogService := services.NewActivityLogService(db, notifier)
 	deviceRepo := repository.NewDeviceRepository(db)
 	deviceTypeRepo := repository.NewDeviceTypeRepository(db)
 	deviceLoanRepo := repository.NewDeviceLoanRepository(db)
