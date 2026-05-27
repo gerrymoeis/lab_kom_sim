@@ -12,6 +12,7 @@ import (
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/handlers"
 	"inventaris-lab-kom/internal/middleware"
+	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
 
 	"github.com/gin-gonic/gin"
@@ -154,7 +155,7 @@ func sourceMapBlocker() gin.HandlerFunc {
 	}
 }
 
-func SetupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
+func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotifier) *gin.Engine {
 	router := gin.New()
 	router.Use(sourceMapBlocker())
 	router.Use(gin.Logger())
@@ -183,7 +184,7 @@ func SetupRouter(db *database.DB, cfg *config.Config) *gin.Engine {
 		}
 	}
 
-	h := handlers.NewHandler(db, cfg)
+	h := handlers.NewHandler(db, cfg, notifier)
 
 	public := router.Group("/")
 	{

@@ -14,15 +14,16 @@ import (
 
 // ActivityLogService handles activity logging operations
 type ActivityLogService struct {
-	db      *database.DB
-	logChan chan *models.ActivityLog
-	stmt    *sql.Stmt
-	close   chan struct{}
-	search  *search.Builder
+	db       *database.DB
+	notifier CUDNotifier
+	logChan  chan *models.ActivityLog
+	stmt     *sql.Stmt
+	close    chan struct{}
+	search   *search.Builder
 }
 
 // NewActivityLogService creates a new activity log service
-func NewActivityLogService(db *database.DB) *ActivityLogService {
+func NewActivityLogService(db *database.DB, notifier CUDNotifier) *ActivityLogService {
 	stmt, err := db.Prepare(`
 		INSERT INTO activity_logs (
 			user_id, username, user_role, action, entity_type, entity_id,
@@ -34,11 +35,12 @@ func NewActivityLogService(db *database.DB) *ActivityLogService {
 		log.Printf("failed to prepare activity log stmt: %v", err)
 	}
 	s := &ActivityLogService{
-		db:      db,
-		logChan: make(chan *models.ActivityLog, 4096),
-		stmt:    stmt,
-		close:   make(chan struct{}),
-		search:  search.New(db),
+		db:       db,
+		notifier: notifier,
+		logChan:  make(chan *models.ActivityLog, 4096),
+		stmt:     stmt,
+		close:    make(chan struct{}),
+		search:   search.New(db),
 	}
 	go s.logWriter()
 	return s
@@ -143,18 +145,27 @@ func (s *ActivityLogService) LogAction(userID int, username, role, action, entit
 	return s.logAction(logParams{userID: userID, username: username, role: role, action: action, entityType: entityType, entityID: entityID, oldValues: oldValues, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
+func (s *ActivityLogService) notifyChange() {
+	if s.notifier != nil {
+		s.notifier.NotifyChange()
+	}
+}
+
 func (s *ActivityLogService) LogCreate(userID int, username, role, entityType string, entityID int, newValues any, ipAddress, userAgent string, errorMsg ...string) error {
 	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	s.notifyChange()
 	return s.logAction(logParams{userID: userID, username: username, role: role, action: "create", entityType: entityType, entityID: entityID, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
 func (s *ActivityLogService) LogUpdate(userID int, username, role, entityType string, entityID int, oldValues, newValues any, ipAddress, userAgent string, errorMsg ...string) error {
 	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	s.notifyChange()
 	return s.logAction(logParams{userID: userID, username: username, role: role, action: "update", entityType: entityType, entityID: entityID, oldValues: oldValues, newValues: newValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 
 func (s *ActivityLogService) LogDelete(userID int, username, role, entityType string, entityID int, oldValues any, ipAddress, userAgent string, errorMsg ...string) error {
 	errMsg := ""; if len(errorMsg) > 0 { errMsg = errorMsg[0] }
+	s.notifyChange()
 	return s.logAction(logParams{userID: userID, username: username, role: role, action: "delete", entityType: entityType, entityID: entityID, oldValues: oldValues, errMsg: errMsg, ipAddress: ipAddress, userAgent: userAgent})
 }
 

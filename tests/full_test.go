@@ -60,7 +60,7 @@ func TestFullIntegration(t *testing.T) {
 	}
 	db.Exec("UPDATE users SET session_token = NULL")
 
-	router := server.SetupRouter(db, cfg)
+	router := server.SetupRouter(db, cfg, nil)
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
