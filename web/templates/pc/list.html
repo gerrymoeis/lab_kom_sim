@@ -30,13 +30,20 @@
                     <input type="text" class="form-control" id="search" name="search" placeholder="Cari PC..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
-                    <label for="status" class="form-label">Status</label>
+                    <label for="status" class="form-label">Kondisi</label>
                     <select class="form-select" id="status" name="status">
-                        <option value="">Semua Status</option>
+                        <option value="">Semua</option>
                         <option value="normal" {{ if eq .filters.status "normal" }}selected{{ end }}>Normal</option>
                         <option value="warning" {{ if eq .filters.status "warning" }}selected{{ end }}>Warning</option>
                         <option value="broken" {{ if eq .filters.status "broken" }}selected{{ end }}>Rusak</option>
-                        <option value="inactive" {{ if eq .filters.status "inactive" }}selected{{ end }}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="placement" class="form-label">Penempatan</label>
+                    <select class="form-select" id="placement" name="placement">
+                        <option value="">Semua</option>
+                        <option value="dipakai" {{ if eq .filters.placement "dipakai" }}selected{{ end }}>Dipakai</option>
+                        <option value="cadangan" {{ if eq .filters.placement "cadangan" }}selected{{ end }}>Cadangan</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -87,12 +94,11 @@
                         <tr>
                             <td><strong>{{ if .Label }}{{ .Label }}{{ else }}PC-{{ printf "%02d" .PCNumber }}{{ end }}</strong></td>
                             <td>{{ if .SerialNumber }}<small><code>{{ .SerialNumber }}</code></small>{{ else }}-{{ end }}</td>
-                            <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else if .Brand }}{{ .Brand }}{{ if .Model }} {{ .Model }}{{ end }}{{ else }}-{{ end }}</td>
-                            <td>Baris {{ .Column }}, Kolom {{ .Row }}</td>
+                            <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else }}-{{ end }}</td>
+                            <td>{{ if eq .Placement "dipakai" }}Baris {{ .Column }}, Kolom {{ .Row }}{{ else }}-{{ end }}</td>
                             <td>
-<span class="badge bg-{{ (pcStatusInfo .Status).BadgeClass }}">
-    {{ .Status }}
-</span>
+<span class="badge bg-{{ (pcStatusInfo .Status).BadgeClass }} me-1">{{ .Status }}</span>
+<span class="badge bg-{{ (pcPlacementInfo .Placement).BadgeClass }}">{{ (pcPlacementInfo .Placement).VisLabel }}</span>
                             </td>
                             <td>
                                 <small>

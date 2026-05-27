@@ -15,34 +15,29 @@ type User struct {
 
 // PC represents a computer in the lab
 type PC struct {
-	ID                int        `json:"id"`
-	PCNumber          int        `json:"pc_number"`      // 1-40
-	Row               int        `json:"row"`            // 1-5
-	Column            int        `json:"column"`         // 1-8
-	Status            string     `json:"status"`         // "normal", "warning", "broken", "inactive"
-	Processor         string     `json:"processor"`
-	RAM               string     `json:"ram"`
-	Storage           string     `json:"storage"`
-	PurchaseDate      *time.Time `json:"purchase_date"`
-	Notes             string     `json:"notes"`
-	LastChecked       *time.Time `json:"last_checked"`
-	// Asset management fields
-	AssetID           string     `json:"asset_id"`
-	SerialNumber      string     `json:"serial_number"`
-	Brand             string     `json:"brand"`             // Deprecated, use BrandModel
-	Model             string     `json:"model"`             // Deprecated, use BrandModel
-	OperatingSystem   string     `json:"operating_system"`
-	PhysicalCondition string     `json:"physical_condition"` // "baik", "cukup", "rusak"
-	// New fields for PC refinement
-	DeviceType        string     `json:"device_type"`       // "PC All-in-one", etc
-	Label             string     `json:"label"`              // Display label (e.g. "PC-Dosen")
-	BrandModel        string     `json:"brand_model"`       // Combined brand + model
-	Accessories       string     `json:"accessories"`       // "Keyboard & Mouse Axioo (Wired Set)"
-	ActionNotes       string     `json:"action_notes"`      // Catatan tindakan perbaikan
-	PhotoSerial       string     `json:"photo_serial"`      // Filename foto S/N + barcode
-	PhotoFront        string     `json:"photo_front"`       // Filename foto tampilan depan
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	ID              int        `json:"id"`
+	PCNumber        int        `json:"pc_number"`        // 1-43
+	Row             int        `json:"row"`              // 1-5 (0 for special/cadangan)
+	Column          int        `json:"column"`           // 1-8 (0 for special/cadangan)
+	Status          string     `json:"status"`           // "normal", "warning", "broken"
+	Placement       string     `json:"placement"`        // "dipakai", "cadangan"
+	Processor       string     `json:"processor"`
+	RAM             string     `json:"ram"`
+	Storage         string     `json:"storage"`
+	PurchaseDate    *time.Time `json:"purchase_date"`
+	Notes           string     `json:"notes"`
+	LastChecked     *time.Time `json:"last_checked"`
+	AssetID         string     `json:"asset_id"`
+	SerialNumber    string     `json:"serial_number"`
+	OperatingSystem string     `json:"operating_system"`
+	PCType          string     `json:"pc_type"`          // "PC All-in-one", etc
+	Label           string     `json:"label"`            // Display label (e.g. "PC-Dosen")
+	BrandModel      string     `json:"brand_model"`      // Combined brand + model
+	Accessories     string     `json:"accessories"`      // "Keyboard & Mouse Axioo (Wired Set)"
+	PhotoSerial     string     `json:"photo_serial"`     // Filename foto S/N + barcode
+	PhotoFront      string     `json:"photo_front"`      // Filename foto tampilan depan
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // DeviceType represents a template/preset for device types
