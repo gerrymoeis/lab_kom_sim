@@ -94,6 +94,7 @@
                             <th>Keperluan</th>
                             <th>Jam Masuk</th>
                             <th>Jam Keluar</th>
+                            <th style="width:120px;">Indikasi</th>
                             {{ if eq .role "admin" }}
                             <th>Aksi</th>
                             {{ end }}
@@ -109,6 +110,15 @@
                             <td>{{ if $entry.Purpose }}{{ $entry.Purpose }}{{ else }}-{{ end }}</td>
                             <td>{{ $entry.TimeIn }}</td>
                             <td>{{ if $entry.TimeOut }}{{ $entry.TimeOut }}{{ else }}-{{ end }}</td>
+                            <td class="text-center">
+                                {{ if index $.dupFlags $entry.ID }}
+                                <span class="badge bg-warning text-dark" title="Terindikasi duplikat dengan entry lain" style="cursor:help;">
+                                    🟡 Potensi Duplikat
+                                </span>
+                                {{ else }}
+                                <span class="text-muted small">-</span>
+                                {{ end }}
+                            </td>
                             {{ if eq $.role "admin" }}
                             <td class="text-nowrap">
                                 <a href="/logbook/{{ $entry.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
@@ -128,7 +138,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="{{ if eq $.role "admin" }}8{{ else }}7{{ end }}" class="text-center text-muted py-4">
+                            <td colspan="{{ if eq $.role "admin" }}9{{ else }}8{{ end }}" class="text-center text-muted py-4">
                                 <i class="bi bi-inbox" style="font-size: 2rem;"></i>
                                 <p class="mt-2">Belum ada data logbook</p>
                             </td>
