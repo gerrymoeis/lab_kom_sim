@@ -178,8 +178,8 @@ func (r *LogbookRepository) GetByID(id int) (*models.LogbookEntry, error) {
 	return &e, nil
 }
 
-func (r *LogbookRepository) GetDuplicateCheck(date time.Time, timeIn string) ([]models.LogbookEntry, error) {
-	rows, err := r.db.Query(`SELECT date, student_name, nim, time_in FROM logbook_entries WHERE date = ? AND time_in = ?`, date, timeIn)
+func (r *LogbookRepository) GetDuplicateCheck(date time.Time) ([]models.LogbookEntry, error) {
+	rows, err := r.db.Query(`SELECT date, student_name, nim, time_in FROM logbook_entries WHERE date = ?`, date)
 	if err != nil {
 		return nil, err
 	}

@@ -55,7 +55,7 @@ func (s *LogbookService) CreateEntry(in CreateLogbookInput, actorID int, actorUs
 
 	date := MustParseDate(in.Date)
 
-	existing, _ := s.logbookRepo.GetDuplicateCheck(date, in.TimeIn)
+	existing, _ := s.logbookRepo.GetDuplicateCheck(date)
 	for _, e := range existing {
 		if IsDuplicateEntry(date, e.Date, in.TimeIn, e.TimeIn, in.StudentName, e.StudentName, in.NIM, e.NIM, config.DefaultDuplicateConfig) {
 			return 0, nil
@@ -114,7 +114,7 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 	cfg := config.DefaultDuplicateConfig
 	var clean []repository.BulkEntry
 	for _, e := range entries {
-		existing, _ := s.logbookRepo.GetDuplicateCheck(e.Date, e.TimeIn)
+		existing, _ := s.logbookRepo.GetDuplicateCheck(e.Date)
 		dup := false
 		for _, ex := range existing {
 			if IsDuplicateEntry(e.Date, ex.Date, e.TimeIn, ex.TimeIn, e.StudentName, ex.StudentName, e.NIM, ex.NIM, cfg) {
