@@ -4,19 +4,9 @@
     {{ template "layout/card_create.html" . }}
                     <form method="POST" action="/device-usages/create">
                         <div class="mb-3">
-                            <label for="device_id" class="form-label">Perangkat *</label>
-                            <select class="form-select" id="device_id" name="device_id" required {{ if .deviceID }}disabled{{ end }}>
-                                <option value="">Pilih perangkat...</option>
-                                {{ range .devices }}
-                                <option value="{{ .ID }}" {{ if eq $.deviceID (printf "%d" .ID) }}selected{{ end }}>
-                                    {{ .AssetCode }} - {{ .Name }} (Tersedia: {{ .QuantityAvailable }})
-                                </option>
-                                {{ end }}
-                            </select>
-                            {{ if .deviceID }}
-                            <input type="hidden" name="device_id" value="{{ .deviceID }}">
-                            {{ end }}
-                            <small class="text-muted">Hanya barang habis pakai yang memiliki stok tersedia</small>
+                            <label for="device_id" class="form-label">ID Perangkat *</label>
+                            <input type="number" class="form-control" id="device_id" name="device_id" min="1" required>
+                            <small class="text-muted">Masukkan ID perangkat yang dipakai</small>
                         </div>
 
                         <div class="mb-3">
@@ -35,23 +25,18 @@
                             </select>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="usage_date" class="form-label">Tanggal Pemakaian *</label>
-                            <input type="date" class="form-control" id="usage_date" name="usage_date" required data-default-date>
-                        </div>
-
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="quantity" class="form-label">Jumlah *</label>
-                                <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="1" required>
+                                <label for="usage_date" class="form-label">Tanggal Pemakaian *</label>
+                                <input type="date" class="form-control" id="usage_date" name="usage_date" required data-default-date>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="is_available" class="form-label">Masih Ada? *</label>
+                                <label for="is_available" class="form-label">Status Stok *</label>
                                 <select class="form-select" id="is_available" name="is_available" required>
-                                    <option value="yes" selected>Ada</option>
-                                    <option value="no">Habis</option>
+                                    <option value="yes">Ada (Masih Tersedia)</option>
+                                    <option value="no">Habis (Stok Habis)</option>
                                 </select>
-                                <small class="text-muted">Pilih "Habis" jika barang benar-benar habis, stok akan dikurangi.</small>
+                                <small class="text-muted">Pilih "Habis" jika barang benar-benar habis</small>
                             </div>
                         </div>
 

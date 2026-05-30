@@ -1,13 +1,29 @@
 {{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-journal-arrow-up"></i> Peminjaman</h2>
+            <p class="text-muted">Daftar peminjaman perangkat</p>
+        </div>
+        <div class="col-md-6 text-end">
+            {{ if eq .role "admin" }}
+            {{ template "layout/header_actions_start.html" $ }}
+            <a href="/device-loans/create" class="btn btn-primary flex-grow-1">
+                <i class="bi bi-plus-circle"></i> Tambah Peminjaman
+            </a>
+            {{ template "layout/header_actions_end.html" }}
+            {{ end }}
+        </div>
+    </div>
+
+    {{ template "layout/alert.html" . }}
+
     <div class="card shadow-sm">
         <div class="card-body">
-            <!-- Filter & Search -->
-            <form method="GET" action="/devices" class="row g-3 mb-3">
-                <input type="hidden" name="tab" value="loans">
+            <form method="GET" action="/device-loans" class="row g-3 mb-3">
                 <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Cari peminjam atau perangkat..." value="{{ .filters.search }}">
+                    <input type="text" class="form-control" name="search" placeholder="Cari asset code, peminjam..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
                     <select class="form-select" name="status">
@@ -19,15 +35,9 @@
                 </div>
                 <div class="col-md-2">
                     <select class="form-select" name="sort_by">
-                        <option value="loan_date" {{ if eq .filters.sort_by "loan_date" }}selected{{ end }}>Tanggal Pinjam</option>
-                        <option value="borrower_name" {{ if eq .filters.sort_by "borrower_name" }}selected{{ end }}>Nama Peminjam</option>
-                        <option value="status" {{ if eq .filters.sort_by "status" }}selected{{ end }}>Status</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" name="sort_order">
-                        <option value="DESC" {{ if eq .filters.sort_order "DESC" }}selected{{ end }}>Terbaru</option>
-                        <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>Terlama</option>
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
+                        <option value="borrower_name" {{ if eq .filters.sort_by "borrower_name" }}selected{{ end }}>Peminjam</option>
+                        <option value="return_date" {{ if eq .filters.sort_by "return_date" }}selected{{ end }}>Tgl Kembali</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -35,56 +45,58 @@
                         <i class="bi bi-search"></i> Filter
                     </button>
                 </div>
+                <div class="col-md-2">
+                    <a href="/device-loans" class="btn btn-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
             </form>
 
-            <!-- Table -->
+            {{ if gt (len .loans) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .loans)) 1 }} dari {{ .totalItems }} peminjaman</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
+
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>Perangkat</th>
+                            <th>#</th>
                             <th>Asset Code</th>
+                            <th>Tipe Perangkat</th>
                             <th>Peminjam</th>
-                            <th>Tipe</th>
-                            <th>Tanggal Pinjam</th>
+                            <th>Tgl Pinjam</th>
                             <th>Target Kembali</th>
-                            <th>Jumlah</th>
                             <th>Status</th>
+                            <th>Perpanjangan</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range .loans }}
-                        <tr>
-                            <td><strong>{{ .DeviceName }}</strong></td>
-                            <td><code>{{ .AssetCode }}</code></td>
-                            <td>{{ .BorrowerName }}</td>
-                            <td><span class="badge bg-secondary">{{ .BorrowerType }}</span></td>
-                            <td>{{ (localTime .LoanDate).Format "02/01/2006" }} {{ tzCode }}</td>
+                        {{ range $i, $l := .loans }}
+                        <tr class="{{ if eq $l.ComputedStatus "overdue" }}table-danger{{ else if eq $l.ComputedStatus "returned" }}table-light{{ end }}">
+                            <td class="text-muted">{{ add $i $.startRow }}</td>
+                            <td><code>{{ $l.DeviceAssetCode }}</code></td>
+                            <td>{{ $l.DeviceTypeName }}</td>
+                            <td><strong>{{ $l.BorrowerName }}</strong><br><small class="text-muted">{{ $l.BorrowerType }}</small></td>
+                            <td>{{ (localTime $l.LoanDate).Format "02/01/2006" }}</td>
+                            <td>{{ (localTime $l.ReturnDate).Format "02/01/2006" }}</td>
                             <td>
-                                {{ if .ExpectedReturnDate }}
-                                    {{ (localTime .ExpectedReturnDate).Format "02/01/2006" }}
+                                {{ if eq $l.ComputedStatus "active" }}
+                                <span class="badge bg-success">Aktif</span>
+                                {{ else if eq $l.ComputedStatus "overdue" }}
+                                <span class="badge bg-danger">Terlambat</span>
                                 {{ else }}
-                                    -
+                                <span class="badge bg-secondary">Dikembalikan</span>
                                 {{ end }}
                             </td>
-                            <td>{{ .Quantity }}</td>
-                            <td>
-                                <span class="badge bg-{{ if eq .Status "active" }}success{{ else if eq .Status "overdue" }}danger{{ else }}secondary{{ end }}">
-                                    {{ .Status }}
-                                </span>
-                            </td>
-                            <td class="d-flex gap-1 flex-wrap align-items-center">
-                                {{ if eq $.role "admin" }}
-                                <a href="/device-loans/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                            <td class="text-center">{{ if $l.ExtensionCount }}<span class="badge bg-info">{{ $l.ExtensionCount }}x</span>{{ else }}-{{ end }}</td>
+                            <td class="text-nowrap">
+                                <a href="/device-loans/{{ $l.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/device-loans/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data peminjaman ini?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                {{ end }}
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus" onclick="if(confirm('Hapus peminjaman ini?')){ document.getElementById('del-{{ $l.ID }}').submit(); }">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-{{ $l.ID }}" method="POST" action="/device-loans/{{ $l.ID }}/delete" style="display:none;"></form>
                             </td>
                         </tr>
                         {{ else }}
@@ -95,8 +107,10 @@
                     </tbody>
                 </table>
             </div>
+
+            {{ template "layout/pagination.html" . }}
         </div>
     </div>
 </div>
 
-    {{ template "layout/footer.html" . }}
+{{ template "layout/footer.html" . }}

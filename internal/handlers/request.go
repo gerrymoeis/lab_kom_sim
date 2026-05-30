@@ -46,13 +46,7 @@ type EditPCRequest struct {
 
 type CreateDeviceRequest struct {
 	DeviceTypeID int    `form:"device_type_id" binding:"required"`
-	Name         string `form:"name" binding:"required"`
-	Brand        string `form:"brand"`
-	Model        string `form:"model"`
 	SerialNumber string `form:"serial_number"`
-	ItemType     string `form:"item_type"`
-	ItemMode     string `form:"item_mode"`
-	Quantity     int    `form:"quantity_total" binding:"min=1"`
 	Condition    string `form:"condition"`
 	Location     string `form:"location"`
 	PurchaseDate string `form:"purchase_date"`
@@ -60,64 +54,52 @@ type CreateDeviceRequest struct {
 }
 
 type EditDeviceRequest struct {
-	DeviceTypeID     int    `form:"device_type_id" binding:"required"`
-	Name             string `form:"name" binding:"required"`
-	Brand            string `form:"brand"`
-	Model            string `form:"model"`
-	SerialNumber     string `form:"serial_number"`
-	ItemType         string `form:"item_type"`
-	ItemMode         string `form:"item_mode"`
-	QuantityTotal    int    `form:"quantity_total" binding:"min=0"`
-	QuantityAvailable int   `form:"quantity_available" binding:"min=0"`
-	Condition        string `form:"condition"`
-	Location         string `form:"location"`
-	PurchaseDate     string `form:"purchase_date"`
-	Notes            string `form:"notes"`
+	DeviceTypeID int    `form:"device_type_id" binding:"required"`
+	AssetCode    string `form:"asset_code"`
+	SerialNumber string `form:"serial_number"`
+	Condition    string `form:"condition"`
+	Location     string `form:"location"`
+	PurchaseDate string `form:"purchase_date"`
+	Notes        string `form:"notes"`
 }
 
 type CreateDeviceTypeRequest struct {
+	CategoryID      int    `form:"category_id" binding:"required"`
 	Name            string `form:"name" binding:"required"`
-	Category        string `form:"category" binding:"required"`
 	Brand           string `form:"brand"`
 	Model           string `form:"model"`
-	ItemType        string `form:"item_type" binding:"required"`
-	ItemMode        string `form:"item_mode"`
 	AssetCodePrefix string `form:"asset_code_prefix"`
+	UsageType       string `form:"usage_type" binding:"required"`
 	DefaultLocation string `form:"default_location"`
-	NotesTemplate   string `form:"notes_template"`
 }
 
 type EditDeviceTypeRequest struct {
+	CategoryID      int    `form:"category_id" binding:"required"`
 	Name            string `form:"name" binding:"required"`
-	Category        string `form:"category" binding:"required"`
 	Brand           string `form:"brand"`
 	Model           string `form:"model"`
-	ItemType        string `form:"item_type" binding:"required"`
-	ItemMode        string `form:"item_mode"`
 	AssetCodePrefix string `form:"asset_code_prefix"`
+	UsageType       string `form:"usage_type" binding:"required"`
 	DefaultLocation string `form:"default_location"`
-	NotesTemplate   string `form:"notes_template"`
 }
 
 type CreateDeviceLoanRequest struct {
-	DeviceID            string `form:"device_id" binding:"required"`
-	BorrowerName        string `form:"borrower_name" binding:"required"`
-	BorrowerType        string `form:"borrower_type"`
-	LoanDate            string `form:"loan_date" binding:"required"`
-	ExpectedReturnDate  string `form:"expected_return_date"`
-	Quantity            int    `form:"quantity" binding:"required,min=1"`
-	Purpose             string `form:"purpose"`
+	DeviceID     string `form:"device_id" binding:"required"`
+	BorrowerName string `form:"borrower_name" binding:"required"`
+	BorrowerType string `form:"borrower_type"`
+	LoanDate     string `form:"loan_date" binding:"required"`
+	ReturnDate   string `form:"return_date" binding:"required"`
+	Purpose      string `form:"purpose"`
 }
 
 type EditDeviceLoanRequest struct {
-	BorrowerName       string `form:"borrower_name" binding:"required"`
-	BorrowerType       string `form:"borrower_type"`
-	LoanDate           string `form:"loan_date" binding:"required"`
-	ExpectedReturnDate string `form:"expected_return_date"`
-	ActualReturnDate   string `form:"actual_return_date"`
-	Status             string `form:"status"`
-	Purpose            string `form:"purpose"`
-	Notes              string `form:"notes"`
+	BorrowerName     string `form:"borrower_name" binding:"required"`
+	BorrowerType     string `form:"borrower_type"`
+	LoanDate         string `form:"loan_date" binding:"required"`
+	ReturnDate       string `form:"return_date"`
+	ActualReturnDate string `form:"actual_return_date"`
+	Purpose          string `form:"purpose"`
+	Notes            string `form:"notes"`
 }
 
 type CreateDeviceUsageRequest struct {
@@ -125,7 +107,6 @@ type CreateDeviceUsageRequest struct {
 	UserName    string `form:"user_name" binding:"required"`
 	UserType    string `form:"user_type"`
 	UsageDate   string `form:"usage_date" binding:"required"`
-	Quantity    int    `form:"quantity" binding:"required,min=1"`
 	IsAvailable string `form:"is_available"`
 	Purpose     string `form:"purpose"`
 }
@@ -134,10 +115,24 @@ type EditDeviceUsageRequest struct {
 	UserName    string `form:"user_name"`
 	UserType    string `form:"user_type"`
 	UsageDate   string `form:"usage_date"`
-	Quantity    int    `form:"quantity"`
 	IsAvailable string `form:"is_available"`
 	Purpose     string `form:"purpose"`
 	Notes       string `form:"notes"`
+}
+
+type CreateInstallationRequest struct {
+	DeviceID               string `form:"device_id" binding:"required"`
+	LocationInstalled      string `form:"location_installed" binding:"required"`
+	InstallationStartDate  string `form:"installation_start_date"`
+	InstallationFinishDate string `form:"installation_finish_date"`
+	Notes                  string `form:"notes"`
+}
+
+type EditInstallationRequest struct {
+	LocationInstalled      string `form:"location_installed" binding:"required"`
+	InstallationStartDate  string `form:"installation_start_date"`
+	InstallationFinishDate string `form:"installation_finish_date"`
+	Notes                  string `form:"notes"`
 }
 
 type CreateLogbookRequest struct {
@@ -204,8 +199,8 @@ type UpdateProfileRequest struct {
 }
 
 type ChangePasswordRequest struct {
-	OldPassword string `form:"old_password" binding:"required"`
-	NewPassword string `form:"new_password" binding:"required"`
+	OldPassword     string `form:"old_password" binding:"required"`
+	NewPassword     string `form:"new_password" binding:"required"`
 	ConfirmPassword string `form:"confirm_password" binding:"required"`
 }
 
@@ -223,8 +218,3 @@ type UploadImageRequest struct {
 	Type     string `form:"type"`
 	PCNumber string `form:"pc_number"`
 }
-
-type UpdateAvailabilityRequest struct {
-	IsAvailable string `form:"is_available" binding:"required"`
-}
-

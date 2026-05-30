@@ -1,72 +1,90 @@
 {{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-clipboard-data"></i> Pemakaian Perangkat</h2>
+            <p class="text-muted">Daftar pemakaian barang habis pakai</p>
+        </div>
+        <div class="col-md-6 text-end">
+            {{ if eq .role "admin" }}
+            {{ template "layout/header_actions_start.html" $ }}
+            <a href="/device-usages/create" class="btn btn-primary flex-grow-1">
+                <i class="bi bi-plus-circle"></i> Tambah Pemakaian
+            </a>
+            {{ template "layout/header_actions_end.html" }}
+            {{ end }}
+        </div>
+    </div>
+
+    {{ template "layout/alert.html" . }}
+
     <div class="card shadow-sm">
         <div class="card-body">
-            <!-- Filter & Search -->
-            <form method="GET" action="/devices" class="row g-3 mb-3">
-                <input type="hidden" name="tab" value="usages">
+            <form method="GET" action="/device-usages" class="row g-3 mb-3">
                 <div class="col-md-4">
                     <input type="text" class="form-control" name="search" placeholder="Cari pengguna atau perangkat..." value="{{ .filters.search }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <select class="form-select" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
                         <option value="usage_date" {{ if eq .filters.sort_by "usage_date" }}selected{{ end }}>Tanggal Pemakaian</option>
                         <option value="user_name" {{ if eq .filters.sort_by "user_name" }}selected{{ end }}>Nama Pengguna</option>
-                        <option value="quantity" {{ if eq .filters.sort_by "quantity" }}selected{{ end }}>Jumlah</option>
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select" name="sort_order">
-                        <option value="DESC" {{ if eq .filters.sort_order "DESC" }}selected{{ end }}>Terbaru</option>
-                        <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>Terlama</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
                 </div>
+                <div class="col-md-2">
+                    <a href="/device-usages" class="btn btn-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
             </form>
 
-            <!-- Table -->
+            {{ if gt (len .usages) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .usages)) 1 }} dari {{ .totalItems }} pemakaian</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
+
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>Perangkat</th>
+                            <th style="width:50px;">#</th>
                             <th>Asset Code</th>
+                            <th>Tipe Perangkat</th>
                             <th>Pengguna</th>
                             <th>Kategori</th>
                             <th>Tanggal Pemakaian</th>
-                            <th>Masih Ada?</th>
-                            <th>Jumlah</th>
+                            <th>Status Stok</th>
                             <th>Keperluan</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range .usages }}
+                        {{ range $i, $u := .usages }}
                         <tr>
-                            <td><strong>{{ .DeviceName }}</strong></td>
-                            <td><code>{{ .AssetCode }}</code></td>
-                            <td>{{ .UserName }}</td>
-                            <td><span class="badge bg-secondary">{{ .UserType }}</span></td>
-                            <td>{{ (localTime .UsageDate).Format "02/01/2006" }} {{ tzCode }}</td>
+                            <td class="text-muted">{{ add $i $.startRow }}</td>
+                            <td><code>{{ $u.DeviceAssetCode }}</code></td>
+                            <td><strong>{{ $u.DeviceTypeName }}</strong></td>
+                            <td>{{ $u.UserName }}<br><small class="text-muted">{{ $u.UserType }}</small></td>
+                            <td><span class="badge bg-secondary">{{ $u.CategoryName }}</span></td>
+                            <td>{{ (localTime $u.UsageDate).Format "02/01/2006" }}</td>
                             <td>
-                                <select class="form-select form-select-sm availability-select" data-usage-id="{{ .ID }}" style="width:auto;">
-                                    <option value="yes" {{ if eq .IsAvailable "yes" }}selected{{ end }}>Ada</option>
-                                    <option value="no" {{ if eq .IsAvailable "no" }}selected{{ end }}>Habis</option>
-                                </select>
+                                {{ if eq $u.IsAvailable "yes" }}
+                                <span class="badge bg-success">Ada</span>
+                                {{ else }}
+                                <span class="badge bg-danger">Habis</span>
+                                {{ end }}
                             </td>
-                            <td><span class="badge bg-warning">{{ .Quantity }}</span></td>
-                            <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>
-                            <td class="d-flex gap-1 flex-wrap align-items-center">
+                            <td>{{ if $u.Purpose }}{{ $u.Purpose }}{{ else }}-{{ end }}</td>
+                            <td class="text-nowrap">
                                 {{ if eq $.role "admin" }}
-                                <a href="/device-usages/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/device-usages/{{ $u.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/device-usages/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini?')">
+                                <form method="POST" action="/device-usages/{{ $u.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus data pemakaian ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -82,6 +100,8 @@
                     </tbody>
                 </table>
             </div>
+
+            {{ template "layout/pagination.html" . }}
         </div>
     </div>
 </div>

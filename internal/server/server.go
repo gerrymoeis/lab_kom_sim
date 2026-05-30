@@ -41,14 +41,6 @@ func loadCategories() []Category {
 	}
 }
 
-func loadDeviceTypeCategories() []Category {
-	return []Category{
-		{"peripheral", "Peripheral"}, {"network", "Network"},
-		{"consumable", "Consumable"}, {"power", "Power"},
-		{"display", "Display"}, {"printer", "Printer"},
-	}
-}
-
 var pcStatusMap = map[string]PCStatusInfo{
 	"normal":  {"normal", "success", "bi-check-circle-fill", "text-success", "Normal"},
 	"warning": {"warning", "warning", "bi-exclamation-triangle-fill", "text-warning", "Warning"},
@@ -117,7 +109,6 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 		},
 		"navItems":        func(currentPage, role string) []NavItem { return loadNavItems(currentPage, role) },
 		"allCategories":   func() []Category { return loadCategories() },
-		"dtCategories":    func() []Category { return loadDeviceTypeCategories() },
 		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },
 		"pcPlacementInfo": func(placement string) PlacementInfo { return getPCPlacementInfo(placement) },
 		"localTime": func(t interface{}) interface{} {
@@ -210,19 +201,10 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/devices", h.DeviceList)
 		protected.GET("/devices/create", h.DeviceCreatePage)
 		protected.POST("/devices/create", h.DeviceCreate)
-		protected.GET("/devices/export", h.DeviceExport)
 		protected.GET("/devices/:id", h.DeviceDetail)
 		protected.GET("/devices/:id/edit", h.DeviceEditPage)
 		protected.POST("/devices/:id/edit", h.DeviceEdit)
 		protected.POST("/devices/:id/delete", h.DeviceDelete)
-
-		protected.GET("/device-types", h.DeviceTypeList)
-		protected.GET("/device-types/create", h.DeviceTypeCreatePage)
-		protected.POST("/device-types/create", h.DeviceTypeCreate)
-		protected.GET("/device-types/:id", h.DeviceTypeDetail)
-		protected.GET("/device-types/:id/edit", h.DeviceTypeEditPage)
-		protected.POST("/device-types/:id/edit", h.DeviceTypeEdit)
-		protected.POST("/device-types/:id/delete", h.DeviceTypeDelete)
 
 		protected.GET("/device-loans", h.DeviceLoanList)
 		protected.GET("/device-loans/create", h.DeviceLoanCreatePage)
@@ -237,7 +219,14 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/device-usages/:id/edit", h.DeviceUsageEditPage)
 		protected.POST("/device-usages/:id/edit", h.DeviceUsageEdit)
 		protected.POST("/device-usages/:id/delete", h.DeviceUsageDelete)
-		protected.POST("/device-usages/:id/availability", h.DeviceUsageUpdateAvailability)
+		protected.POST("/device-loans/:id/extend", h.DeviceLoanExtend)
+		protected.GET("/installations", h.DeviceInstallationList)
+		protected.GET("/installations/create", h.DeviceInstallationCreatePage)
+		protected.GET("/installations/:id", h.DeviceInstallationDetail)
+		protected.POST("/installations/create", h.DeviceInstallationCreate)
+		protected.GET("/installations/:id/edit", h.DeviceInstallationEditPage)
+		protected.POST("/installations/:id/edit", h.DeviceInstallationEdit)
+		protected.POST("/installations/:id/delete", h.DeviceInstallationDelete)
 		protected.GET("/schedules", h.ScheduleList)
 		protected.GET("/schedules/create", h.ScheduleCreatePage)
 		protected.POST("/schedules/create", h.ScheduleCreate)

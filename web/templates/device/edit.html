@@ -4,41 +4,21 @@
     {{ template "layout/card_edit.html" . }}
                     <form method="POST" action="/devices/{{ .device.ID }}/edit">
                         <div class="mb-3">
-                            <label class="form-label">Kategori (dari template)</label>
-                            <input type="text" class="form-control" value="{{ .device.Category }}" readonly disabled>
-                            <small class="text-muted">Kategori tidak dapat diubah (ditentukan oleh template)</small>
+                            <label for="device_type_id" class="form-label">Tipe Perangkat *</label>
+                            <select class="form-select" id="device_type_id" name="device_type_id" required>
+                                <option value="">Pilih tipe perangkat...</option>
+                                {{ range $dt := .deviceTypes }}
+                                <option value="{{ $dt.ID }}" {{ if eq $.device.DeviceTypeID $dt.ID }}selected{{ end }}>
+                                    {{ $dt.CategoryName }} — {{ $dt.Name }} ({{ $dt.AssetCodePrefix }})
+                                </option>
+                                {{ end }}
+                            </select>
                         </div>
 
                         <div class="mb-3">
                             <label for="asset_code" class="form-label">Asset Code *</label>
                             <input type="text" class="form-control" id="asset_code" name="asset_code" value="{{ .device.AssetCode }}" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Nama Perangkat *</label>
-                            <input type="text" class="form-control" id="name" name="name" value="{{ .device.Name }}" required>
-                        </div>
-
-                        <!-- Hidden field for device_type_id (required but not editable) -->
-                        <input type="hidden" name="device_type_id" value="{{ .device.DeviceTypeID }}">
-
-                        <div class="mb-3">
-                            <label for="item_type" class="form-label">Tipe Item *</label>
-                            <select class="form-select" id="item_type" name="item_type" required>
-                                <option value="individual" {{ if eq .device.ItemType "individual" }}selected{{ end }}>Individual (1 unit)</option>
-                                <option value="consumable" {{ if eq .device.ItemType "consumable" }}selected{{ end }}>Consumable (habis pakai)</option>
-                            </select>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="brand" class="form-label">Merk</label>
-                                <input type="text" class="form-control" id="brand" name="brand" value="{{ .device.Brand }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="model" class="form-label">Model</label>
-                                <input type="text" class="form-control" id="model" name="model" value="{{ .device.Model }}">
-                            </div>
+                            <small class="form-text text-muted">Format: PREFIX-NNN (contoh: MOUSE-AXIOO-001)</small>
                         </div>
 
                         <div class="mb-3">
@@ -46,66 +26,25 @@
                             <input type="text" class="form-control" id="serial_number" name="serial_number" value="{{ .device.SerialNumber }}">
                         </div>
 
-                        <div class="mb-3">
-                            <label for="item_mode" class="form-label">Mode Penggunaan *</label>
-                            <select class="form-select" id="item_mode" name="item_mode" required>
-                                <option value="loanable" {{ if .device.IsLoanable }}selected{{ end }}>Dapat Dipinjam</option>
-                                <option value="consumable" {{ if .device.IsConsumable }}selected{{ end }}>Barang Habis Pakai</option>
-                                <option value="none" {{ if not .device.IsLoanable }}{{ if not .device.IsConsumable }}selected{{ end }}{{ end }}>Tidak Keduanya</option>
-                            </select>
-                            <small class="text-muted">Tentukan apakah barang dapat dipinjam atau habis pakai</small>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="quantity_total" class="form-label">Jumlah Total *</label>
-                                <input type="number" class="form-control" id="quantity_total" name="quantity_total" 
-                                       min="{{ if eq .device.ItemType "individual" }}1{{ else }}0{{ end }}" 
-                                       value="{{ .device.QuantityTotal }}" required>
-                                <small class="text-muted">
-                                    <span id="qty_help_individual" style="display: {{ if eq .device.ItemType "individual" }}inline{{ else }}none{{ end }};">
-                                        Jumlah unit yang dimiliki
-                                    </span>
-                                    <span id="qty_help_consumable" style="display: {{ if eq .device.ItemType "consumable" }}inline{{ else }}none{{ end }};">
-                                        Total stok barang habis pakai
-                                    </span>
-                                </small>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="condition" class="form-label">Kondisi *</label>
+                                <select class="form-select" id="condition" name="condition" required>
+                                    <option value="baik" {{ if eq .device.Condition "baik" }}selected{{ end }}>Baik</option>
+                                    <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
+                                    <option value="maintenance" {{ if eq .device.Condition "maintenance" }}selected{{ end }}>Maintenance</option>
+                                </select>
                             </div>
-                            <div class="col-md-6">
-                                <label for="quantity_available" class="form-label">Jumlah Tersedia *</label>
-                                <input type="number" class="form-control" id="quantity_available" name="quantity_available" 
-                                       min="0" value="{{ .device.QuantityAvailable }}" required>
-                                <small class="text-muted">
-                                    <span id="avail_help_individual" style="display: {{ if eq .device.ItemType "individual" }}inline{{ else }}none{{ end }};">
-                                        Jumlah yang bisa dipinjam
-                                    </span>
-                                    <span id="avail_help_consumable" style="display: {{ if eq .device.ItemType "consumable" }}inline{{ else }}none{{ end }};">
-                                        Stok yang tersedia saat ini
-                                    </span>
-                                </small>
+                            <div class="col-md-6 mb-3">
+                                <label for="purchase_date" class="form-label">Tanggal Beli</label>
+                                <input type="date" class="form-control" id="purchase_date" name="purchase_date" 
+                                    value="{{ if .device.PurchaseDate }}{{ (localTime .device.PurchaseDate).Format "2006-01-02" }}{{ end }}">
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="condition" class="form-label">Kondisi *</label>
-                            <select class="form-select" id="condition" name="condition" required>
-                                <option value="baik" {{ if eq .device.Condition "baik" }}selected{{ end }}>Baik</option>
-                                <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
-                                <option value="maintenance" {{ if eq .device.Condition "maintenance" }}selected{{ end }}>Maintenance</option>
-                            </select>
                         </div>
 
                         <div class="mb-3">
                             <label for="location" class="form-label">Lokasi</label>
                             <input type="text" class="form-control" id="location" name="location" value="{{ .device.Location }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
-                            {{ if .purchaseDate }}
-                            <div class="text-muted small mb-1">Tanggal saat ini: {{ .purchaseDate }}</div>
-                            {{ end }}
-                            <input type="date" class="form-control" id="purchase_date" name="purchase_date" value="{{ .purchaseDate }}">
                         </div>
 
                         <div class="mb-3">
@@ -124,35 +63,4 @@
                     </form>
 {{ template "layout/card_close.html" . }}
 
-    <script>
-        // Show/hide quantity fields based on item type
-        document.getElementById('item_type').addEventListener('change', function() {
-            const qtyHelpIndividual = document.getElementById('qty_help_individual');
-            const qtyHelpConsumable = document.getElementById('qty_help_consumable');
-            const availHelpIndividual = document.getElementById('avail_help_individual');
-            const availHelpConsumable = document.getElementById('avail_help_consumable');
-            const qtyTotalInput = document.getElementById('quantity_total');
-            
-            if (this.value === 'consumable') {
-                qtyHelpIndividual.style.display = 'none';
-                qtyHelpConsumable.style.display = 'inline';
-                availHelpIndividual.style.display = 'none';
-                availHelpConsumable.style.display = 'inline';
-                document.getElementById('item_mode').value = 'consumable';
-                qtyTotalInput.min = '0';
-            } else {
-                qtyHelpIndividual.style.display = 'inline';
-                qtyHelpConsumable.style.display = 'none';
-                availHelpIndividual.style.display = 'inline';
-                availHelpConsumable.style.display = 'none';
-                if (document.getElementById('item_mode').value === 'consumable') {
-                    document.getElementById('item_mode').value = 'loanable';
-                }
-                qtyTotalInput.min = '1';
-                if (parseInt(qtyTotalInput.value) < 1) {
-                    qtyTotalInput.value = '1';
-                    document.getElementById('quantity_available').value = '1';
-                }
-            }
-        });
-    </script>{{ template "layout/footer.html" . }}
+{{ template "layout/footer.html" . }}
