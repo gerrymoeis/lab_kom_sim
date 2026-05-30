@@ -325,27 +325,6 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE INDEX IF NOT EXISTS idx_software_catalog_cat_name ON software_catalog(category, name)`,
 		`CREATE INDEX IF NOT EXISTS idx_schedules_day ON course_schedules(day)`,
 		`CREATE INDEX IF NOT EXISTS idx_schedules_day_time ON course_schedules(day, time_start)`,
-		`CREATE INDEX IF NOT EXISTS idx_schedules_lecturer ON course_schedules(lecturer)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_student_name ON logbook_entries(student_name)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_date ON logbook_entries(date)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_purpose ON logbook_entries(purpose)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_time_in ON logbook_entries(time_in)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_date_time ON logbook_entries(date, time_in)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_date_time_id ON logbook_entries(date, time_in, id)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_composite_search ON logbook_entries(student_name, nim, date)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_search_id ON logbook_entries(student_name, nim, date, id)`,
-		`CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action)`,
-		`CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)`,
-		`CREATE INDEX IF NOT EXISTS idx_activity_logs_username ON activity_logs(username)`,
-		`CREATE INDEX IF NOT EXISTS idx_activity_logs_status ON activity_logs(status)`,
-		`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_id ON activity_logs(created_at, id)`,
-		`CREATE INDEX IF NOT EXISTS idx_pc_software_pc_id ON pc_software(pc_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_pc_software_software_id ON pc_software(software_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_maintenance_pc_id ON maintenance_logs(pc_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_maintenance_date ON maintenance_logs(date)`,
 	}
 
 	for _, idx := range indexes {
@@ -405,8 +384,6 @@ func runMigrations(db *DB, isPostgres bool) error {
 				db.Exec(`DROP INDEX IF EXISTS idx_pcs_device_type`)
 			}
 		}
-		db.Exec(`CREATE INDEX IF NOT EXISTS idx_pcs_pc_type ON pcs(pc_type)`)
-
 		// Step 4: Drop deprecated columns (best effort — may fail on older SQLite)
 		for _, depCol := range []string{"physical_condition", "brand", "model", "action_notes"} {
 			if cExists, _ := d.columnExists(db, "pcs", depCol); cExists {
@@ -433,45 +410,13 @@ func runMigrations(db *DB, isPostgres bool) error {
 	}
 
 	if !isPostgres {
-		hasFTS := true
-		if _, err := db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS logbook_fts USING fts5(
-			student_name, nim, purpose,
-			tokenize='trigram',
-			detail='none',
-			content='logbook_entries',
-			content_rowid='id'
-		)`); err != nil {
-			log.Printf("WARN: fts5 not available (%v), logbook search will use LIKE fallback", err)
-			hasFTS = false
-		}
-
-		if hasFTS {
-			var ftsCount int
-
-			for _, t := range []string{
-				`CREATE TRIGGER IF NOT EXISTS logbook_fts_ai AFTER INSERT ON logbook_entries BEGIN
-					INSERT INTO logbook_fts(rowid, student_name, nim, purpose) VALUES (new.id, new.student_name, new.nim, new.purpose); END`,
-				`CREATE TRIGGER IF NOT EXISTS logbook_fts_ad AFTER DELETE ON logbook_entries BEGIN
-					INSERT INTO logbook_fts(logbook_fts, rowid, student_name, nim, purpose) VALUES('delete', old.id, old.student_name, old.nim, old.purpose); END`,
-				`CREATE TRIGGER IF NOT EXISTS logbook_fts_au AFTER UPDATE ON logbook_entries BEGIN
-					INSERT INTO logbook_fts(logbook_fts, rowid, student_name, nim, purpose) VALUES('delete', old.id, old.student_name, old.nim, old.purpose);
-					INSERT INTO logbook_fts(rowid, student_name, nim, purpose) VALUES (new.id, new.student_name, new.nim, new.purpose); END`,
-			} {
-				if _, err := db.Exec(t); err != nil {
-					log.Printf("WARN: failed to create fts5 trigger: %v", err)
-				}
-			}
-
-			db.QueryRow(`SELECT COUNT(*) FROM logbook_fts`).Scan(&ftsCount)
-			if ftsCount == 0 {
-				db.Exec(`INSERT INTO logbook_fts(rowid, student_name, nim, purpose) SELECT id, student_name, nim, purpose FROM logbook_entries`)
-			}
-		}
-
 		if _, err := db.Exec("ANALYZE"); err != nil {
 			return fmt.Errorf("failed to run ANALYZE: %w", err)
 		}
 	}
 
-	return seedDevicesIfEmpty(db)
+	if err := seedDevicesIfEmpty(db); err != nil {
+		return err
+	}
+	return SeedSchedules(db)
 }
