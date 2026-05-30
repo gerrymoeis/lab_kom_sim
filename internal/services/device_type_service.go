@@ -8,11 +8,25 @@ import (
 )
 
 type DeviceTypeCreateInput struct {
-	Name, Category, Brand, Model, ItemType, ItemMode, AssetCodePrefix, DefaultLocation, NotesTemplate string
+	CategoryID      int
+	Name            string
+	Brand           string
+	Model           string
+	AssetCodePrefix string
+	UsageType       string
+	DefaultLocation string
+	Photo           string
 }
 
 type DeviceTypeUpdateInput struct {
-	Name, Category, Brand, Model, ItemType, ItemMode, AssetCodePrefix, DefaultLocation, NotesTemplate string
+	CategoryID      int
+	Name            string
+	Brand           string
+	Model           string
+	AssetCodePrefix string
+	UsageType       string
+	DefaultLocation string
+	Photo           string
 }
 
 type DeviceTypeService struct {
@@ -25,7 +39,7 @@ func NewDeviceTypeService(repo *repository.DeviceTypeRepository, log *ActivityLo
 }
 
 func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
-	result, err := s.repo.Create(in.Name, in.Category, in.Brand, in.Model, in.ItemType, in.ItemMode == "loanable", in.ItemMode == "consumable", in.AssetCodePrefix, in.DefaultLocation, in.NotesTemplate)
+	result, err := s.repo.Create(in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return 0, err
@@ -36,13 +50,13 @@ func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorU
 	}
 	id, _ := result.LastInsertId()
 	s.log.LogCreate(actorID, actorUsername, actorRole, "device_type", int(id),
-		map[string]any{"name": in.Name, "category": in.Category, "item_type": in.ItemType},
+		map[string]any{"name": in.Name, "category_id": in.CategoryID, "usage_type": in.UsageType},
 		ipAddress, userAgent)
 	return int(id), nil
 }
 
 func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	err := s.repo.Update(id, in.Name, in.Category, in.Brand, in.Model, in.ItemType, in.ItemMode == "loanable", in.ItemMode == "consumable", in.AssetCodePrefix, in.DefaultLocation, in.NotesTemplate)
+	err := s.repo.Update(id, in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
 			return err
@@ -53,7 +67,7 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", 0,
 		map[string]any{"id": id},
-		map[string]any{"name": in.Name, "category": in.Category},
+		map[string]any{"name": in.Name, "category_id": in.CategoryID},
 		ipAddress, userAgent)
 	return nil
 }

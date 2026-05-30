@@ -3,140 +3,119 @@
 import (
 	"time"
 
-	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/repository"
 )
 
 type CreateLoanInput struct {
-	DeviceID             int
-	BorrowerName         string
-	BorrowerType         string
-	LoanDate             string
-	ExpectedReturnDate   string
-	Quantity             int
-	Purpose              string
+	DeviceID     int
+	BorrowerName string
+	BorrowerType string
+	LoanDate     string
+	ReturnDate   string
+	Purpose      string
 }
 
 type UpdateLoanInput struct {
-	BorrowerName       string
-	BorrowerType       string
-	LoanDate           string
-	ExpectedReturnDate string
-	ActualReturnDate   string
-	Status             string
-	Purpose            string
-	Notes              string
+	BorrowerName     string
+	BorrowerType     string
+	LoanDate         string
+	ReturnDate       *time.Time
+	ActualReturnDate string
+	Purpose          string
+	Notes            string
 }
 
 type DeviceLoanService struct {
-	db                 *database.DB
-	deviceLoanRepo     *repository.DeviceLoanRepository
-	deviceRepo         *repository.DeviceRepository
-	activityLogService *ActivityLogService
+	loanRepo       *repository.DeviceLoanRepository
+	extensionRepo  *repository.LoanExtensionRepository
+	log            *ActivityLogService
 }
 
-func NewDeviceLoanService(db *database.DB, deviceLoanRepo *repository.DeviceLoanRepository, deviceRepo *repository.DeviceRepository, activityLogService *ActivityLogService) *DeviceLoanService {
-	return &DeviceLoanService{db: db, deviceLoanRepo: deviceLoanRepo, deviceRepo: deviceRepo, activityLogService: activityLogService}
+func NewDeviceLoanService(loanRepo *repository.DeviceLoanRepository, extensionRepo *repository.LoanExtensionRepository, log *ActivityLogService) *DeviceLoanService {
+	return &DeviceLoanService{loanRepo: loanRepo, extensionRepo: extensionRepo, log: log}
 }
 
 func (s *DeviceLoanService) GetByID(id int) (*repository.DeviceLoanRow, error) {
-	return s.deviceLoanRepo.GetByID(id)
+	return s.loanRepo.GetByID(id)
+}
+
+func (s *DeviceLoanService) ListPaginated(filters repository.DeviceLoanFilters, page, pageSize int) ([]repository.DeviceLoanRow, int, error) {
+	return s.loanRepo.ListPaginated(filters, page, pageSize)
 }
 
 func (s *DeviceLoanService) CreateLoan(in CreateLoanInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
 	loanDate := MustParseDate(in.LoanDate)
-	var expectedReturnDate *time.Time
-	if in.ExpectedReturnDate != "" {
-		if t, err := ParseDate(in.ExpectedReturnDate); err == nil {
-			expectedReturnDate = &t
-		}
-	}
+	returnDate := MustParseDate(in.ReturnDate)
 
-	tx, err := s.db.Begin()
-	if err != nil { return 0, err }
-	defer tx.Rollback()
-
-	deviceTx := s.deviceRepo.WithTx(tx)
-	if err := deviceTx.DeductQuantity(in.DeviceID, in.Quantity); err != nil {
-		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device_loan", 0,
-			map[string]any{"borrower": in.BorrowerName}, ipAddress, userAgent, err.Error())
-		return 0, err
-	}
-
-	loanTx := s.deviceLoanRepo.WithTx(tx)
-	loanID, err := loanTx.Create(in.DeviceID, in.BorrowerName, in.BorrowerType, loanDate, expectedReturnDate, in.Quantity, in.Purpose)
+	loanID, err := s.loanRepo.Create(in.DeviceID, in.BorrowerName, in.BorrowerType, loanDate, returnDate, in.Purpose)
 	if err != nil {
-		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device_loan", 0,
+		s.log.LogCreate(actorID, actorUsername, actorRole, "device_loan", 0,
 			map[string]any{"borrower": in.BorrowerName}, ipAddress, userAgent, err.Error())
 		return 0, err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return 0, err
-	}
-
-	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device_loan", int(loanID),
+	s.log.LogCreate(actorID, actorUsername, actorRole, "device_loan", int(loanID),
 		map[string]any{"borrower": in.BorrowerName, "device_id": in.DeviceID}, ipAddress, userAgent)
 	return loanID, nil
 }
 
 func (s *DeviceLoanService) UpdateLoan(id int, in UpdateLoanInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	loanDate := MustParseDate(in.LoanDate)
-	var expectedReturnDate, actualReturnDate *time.Time
-	if in.ExpectedReturnDate != "" {
-		if t, err := ParseDate(in.ExpectedReturnDate); err == nil { expectedReturnDate = &t }
-	}
+	var actualReturnDate *time.Time
 	if in.ActualReturnDate != "" {
-		if t, err := ParseDate(in.ActualReturnDate); err == nil { actualReturnDate = &t }
+		if t, err := ParseDate(in.ActualReturnDate); err == nil {
+			actualReturnDate = &t
+		}
 	}
-	err := s.deviceLoanRepo.Update(id, in.BorrowerName, in.BorrowerType, loanDate, expectedReturnDate, actualReturnDate, in.Status, in.Purpose, in.Notes)
+	err := s.loanRepo.Update(id, in.BorrowerName, in.BorrowerType, loanDate, in.ReturnDate, actualReturnDate, in.Purpose, in.Notes)
 	if err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
 		map[string]any{"id": id}, nil, ipAddress, userAgent)
 	return nil
 }
 
+func (s *DeviceLoanService) ExtendLoan(loanID int, newReturnDate string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	// Read current return_date before updating
+	loan, err := s.loanRepo.GetByID(loanID)
+	if err != nil {
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", loanID,
+			map[string]any{"id": loanID}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	oldReturnDate := loan.ReturnDate.Format("2006-01-02")
+
+	// Update return_date on loan
+	if err := s.loanRepo.ExtendReturnDate(loanID, newReturnDate); err != nil {
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", loanID,
+			map[string]any{"id": loanID}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+
+	// Record extension history
+	if _, err := s.extensionRepo.Create(loanID, oldReturnDate, newReturnDate); err != nil {
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", loanID,
+			map[string]any{"id": loanID}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", loanID,
+		map[string]any{"id": loanID},
+		map[string]any{"old_return_date": oldReturnDate, "new_return_date": newReturnDate},
+		ipAddress, userAgent)
+	return nil
+}
+
 func (s *DeviceLoanService) DeleteLoan(id, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	deviceID, quantity, err := s.deviceLoanRepo.GetDeviceAndQuantity(id)
-	if err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_loan", id,
+	if err := s.loanRepo.Delete(id); err != nil {
+		s.log.LogDelete(actorID, actorUsername, actorRole, "device_loan", id,
 			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
 		return err
 	}
-
-	tx, err := s.db.Begin()
-	if err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_loan", id,
-			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-		return err
-	}
-	defer tx.Rollback()
-
-	deviceTx := s.deviceRepo.WithTx(tx)
-	if err := deviceTx.RestoreQuantity(deviceID, quantity); err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_loan", id,
-			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-		return err
-	}
-
-	loanTx := s.deviceLoanRepo.WithTx(tx)
-	if err := loanTx.Delete(id); err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_loan", id,
-			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_loan", id,
-			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-		return err
-	}
-
-	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_loan", id,
+	s.log.LogDelete(actorID, actorUsername, actorRole, "device_loan", id,
 		map[string]any{"id": id}, ipAddress, userAgent)
 	return nil
 }

@@ -1,0 +1,95 @@
+package services
+
+import (
+	"database/sql"
+
+	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/repository"
+)
+
+type CreateInstallationInput struct {
+	DeviceID               int
+	LocationInstalled      string
+	InstallationStartDate  string
+	InstallationFinishDate string
+	Photo                  string
+	Notes                  string
+}
+
+type UpdateInstallationInput struct {
+	LocationInstalled      string
+	InstallationStartDate  string
+	InstallationFinishDate string
+	Photo                  string
+	Notes                  string
+}
+
+type DeviceInstallationService struct {
+	repo *repository.DeviceInstallationRepository
+	log  *ActivityLogService
+}
+
+func NewDeviceInstallationService(repo *repository.DeviceInstallationRepository, log *ActivityLogService) *DeviceInstallationService {
+	return &DeviceInstallationService{repo: repo, log: log}
+}
+
+func (s *DeviceInstallationService) ListPaginated(filters repository.InstallationFilters, page, pageSize int) ([]repository.InstallationRow, int, error) {
+	return s.repo.ListPaginated(filters, page, pageSize)
+}
+
+func (s *DeviceInstallationService) GetByID(id int) (*repository.InstallationRow, error) {
+	return s.repo.GetByID(id)
+}
+
+func (s *DeviceInstallationService) GetByDeviceID(deviceID int) (*models.DeviceInstallation, error) {
+	return s.repo.GetByDeviceID(deviceID)
+}
+
+func (s *DeviceInstallationService) GetDistinctLocations() ([]string, error) {
+	return s.repo.GetDistinctLocations()
+}
+
+func toNullStr(s string) sql.NullString {
+	return sql.NullString{String: s, Valid: s != ""}
+}
+
+func (s *DeviceInstallationService) Create(in CreateInstallationInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
+	result, err := s.repo.Create(in.DeviceID, in.LocationInstalled,
+		toNullStr(in.InstallationStartDate), toNullStr(in.InstallationFinishDate),
+		in.Photo, in.Notes)
+	if err != nil {
+		s.log.LogCreate(actorID, actorUsername, actorRole, "device_installation", 0,
+			map[string]any{"device_id": in.DeviceID}, ipAddress, userAgent, err.Error())
+		return 0, err
+	}
+	id, _ := result.LastInsertId()
+	s.log.LogCreate(actorID, actorUsername, actorRole, "device_installation", int(id),
+		map[string]any{"device_id": in.DeviceID, "location": in.LocationInstalled}, ipAddress, userAgent)
+	return int(id), nil
+}
+
+func (s *DeviceInstallationService) Update(id int, in UpdateInstallationInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	err := s.repo.Update(id, in.LocationInstalled,
+		toNullStr(in.InstallationStartDate), toNullStr(in.InstallationFinishDate),
+		in.Photo, in.Notes)
+	if err != nil {
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_installation", id,
+			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_installation", id,
+		map[string]any{"id": id}, map[string]any{"location": in.LocationInstalled}, ipAddress, userAgent)
+	return nil
+}
+
+func (s *DeviceInstallationService) Delete(id int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	err := s.repo.Delete(id)
+	if err != nil {
+		s.log.LogDelete(actorID, actorUsername, actorRole, "device_installation", id,
+			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
+		return err
+	}
+	s.log.LogDelete(actorID, actorUsername, actorRole, "device_installation", id,
+		map[string]any{"id": id}, ipAddress, userAgent)
+	return nil
+}

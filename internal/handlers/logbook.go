@@ -23,8 +23,8 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", "50"))
-	if pageSize < 1 { pageSize = 50 }
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("size", strconv.Itoa(h.cfg.DefaultPageSize)))
+	if pageSize < 1 { pageSize = h.cfg.DefaultPageSize }
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if page < 1 { page = 1 }
