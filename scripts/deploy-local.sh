@@ -17,7 +17,7 @@ echo ""
 echo "================================================"
 echo "  Step 2: Pushing to remote..."
 echo "================================================"
-git push origin refinement
+git push origin refactoring
 
 echo ""
 echo "================================================"

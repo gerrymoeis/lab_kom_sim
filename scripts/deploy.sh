@@ -1,31 +1,85 @@
-#!/data/data/com.termux/files/usr/bin/bash
-# Deploy script for Termux — called via SSH from laptop
+#!/bin/bash
+# Server-side deploy script for simlab.service (Linux production)
+# Called by cron polling: git fetch on deploy_linux → if HEAD changed → run this script
 # Usage: ./scripts/deploy.sh
+#
+# Flow: git pull → go build → backup DB → symlink swap → systemctl restart → health check → rollback → cleanup
 
-set -e
+set -euo pipefail
 
-cd ~/lab_kom_sim
+REPO_DIR="/opt/simlab/app/repo"
+RELEASES_DIR="/opt/simlab/app/releases"
+DATA_DIR="/opt/simlab/app/data"
+CURRENT_DIR="/opt/simlab/app/current"
+ENV_FILE="/opt/simlab/.env"
 
-echo "[deploy] Switching to refinement branch..."
-git checkout refinement 2>/dev/null || true
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+RELEASE_DIR="$RELEASES_DIR/$TIMESTAMP"
 
-echo "[deploy] Pulling latest code..."
-git pull origin refinement
+echo "[deploy] === Deploy $TIMESTAMP ==="
 
-echo "[deploy] Checking vendor assets..."
-if [ ! -f "web/static/vendor/bootstrap/css/bootstrap.min.css" ]; then
-    echo "[deploy] Downloading vendor assets..."
-    bash scripts/download-vendor.sh
+# 1. Pull latest code from deploy_linux
+cd "$REPO_DIR"
+git pull origin deploy_linux
+
+# 2. Save current release for rollback
+PREVIOUS_RELEASE=""
+if [ -L "$CURRENT_DIR" ] && [ -d "$(readlink -f "$CURRENT_DIR" 2>/dev/null)" ]; then
+  PREVIOUS_RELEASE=$(readlink -f "$CURRENT_DIR")
 fi
 
-echo "[deploy] Building binary..."
-CGO_ENABLED=0 go build -ldflags="-s -w" -tags nodynamic -o app-simlab ./cmd/server/main.go
+# 3. Create release directory
+mkdir -p "$RELEASE_DIR"
 
-echo "[deploy] Stopping existing server..."
-pkill -f app-simlab 2>/dev/null || true
-sleep 1
+# 4. Copy web assets
+cp -r "$REPO_DIR/web" "$RELEASE_DIR/"
 
-echo "[deploy] Starting new server..."
-nohup ./app-simlab > /dev/null 2>&1 &
+# 5. Build binary with modernc (pure Go, no CGO needed for Linux/ARM64)
+CGO_ENABLED=0 go build -tags moderncsqlite \
+  -ldflags="-s -w" \
+  -o "$RELEASE_DIR/app-simlab" \
+  "$REPO_DIR/cmd/server/main.go"
 
-echo "[deploy] Done. Server restarted."
+# 6. Verify build
+go vet -tags moderncsqlite "$REPO_DIR/..."
+go test -tags moderncsqlite "$REPO_DIR/..." -short
+
+# 7. Backup database
+if [ -f "$DATA_DIR/inventaris_lab.db" ]; then
+  cp "$DATA_DIR/inventaris_lab.db" "$DATA_DIR/backup-pre-$TIMESTAMP.db"
+fi
+
+# 8. Atomic symlink swap
+ln -sfn "$RELEASE_DIR" "$CURRENT_DIR.new"
+mv -T "$CURRENT_DIR.new" "$CURRENT_DIR"
+
+# 9. Restart service
+systemctl restart simlab.service
+
+# 10. Health check (retry 5x, 2s interval)
+for i in $(seq 1 5); do
+  if curl -sf http://localhost:8080/healthz > /dev/null 2>&1; then
+    echo "[deploy] ✅ Health check passed (attempt $i)"
+
+    # 11. Cleanup old releases (keep last 3)
+    ls -1t "$RELEASES_DIR" | tail -n +4 | xargs -I {} rm -rf "$RELEASES_DIR/{}"
+
+    echo "[deploy] ✅ Deploy $TIMESTAMP selesai"
+    exit 0
+  fi
+  echo "[deploy] ⏳ Health check attempt $i/5 failed, retrying in 2s..."
+  sleep 2
+done
+
+# 12. Rollback on health check failure
+echo "[deploy] ❌ Health check gagal — rollback ke release sebelumnya"
+if [ -n "$PREVIOUS_RELEASE" ] && [ -d "$PREVIOUS_RELEASE" ]; then
+  ln -sfn "$PREVIOUS_RELEASE" "$CURRENT_DIR.new"
+  mv -T "$CURRENT_DIR.new" "$CURRENT_DIR"
+  systemctl restart simlab.service
+  echo "[deploy] 🔄 Rollback ke $PREVIOUS_RELEASE selesai"
+else
+  echo "[deploy] ⚠️ Tidak ada release sebelumnya untuk rollback"
+fi
+
+exit 1
