@@ -100,38 +100,40 @@
                 </div>
             </div>
 
-            {{ if or .pcLaboran.ID .pcCCTV.ID }}
-            <div class="mt-4 d-flex gap-3 flex-wrap justify-content-center">
+            <div class="mt-4">
                 {{ if .pcLaboran.ID }}
-                <div class="pc-card-wrapper pc-card-wrapper-special">
-                    <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLaboran.Status }}"
-                         onclick="window.location='/pc/detail/{{ formatPCLabel .pcLaboran }}.html'"
-                         style="cursor: pointer;">
-                        <div class="pc-number">{{ .pcLaboran.Label }}</div>
-                        <div class="pc-icon"><i class="bi bi-tools"></i></div>
-                        <div class="pc-status-badge">
-                            {{ $info := pcStatusInfo .pcLaboran.Status }}
-                            <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                <div class="container d-flex">
+                    <div class="pc-card-wrapper pc-card-wrapper-special">
+                        <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLaboran.Status }}"
+                             onclick="window.location='/pc/detail/{{ formatPCLabel .pcLaboran }}.html'"
+                             style="cursor: pointer;">
+                            <div class="pc-number">{{ .pcLaboran.Label }}</div>
+                            <div class="pc-icon"><i class="bi bi-tools"></i></div>
+                            <div class="pc-status-badge">
+                                {{ $info := pcStatusInfo .pcLaboran.Status }}
+                                <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
                 {{ end }}
                 {{ if .pcCCTV.ID }}
-                <div class="pc-card-wrapper pc-card-wrapper-special">
-                    <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcCCTV.Status }}"
-                         onclick="window.location='/pc/detail/{{ formatPCLabel .pcCCTV }}.html'"
-                         style="cursor: pointer;">
-                        <div class="pc-number">{{ .pcCCTV.Label }}</div>
-                        <div class="pc-icon"><i class="bi bi-camera-video"></i></div>
-                        <div class="pc-status-badge">
-                            {{ $info := pcStatusInfo .pcCCTV.Status }}
-                            <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                <div class="container d-flex mt-2">
+                    <div class="pc-card-wrapper pc-card-wrapper-special">
+                        <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcCCTV.Status }}"
+                             onclick="window.location='/pc/detail/{{ formatPCLabel .pcCCTV }}.html'"
+                             style="cursor: pointer;">
+                            <div class="pc-number">{{ .pcCCTV.Label }}</div>
+                            <div class="pc-icon"><i class="bi bi-camera-video"></i></div>
+                            <div class="pc-status-badge">
+                                {{ $info := pcStatusInfo .pcCCTV.Status }}
+                                <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
                 {{ end }}
             </div>
-            {{ end }}
         </div>
     </div>
 </div>
