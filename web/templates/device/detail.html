@@ -1,133 +1,64 @@
 {{ template "layout/base.html" . }}
 
-<div class="container mt-4">
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/devices">Perangkat</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ .device.AssetCode }}</li>
+        </ol>
+    </nav>
+
     <div class="row">
         <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-box-seam"></i> Detail Perangkat</h5>
-                    <div class="d-flex flex-column flex-sm-row gap-2">
-                        {{ if eq .role "admin" }}
-                        <a href="/devices/{{ .device.ID }}/edit" class="btn btn-sm btn-warning">
-                            <i class="bi bi-pencil"></i> Edit
-                        </a>
-                        {{ end }}
-                        <a href="/devices" class="btn btn-sm btn-secondary">
-                            <i class="bi bi-arrow-left"></i> Kembali
-                        </a>
-                    </div>
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informasi Perangkat</h5>
                 </div>
                 <div class="card-body">
-                    <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Informasi Dasar</h6>
-                    <table class="table table-bordered">
+                    <table class="table table-borderless">
                         <tr>
-                            <th width="30%">Kode Aset</th>
-                            <td><strong><code>{{ .device.AssetCode }}</code></strong></td>
+                            <th style="width:200px;">Asset Code</th>
+                            <td><code>{{ .device.AssetCode }}</code></td>
                         </tr>
                         <tr>
                             <th>Nama Perangkat</th>
-                            <td><strong>{{ .device.Name }}</strong></td>
+                            <td><strong>{{ .deviceTypeName }}</strong></td>
                         </tr>
-                        {{ if .deviceTypeName }}
-                        <tr>
-                            <th>Jenis Barang</th>
-                            <td><span class="badge bg-secondary">{{ .deviceTypeName }}</span></td>
-                        </tr>
-                        {{ end }}
                         <tr>
                             <th>Kategori</th>
-                            <td><span class="badge bg-info">{{ .device.Category }}</span></td>
+                            <td><span class="badge bg-secondary">{{ .device.CategoryName }}</span></td>
                         </tr>
                         <tr>
-                            <th>Tipe Item</th>
+                            <th>Tipe Penggunaan</th>
                             <td>
-                                <span class="badge bg-{{ if eq .device.ItemType "individual" }}primary{{ else }}warning{{ end }}">
-                                    {{ .device.ItemType }}
+                                <span class="badge bg-{{ if eq .device.UsageType "loanable" }}primary{{ else if eq .device.UsageType "consumable" }}warning{{ else }}info{{ end }}">
+                                    {{ if eq .device.UsageType "loanable" }}Dapat Dipinjam{{ else if eq .device.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }}
                                 </span>
                             </td>
                         </tr>
-                    </table>
-
-                    <hr class="my-4">
-                    <h6 class="text-primary mb-3"><i class="bi bi-box"></i> Detail Perangkat</h6>
-                    <table class="table table-bordered">
-                        <tr>
-                            <th width="30%">Merek</th>
-                            <td>{{ if .device.Brand }}{{ .device.Brand }}{{ else }}-{{ end }}</td>
-                        </tr>
-                        <tr>
-                            <th>Model</th>
-                            <td>{{ if .device.Model }}{{ .device.Model }}{{ else }}-{{ end }}</td>
-                        </tr>
                         <tr>
                             <th>Serial Number</th>
-                            <td>{{ if .device.SerialNumber }}<code>{{ .device.SerialNumber }}</code>{{ else }}-{{ end }}</td>
+                            <td>{{ if .device.SerialNumber }}{{ .device.SerialNumber }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                         </tr>
                         <tr>
                             <th>Kondisi</th>
                             <td>
-                                <span class="badge bg-{{ if eq .device.Condition "baik" }}success{{ else if eq .device.Condition "maintenance" }}warning{{ else }}danger{{ end }}">
-                                    {{ .device.Condition }}
+                                <span class="badge bg-{{ if eq .device.Condition "baik" }}success{{ else if eq .device.Condition "rusak" }}danger{{ else }}warning{{ end }}">
+                                    {{ if eq .device.Condition "baik" }}Baik{{ else if eq .device.Condition "rusak" }}Rusak{{ else }}Maintenance{{ end }}
                                 </span>
                             </td>
                         </tr>
                         <tr>
                             <th>Lokasi</th>
-                            <td>{{ if .device.Location }}{{ .device.Location }}{{ else }}-{{ end }}</td>
-                        </tr>
-                    </table>
-
-                    <hr class="my-4">
-                    <h6 class="text-primary mb-3"><i class="bi bi-clipboard-data"></i> Kuantitas & Status</h6>
-                    <table class="table table-bordered">
-                        <tr>
-                            <th width="30%">Jumlah Total</th>
-                            <td><strong>{{ .device.QuantityTotal }}</strong></td>
+                            <td>{{ if .device.Location }}{{ .device.Location }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                         </tr>
                         <tr>
-                            <th>Jumlah Tersedia</th>
-                            <td><strong>{{ .device.QuantityAvailable }}</strong></td>
-                        </tr>
-                        <tr>
-                            <th>Dapat Dipinjam</th>
-                            <td>
-                                {{ if .device.IsLoanable }}
-                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Ya</span>
-                                {{ else }}
-                                <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Tidak</span>
-                                {{ end }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>Habis Pakai</th>
-                            <td>
-                                {{ if .device.IsConsumable }}
-                                <span class="badge bg-warning"><i class="bi bi-check-circle"></i> Ya</span>
-                                {{ else }}
-                                <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Tidak</span>
-                                {{ end }}
-                            </td>
-                        </tr>
-                    </table>
-
-                    <hr class="my-4">
-                    <h6 class="text-primary mb-3"><i class="bi bi-calendar"></i> Informasi Tambahan</h6>
-                    <table class="table table-bordered">
-                        <tr>
-                            <th width="30%">Tanggal Pembelian</th>
-                            <td>{{ if .device.PurchaseDate }}{{ (localTime .device.PurchaseDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
+                            <th>Tanggal Beli</th>
+                            <td>{{ if .device.PurchaseDate }}{{ (localTime .device.PurchaseDate).Format "02/01/2006" }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                         </tr>
                         <tr>
                             <th>Catatan</th>
-                            <td>{{ if .device.Notes }}{{ .device.Notes }}{{ else }}-{{ end }}</td>
-                        </tr>
-                        <tr>
-                            <th>Dibuat</th>
-                            <td><small class="text-muted">{{ (localTime .device.CreatedAt).Format "02/01/2006 15:04" }} {{ tzCode }}</small></td>
-                        </tr>
-                        <tr>
-                            <th>Diupdate</th>
-                            <td><small class="text-muted">{{ (localTime .device.UpdatedAt).Format "02/01/2006 15:04" }}</small></td>
+                            <td>{{ if .device.Notes }}{{ .device.Notes }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                         </tr>
                     </table>
                 </div>
@@ -135,77 +66,49 @@
         </div>
 
         <div class="col-md-4">
-            <!-- Loan History Card -->
-            {{ if .device.IsLoanable }}
-            <div class="card shadow-sm mb-3">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0"><i class="bi bi-arrow-left-right"></i> Riwayat Peminjaman</h6>
+            {{ if .device.DeviceTypePhoto }}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-image"></i> Foto</h5>
                 </div>
-                <div class="card-body">
-                    {{ if .loans }}
-                    <div class="list-group list-group-flush">
-                        {{ range .loans }}
-                        <div class="list-group-item px-0">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <strong>{{ .BorrowerName }}</strong>
-                                    <br><small class="text-muted">{{ (localTime .LoanDate).Format "02/01/2006" }} {{ tzCode }}</small>
-                                    <br><span class="badge bg-{{ if eq .Status "dipinjam" }}warning{{ else if eq .Status "dikembalikan" }}success{{ else }}danger{{ end }}">
-                                        {{ .Status }}
-                                    </span>
-                                </div>
-                                <span class="badge bg-secondary">{{ .Quantity }}x</span>
-                            </div>
-                        </div>
-                        {{ end }}
-                    </div>
-                    <div class="mt-2">
-                        <a href="/devices?tab=loans" class="btn btn-sm btn-outline-primary w-100">
-                            <i class="bi bi-list"></i> Lihat Semua
-                        </a>
-                    </div>
-                    {{ else }}
-                    <p class="text-muted text-center mb-0">Belum ada riwayat peminjaman</p>
-                    {{ end }}
+                <div class="card-body text-center">
+                    <img src="/uploads/device_types/{{ .device.DeviceTypePhoto }}" class="img-fluid rounded" alt="Foto perangkat">
                 </div>
             </div>
             {{ end }}
 
-            <!-- Usage History Card (for consumables) -->
-            {{ if .device.IsConsumable }}
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0"><i class="bi bi-graph-down"></i> Riwayat Pemakaian</h6>
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Status</h5>
                 </div>
                 <div class="card-body">
-                    {{ if .usages }}
-                    <div class="list-group list-group-flush">
-                        {{ range .usages }}
-                        <div class="list-group-item px-0">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <strong>{{ .UserName }}</strong>
-                                    <br><small class="text-muted">{{ (localTime .UsageDate).Format "02/01/2006" }} {{ tzCode }}</small>
-                                    {{ if .Purpose }}
-                                    <br><small>{{ .Purpose }}</small>
-                                    {{ end }}
-                                </div>
-                                <span class="badge bg-secondary">{{ .Quantity }}x</span>
-                            </div>
-                        </div>
-                        {{ end }}
+                    {{ if eq .device.Condition "baik" }}
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle"></i> Perangkat dalam kondisi baik
                     </div>
-                    <div class="mt-2">
-                        <a href="/devices?tab=usages" class="btn btn-sm btn-outline-warning w-100">
-                            <i class="bi bi-list"></i> Lihat Semua
-                        </a>
+                    {{ else if eq .device.Condition "rusak" }}
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-x-circle"></i> Perangkat rusak
                     </div>
                     {{ else }}
-                    <p class="text-muted text-center mb-0">Belum ada riwayat pemakaian</p>
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-tools"></i> Perangkat dalam maintenance
+                    </div>
                     {{ end }}
                 </div>
             </div>
-            {{ end }}
+
+            <div class="d-flex flex-column gap-2">
+                <a href="/devices/{{ .device.ID }}/edit" class="btn btn-warning">
+                    <i class="bi bi-pencil"></i> Edit Perangkat
+                </a>
+                <a href="/device-loans/create" class="btn btn-primary">
+                    <i class="bi bi-journal-arrow-up"></i> Pinjamkan Perangkat
+                </a>
+                <a href="/device-usages/create" class="btn btn-info">
+                    <i class="bi bi-clipboard-data"></i> Catat Pemakaian
+                </a>
+            </div>
         </div>
     </div>
 </div>

@@ -1,219 +1,86 @@
 ﻿package services
 
 import (
-	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/repository"
 )
 
 type CreateUsageInput struct {
-	DeviceID     int
-	UserName     string
-	UserType     string
-	UsageDate    string
-	Quantity     int
-	IsAvailable  string
-	Purpose      string
+	DeviceID    int
+	UserName    string
+	UserType    string
+	UsageDate   string
+	IsAvailable string
+	Purpose     string
 }
 
 type UpdateUsageInput struct {
 	UserName    string
 	UserType    string
 	UsageDate   string
-	Quantity    int
 	IsAvailable string
 	Purpose     string
 	Notes       string
 }
 
 type DeviceUsageService struct {
-	db                 *database.DB
-	deviceUsageRepo    *repository.DeviceUsageRepository
-	deviceRepo         *repository.DeviceRepository
-	activityLogService *ActivityLogService
+	repo *repository.DeviceUsageRepository
+	log  *ActivityLogService
 }
 
-func NewDeviceUsageService(db *database.DB, deviceUsageRepo *repository.DeviceUsageRepository, deviceRepo *repository.DeviceRepository, activityLogService *ActivityLogService) *DeviceUsageService {
-	return &DeviceUsageService{db: db, deviceUsageRepo: deviceUsageRepo, deviceRepo: deviceRepo, activityLogService: activityLogService}
+func NewDeviceUsageService(repo *repository.DeviceUsageRepository, log *ActivityLogService) *DeviceUsageService {
+	return &DeviceUsageService{repo: repo, log: log}
 }
 
 func (s *DeviceUsageService) GetByID(id int) (*repository.DeviceUsageRow, error) {
-	return s.deviceUsageRepo.GetByID(id)
+	return s.repo.GetByID(id)
+}
+
+func (s *DeviceUsageService) ListPaginated(filters repository.DeviceUsageFilters, page, pageSize int) ([]repository.DeviceUsageRow, int, error) {
+	return s.repo.ListPaginated(filters, page, pageSize)
 }
 
 func (s *DeviceUsageService) CreateUsage(in CreateUsageInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
-	if in.IsAvailable != "no" { in.IsAvailable = "yes" }
+	if in.IsAvailable != "no" {
+		in.IsAvailable = "yes"
+	}
 	usageDate := MustParseDate(in.UsageDate)
 
-	tx, err := s.db.Begin()
-	if err != nil { return 0, err }
-	defer tx.Rollback()
-
-	deviceTx := s.deviceRepo.WithTx(tx)
-	if in.IsAvailable == "no" {
-		if err := deviceTx.DeductQuantity(in.DeviceID, in.Quantity); err != nil {
-			s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device_usage", 0,
-				map[string]any{"user": in.UserName}, ipAddress, userAgent, err.Error())
-			return 0, err
-		}
-	}
-
-	usageTx := s.deviceUsageRepo.WithTx(tx)
-	id, err := usageTx.Create(in.DeviceID, in.UserName, in.UserType, usageDate, in.Quantity, in.IsAvailable, in.Purpose)
+	id, err := s.repo.Create(in.DeviceID, in.UserName, in.UserType, usageDate, in.IsAvailable, in.Purpose)
 	if err != nil {
-		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device_usage", 0,
+		s.log.LogCreate(actorID, actorUsername, actorRole, "device_usage", 0,
 			map[string]any{"user": in.UserName}, ipAddress, userAgent, err.Error())
 		return 0, err
 	}
 
-	if err := tx.Commit(); err != nil {
-		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device_usage", 0,
-			map[string]any{"user": in.UserName}, ipAddress, userAgent, err.Error())
-		return 0, err
-	}
-
-	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "device_usage", int(id),
+	s.log.LogCreate(actorID, actorUsername, actorRole, "device_usage", int(id),
 		map[string]any{"user": in.UserName, "device_id": in.DeviceID}, ipAddress, userAgent)
 	return id, nil
 }
 
 func (s *DeviceUsageService) UpdateUsage(id int, in UpdateUsageInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	if in.IsAvailable != "no" { in.IsAvailable = "yes" }
+	if in.IsAvailable != "no" {
+		in.IsAvailable = "yes"
+	}
 	usageDate := MustParseDate(in.UsageDate)
 
-	// Read old values via reader (no write lock contention)
-	deviceID, oldQty, oldAvail, err := s.deviceUsageRepo.GetDeviceAndQuantity(id)
-	if err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
+	if err := s.repo.Update(id, in.UserName, in.UserType, usageDate, in.IsAvailable, in.Purpose, in.Notes); err != nil {
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 
-	// Update usage record via async write queue (non-blocking, no writer lock)
-	if err := s.deviceUsageRepo.Update(id, in.UserName, in.UserType, usageDate, in.Quantity, in.IsAvailable, in.Purpose, in.Notes); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-		return err
-	}
-
-	// Adjust device quantity based on availability/quantity change
-	switch {
-	case oldAvail != in.IsAvailable:
-		if in.IsAvailable == "yes" {
-			if err := s.deviceRepo.RestoreQuantity(deviceID, in.Quantity); err != nil {
-				s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id, map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-				return err
-			}
-		} else {
-			// Use raw Exec to avoid RowsAffected issue through write queue (returns noopResult)
-			if _, err := s.db.Exec(`UPDATE devices SET quantity_available = quantity_available - ? WHERE id = ? AND quantity_available >= ?`, in.Quantity, deviceID, in.Quantity); err != nil {
-				s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id, map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-				return err
-			}
-		}
-	case in.Quantity != oldQty:
-		delta := oldQty - in.Quantity
-		if err := s.deviceRepo.SetQuantity(deviceID, delta); err != nil {
-			s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id, map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-			return err
-		}
-	}
-
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
 		map[string]any{"id": id}, nil, ipAddress, userAgent)
 	return nil
 }
 
 func (s *DeviceUsageService) DeleteUsage(id, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_usage", id,
+	if err := s.repo.Delete(id); err != nil {
+		s.log.LogDelete(actorID, actorUsername, actorRole, "device_usage", id,
 			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
 		return err
 	}
-	defer tx.Rollback()
-
-	usageTx := s.deviceUsageRepo.WithTx(tx)
-	devID, qty, avail, err := usageTx.GetDeviceAndQuantity(id)
-	if err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-		return err
-	}
-
-	if err := usageTx.Delete(id); err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-		return err
-	}
-
-	if avail == "no" {
-		deviceTx := s.deviceRepo.WithTx(tx)
-		if err := deviceTx.RestoreQuantity(devID, qty); err != nil {
-			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_usage", id,
-				map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-			return err
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-		return err
-	}
-
-	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "device_usage", id,
+	s.log.LogDelete(actorID, actorUsername, actorRole, "device_usage", id,
 		map[string]any{"id": id}, ipAddress, userAgent)
-	return nil
-}
-
-func (s *DeviceUsageService) UpdateAvailability(id int, isAvailable string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-		return err
-	}
-	defer tx.Rollback()
-
-	usageTx := s.deviceUsageRepo.WithTx(tx)
-	devID, quantity, oldAvail, err := usageTx.GetDeviceAndQuantity(id)
-	if err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-		return err
-	}
-	if oldAvail == isAvailable {
-		return tx.Commit()
-	}
-
-	if err := usageTx.UpdateAvailability(id, isAvailable); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-		return err
-	}
-
-	deviceTx := s.deviceRepo.WithTx(tx)
-	if isAvailable == "yes" {
-		if err := deviceTx.RestoreQuantity(devID, quantity); err != nil {
-			s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-				map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-			return err
-		}
-	} else {
-		if err := deviceTx.DeductQuantity(devID, quantity); err != nil {
-			s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-				map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-			return err
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-		return err
-	}
-
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-		map[string]any{"id": id}, nil, ipAddress, userAgent)
 	return nil
 }

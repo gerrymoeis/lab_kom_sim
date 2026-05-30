@@ -20,7 +20,7 @@ func (h *Handler) UserList(c *gin.Context) {
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if page < 1 { page = 1 }
-	pageSize := 20
+	pageSize := h.cfg.DefaultPageSize
 	search := c.Query("search")
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)

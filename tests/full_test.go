@@ -43,6 +43,7 @@ func TestFullIntegration(t *testing.T) {
 		DatabasePath:     dbPath,
 		SessionSecret:    "test-secret-12345",
 		UploadPath:       "uploads",
+		DefaultPageSize:  25,
 		GeminiAPIKey:     os.Getenv("GEMINI_API_KEY"),
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 	}
@@ -205,18 +206,11 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/devices types: %d", resp.StatusCode)
 	closeResp(resp)
 
-	resp, _ = post("/device-types/create", "name=TestKB&category=peripheral&brand=B&model=T100&item_type=individual")
-	assert(resp.StatusCode == 302, "create device type: %d", resp.StatusCode)
-	closeResp(resp)
-	var dtID int
-	db.QueryRow("SELECT id FROM device_types WHERE name='TestKB'").Scan(&dtID)
-	assert(dtID > 0, "Device type ID=%d", dtID)
-
-	resp, _ = post("/devices/create", "device_type_id=1&name=Monitor&brand=LG&model=27&item_type=individual&item_mode=loanable&quantity_total=5&condition=baik&location=Lab")
+	resp, _ = post("/devices/create", "device_type_id=1&serial_number=SN-TEST001&condition=baik&location=Lab&purchase_date=&notes=Device+test")
 	assert(resp.StatusCode == 302, "create device: %d", resp.StatusCode)
 	closeResp(resp)
 	var devID int
-	db.QueryRow("SELECT id FROM devices WHERE name='Monitor'").Scan(&devID)
+	db.QueryRow("SELECT id FROM devices WHERE serial_number='SN-TEST001'").Scan(&devID)
 	assert(devID > 0, "Device ID=%d", devID)
 
 	// Device detail
@@ -231,22 +225,12 @@ func TestFullIntegration(t *testing.T) {
 
 	// Device edit POST
 	resp, _ = post("/devices/"+fmt.Sprint(devID)+"/edit",
-		"device_type_id=1&name=Monitor+Updated&brand=LG&model=27&item_type=individual&item_mode=loanable&quantity_total=5&quantity_available=5&condition=baik&location=Lab")
+		"device_type_id=1&asset_code=PENTAB-001&serial_number=SN-TEST002&condition=rusak&location=Lab2&purchase_date=&notes=Updated")
 	assert(resp.StatusCode == 302, "edit device: %d", resp.StatusCode)
 	closeResp(resp)
-	var devName string
-	db.QueryRow("SELECT name FROM devices WHERE id=?", devID).Scan(&devName)
-	assert(devName == "Monitor Updated", "Device name updated: %s", devName)
-
-	// Device type detail
-	resp, _ = get("/device-types/" + fmt.Sprint(dtID))
-	assert(resp.StatusCode == 200, "/device-types/%d: %d", dtID, resp.StatusCode)
-	closeResp(resp)
-
-	// Device type edit page
-	resp, _ = get("/device-types/" + fmt.Sprint(dtID) + "/edit")
-	assert(resp.StatusCode == 200, "/device-types/%d/edit: %d", dtID, resp.StatusCode)
-	closeResp(resp)
+	var devSerial string
+	db.QueryRow("SELECT serial_number FROM devices WHERE id=?", devID).Scan(&devSerial)
+	assert(devSerial == "SN-TEST002", "Device serial updated: %s", devSerial)
 
 	// 4. Software CRUD
 	t.Log("\n=== 4. SOFTWARE CRUD ===")
@@ -385,7 +369,6 @@ func TestFullIntegration(t *testing.T) {
 		assert(len(body) > 0, "%s empty", path)
 	}
 	checkExport("/pc/export", "pc_export")
-	checkExport("/devices/export", "devices_export")
 	checkExport("/software/export", "software_catalog_export")
 	checkExport("/logbook/export", "logbook_export")
 	checkExport("/logbook/export-preview", "logbook_export_preview")
@@ -393,18 +376,15 @@ func TestFullIntegration(t *testing.T) {
 
 	// 10. Device Loan CRUD
 	t.Log("\n=== 10. DEVICE LOAN ===")
-	var loanDevID, qtyBefore int
-	db.QueryRow("SELECT id, quantity_available FROM devices WHERE quantity_total>0 ORDER BY id LIMIT 1").Scan(&loanDevID, &qtyBefore)
+	var loanDevID int
+	db.QueryRow("SELECT id FROM devices ORDER BY id LIMIT 1").Scan(&loanDevID)
 	assert(loanDevID > 0, "device exists for loan")
-	resp, _ = post("/device-loans/create", fmt.Sprintf("device_id=%d&borrower_name=Mahasiswa+Test&borrower_type=mahasiswa&loan_date=2026-05-16&quantity=1&purpose=Praktikum", loanDevID))
+	resp, _ = post("/device-loans/create", fmt.Sprintf("device_id=%d&borrower_name=Mahasiswa+Test&borrower_type=mahasiswa&loan_date=2026-05-16&return_date=2026-05-20&purpose=Praktikum", loanDevID))
 	assert(resp.StatusCode == 302, "create loan: %d", resp.StatusCode)
 	closeResp(resp)
 	var loanCount int
 	db.QueryRow("SELECT COUNT(*) FROM device_loans").Scan(&loanCount)
 	assert(loanCount > 0, "loans: %d", loanCount)
-	var qtyAfter int
-	db.QueryRow("SELECT quantity_available FROM devices WHERE id=?", loanDevID).Scan(&qtyAfter)
-	assert(qtyAfter == qtyBefore-1, "device qty: %d→%d", qtyBefore, qtyAfter)
 	resp, _ = get("/devices?tab=loans")
 	assert(resp.StatusCode == 200, "/devices loans: %d", resp.StatusCode)
 	closeResp(resp)
@@ -418,14 +398,14 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/device-loans/%d/edit: %d", loanID, resp.StatusCode)
 	closeResp(resp)
 
-	// Loan edit POST
+	// Loan edit POST (return the loan)
 	resp, _ = post("/device-loans/"+fmt.Sprint(loanID)+"/edit",
-		"borrower_name=Mahasiswa+Updated&borrower_type=mahasiswa&loan_date=2026-05-16&actual_return_date=2026-05-17&status=returned&purpose=Praktikum")
+		"borrower_name=Mahasiswa+Updated&borrower_type=mahasiswa&loan_date=2026-05-16&return_date=2026-05-20&actual_return_date=2026-05-17&purpose=Praktikum")
 	assert(resp.StatusCode == 302, "edit loan: %d", resp.StatusCode)
 	closeResp(resp)
-	var loanStatus string
-	db.QueryRow("SELECT status FROM device_loans WHERE id=?", loanID).Scan(&loanStatus)
-	assert(loanStatus == "returned", "Loan status updated: %s", loanStatus)
+	var loanReturned string
+	db.QueryRow("SELECT COALESCE(actual_return_date,'') FROM device_loans WHERE id=?", loanID).Scan(&loanReturned)
+	assert(loanReturned != "", "Loan returned: %s", loanReturned)
 
 	// Loan delete
 	resp, _ = post("/device-loans/"+fmt.Sprint(loanID)+"/delete", "")
@@ -436,7 +416,7 @@ func TestFullIntegration(t *testing.T) {
 
 	//  11. Device Usage CRUD
 	t.Log("\n=== 11. DEVICE USAGE ===")
-	resp, _ = post("/device-usages/create", fmt.Sprintf("device_id=%d&user_name=Dosen+Test&user_type=dosen&usage_date=2026-05-16&quantity=1&is_available=yes&purpose=Demo", loanDevID))
+	resp, _ = post("/device-usages/create", fmt.Sprintf("device_id=%d&user_name=Dosen+Test&user_type=dosen&usage_date=2026-05-16&is_available=yes&purpose=Demo", loanDevID))
 	assert(resp.StatusCode == 302, "create usage: %d", resp.StatusCode)
 	closeResp(resp)
 	var usageCount int
@@ -456,7 +436,7 @@ func TestFullIntegration(t *testing.T) {
 
 	// Usage edit POST
 	resp, _ = post("/device-usages/"+fmt.Sprint(usageID)+"/edit",
-		"user_name=Dosen+Updated&user_type=dosen&usage_date=2026-05-16&quantity=1&is_available=yes&purpose=Demo")
+		"user_name=Dosen+Updated&user_type=dosen&usage_date=2026-05-16&is_available=yes&purpose=Demo")
 	assert(resp.StatusCode == 302, "edit usage: %d", resp.StatusCode)
 	closeResp(resp)
 	var usageUser string
@@ -470,8 +450,54 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT COUNT(*) FROM device_usages WHERE id=?", usageID).Scan(&usageCount)
 	assert(usageCount == 0, "Usage deleted")
 
-	// 12. Logbook Save
-	t.Log("\n=== 12. LOGBOOK SAVE ===")
+	// 12. Device Installation CRUD
+	t.Log("\n=== 12. DEVICE INSTALLATION ===")
+	var installDevID int
+	db.QueryRow("SELECT id FROM devices ORDER BY id LIMIT 1").Scan(&installDevID)
+	assert(installDevID > 0, "device exists for installation")
+	resp, _ = post("/installations/create", fmt.Sprintf("device_id=%d&location_installed=Lab+Utama&installation_start_date=2026-05-01&notes=Installed+test", installDevID))
+	assert(resp.StatusCode == 302, "create installation: %d", resp.StatusCode)
+	closeResp(resp)
+	var installCount int
+	db.QueryRow("SELECT COUNT(*) FROM device_installations").Scan(&installCount)
+	assert(installCount > 0, "installations: %d", installCount)
+	var installID int
+	db.QueryRow("SELECT id FROM device_installations ORDER BY id DESC LIMIT 1").Scan(&installID)
+	assert(installID > 0, "Installation ID=%d", installID)
+
+	// Installation detail
+	resp, _ = get("/installations/" + fmt.Sprint(installID))
+	assert(resp.StatusCode == 200, "/installations/%d: %d", installID, resp.StatusCode)
+	closeResp(resp)
+
+	// Installation list
+	resp, _ = get("/installations")
+	assert(resp.StatusCode == 200, "/installations: %d", resp.StatusCode)
+	closeResp(resp)
+
+	// Installation edit page
+	resp, _ = get("/installations/" + fmt.Sprint(installID) + "/edit")
+	assert(resp.StatusCode == 200, "/installations/%d/edit: %d", installID, resp.StatusCode)
+	closeResp(resp)
+
+	// Installation edit POST
+	resp, _ = post("/installations/"+fmt.Sprint(installID)+"/edit",
+		"location_installed=Lab+Cadangan&installation_start_date=2026-05-01&installation_finish_date=2026-05-10&notes=Updated")
+	assert(resp.StatusCode == 302, "edit installation: %d", resp.StatusCode)
+	closeResp(resp)
+	var installLoc string
+	db.QueryRow("SELECT location_installed FROM device_installations WHERE id=?", installID).Scan(&installLoc)
+	assert(installLoc == "Lab Cadangan", "Installation location updated: %s", installLoc)
+
+	// Installation delete
+	resp, _ = post("/installations/"+fmt.Sprint(installID)+"/delete", "")
+	assert(resp.StatusCode == 302, "delete installation: %d", resp.StatusCode)
+	closeResp(resp)
+	db.QueryRow("SELECT COUNT(*) FROM device_installations WHERE id=?", installID).Scan(&installCount)
+	assert(installCount == 0, "Installation deleted")
+
+	// 13. Logbook Save
+	t.Log("\n=== 13. LOGBOOK SAVE ===")
 	resp, _ = post("/logbook/save", "source_file=test&date[]=2026-05-17&student_name[]=Mahasiswa+Save&nim[]=24091111111&time_in[]=10:00&time_out[]=11:40&purpose[]=Praktikum")
 	assert(resp.StatusCode == 200, "logbook save: %d", resp.StatusCode)
 	var lsRes struct {
@@ -496,7 +522,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 302, "change password mismatch: %d", resp.StatusCode)
 	closeResp(resp)
 
-	// Cleanup: delete device + device type created in §3
+	// Cleanup: delete device created in §3
 	t.Log("\n=== DEVICE CLEANUP ===")
 	resp, _ = post("/devices/"+fmt.Sprint(devID)+"/delete", "")
 	assert(resp.StatusCode == 302, "delete device: %d", resp.StatusCode)
@@ -504,13 +530,6 @@ func TestFullIntegration(t *testing.T) {
 	var devDelCount int
 	db.QueryRow("SELECT COUNT(*) FROM devices WHERE id=?", devID).Scan(&devDelCount)
 	assert(devDelCount == 0, "Device deleted")
-
-	resp, _ = post("/device-types/"+fmt.Sprint(dtID)+"/delete", "")
-	assert(resp.StatusCode == 302, "delete device type: %d", resp.StatusCode)
-	closeResp(resp)
-	var dtDelCount int
-	db.QueryRow("SELECT COUNT(*) FROM device_types WHERE id=?", dtID).Scan(&dtDelCount)
-	assert(dtDelCount == 0, "Device type deleted")
 
 	// 15. Summary
 	t.Log("\n=== SUMMARY ===")
