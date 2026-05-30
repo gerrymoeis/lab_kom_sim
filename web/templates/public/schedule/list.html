@@ -1,0 +1,36 @@
+{{ template "layout/base.html" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-calendar-event"></i> Jadwal Mata Kuliah</h2>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div id="schedule-table-container" class="table-responsive"></div>
+        </div>
+    </div>
+</div>
+
+<script id="data-schedules" type="application/json">{{ .dataJSON }}</script>
+<script>
+initPublicTable({
+    containerId: "schedule-table-container",
+    data: JSON.parse(document.getElementById("data-schedules").textContent),
+    columns: [
+        { field: "day", label: "Hari", sortable: true, filterable: true,
+          render: function(v) { return '<span class="badge bg-primary">' + v + '</span>'; } },
+        { field: "course_name", label: "Mata Kuliah", sortable: true },
+        { field: "class", label: "Kelas", sortable: true },
+        { field: "lecturer", label: "Dosen", sortable: true },
+        { field: "time_start", label: "Jam Mulai", sortable: true },
+        { field: "time_end", label: "Jam Selesai", sortable: true }
+    ],
+    searchFields: ["course_name", "lecturer", "class", "day"],
+    pageSize: 50
+});
+</script>
+
+{{ template "layout/footer.html" . }}
