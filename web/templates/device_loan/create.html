@@ -4,19 +4,9 @@
     {{ template "layout/card_create.html" . }}
                     <form method="POST" action="/device-loans/create">
                         <div class="mb-3">
-                            <label for="device_id" class="form-label">Perangkat *</label>
-                            <select class="form-select" id="device_id" name="device_id" required {{ if .deviceID }}disabled{{ end }}>
-                                <option value="">Pilih perangkat...</option>
-                                {{ range .devices }}
-                                <option value="{{ .ID }}" {{ if eq $.deviceID (printf "%d" .ID) }}selected{{ end }}>
-                                    {{ .AssetCode }} - {{ .Name }} (Tersedia: {{ .QuantityAvailable }})
-                                </option>
-                                {{ end }}
-                            </select>
-                            {{ if .deviceID }}
-                            <input type="hidden" name="device_id" value="{{ .deviceID }}">
-                            {{ end }}
-                            <small class="text-muted">Hanya perangkat yang dapat dipinjam dan memiliki stok tersedia</small>
+                            <label for="device_id" class="form-label">ID Perangkat *</label>
+                            <input type="number" class="form-control" id="device_id" name="device_id" min="1" required>
+                            <small class="text-muted">Masukkan ID perangkat yang akan dipinjam</small>
                         </div>
 
                         <div class="mb-3">
@@ -28,10 +18,10 @@
                             <label for="borrower_type" class="form-label">Tipe Peminjam *</label>
                             <select class="form-select" id="borrower_type" name="borrower_type" required>
                                 <option value="">Pilih tipe...</option>
-                                <option value="mahasiswa">Mahasiswa</option>
                                 <option value="dosen">Dosen</option>
+                                <option value="mahasiswa">Mahasiswa</option>
                                 <option value="staff">Staff</option>
-                                <option value="external">External</option>
+                                <option value="lainnya">Lainnya</option>
                             </select>
                         </div>
 
@@ -41,15 +31,9 @@
                                 <input type="date" class="form-control" id="loan_date" name="loan_date" required data-default-date>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="expected_return_date" class="form-label">Target Tanggal Kembali</label>
-                                <input type="date" class="form-control" id="expected_return_date" name="expected_return_date">
+                                <label for="return_date" class="form-label">Tanggal Kembali *</label>
+                                <input type="date" class="form-control" id="return_date" name="return_date" required>
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="quantity" class="form-label">Jumlah *</label>
-                            <input type="number" class="form-control" id="quantity" name="quantity" min="1" value="1" required>
-                            <small class="text-muted">Jumlah unit yang dipinjam</small>
                         </div>
 
                         <div class="mb-3">

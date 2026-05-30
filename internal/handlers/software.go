@@ -20,7 +20,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if page < 1 { page = 1 }
-	pageSize := 20
+	pageSize := h.cfg.DefaultPageSize
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")

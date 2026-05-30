@@ -34,8 +34,9 @@ func defaultConfigs() map[string]Config {
 		},
 		"device": {
 			Alias: "d", Columns: []string{
-				"d.name", "d.asset_code", "d.serial_number",
-				"d.brand", "d.model", "d.location", "d.notes",
+				"d.asset_code", "d.serial_number",
+				"d.location", "d.notes",
+				"dt.name", "c.name",
 			},
 		},
 		"software": {
@@ -49,8 +50,9 @@ func defaultConfigs() map[string]Config {
 			},
 		},
 		"device_type": {
-			Alias: "", Columns: []string{
-				"name", "category", "brand", "model", "notes_template",
+			Alias: "dt", Columns: []string{
+				"dt.name", "dt.brand", "dt.model",
+				"c.name",
 			},
 		},
 		"user": {
@@ -71,12 +73,20 @@ func defaultConfigs() map[string]Config {
 		},
 		"device_loan": {
 			Alias: "l", Columns: []string{
-				"l.borrower_name", "d.name", "d.asset_code",
+				"l.borrower_name", "d.asset_code",
+				"dt.name", "c.name",
 			},
 		},
 		"device_usage": {
 			Alias: "u", Columns: []string{
-				"u.user_name", "d.name",
+				"u.user_name", "d.asset_code",
+				"dt.name", "c.name",
+			},
+		},
+		"device_installation": {
+			Alias: "di", Columns: []string{
+				"d.asset_code", "di.location_installed",
+				"dt.name",
 			},
 		},
 	}

@@ -23,6 +23,7 @@ type Config struct {
 	Android          bool
 	WriteMode        string
 	Timezone         string
+	DefaultPageSize  int
 	Backup           BackupConfig
 }
 
@@ -56,6 +57,7 @@ func Load() *Config {
 		Android:          getEnv("ANDROID", "false") == "true",
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
 		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
+		DefaultPageSize:  getEnvInt("DEFAULT_PAGE_SIZE", 25),
 		Backup: BackupConfig{
 			Enabled:   getEnv("BACKUP_ENABLED", "true") == "true",
 			Interval:  getEnvInt("BACKUP_INTERVAL", 30),

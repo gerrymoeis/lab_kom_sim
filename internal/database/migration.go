@@ -42,6 +42,60 @@ func runMigrations(db *DB, isPostgres bool) error {
 		}
 	}
 
+	// Drop old indexes no longer needed
+	for _, idx := range []string{
+		"idx_device_types_category", "idx_device_types_item_type",
+		"idx_device_loans_status", "idx_devices_item_type",
+		"idx_devices_loanable_qty", "idx_devices_consumable_qty",
+	} {
+		db.Exec("DROP INDEX IF EXISTS " + idx)
+	}
+
+	// Detect old device schema and drop tables for recreation
+	if hasOld, _ := d.columnExists(db, "device_types", "notes_template"); hasOld {
+		log.Println("Detected old device schema — dropping old tables for migration")
+		db.Exec("DROP TABLE IF EXISTS device_installations")
+		db.Exec("DROP TABLE IF EXISTS loan_extensions")
+		db.Exec("DROP TABLE IF EXISTS device_usages")
+		db.Exec("DROP TABLE IF EXISTS device_loans")
+		db.Exec("DROP TABLE IF EXISTS devices")
+		db.Exec("DROP TABLE IF EXISTS device_types")
+		db.Exec("DROP TABLE IF EXISTS categories")
+	}
+
+	// Recreate activity_logs with updated entity_type CHECK if still old schema
+	if hasOldAL, _ := d.columnExists(db, "activity_logs", "id"); hasOldAL {
+		var entityCheck string
+		err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='activity_logs'`).Scan(&entityCheck)
+		if err == nil && !strings.Contains(entityCheck, "'category'") {
+			actLogSQL := `CREATE TABLE IF NOT EXISTS activity_logs_v2 (
+				id {{PK}},
+				user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+				username TEXT NOT NULL,
+				user_role TEXT NOT NULL,
+				action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
+				entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule', 'device_type', 'category', 'device_installation', 'loan_extension')),
+				entity_id INTEGER,
+				description TEXT NOT NULL,
+				old_values TEXT,
+				new_values TEXT,
+				created_at {{TS}} NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				ip_address TEXT,
+				user_agent TEXT,
+				status TEXT DEFAULT 'success' CHECK(status IN ('success', 'failed', 'error')),
+				error_message TEXT
+			)`
+			actLogSQL = strings.ReplaceAll(actLogSQL, "{{PK}}", d.pkType)
+			actLogSQL = strings.ReplaceAll(actLogSQL, "{{TS}}", d.tsType)
+			if _, err := db.Exec(actLogSQL); err == nil {
+				db.Exec("INSERT INTO activity_logs_v2 SELECT * FROM activity_logs")
+				db.Exec("DROP TABLE activity_logs")
+				db.Exec("ALTER TABLE activity_logs_v2 RENAME TO activity_logs")
+				log.Println("Migrated activity_logs entity_type CHECK constraint")
+			}
+		}
+	}
+
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id {{PK}},
@@ -78,34 +132,31 @@ func runMigrations(db *DB, isPostgres bool) error {
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
 			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
 		)`,
-		`CREATE TABLE IF NOT EXISTS device_types (
+		`CREATE TABLE IF NOT EXISTS categories (
 			id {{PK}},
 			name TEXT NOT NULL UNIQUE,
-			category TEXT NOT NULL,
+			default_prefix TEXT NOT NULL UNIQUE,
+			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS device_types (
+			id {{PK}},
+			category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+			name TEXT NOT NULL,
 			brand TEXT,
 			model TEXT,
-			item_type TEXT NOT NULL DEFAULT 'individual' CHECK(item_type IN ('individual', 'consumable')),
-			is_loanable BOOLEAN NOT NULL DEFAULT {{TRUE}},
-			is_consumable BOOLEAN NOT NULL DEFAULT {{FALSE}},
-			asset_code_prefix TEXT,
+			asset_code_prefix TEXT NOT NULL UNIQUE,
+			usage_type TEXT NOT NULL CHECK(usage_type IN ('loanable', 'consumable', 'installable')),
 			default_location TEXT,
-			notes_template TEXT,
+			photo TEXT,
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
-			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
+			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(category_id, name)
 		)`,
 		`CREATE TABLE IF NOT EXISTS devices (
 			id {{PK}},
 			device_type_id INTEGER NOT NULL REFERENCES device_types(id) ON DELETE RESTRICT,
-			asset_code TEXT UNIQUE,
-			name TEXT NOT NULL,
-			brand TEXT,
-			model TEXT,
+			asset_code TEXT NOT NULL UNIQUE,
 			serial_number TEXT,
-			item_type TEXT NOT NULL DEFAULT 'individual' CHECK(item_type IN ('individual', 'consumable')),
-			is_loanable BOOLEAN NOT NULL DEFAULT {{TRUE}},
-			is_consumable BOOLEAN NOT NULL DEFAULT {{FALSE}},
-			quantity_total INTEGER DEFAULT 1,
-			quantity_available INTEGER DEFAULT 1,
 			condition TEXT NOT NULL DEFAULT 'baik' CHECK(condition IN ('baik', 'rusak', 'maintenance')),
 			location TEXT,
 			purchase_date DATE,
@@ -117,12 +168,10 @@ func runMigrations(db *DB, isPostgres bool) error {
 			id {{PK}},
 			device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
 			borrower_name TEXT NOT NULL,
-			borrower_type TEXT CHECK(borrower_type IN ('dosen', 'mahasiswa', 'staff', 'lainnya')),
+			borrower_type TEXT NOT NULL CHECK(borrower_type IN ('dosen', 'mahasiswa', 'staff', 'lainnya')),
 			loan_date DATE NOT NULL,
-			expected_return_date DATE,
+			return_date DATE NOT NULL,
 			actual_return_date DATE,
-			quantity INTEGER NOT NULL DEFAULT 1,
-			status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'returned', 'overdue')),
 			purpose TEXT,
 			notes TEXT,
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
@@ -132,13 +181,30 @@ func runMigrations(db *DB, isPostgres bool) error {
 			id {{PK}},
 			device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
 			user_name TEXT NOT NULL,
-			user_type TEXT CHECK(user_type IN ('dosen', 'mahasiswa', 'staff', 'lainnya')),
+			user_type TEXT NOT NULL CHECK(user_type IN ('dosen', 'mahasiswa', 'staff', 'lainnya')),
 			usage_date DATE NOT NULL,
-			quantity INTEGER NOT NULL DEFAULT 1,
 			is_available TEXT NOT NULL DEFAULT 'yes' CHECK(is_available IN ('yes', 'no')),
 			purpose TEXT,
 			notes TEXT,
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS loan_extensions (
+			id {{PK}},
+			loan_id INTEGER NOT NULL REFERENCES device_loans(id) ON DELETE CASCADE,
+			previous_return_date DATE NOT NULL,
+			new_return_date DATE NOT NULL,
+			extended_at {{TS}} DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE TABLE IF NOT EXISTS device_installations (
+			id {{PK}},
+			device_id INTEGER NOT NULL UNIQUE REFERENCES devices(id) ON DELETE CASCADE,
+			location_installed TEXT NOT NULL,
+			installation_start_date DATE,
+			installation_finish_date DATE,
+			photo TEXT,
+			notes TEXT,
+			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
+			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE TABLE IF NOT EXISTS software_catalog (
 			id {{PK}},
@@ -196,7 +262,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 			username TEXT NOT NULL,
 			user_role TEXT NOT NULL,
 			action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
-			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule', 'device_type')),
+			entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule', 'device_type', 'category', 'device_installation', 'loan_extension')),
 			entity_id INTEGER,
 			description TEXT NOT NULL,
 			old_values TEXT,
@@ -233,42 +299,53 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_activity_logs_username ON activity_logs(username)`,
-		`CREATE INDEX IF NOT EXISTS idx_device_types_category ON device_types(category)`,
-		`CREATE INDEX IF NOT EXISTS idx_device_types_item_type ON device_types(item_type)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_types_category_id ON device_types(category_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_devices_condition ON devices(condition)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_device_type_id ON devices(device_type_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_asset_code ON devices(asset_code)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_serial ON devices(serial_number)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_loans_device_id ON device_loans(device_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_device_loans_status ON device_loans(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_loans_loan_date ON device_loans(loan_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_loans_return_date ON device_loans(return_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_loans_borrower ON device_loans(borrower_name)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_loans_borrower_type ON device_loans(borrower_type)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_usages_device_id ON device_usages(device_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_usages_usage_date ON device_usages(usage_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_usages_user_name ON device_usages(user_name)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_usages_user_type ON device_usages(user_type)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_installations_device_id ON device_installations(device_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_device_installations_location ON device_installations(location_installed)`,
+		`CREATE INDEX IF NOT EXISTS idx_loan_extensions_loan_id ON loan_extensions(loan_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_asset_id ON pcs(asset_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_pc_type ON pcs(pc_type)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_brand_model ON pcs(brand_model)`,
 		`CREATE INDEX IF NOT EXISTS idx_pcs_serial_number ON pcs(serial_number)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_student_name ON logbook_entries(student_name)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_purpose ON logbook_entries(purpose)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_time_in ON logbook_entries(time_in)`,
-		`CREATE INDEX IF NOT EXISTS idx_logbook_composite_search ON logbook_entries(student_name, nim, date)`,
-		`CREATE INDEX IF NOT EXISTS idx_devices_device_type_id ON devices(device_type_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_devices_asset_code ON devices(asset_code)`,
-		`CREATE INDEX IF NOT EXISTS idx_devices_item_type ON devices(item_type)`,
+		`CREATE INDEX IF NOT EXISTS idx_pcs_grid ON pcs("row", "column")`,
 		`CREATE INDEX IF NOT EXISTS idx_software_catalog_category ON software_catalog(category)`,
 		`CREATE INDEX IF NOT EXISTS idx_software_catalog_cat_name ON software_catalog(category, name)`,
 		`CREATE INDEX IF NOT EXISTS idx_schedules_day ON course_schedules(day)`,
 		`CREATE INDEX IF NOT EXISTS idx_schedules_day_time ON course_schedules(day, time_start)`,
 		`CREATE INDEX IF NOT EXISTS idx_schedules_lecturer ON course_schedules(lecturer)`,
-		`CREATE INDEX IF NOT EXISTS idx_devices_loanable_qty ON devices(is_loanable, quantity_available)`,
-		`CREATE INDEX IF NOT EXISTS idx_devices_consumable_qty ON devices(is_consumable, quantity_available)`,
-		`CREATE INDEX IF NOT EXISTS idx_devices_serial ON devices(serial_number)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_student_name ON logbook_entries(student_name)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_date ON logbook_entries(date)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_purpose ON logbook_entries(purpose)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_time_in ON logbook_entries(time_in)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_date_time ON logbook_entries(date, time_in)`,
-		`CREATE INDEX IF NOT EXISTS idx_activity_logs_status ON activity_logs(status)`,
-		`CREATE INDEX IF NOT EXISTS idx_pc_software_software_id ON pc_software(software_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_device_loans_borrower ON device_loans(borrower_name)`,
-		`CREATE INDEX IF NOT EXISTS idx_device_usages_user_name ON device_usages(user_name)`,
-		`CREATE INDEX IF NOT EXISTS idx_pcs_grid ON pcs("row", "column")`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_date_time_id ON logbook_entries(date, time_in, id)`,
+		`CREATE INDEX IF NOT EXISTS idx_logbook_composite_search ON logbook_entries(student_name, nim, date)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_search_id ON logbook_entries(student_name, nim, date, id)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_username ON activity_logs(username)`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_logs_status ON activity_logs(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_id ON activity_logs(created_at, id)`,
+		`CREATE INDEX IF NOT EXISTS idx_pc_software_pc_id ON pc_software(pc_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_pc_software_software_id ON pc_software(software_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_maintenance_pc_id ON maintenance_logs(pc_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_maintenance_date ON maintenance_logs(date)`,
 	}
 
 	for _, idx := range indexes {
@@ -289,11 +366,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		"photo_serial": "TEXT", "photo_front": "TEXT",
 	}
 	devicesExtra := map[string]string{
-		"device_type_id": "INTEGER", "asset_code": "TEXT", "model": "TEXT",
-		"serial_number": "TEXT", "item_type": "TEXT NOT NULL DEFAULT 'individual'",
-		"is_loanable": "BOOLEAN NOT NULL DEFAULT " + d.boolTrue,
-		"is_consumable": "BOOLEAN NOT NULL DEFAULT " + d.boolFalse,
-		"quantity_total": "INTEGER DEFAULT 1", "quantity_available": "INTEGER DEFAULT 1",
+		"device_type_id": "INTEGER", "asset_code": "TEXT", "serial_number": "TEXT",
 	}
 
 	for colName, colDef := range pcsExtra {
@@ -400,5 +473,5 @@ func runMigrations(db *DB, isPostgres bool) error {
 		}
 	}
 
-	return seedDeviceTypesIfEmpty(db, d.boolTrue, d.boolFalse)
+	return seedDevicesIfEmpty(db)
 }
