@@ -31,7 +31,9 @@ initPublicTable({
           }},
         { field: "description", label: "Deskripsi", sortable: true },
         { field: "installed_count", label: "PC Terinstall", sortable: true,
-          render: function(v, r) { return v + ' / ' + r.total_pcs + ' PC'; } }
+          render: function(v, r) { return v + ' / ' + r.total_pcs + ' PC'; } },
+        { field: "detail", label: "", sortable: false,
+          render: function(v, r) { return '<a href="/software/detail/' + r.id + '.html" class="btn btn-sm btn-info"><i class="bi bi-eye"></i> Detail</a>'; } }
     ],
     searchFields: ["name", "description"],
     pageSize: 50

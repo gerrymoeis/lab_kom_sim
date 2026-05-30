@@ -27,23 +27,25 @@
                         <span class="badge bg-secondary fs-6">{{ sub .totalPCs .installedCount }} Belum</span>
                     </p>
 
-                    <div class="d-flex flex-column gap-2">
-                        {{ range $kolomIdx, $kolom := .pcGrid }}
-                        <div class="d-flex gap-2 justify-content-center flex-wrap">
-                            {{ range $barisIdx, $pc := $kolom }}
-                            <div class="border rounded p-2 text-center" style="width:80px; {{ if gt $pc.PCID 0 }}{{ if $pc.Installed }}background:#d4edda;border-color:#28a745;{{ else }}background:#f8f9fa;border-color:#dee2e6;{{ end }}{{ else }}background:white;border-style:dashed;border-color:#dee2e6;{{ end }}">
-                                {{ if gt $pc.PCID 0 }}
-                                <div style="font-size:0.8rem;font-weight:600;">PC-{{ printf "%02d" $pc.PCNumber }}</div>
-                                <div style="font-size:1.2rem;">
-                                    {{ if $pc.Installed }}<i class="bi bi-check-circle-fill text-success"></i>{{ else }}<i class="bi bi-x-circle-fill text-muted"></i>{{ end }}
+                    <div class="pc-grid-scroll">
+                        <div class="d-flex flex-column gap-2" style="min-width:680px;">
+                            {{ range $kolomIdx, $kolom := .pcGrid }}
+                            <div class="d-flex gap-2 justify-content-center">
+                                {{ range $barisIdx, $pc := $kolom }}
+                                <div class="border rounded p-2 text-center" style="width:80px; {{ if gt $pc.PCID 0 }}{{ if $pc.Installed }}background:#d4edda;border-color:#28a745;{{ else }}background:#f8f9fa;border-color:#dee2e6;{{ end }}{{ else }}background:white;border-style:dashed;border-color:#dee2e6;{{ end }}">
+                                    {{ if gt $pc.PCID 0 }}
+                                    <div style="font-size:0.8rem;font-weight:600;">PC-{{ printf "%02d" $pc.PCNumber }}</div>
+                                    <div style="font-size:1.2rem;">
+                                        {{ if $pc.Installed }}<i class="bi bi-check-circle-fill text-success"></i>{{ else }}<i class="bi bi-x-circle-fill text-muted"></i>{{ end }}
+                                    </div>
+                                    {{ else }}
+                                    <div style="font-size:0.7rem;color:#999;">{{ $pc.PCNumber }}</div>
+                                    {{ end }}
                                 </div>
-                                {{ else }}
-                                <div style="font-size:0.7rem;color:#999;">{{ $pc.PCNumber }}</div>
                                 {{ end }}
                             </div>
                             {{ end }}
                         </div>
-                        {{ end }}
                     </div>
                 </div>
             </div>
