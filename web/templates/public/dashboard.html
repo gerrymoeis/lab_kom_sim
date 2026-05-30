@@ -1,0 +1,103 @@
+{{ template "layout/base.html" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="bi bi-grid-3x3-gap"></i> Dashboard Laboratorium Komputer</h2>
+            <p class="text-muted">Visualisasi status PC dalam grid</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-check-circle"></i> Normal</h5>
+                    <h2>{{ index .statusCounts "normal" }}</h2>
+                    <small>PC dalam kondisi baik</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-exclamation-triangle"></i> Warning</h5>
+                    <h2>{{ index .statusCounts "warning" }}</h2>
+                    <small>PC perlu perhatian</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-x-circle"></i> Rusak</h5>
+                    <h2>{{ index .statusCounts "broken" }}</h2>
+                    <small>PC tidak berfungsi</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-box-seam"></i> Cadangan</h5>
+                    <h2>{{ .spareCount }}</h2>
+                    <small>PC tidak dipasang</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-grid"></i> Grid PC Laboratorium</h5>
+        </div>
+        <div class="card-body p-4 position-relative">
+            {{ if .pcLecturer.ID }}
+            <div class="container d-flex justify-content-end mb-3">
+                <div class="pc-card-wrapper pc-card-wrapper-special">
+                    <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLecturer.Status }}"
+                         style="cursor: pointer;">
+                        <div class="pc-number">{{ .pcLecturer.Label }}</div>
+                        <div class="pc-icon"><i class="bi bi-person-badge"></i></div>
+                        <div class="pc-status-badge">
+                            {{ $info := pcStatusInfo .pcLecturer.Status }}
+                            <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+
+            <div class="d-flex flex-column align-items-center gap-2">
+                {{ range $rowIdx, $row := .pcGrid }}
+                <div class="d-flex gap-2 justify-content-center">
+                    {{ range $colIdx, $pc := $row }}
+                    <div class="pc-card-wrapper {{ if eq $pc.Placement "cadangan" }}pc-card-wrapper-cadangan{{ end }}">
+                        {{ if gt $pc.ID 0 }}
+                        <div class="pc-card pc-card-clickable status-{{ $pc.Status }}"
+                             data-pc-number="{{ $pc.PCNumber }}"
+                             data-pc-status="{{ $pc.Status }}"
+                             onclick="window.location='/pc/detail/{{ formatPCLabel $pc }}.html'"
+                             style="cursor: pointer;">
+                            <div class="pc-number">{{ if $pc.Label }}{{ $pc.Label }}{{ else }}PC-{{ printf "%02d" $pc.PCNumber }}{{ end }}</div>
+                            <div class="pc-icon"><i class="bi bi-pc-display"></i></div>
+                            <div class="pc-status-badge">
+                                {{ $info := pcStatusInfo $pc.Status }}
+                                <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i></span>
+                            </div>
+                        </div>
+                        {{ else }}
+                        <div class="pc-card pc-card-empty">
+                            <div class="pc-number text-muted">{{ $pc.PCNumber }}</div>
+                        </div>
+                        {{ end }}
+                    </div>
+                    {{ end }}
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ template "layout/footer.html" . }}

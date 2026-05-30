@@ -1,0 +1,48 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4">
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-pc-display"></i> Detail {{ if .pc.Label }}{{ .pc.Label }}{{ else }}PC-{{ printf "%02d" .pc.PCNumber }}{{ end }}</h5>
+                <a href="/pc/list.html" class="btn btn-sm btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Kembali
+                </a>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <tr><th width="30%">Nomor PC</th><td><strong>{{ if .pc.Label }}{{ .pc.Label }}{{ else }}PC-{{ printf "%02d" .pc.PCNumber }}{{ end }}</strong></td></tr>
+                    {{ if .pc.Label }}<tr><th>PC Number Asli</th><td>PC-{{ printf "%02d" .pc.PCNumber }}</td></tr>{{ end }}
+                    {{ if .pc.AssetID }}<tr><th>ID Aset</th><td><span class="badge bg-info">{{ .pc.AssetID }}</span></td></tr>{{ end }}
+                    <tr><th>Posisi</th><td>{{ if eq .pc.Placement "dipakai" }}Baris {{ .pc.Row }}, Kolom {{ .pc.Column }}{{ else }}-{{ end }}</td></tr>
+                    <tr><th>Kondisi</th><td><span class="badge bg-{{ (pcStatusInfo .pc.Status).BadgeClass }}">{{ .pc.Status }}</span></td></tr>
+                    <tr><th>Penempatan</th><td><span class="badge bg-{{ (pcPlacementInfo .pc.Placement).BadgeClass }}">{{ (pcPlacementInfo .pc.Placement).VisLabel }}</span></td></tr>
+                </table>
+                <hr><h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Informasi Perangkat</h6>
+                <table class="table table-bordered">
+                    {{ if .pc.PCType }}<tr><th width="30%">Jenis PC</th><td>{{ .pc.PCType }}</td></tr>{{ end }}
+                    {{ if .pc.SerialNumber }}<tr><th>Serial Number</th><td><code>{{ .pc.SerialNumber }}</code></td></tr>{{ end }}
+                    {{ if .pc.BrandModel }}<tr><th>Merek & Model</th><td>{{ .pc.BrandModel }}</td></tr>{{ end }}
+                    {{ if .pc.Accessories }}<tr><th>Perangkat Tambahan</th><td>{{ .pc.Accessories }}</td></tr>{{ end }}
+                </table>
+                <hr><h6 class="text-primary mb-3"><i class="bi bi-cpu"></i> Spesifikasi</h6>
+                <table class="table table-bordered">
+                    <tr><th width="30%">Processor</th><td>{{ if .pc.Processor }}{{ .pc.Processor }}{{ else }}-{{ end }}</td></tr>
+                    <tr><th>Memory (RAM)</th><td>{{ if .pc.RAM }}{{ .pc.RAM }}{{ else }}-{{ end }}</td></tr>
+                    <tr><th>Storage</th><td>{{ if .pc.Storage }}{{ .pc.Storage }}{{ else }}-{{ end }}</td></tr>
+                    {{ if .pc.OperatingSystem }}<tr><th>Sistem Operasi</th><td>{{ .pc.OperatingSystem }}</td></tr>{{ end }}
+                </table>
+                <hr><h6 class="text-primary mb-3"><i class="bi bi-clipboard-data"></i> Informasi Tambahan</h6>
+                <table class="table table-bordered">
+                    <tr><th width="30%">Tanggal Pembelian</th><td>{{ if .pc.PurchaseDate }}{{ (localTime .pc.PurchaseDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td></tr>
+                    <tr><th>Waktu Terakhir Dicek</th><td>{{ if .pc.LastChecked }}{{ (localTime .pc.LastChecked).Format "02/01/2006 15:04" }}{{ else }}-{{ end }}</td></tr>
+                    <tr><th>Catatan</th><td>{{ if .pc.Notes }}{{ .pc.Notes }}{{ else }}-{{ end }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+{{ template "layout/footer.html" . }}

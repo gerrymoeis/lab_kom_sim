@@ -19,8 +19,8 @@ func NewSoftwareRepository(db *database.DB) *SoftwareRepository {
 
 type SoftwareStat struct {
 	models.SoftwareCatalog
-	InstalledCount int
-	TotalPCs       int
+	InstalledCount int `json:"installed_count"`
+	TotalPCs       int `json:"total_pcs"`
 }
 
 func (r *SoftwareRepository) List(search, category string) ([]SoftwareStat, error) {

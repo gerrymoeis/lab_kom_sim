@@ -31,6 +31,10 @@ type DeviceFilters struct {
 	SortOrder string
 }
 
+func (r *DeviceRepository) List(filters DeviceFilters) ([]models.Device, error) {
+	return r.listWithQuery(filters, "", 0, 0)
+}
+
 func (r *DeviceRepository) ListPaginated(filters DeviceFilters, page, pageSize int) ([]models.Device, int, error) {
 	if page < 1 {
 		page = 1
