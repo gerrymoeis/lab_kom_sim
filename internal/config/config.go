@@ -25,6 +25,7 @@ type Config struct {
 	Timezone         string
 	DefaultPageSize  int
 	Backup           BackupConfig
+	PublicBuild      PublicBuildConfig
 }
 
 // BackupConfig holds SQLite auto-backup configuration
@@ -35,6 +36,17 @@ type BackupConfig struct {
 	Retention int
 	MinDiskMB int64
 	Compress  bool
+}
+
+// PublicBuildConfig holds SSG auto-build configuration
+type PublicBuildConfig struct {
+	Enabled      bool
+	Interval     int
+	OutDir       string
+	TemplateDir  string
+	StaticDir    string
+	RepoDir      string
+	Branch       string
 }
 
 // Load loads configuration from environment variables with defaults
@@ -58,6 +70,15 @@ func Load() *Config {
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
 		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
 		DefaultPageSize:  getEnvInt("DEFAULT_PAGE_SIZE", 25),
+		PublicBuild: PublicBuildConfig{
+			Enabled:     getEnv("PUBLIC_BUILD_ENABLED", "false") == "true",
+			Interval:    getEnvInt("PUBLIC_BUILD_INTERVAL", 30),
+			OutDir:      getEnv("PUBLIC_BUILD_OUT", "dist"),
+			TemplateDir: getEnv("PUBLIC_BUILD_TEMPLATE_DIR", "web/templates/public"),
+			StaticDir:   getEnv("PUBLIC_BUILD_STATIC_DIR", "web/static"),
+			RepoDir:     getEnv("PUBLIC_BUILD_REPO_DIR", ""),
+			Branch:      getEnv("PUBLIC_BUILD_BRANCH", "main"),
+		},
 		Backup: BackupConfig{
 			Enabled:   getEnv("BACKUP_ENABLED", "true") == "true",
 			Interval:  getEnvInt("BACKUP_INTERVAL", 30),

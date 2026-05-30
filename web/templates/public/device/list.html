@@ -1,0 +1,50 @@
+{{ template "layout/base.html" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-hdd-rack"></i> Daftar Perangkat</h2>
+            <p class="text-muted">Seluruh perangkat inventaris</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div id="device-table-container" class="table-responsive"></div>
+        </div>
+    </div>
+</div>
+
+<script id="data-devices" type="application/json">{{ .dataJSON }}</script>
+<script>
+initPublicTable({
+    containerId: "device-table-container",
+    data: JSON.parse(document.getElementById("data-devices").textContent),
+    columns: [
+        { field: "asset_code", label: "Asset Code", sortable: true,
+          render: function(v) { return '<code>' + v + '</code>'; } },
+        { field: "device_type_name", label: "Nama Perangkat", sortable: true },
+        { field: "category_name", label: "Kategori", sortable: true, filterable: true,
+          render: function(v) { return '<span class="badge bg-secondary">' + v + '</span>'; } },
+        { field: "usage_type", label: "Tipe", sortable: true, filterable: true,
+          render: function(v) {
+              var badge = {loanable: "primary", consumable: "warning", installable: "info"}[v] || "secondary";
+              var label = {loanable: "Dipinjamkan", consumable: "Habis Pakai", installable: "Instalasi"}[v] || v;
+              return '<span class="badge bg-' + badge + '">' + label + '</span>';
+          }},
+        { field: "condition", label: "Kondisi", sortable: true, filterable: true,
+          render: function(v) {
+              var badge = {baik: "success", rusak: "danger", maintenance: "warning"}[v] || "secondary";
+              var label = {baik: "Baik", rusak: "Rusak", maintenance: "Maintenance"}[v] || v;
+              return '<span class="badge bg-' + badge + '">' + label + '</span>';
+          }},
+        { field: "location", label: "Lokasi", sortable: true },
+        { field: "detail", label: "", sortable: false,
+          render: function(v, r) { return '<a href="/devices/detail/' + r.id + '.html" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>'; } }
+    ],
+    searchFields: ["asset_code", "device_type_name", "category_name", "serial_number", "location"],
+    pageSize: 50
+});
+</script>
+
+{{ template "layout/footer.html" . }}
