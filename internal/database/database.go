@@ -6,7 +6,6 @@ import (
 	"log"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func InitDB(dbPath, dbURL string) (*DB, error) {
@@ -25,13 +24,13 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 	}
 
 	log.Println("Using SQLite (local)")
-	dsn := dbPath + "?_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL&_foreign_keys=ON&_loc=UTC"
+	dsn := dbPath + "?" + sqliteDSNSuffix()
 
-	reader, err := sql.Open("sqlite3", dsn)
+	reader, err := sql.Open(sqliteDriverName(), dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite reader: %w", err)
 	}
-	writer, err := sql.Open("sqlite3", dsn)
+	writer, err := sql.Open(sqliteDriverName(), dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite writer: %w", err)
 	}

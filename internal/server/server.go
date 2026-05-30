@@ -177,6 +177,17 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 
 	h := handlers.NewHandler(db, cfg, notifier)
 
+	router.GET("/healthz", func(c *gin.Context) {
+		c.String(200, "ok")
+	})
+	router.GET("/readyz", func(c *gin.Context) {
+		if err := db.Ping(); err != nil {
+			c.String(503, "not ready")
+			return
+		}
+		c.String(200, "ready")
+	})
+
 	public := router.Group("/")
 	{
 		public.GET("/", h.Home)

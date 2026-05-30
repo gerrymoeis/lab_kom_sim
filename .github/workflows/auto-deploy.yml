@@ -58,26 +58,26 @@ jobs:
               scripts/download-vendor.ps1
           fi
 
-          echo "=== 5. Fix database driver (modernc vs mattn) ==="
-          sed -i 's|_ "github.com/mattn/go-sqlite3"|_ "modernc.org/sqlite"|' internal/database/database.go || true
-          sed -i 's|sql.Open("sqlite3"|sql.Open("sqlite"|' internal/database/database.go || true
+          echo "=== 5. Resolve dependencies ==="
+          if [ "${PLATFORM}" = "linux" ] || [ "${PLATFORM}" = "android" ]; then
+            GOFLAGS="-tags=moderncsqlite" go mod tidy
+          else
+            go mod tidy
+          fi
 
-          echo "=== 5b. Transform DSN parameters for modernc _pragma= format ==="
-          sed -i 's|_journal_mode=WAL|_pragma=journal_mode(WAL)|' internal/database/database.go
-          sed -i 's|_busy_timeout=5000|_pragma=busy_timeout(5000)|' internal/database/database.go
-          sed -i 's|_synchronous=NORMAL|_pragma=synchronous(NORMAL)|' internal/database/database.go
-          sed -i 's|_foreign_keys=ON|_pragma=foreign_keys(ON)|' internal/database/database.go
-          sed -i 's|_loc=UTC|loc=UTC|' internal/database/database.go
-
-          echo "=== 6. Resolve dependencies ==="
-          go mod tidy
+          echo "=== 6. Run tests ==="
+          go test ./... -count=1
 
           echo "=== 7. Stage all changes ==="
           git add -A
 
           echo "=== 8. Verify build ==="
-          go build ./...
-          go vet ./...
+          BUILD_TAGS=""
+          if [ "${PLATFORM}" = "linux" ] || [ "${PLATFORM}" = "android" ]; then
+            BUILD_TAGS="-tags moderncsqlite"
+          fi
+          go build ${BUILD_TAGS} ./...
+          go vet ${BUILD_TAGS} ./...
 
           echo "=== 9. Commit and push ==="
           if ! git diff --cached --quiet; then
