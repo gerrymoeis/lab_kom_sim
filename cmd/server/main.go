@@ -52,10 +52,13 @@ func main() {
 	}
 
 	backupSvc := services.NewBackupService(db, cfg.Backup)
+	publicBuildSvc := services.NewPublicBuildService(db, cfg.PublicBuild)
+
+	notifier := services.NewMultiNotifier(backupSvc, publicBuildSvc)
 
 	if cfg.Environment == "production" { gin.SetMode(gin.ReleaseMode) }
 
-	router := server.SetupRouter(db, cfg, backupSvc)
+	router := server.SetupRouter(db, cfg, notifier)
 
 	if err := os.MkdirAll("uploads", 0755); err != nil {
 		log.Printf("Warning: Failed to create uploads directory: %v", err)
@@ -70,6 +73,8 @@ func main() {
 
 	backupSvc.Start()
 	defer backupSvc.Stop()
+	publicBuildSvc.Start()
+	defer publicBuildSvc.Stop()
 
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
 	log.Printf("🚀 Server starting on http://%s", addr)
