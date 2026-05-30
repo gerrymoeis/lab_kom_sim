@@ -35,9 +35,6 @@ func main() {
 	if err := database.SeedDefaultUser(db); err != nil {
 		log.Printf("Warning: Failed to seed default user: %v", err)
 	}
-	if err := database.SeedSchedules(db); err != nil {
-		log.Printf("Warning: Failed to seed course schedules: %v", err)
-	}
 
 	var wq *queue.Queue
 	if cfg.WriteMode == "async" {
