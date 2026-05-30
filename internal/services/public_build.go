@@ -148,7 +148,7 @@ func copyDir(src, dst string) error {
 	})
 }
 
-func buildDashboardGrid(pcs []models.PC) ([][]models.PC, models.PC, map[string]int, int) {
+func buildDashboardGrid(pcs []models.PC) ([][]models.PC, models.PC, models.PC, models.PC, map[string]int, int) {
 	statusCounts := make(map[string]int)
 	var spareCount int
 	for _, pc := range pcs {
@@ -164,7 +164,7 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, models.PC, map[string]i
 		grid[i] = make([]models.PC, 8)
 	}
 
-	var pcLecturer models.PC
+	var pcLecturer, pcLaboran, pcCCTV models.PC
 	for _, pc := range pcs {
 		if pc.Placement == "cadangan" {
 			continue
@@ -173,10 +173,14 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, models.PC, map[string]i
 			grid[pc.Row-1][pc.Column-1] = pc
 		} else if pc.Label == "PC-Dosen" {
 			pcLecturer = pc
+		} else if pc.Label == "PC-Laboran" {
+			pcLaboran = pc
+		} else if pc.Label == "PC-CCTV" {
+			pcCCTV = pc
 		}
 	}
 
-	return grid, pcLecturer, statusCounts, spareCount
+	return grid, pcLecturer, pcLaboran, pcCCTV, statusCounts, spareCount
 }
 
 func buildSoftwareGrid(pcList []repository.PCInstallStatus) [][]repository.PCInstallStatus {
@@ -256,12 +260,12 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 	}
 
 	// Dashboard
-	grid, pcLecturer, statusCounts, spareCount := buildDashboardGrid(pcs)
+	grid, pcLecturer, pcLaboran, pcCCTV, statusCounts, spareCount := buildDashboardGrid(pcs)
 	re("dashboard.html", filepath.Join(outDir, "dashboard.html"), map[string]interface{}{
 		"title": "Dashboard", "currentPage": "dashboard",
 		"pcGrid": grid, "pcs": pcs,
 		"statusCounts": statusCounts, "spareCount": spareCount,
-		"pcLecturer": pcLecturer,
+		"pcLecturer": pcLecturer, "pcLaboran": pcLaboran, "pcCCTV": pcCCTV,
 	})
 
 	// Index (redirect to dashboard)
