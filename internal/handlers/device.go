@@ -361,3 +361,68 @@ func (h *Handler) GetNextAssetCode(c *gin.Context) {
 	code := h.deviceService.GetNextAssetCode(prefix)
 	c.JSON(http.StatusOK, gin.H{"next_code": code})
 }
+
+func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	dt, err := h.deviceTypeService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Tipe perangkat tidak ditemukan")
+		return
+	}
+	c.HTML(http.StatusOK, "device_type/edit.html", gin.H{
+		"title": "Edit Tipe Perangkat", "currentPage": "devices",
+		"username": username, "role": role,
+		"deviceType":  dt,
+		"categories":  h.fetchCategories(),
+		"deviceTypes": h.fetchDeviceTypes(),
+	})
+}
+
+func (h *Handler) DeviceTypeEdit(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	var req EditDeviceTypeRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.errHTML(c, "Data tidak valid")
+		return
+	}
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	if err := h.deviceTypeService.Update(id, services.DeviceTypeUpdateInput{
+		CategoryID:      req.CategoryID,
+		Name:            req.Name,
+		Brand:           req.Brand,
+		Model:           req.Model,
+		AssetCodePrefix: req.AssetCodePrefix,
+		UsageType:       req.UsageType,
+		DefaultLocation: req.DefaultLocation,
+	}, uid, u, r, ip, ua); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") {
+			h.errHTML(c, "Nama tipe atau prefix sudah digunakan")
+			return
+		}
+		h.errHTML(c, "Gagal mengupdate tipe perangkat")
+		return
+	}
+	c.Redirect(http.StatusFound, "/devices")
+}
+
+func (h *Handler) DeviceTypeDelete(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	if err := h.deviceTypeService.Delete(id, uid, u, r, ip, ua); err != nil {
+		if strings.Contains(err.Error(), "foreign key") {
+			h.redirectWithError(c, "/devices", "Tidak dapat menghapus: masih ada perangkat dengan tipe ini")
+			return
+		}
+		h.redirectWithError(c, "/devices", "Gagal menghapus tipe perangkat")
+		return
+	}
+	c.Redirect(http.StatusFound, "/devices")
+}
