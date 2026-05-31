@@ -7,11 +7,27 @@
 
 set -euo pipefail
 
+# Production directory structure:
+#   /opt/simlab/
+#     .env              ← shared config (PORT, DATABASE_PATH, SESSION_SECRET, dll)
+#     app/
+#       repo/           ← clone dari GitHub (lab_kom_sim)
+#       releases/       ← immutable release directories (keep 3 newest)
+#       current/        ← symlink ke releases/TIMESTAMP/ (yang aktif)
+#       data/           ← shared database (inventaris_lab.db)
+#         inventaris_lab.db
+#
+# Aplikasi jalan dari: /opt/simlab/app/current/app-simlab
+# Database dibaca dari: DATABASE_PATH di /opt/simlab/.env
+# Semua release baca file database yang SAMA (tidak pernah di-copy saat deploy).
 REPO_DIR="/opt/simlab/app/repo"
 RELEASES_DIR="/opt/simlab/app/releases"
 DATA_DIR="/opt/simlab/app/data"
 CURRENT_DIR="/opt/simlab/app/current"
-ENV_FILE="/opt/simlab/.env"
+
+# Baca PORT dari /opt/simlab/.env untuk health check (fallback 8080)
+PORT=$(grep '^PORT=' /opt/simlab/.env 2>/dev/null | cut -d= -f2-)
+PORT=${PORT:-8080}
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 RELEASE_DIR="$RELEASES_DIR/$TIMESTAMP"
@@ -58,7 +74,7 @@ systemctl restart simlab.service
 
 # 10. Health check (retry 5x, 2s interval)
 for i in $(seq 1 5); do
-  if curl -sf http://localhost:8080/healthz > /dev/null 2>&1; then
+  if curl -sf "http://localhost:$PORT/healthz" > /dev/null 2>&1; then
     echo "[deploy] ✅ Health check passed (attempt $i)"
 
     # 11. Cleanup old releases (keep last 3)
