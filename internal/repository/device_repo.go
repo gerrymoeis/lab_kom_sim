@@ -255,56 +255,6 @@ func (r *DeviceRepository) Delete(id int) error {
 	return err
 }
 
-// --- Grouped query for main device view (single JOIN, no N+1) ---
-
-type DeviceGroupRow struct {
-	CategoryID     int
-	CategoryName   string
-	CategoryPrefix string
-	TypeID         int
-	TypeName       string
-	TypePrefix     string
-	TypeUsageType  string // from dt.usage_type (device type level)
-	TypePhoto      string
-	DeviceID       *int
-	AssetCode      *string
-	SerialNumber   *string
-	Condition      *string
-	Location       *string
-	PurchaseDate   *string
-	Notes          *string
-	DeviceUsageType *string // from d.usage_type (device-level override, nil = no override)
-}
-
-func (r *DeviceRepository) GetAllGrouped() ([]DeviceGroupRow, error) {
-	rows, err := r.db.Query(`SELECT c.id, c.name, c.default_prefix,
-		dt.id, dt.name, dt.asset_code_prefix, dt.usage_type, COALESCE(dt.photo,''),
-		d.id, d.asset_code, COALESCE(d.serial_number,''), d.condition,
-		COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
-		d.usage_type
-		FROM categories c
-		LEFT JOIN device_types dt ON dt.category_id = c.id
-		LEFT JOIN devices d ON d.device_type_id = dt.id
-		ORDER BY c.name, dt.name, d.asset_code`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var rows2 []DeviceGroupRow
-	for rows.Next() {
-		var r2 DeviceGroupRow
-		if err := rows.Scan(&r2.CategoryID, &r2.CategoryName, &r2.CategoryPrefix,
-			&r2.TypeID, &r2.TypeName, &r2.TypePrefix, &r2.TypeUsageType, &r2.TypePhoto,
-			&r2.DeviceID, &r2.AssetCode, &r2.SerialNumber, &r2.Condition,
-			&r2.Location, &r2.PurchaseDate, &r2.Notes, &r2.DeviceUsageType); err != nil {
-			return nil, err
-		}
-		rows2 = append(rows2, r2)
-	}
-	return rows2, nil
-}
-
 // --- Batch status queries (1 query each, not per-device) ---
 
 func (r *DeviceRepository) GetActiveLoanDeviceIDs() (map[int]bool, error) {
