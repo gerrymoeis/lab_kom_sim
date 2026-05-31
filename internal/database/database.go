@@ -39,6 +39,9 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 		if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
 			return nil, fmt.Errorf("failed to set journal_mode: %w", err)
 		}
+		if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
+			return nil, fmt.Errorf("failed to set foreign_keys: %w", err)
+		}
 		if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
 			return nil, fmt.Errorf("failed to set busy_timeout: %w", err)
 		}
@@ -48,10 +51,13 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 		if _, err := db.Exec("PRAGMA cache_size=-64000"); err != nil {
 			return nil, fmt.Errorf("failed to set cache_size: %w", err)
 		}
+		var mode string
+		db.QueryRow("PRAGMA journal_mode").Scan(&mode)
+		log.Printf("SQLite journal_mode: %s", mode)
+		if mode != "wal" {
+			log.Fatalf("Expected WAL journal_mode, got %s. WAL mode is required for proper concurrent access.", mode)
+		}
 	}
-	var mode string
-	writer.QueryRow("PRAGMA journal_mode").Scan(&mode)
-	log.Printf("SQLite journal_mode: %s", mode)
 	return wrapSQLite(reader, writer), nil
 }
 

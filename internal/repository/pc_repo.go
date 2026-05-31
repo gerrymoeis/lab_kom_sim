@@ -95,7 +95,15 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 	if sortOrder != "DESC" {
 		sortOrder = "ASC"
 	}
-	query += fmt.Sprintf(` ORDER BY %s %s`, sortBy, sortOrder)
+	if sortBy == "label" {
+		query += ` ORDER BY
+			CASE WHEN label GLOB 'pc-[0-9]*' THEN 1 WHEN label GLOB 'pc-cadangan-[0-9]*' THEN 3 ELSE 2 END,
+			CASE WHEN label GLOB 'pc-[0-9]*' THEN CAST(SUBSTR(label, 4) AS INTEGER)
+				WHEN label GLOB 'pc-cadangan-[0-9]*' THEN CAST(SUBSTR(label, 14) AS INTEGER) ELSE 0 END,
+			label ` + sortOrder
+	} else {
+		query += fmt.Sprintf(` ORDER BY %s %s`, sortBy, sortOrder)
+	}
 	query += suffix
 	if suffix != "" {
 		args = append(args, limit, offset)
@@ -317,7 +325,11 @@ func (r *PCRepository) DeleteByLabel(label string) error {
 }
 
 func (r *PCRepository) GetAllStatus() ([]models.PC, error) {
-	rows, err := r.db.Query(`SELECT id, label, status FROM pcs ORDER BY label`)
+	rows, err := r.db.Query(`SELECT id, label, status FROM pcs ORDER BY
+		CASE WHEN label GLOB 'pc-[0-9]*' THEN 1 WHEN label GLOB 'pc-cadangan-[0-9]*' THEN 3 ELSE 2 END,
+		CASE WHEN label GLOB 'pc-[0-9]*' THEN CAST(SUBSTR(label, 4) AS INTEGER)
+			WHEN label GLOB 'pc-cadangan-[0-9]*' THEN CAST(SUBSTR(label, 14) AS INTEGER) ELSE 0 END,
+		label`)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +413,11 @@ func (r *PCRepository) SyncSoftware(pcID int, requiredIDs []string, otherNames, 
 func (r *PCRepository) ExportAll() ([]models.PC, error) {
 	rows, err := r.db.Query(`SELECT label, "row", "column", status, placement, pc_type, serial_number, brand_model,
 		processor, ram, storage, operating_system, accessories, purchase_date, last_checked, notes
-		FROM pcs ORDER BY label`)
+		FROM pcs ORDER BY
+		CASE WHEN label GLOB 'pc-[0-9]*' THEN 1 WHEN label GLOB 'pc-cadangan-[0-9]*' THEN 3 ELSE 2 END,
+		CASE WHEN label GLOB 'pc-[0-9]*' THEN CAST(SUBSTR(label, 4) AS INTEGER)
+			WHEN label GLOB 'pc-cadangan-[0-9]*' THEN CAST(SUBSTR(label, 14) AS INTEGER) ELSE 0 END,
+		label`)
 	if err != nil {
 		return nil, err
 	}
