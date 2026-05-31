@@ -39,12 +39,15 @@
                 <div class="card-body p-0">
                 {{ range $i, $tg := $cat.Types }}
                 <div class="p-3 {{ if ne $i 0 }}border-top{{ end }} type-group" data-type="{{ $tg.TypeName }}">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    {{ $typeCollapseID := printf "typeCollapse%d_%d" $catIndex $i }}
+                    {{ $typeCount := len $tg.Devices }}
+                    <div class="d-flex justify-content-between align-items-center mb-2" role="button" data-bs-toggle="collapse" data-bs-target="#{{ $typeCollapseID }}" aria-expanded="{{ if gt $typeCount 1 }}false{{ else }}true{{ end }}">
                         <div>
-                            <strong>{{ $tg.TypeName }}</strong>
+                            <strong><i class="bi bi-chevron-down collapse-icon-type me-1"></i> {{ $tg.TypeName }}</strong>
                             <span class="badge bg-{{ if eq $tg.UsageType "loanable" }}primary{{ else if eq $tg.UsageType "consumable" }}warning{{ else }}info{{ end }} ms-2">
                                 {{ if eq $tg.UsageType "loanable" }}Dipinjamkan{{ else if eq $tg.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }}
                             </span>
+                            <small class="text-muted ms-2">({{ $typeCount }} perangkat)</small>
                         </div>
                         <div>
                             {{ if eq $role "admin" }}
@@ -57,6 +60,70 @@
                                 </button>
                             </form>
                             {{ end }}
+                        </div>
+                    </div>
+                    <div class="collapse{{ if not (gt $typeCount 1) }} show{{ end }}" id="{{ $typeCollapseID }}">
+                    {{ if $typeCount }}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0 device-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:40px;">#</th>
+                                    <th style="width:160px;">Asset Code</th>
+                                    <th style="width:150px;">Serial Number</th>
+                                    <th style="width:100px;">Kondisi</th>
+                                    <th>Lokasi</th>
+                                    <th style="width:130px;">Status</th>
+                                    <th style="width:130px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range $j, $d := $tg.Devices }}
+                                <tr class="device-row {{ if eq $d.Condition "rusak" }}table-danger{{ else if eq $d.Condition "maintenance" }}table-warning{{ end }}" data-search="{{ $d.AssetCode }} {{ $d.DeviceTypeName }} {{ $d.SerialNumber }} {{ $d.CategoryName }}">
+                                    <td class="text-muted">{{ add $j 1 }}</td>
+                                    <td><code>{{ $d.AssetCode }}</code></td>
+                                    <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
+                                    <td>
+                                        <span class="badge bg-{{ if eq $d.Condition "baik" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
+                                            {{ if eq $d.Condition "baik" }}Baik{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Maintenance{{ end }}
+                                        </span>
+                                    </td>
+                                    <td><small>{{ if $d.Location }}{{ $d.Location }}{{ else }}-{{ end }}</small></td>
+                                    <td>
+                                        {{ if index $.groupedData.ActiveLoanIDs $d.ID }}
+                                        <span class="badge bg-warning">Dipinjam</span>
+                                        {{ else if index $.groupedData.DepletedIDs $d.ID }}
+                                        <span class="badge bg-danger">Habis</span>
+                                        {{ else }}
+                                        <span class="badge bg-success">Tersedia</span>
+                                        {{ end }}
+                                    </td>
+                                    <td class="text-nowrap">
+                                        <a href="/devices/{{ $d.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {{ if eq $role "admin" }}
+                                        <a href="/devices/{{ $d.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="/devices/{{ $d.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        {{ end }}
+                                    </td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+                    {{ else }}
+                    <p class="text-muted small mb-0">Belum ada perangkat untuk tipe ini</p>
+                    {{ end }}
+                    </div>
+                </div>
+                {{ end }}
                         </div>
                     </div>
                     {{ if len $tg.Devices }}
@@ -165,6 +232,12 @@ function filterDevices() {
     transition: transform 0.2s ease;
 }
 .category-group .card-header[data-bs-toggle="collapse"][aria-expanded="true"] .collapse-icon {
+    transform: rotate(180deg);
+}
+.type-group [data-bs-toggle="collapse"] .collapse-icon-type {
+    transition: transform 0.2s ease;
+}
+.type-group [data-bs-toggle="collapse"][aria-expanded="true"] .collapse-icon-type {
     transform: rotate(180deg);
 }
 </style>
