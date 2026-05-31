@@ -199,7 +199,18 @@ func seedPCs(db *DB) error {
 		if n >= 41 { return n - 40 }
 		return ((n - 1) % 8) + 1
 	}
-	specialLabel := map[int]string{41: "PC-Dosen", 42: "PC-Laboran", 43: "PC-CCTV"}
+	labelFor := func(n int) string {
+		switch n {
+		case 41:
+			return "pc-dosen"
+		case 42:
+			return "pc-laboran"
+		case 43:
+			return "pc-cctv"
+		default:
+			return fmt.Sprintf("pc-%d", n)
+		}
+	}
 
 	// Pre-resolve all software IDs from catalog
 	swByName := map[string]int{}
@@ -247,23 +258,22 @@ func seedPCs(db *DB) error {
 			pcStatus = defStatus
 		}
 
-		label := specialLabel[pc.Number]
+		label := labelFor(pc.Number)
 		pcType := defPCType
 		brandModel := defBrandModel
-		if label != "" {
+		if pc.Number >= 41 {
 			pcType = label
 			brandModel = ""
 		}
 		placement := defPlacement
 		if pcStatus == "broken" && pc.SN == "" {
-			// PCs with broken status and no SN are spare/cadangan
 			placement = "cadangan"
 		}
-		_, execErr := tx.Exec(`INSERT INTO pcs (pc_number, "row", "column", status, processor, ram, storage,
+		_, execErr := tx.Exec(`INSERT INTO pcs ("row", "column", status, processor, ram, storage,
 			serial_number, operating_system, pc_type, brand_model, accessories,
-			notes, label, placement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			notes, label, placement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 			CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-			pc.Number, rowFor(pc.Number), colFor(pc.Number),
+			rowFor(pc.Number), colFor(pc.Number),
 			pcStatus, defProcessor, defRAM, defStorage,
 			pc.SN, pc.OS, pcType, brandModel, defAccessories, pc.Notes, label, placement)
 		if execErr != nil {
@@ -272,7 +282,7 @@ func seedPCs(db *DB) error {
 		}
 
 		var pcID int
-		tx.QueryRow(`SELECT id FROM pcs WHERE pc_number = ?`, pc.Number).Scan(&pcID)
+		tx.QueryRow(`SELECT id FROM pcs WHERE label = ?`, label).Scan(&pcID)
 		if pcID == 0 { continue }
 
 		insertSW(tx, pcID, pc.RequiredSW, true)

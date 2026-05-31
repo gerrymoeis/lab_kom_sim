@@ -2,7 +2,7 @@
 
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
-                    <form method="POST" action="/pc/{{ .pc.PCNumber }}/edit" enctype="multipart/form-data">
+                    <form method="POST" action="/pc/{{ .pc.Label }}/edit" enctype="multipart/form-data">
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle"></i> Nomor PC dan posisi tidak dapat diubah. Untuk mengubahnya, hapus dan buat PC baru.
                         </div>
@@ -10,7 +10,7 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label class="form-label">Nomor PC</label>
-                                <input type="text" class="form-control" value="PC-{{ printf "%02d" .pc.PCNumber }}" disabled>
+                                <input type="text" class="form-control" value="{{ .pc.Label }}" disabled>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Label Tampilan</label>
@@ -315,7 +315,7 @@
                             <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
-                            <a href="/pc/{{ .pc.PCNumber }}" class="btn btn-secondary">
+                            <a href="/pc/{{ .pc.Label }}" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>

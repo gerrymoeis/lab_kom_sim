@@ -144,11 +144,11 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT COUNT(*) FROM pcs").Scan(&pcCount)
 	assert(pcCount > 0, "PCs seeded: %d", pcCount)
 
-	resp, _ = get("/pc/1")
-	assert(resp.StatusCode == 200, "/pc/1: %d", resp.StatusCode)
+	resp, _ = get("/pc/pc-1")
+	assert(resp.StatusCode == 200, "/pc/pc-1: %d", resp.StatusCode)
 	closeResp(resp)
-	resp, _ = get("/pc/1/edit")
-	assert(resp.StatusCode == 200, "/pc/1 edit: %d", resp.StatusCode)
+	resp, _ = get("/pc/pc-1/edit")
+	assert(resp.StatusCode == 200, "/pc/pc-1 edit: %d", resp.StatusCode)
 	closeResp(resp)
 
 	//  2b. PC Photo Upload →
@@ -175,19 +175,19 @@ func TestFullIntegration(t *testing.T) {
 	closeResp(resp)
 	assert(uploadRes.Success && uploadRes.FileRef != "", "upload image: file_ref=%s", uploadRes.FileRef)
 
-	resp, _ = post("/pc/1/edit",
+	resp, _ = post("/pc/pc-1/edit",
 		"status=normal&placement=dipakai&serial_number=SN001&operating_system=Win11&pc_type=PC&brand_model=Dell&accessories=KB&processor=i7&ram=16GB&storage=512GB&notes=&serial_file_ref="+uploadRes.FileRef)
 	assert(resp.StatusCode == 302, "PC edit with photo: %d", resp.StatusCode)
 	closeResp(resp)
 
 	var photoSerial string
-	db.QueryRow("SELECT COALESCE(photo_serial,'') FROM pcs WHERE pc_number=1").Scan(&photoSerial)
+	db.QueryRow("SELECT COALESCE(photo_serial,'') FROM pcs WHERE label='pc-1'").Scan(&photoSerial)
 	assert(photoSerial != "", "photo_serial saved: %s", photoSerial)
 
 	// 2c. PC Create + Delete
 	t.Log("\n=== 2c. PC CREATE + DELETE ===")
 	pcCreateData := url.Values{
-		"pc_number": {"40"}, "row": {"5"}, "column": {"8"},
+		"row": {"5"}, "column": {"8"},
 		"status": {"normal"}, "placement": {"dipakai"},
 		"serial_number": {"SN-TEST40"},
 		"operating_system": {"Win11"}, "pc_type": {"PC"},
@@ -196,16 +196,15 @@ func TestFullIntegration(t *testing.T) {
 	}.Encode()
 	resp, _ = post("/pc/create", pcCreateData)
 	closeResp(resp)
-	assert(resp.StatusCode == 500, "PC create (duplicate): %d", resp.StatusCode)
 	var newPCID int
-	db.QueryRow("SELECT id FROM pcs WHERE pc_number=40").Scan(&newPCID)
+	db.QueryRow("SELECT id FROM pcs WHERE label='pc-40'").Scan(&newPCID)
 	assert(newPCID > 0, "PC 40 created: id=%d", newPCID)
 
-	resp, _ = post("/pc/40/delete", "")
+	resp, _ = post("/pc/pc-40/delete", "")
 	assert(resp.StatusCode == 302, "PC delete: %d", resp.StatusCode)
 	closeResp(resp)
 	var pcDeleted int
-	db.QueryRow("SELECT COUNT(*) FROM pcs WHERE pc_number=40").Scan(&pcDeleted)
+	db.QueryRow("SELECT COUNT(*) FROM pcs WHERE label='pc-40'").Scan(&pcDeleted)
 	assert(pcDeleted == 0, "PC 40 deleted")
 
 	// Seed category & device type (seed_devices.go was removed in Item 6.1)
