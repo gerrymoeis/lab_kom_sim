@@ -124,68 +124,6 @@
                     </div>
                 </div>
                 {{ end }}
-                        </div>
-                    </div>
-                    {{ if len $tg.Devices }}
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0 device-table">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width:40px;">#</th>
-                                    <th style="width:160px;">Asset Code</th>
-                                    <th style="width:150px;">Serial Number</th>
-                                    <th style="width:100px;">Kondisi</th>
-                                    <th>Lokasi</th>
-                                    <th style="width:130px;">Status</th>
-                                    <th style="width:130px;">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {{ range $i, $d := $tg.Devices }}
-                                <tr class="device-row {{ if eq $d.Condition "rusak" }}table-danger{{ else if eq $d.Condition "maintenance" }}table-warning{{ end }}" data-search="{{ $d.AssetCode }} {{ $d.DeviceTypeName }} {{ $d.SerialNumber }} {{ $d.CategoryName }}">
-                                    <td class="text-muted">{{ add $i 1 }}</td>
-                                    <td><code>{{ $d.AssetCode }}</code></td>
-                                    <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
-                                    <td>
-                                        <span class="badge bg-{{ if eq $d.Condition "baik" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
-                                            {{ if eq $d.Condition "baik" }}Baik{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Maintenance{{ end }}
-                                        </span>
-                                    </td>
-                                    <td><small>{{ if $d.Location }}{{ $d.Location }}{{ else }}-{{ end }}</small></td>
-                                    <td>
-                                        {{ if index $.groupedData.ActiveLoanIDs $d.ID }}
-                                        <span class="badge bg-warning">Dipinjam</span>
-                                        {{ else if index $.groupedData.DepletedIDs $d.ID }}
-                                        <span class="badge bg-danger">Habis</span>
-                                        {{ else }}
-                                        <span class="badge bg-success">Tersedia</span>
-                                        {{ end }}
-                                    </td>
-                                    <td class="text-nowrap">
-                                        <a href="/devices/{{ $d.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        {{ if eq $role "admin" }}
-                                        <a href="/devices/{{ $d.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <form method="POST" action="/devices/{{ $d.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
-                                            <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                        {{ end }}
-                                    </td>
-                                </tr>
-                                {{ end }}
-                            </tbody>
-                        </table>
-                    </div>
-                    {{ else }}
-                    <p class="text-muted small mb-0">Belum ada perangkat untuk tipe ini</p>
-                    {{ end }}
-                </div>
-                {{ end }}
             </div>
             </div>
         </div>
