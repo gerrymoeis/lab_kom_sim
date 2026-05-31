@@ -59,11 +59,11 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 		} else if pc.Label != "" {
 			specialPCs = append(specialPCs, pc)
 			switch pc.Label {
-			case "PC-Dosen":
+			case "pc-dosen":
 				data.PCLecturer = pc
-			case "PC-Laboran":
+			case "pc-laboran":
 				data.PCLaboran = pc
-			case "PC-CCTV":
+			case "pc-cctv":
 				data.PCCCTV = pc
 			}
 		}

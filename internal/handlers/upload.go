@@ -75,8 +75,8 @@ func (h *Handler) UploadImage(c *gin.Context) {
 
 	now := time.Now()
 	var fileBase string
-	if req.PCNumber != "" {
-		fileBase = fmt.Sprintf("pc_%s_%s_%s", req.PCNumber, req.Type, now.Format("150405_02012006"))
+	if req.Label != "" {
+		fileBase = fmt.Sprintf("pc_%s_%s_%s", req.Label, req.Type, now.Format("150405_02012006"))
 	} else {
 		fileBase = fmt.Sprintf("temp_%s_%s", req.Type, now.Format("150405_02012006"))
 	}

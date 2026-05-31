@@ -109,7 +109,6 @@ func runMigrations(db *DB, isPostgres bool) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS pcs (
 			id {{PK}},
-			pc_number INTEGER UNIQUE NOT NULL CHECK(pc_number >= 1 AND pc_number <= 43),
 			{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0 AND {{ROW}} <= 5),
 			{{COL}} INTEGER NOT NULL DEFAULT 0 CHECK({{COL}} >= 0 AND {{COL}} <= 8),
 			status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken')),
@@ -127,7 +126,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 			accessories TEXT NOT NULL DEFAULT 'Keyboard & Mouse Axioo (Wired Set)',
 			photo_serial TEXT,
 			photo_front TEXT,
-			label TEXT DEFAULT '',
+			label TEXT NOT NULL DEFAULT '' UNIQUE,
 			placement TEXT NOT NULL DEFAULT 'dipakai' CHECK(placement IN ('dipakai', 'cadangan')),
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
 			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
@@ -395,6 +394,18 @@ func runMigrations(db *DB, isPostgres bool) error {
 					log.Printf("WARN: could not drop pcs.%s (%v), skipping", depCol, err)
 				}
 			}
+		}
+
+		// Step 5: Migrate pc_number → lowercase label
+		if numExists, _ := d.columnExists(db, "pcs", "pc_number"); numExists {
+			db.Exec(`UPDATE pcs SET label = 'pc-' || CAST(pc_number AS TEXT) WHERE label IS NULL OR label = '' OR label GLOB '[0-9]*'`)
+			db.Exec(`UPDATE pcs SET label = 'pc-dosen' WHERE label = 'PC-Dosen'`)
+			db.Exec(`UPDATE pcs SET label = 'pc-laboran' WHERE label = 'PC-Laboran'`)
+			db.Exec(`UPDATE pcs SET label = 'pc-cctv' WHERE label = 'PC-CCTV'`)
+			if _, err := db.Exec("ALTER TABLE pcs DROP COLUMN pc_number"); err != nil {
+				log.Printf("WARN: could not drop pcs.pc_number (%v), skipping", err)
+			}
+			db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_pcs_label ON pcs(label)")
 		}
 	}
 

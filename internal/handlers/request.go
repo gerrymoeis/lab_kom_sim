@@ -6,7 +6,6 @@ type LoginRequest struct {
 }
 
 type CreatePCRequest struct {
-	PCNumber        int    `form:"pc_number" binding:"required,min=1,max=43"`
 	Label           string `form:"label"`
 	Row             int    `form:"row"`
 	Column          int    `form:"column"`
@@ -244,6 +243,6 @@ type LogbookSaveRequest struct {
 }
 
 type UploadImageRequest struct {
-	Type     string `form:"type"`
-	PCNumber string `form:"pc_number"`
+	Type  string `form:"type"`
+	Label string `form:"label"`
 }
