@@ -149,7 +149,7 @@ func copyDir(src, dst string) error {
 	})
 }
 
-func buildDashboardGrid(pcs []models.PC) ([][]models.PC, models.PC, models.PC, models.PC, map[string]int, int) {
+func buildDashboardGrid(pcs []models.PC) ([][]models.PC, []models.PC, models.PC, models.PC, models.PC, map[string]int, int) {
 	statusCounts := make(map[string]int)
 	var spareCount int
 	for _, pc := range pcs {
@@ -165,6 +165,7 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, models.PC, models.PC, m
 		grid[i] = make([]models.PC, 8)
 	}
 
+	var extraPCs []models.PC
 	var pcLecturer, pcLaboran, pcCCTV models.PC
 	for _, pc := range pcs {
 		if pc.Placement == "cadangan" {
@@ -172,6 +173,8 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, models.PC, models.PC, m
 		}
 		if pc.Row >= 1 && pc.Row <= 5 && pc.Column >= 1 && pc.Column <= 8 {
 			grid[pc.Row-1][pc.Column-1] = pc
+		} else if pc.Label != "" && isNumericLabel(pc.Label) {
+			extraPCs = append(extraPCs, pc)
 		} else if strings.EqualFold(pc.Label, "pc-dosen") {
 			pcLecturer = pc
 		} else if strings.EqualFold(pc.Label, "pc-laboran") {
@@ -181,7 +184,19 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, models.PC, models.PC, m
 		}
 	}
 
-	return grid, pcLecturer, pcLaboran, pcCCTV, statusCounts, spareCount
+	return grid, extraPCs, pcLecturer, pcLaboran, pcCCTV, statusCounts, spareCount
+}
+
+func isNumericLabel(label string) bool {
+	if len(label) < 4 || !strings.HasPrefix(label, "pc-") {
+		return false
+	}
+	for _, c := range label[3:] {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func buildSoftwareGrid(pcList []repository.PCInstallStatus) [][]repository.PCInstallStatus {
@@ -261,10 +276,10 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 	}
 
 	// Dashboard
-	grid, pcLecturer, pcLaboran, pcCCTV, statusCounts, spareCount := buildDashboardGrid(pcs)
+	grid, extraPCs, pcLecturer, pcLaboran, pcCCTV, statusCounts, spareCount := buildDashboardGrid(pcs)
 	re("dashboard.html", filepath.Join(outDir, "dashboard.html"), map[string]interface{}{
 		"title": "Dashboard", "currentPage": "dashboard",
-		"pcGrid": grid, "pcs": pcs,
+		"pcGrid": grid, "pcs": pcs, "extraPCs": extraPCs,
 		"statusCounts": statusCounts, "spareCount": spareCount,
 		"pcLecturer": pcLecturer, "pcLaboran": pcLaboran, "pcCCTV": pcCCTV,
 	})

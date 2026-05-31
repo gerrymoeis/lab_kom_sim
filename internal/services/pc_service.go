@@ -13,6 +13,7 @@ type CreatePCInput struct {
 	PCType, BrandModel, Accessories     string
 	PhotoSerial, PhotoFront             string
 	Label                               string
+	IsMahasiswa                         bool
 }
 
 type UpdatePCInput struct {
@@ -69,7 +70,7 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 	if in.RAM == "" { in.RAM = "16GB DDR4" }
 	if in.Storage == "" { in.Storage = "1TB NVMe" }
 	if in.Label == "" {
-		in.Label = s.pcRepo.NextLabel(in.Placement, in.PCType)
+		in.Label = s.pcRepo.NextLabel(in.Placement, in.IsMahasiswa)
 	}
 
 	result, err := s.pcRepo.Create(in.Row, in.Column, in.Status, in.Placement, in.Processor, in.RAM, in.Storage,
@@ -88,6 +89,10 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 		s.pcRepo.SeedRequiredSoftware(int(pcID))
 	}
 	return int(pcID), nil
+}
+
+func (s *PCService) NextLabel(placement string, isMahasiswa bool) string {
+	return s.pcRepo.NextLabel(placement, isMahasiswa)
 }
 
 func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
