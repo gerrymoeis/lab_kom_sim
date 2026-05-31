@@ -82,7 +82,8 @@ type Device struct {
 	CategoryPrefix   string `json:"category_prefix,omitempty"`
 	DeviceTypeName   string `json:"device_type_name,omitempty"`
 	DeviceTypePrefix string `json:"device_type_prefix,omitempty"`
-	UsageType        string `json:"usage_type,omitempty"`
+	UsageType        string `json:"usage_type,omitempty"`          // EFFECTIVE: device override > device type
+	UsageTypeOverride string `json:"usage_type_override,omitempty"` // raw d.usage_type (empty = inherit from type)
 	DeviceTypePhoto  string `json:"device_type_photo,omitempty"`
 }
 
