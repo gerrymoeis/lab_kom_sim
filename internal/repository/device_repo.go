@@ -88,7 +88,10 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 	query := `SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
 		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
 		d.created_at, d.updated_at,
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix, dt.usage_type, COALESCE(dt.photo,'')
+		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
+		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
+		COALESCE(d.usage_type, '') AS usage_type_override,
+		COALESCE(dt.photo,'')
 		FROM devices d
 		JOIN device_types dt ON d.device_type_id = dt.id
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1`
@@ -129,7 +132,7 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 			&d.Condition, &d.Location, &pDate, &d.Notes,
 			&d.CreatedAt, &d.UpdatedAt,
 			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-			&d.UsageType, &d.DeviceTypePhoto); err != nil {
+			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto); err != nil {
 			return nil, err
 		}
 		d.PurchaseDate = parseDate(pDate)
@@ -144,7 +147,10 @@ func (r *DeviceRepository) GetByID(id int) (*models.Device, error) {
 	err := r.db.QueryRow(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
 		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
 		d.created_at, d.updated_at,
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix, dt.usage_type, COALESCE(dt.photo,'')
+		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
+		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
+		COALESCE(d.usage_type, '') AS usage_type_override,
+		COALESCE(dt.photo,'')
 		FROM devices d
 		JOIN device_types dt ON d.device_type_id = dt.id
 		JOIN categories c ON c.id = dt.category_id WHERE d.id = ?`, id).
@@ -152,7 +158,7 @@ func (r *DeviceRepository) GetByID(id int) (*models.Device, error) {
 			&d.Condition, &d.Location, &pDate, &d.Notes,
 			&d.CreatedAt, &d.UpdatedAt,
 			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-			&d.UsageType, &d.DeviceTypePhoto)
+			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +172,10 @@ func (r *DeviceRepository) GetByAssetCode(code string) (*models.Device, error) {
 	err := r.db.QueryRow(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
 		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
 		d.created_at, d.updated_at,
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix, dt.usage_type, COALESCE(dt.photo,'')
+		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
+		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
+		COALESCE(d.usage_type, '') AS usage_type_override,
+		COALESCE(dt.photo,'')
 		FROM devices d
 		JOIN device_types dt ON d.device_type_id = dt.id
 		JOIN categories c ON c.id = dt.category_id WHERE d.asset_code = ?`, code).
@@ -174,7 +183,7 @@ func (r *DeviceRepository) GetByAssetCode(code string) (*models.Device, error) {
 			&d.Condition, &d.Location, &pDate, &d.Notes,
 			&d.CreatedAt, &d.UpdatedAt,
 			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-			&d.UsageType, &d.DeviceTypePhoto)
+			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto)
 	if err != nil {
 		return nil, err
 	}
@@ -224,10 +233,14 @@ func (r *DeviceRepository) BatchCreate(inputs []BatchCreateInput) error {
 	return tx.Commit()
 }
 
-func (r *DeviceRepository) Update(id, deviceTypeID int, assetCode, serial, condition, location, pDate, notes string) error {
+func (r *DeviceRepository) Update(id, deviceTypeID int, assetCode, serial, condition, location, pDate, notes, usageType string) error {
+	var usageArg interface{}
+	if usageType != "" {
+		usageArg = usageType
+	}
 	_, err := r.db.Exec(`UPDATE devices SET device_type_id=?, asset_code=?, serial_number=?,
-		condition=?, location=?, purchase_date=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-		deviceTypeID, assetCode, serial, condition, location, pDate, notes, id)
+		condition=?, location=?, purchase_date=?, notes=?, usage_type=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+		deviceTypeID, assetCode, serial, condition, location, pDate, notes, usageArg, id)
 	return err
 }
 
@@ -245,7 +258,7 @@ type DeviceGroupRow struct {
 	TypeID         int
 	TypeName       string
 	TypePrefix     string
-	UsageType      string
+	TypeUsageType  string // from dt.usage_type (device type level)
 	TypePhoto      string
 	DeviceID       *int
 	AssetCode      *string
@@ -254,13 +267,15 @@ type DeviceGroupRow struct {
 	Location       *string
 	PurchaseDate   *string
 	Notes          *string
+	DeviceUsageType *string // from d.usage_type (device-level override, nil = no override)
 }
 
 func (r *DeviceRepository) GetAllGrouped() ([]DeviceGroupRow, error) {
 	rows, err := r.db.Query(`SELECT c.id, c.name, c.default_prefix,
 		dt.id, dt.name, dt.asset_code_prefix, dt.usage_type, COALESCE(dt.photo,''),
 		d.id, d.asset_code, COALESCE(d.serial_number,''), d.condition,
-		COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,'')
+		COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
+		d.usage_type
 		FROM categories c
 		LEFT JOIN device_types dt ON dt.category_id = c.id
 		LEFT JOIN devices d ON d.device_type_id = dt.id
@@ -274,9 +289,9 @@ func (r *DeviceRepository) GetAllGrouped() ([]DeviceGroupRow, error) {
 	for rows.Next() {
 		var r2 DeviceGroupRow
 		if err := rows.Scan(&r2.CategoryID, &r2.CategoryName, &r2.CategoryPrefix,
-			&r2.TypeID, &r2.TypeName, &r2.TypePrefix, &r2.UsageType, &r2.TypePhoto,
+			&r2.TypeID, &r2.TypeName, &r2.TypePrefix, &r2.TypeUsageType, &r2.TypePhoto,
 			&r2.DeviceID, &r2.AssetCode, &r2.SerialNumber, &r2.Condition,
-			&r2.Location, &r2.PurchaseDate, &r2.Notes); err != nil {
+			&r2.Location, &r2.PurchaseDate, &r2.Notes, &r2.DeviceUsageType); err != nil {
 			return nil, err
 		}
 		rows2 = append(rows2, r2)
@@ -349,7 +364,10 @@ type DeviceExportRow struct {
 func (r *DeviceRepository) ExportAll() ([]DeviceExportRow, error) {
 	rows, err := r.db.Query(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
 		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix, dt.usage_type, COALESCE(dt.photo,'')
+		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
+		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
+		COALESCE(d.usage_type, '') AS usage_type_override,
+		COALESCE(dt.photo,'')
 		FROM devices d
 		JOIN device_types dt ON d.device_type_id = dt.id
 		JOIN categories c ON c.id = dt.category_id
@@ -366,7 +384,7 @@ func (r *DeviceRepository) ExportAll() ([]DeviceExportRow, error) {
 		if err := rows.Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
 			&d.Condition, &d.Location, &pDate, &d.Notes,
 			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-			&d.UsageType, &d.DeviceTypePhoto); err != nil {
+			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto); err != nil {
 			return nil, err
 		}
 		d.PurchaseDate = parseDate(pDate)
