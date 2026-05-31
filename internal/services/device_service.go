@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
@@ -52,98 +51,14 @@ func (s *DeviceService) GetByAssetCode(code string) (*models.Device, error) {
 	return s.deviceRepo.GetByAssetCode(code)
 }
 
-func (s *DeviceService) GetGrouped() (*models.DeviceGroupedData, error) {
-	rows, err := s.deviceRepo.GetAllGrouped()
-	if err != nil {
-		return nil, err
-	}
 
-	activeLoanIDs, err := s.deviceRepo.GetActiveLoanDeviceIDs()
-	if err != nil {
-		activeLoanIDs = make(map[int]bool)
-	}
 
-	depletedIDs, err := s.deviceRepo.GetDepletedDeviceIDs()
-	if err != nil {
-		depletedIDs = make(map[int]bool)
-	}
+func (s *DeviceService) GetActiveLoanIDs() (map[int]bool, error) {
+	return s.deviceRepo.GetActiveLoanDeviceIDs()
+}
 
-	catMap := make(map[int]*models.CategoryGroup)
-	typeMap := make(map[int]*models.DeviceTypeGroup)
-	var catOrder []int
-
-	for _, row := range rows {
-		cat, ok := catMap[row.CategoryID]
-		if !ok {
-			cat = &models.CategoryGroup{
-				CategoryID:     row.CategoryID,
-				CategoryName:   row.CategoryName,
-				CategoryPrefix: row.CategoryPrefix,
-			}
-			catMap[row.CategoryID] = cat
-			catOrder = append(catOrder, row.CategoryID)
-		}
-
-		tg, ok2 := typeMap[row.TypeID]
-		if !ok2 {
-			tg = &models.DeviceTypeGroup{
-				TypeID:     row.TypeID,
-				TypeName:   row.TypeName,
-				TypePrefix: row.TypePrefix,
-				UsageType:  row.TypeUsageType,
-				TypePhoto:  row.TypePhoto,
-			}
-			typeMap[row.TypeID] = tg
-			cat.Types = append(cat.Types, *tg)
-		}
-
-		if row.DeviceID != nil {
-			var pDate *time.Time
-			if *row.PurchaseDate != "" {
-				if t, err := time.Parse("2006-01-02", *row.PurchaseDate); err == nil {
-					pDate = &t
-				}
-			}
-			effectiveUsageType := row.TypeUsageType
-			if row.DeviceUsageType != nil && *row.DeviceUsageType != "" {
-				effectiveUsageType = *row.DeviceUsageType
-			}
-			dev := models.Device{
-				ID:         *row.DeviceID,
-				DeviceTypeID: row.TypeID,
-				AssetCode:  *row.AssetCode,
-				SerialNumber: *row.SerialNumber,
-				Condition:  *row.Condition,
-				Location:   *row.Location,
-				PurchaseDate: pDate,
-				Notes:      *row.Notes,
-				CategoryName:   row.CategoryName,
-				CategoryPrefix: row.CategoryPrefix,
-				DeviceTypeName: row.TypeName,
-				DeviceTypePrefix: row.TypePrefix,
-				UsageType:  effectiveUsageType,
-				DeviceTypePhoto: row.TypePhoto,
-			}
-			// Find the type group in the cat and add device
-			for i := range cat.Types {
-				if cat.Types[i].TypeID == row.TypeID {
-					cat.Types[i].Devices = append(cat.Types[i].Devices, dev)
-					break
-				}
-			}
-		}
-	}
-
-	categories := make([]models.CategoryGroup, len(catOrder))
-	for i, id := range catOrder {
-		categories[i] = *catMap[id]
-	}
-
-	return &models.DeviceGroupedData{
-		Categories:    categories,
-		ActiveLoanIDs: activeLoanIDs,
-		DepletedIDs:   depletedIDs,
-	}, nil
+func (s *DeviceService) GetDepletedIDs() (map[int]bool, error) {
+	return s.deviceRepo.GetDepletedDeviceIDs()
 }
 
 func (s *DeviceService) GetNextAssetCode(prefix string) string {
