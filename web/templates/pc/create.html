@@ -371,12 +371,16 @@ function togglePCCreateFields() {
         fields.style.display = 'none';
         document.getElementById('row').value = 0;
         document.getElementById('column').value = 0;
+        document.getElementById('row').disabled = true;
+        document.getElementById('column').disabled = true;
         labelInput.value = nextCadanganLabel;
         labelInput.readOnly = true;
         labelHelp.textContent = 'Label otomatis untuk PC Cadangan';
     } else {
         jenisField.style.display = 'block';
         fields.style.display = 'flex';
+        document.getElementById('row').disabled = false;
+        document.getElementById('column').disabled = false;
         toggleLabelField();
     }
 }
