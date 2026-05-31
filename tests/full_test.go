@@ -27,7 +27,12 @@ func TestFullIntegration(t *testing.T) {
 	projectRoot := filepath.Dir(wd)
 	os.Chdir(projectRoot)
 	defer os.Chdir(wd)
-	defer os.Remove("full_testing.db")
+	defer func() {
+		dbPath := "full_testing.db"
+		os.Remove(dbPath)
+		os.Remove(dbPath + "-shm")
+		os.Remove(dbPath + "-wal")
+	}()
 	defer func() {
 		os.RemoveAll(filepath.Join("uploads", "temp"))
 		os.RemoveAll(filepath.Join("uploads", "pc"))
