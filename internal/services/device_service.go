@@ -69,6 +69,7 @@ func (s *DeviceService) GetGrouped() (*models.DeviceGroupedData, error) {
 
 	catMap := make(map[int]*models.CategoryGroup)
 	typeMap := make(map[int]*models.DeviceTypeGroup)
+	var catOrder []int
 
 	for _, row := range rows {
 		cat, ok := catMap[row.CategoryID]
@@ -79,6 +80,7 @@ func (s *DeviceService) GetGrouped() (*models.DeviceGroupedData, error) {
 				CategoryPrefix: row.CategoryPrefix,
 			}
 			catMap[row.CategoryID] = cat
+			catOrder = append(catOrder, row.CategoryID)
 		}
 
 		tg, ok2 := typeMap[row.TypeID]
@@ -127,9 +129,9 @@ func (s *DeviceService) GetGrouped() (*models.DeviceGroupedData, error) {
 		}
 	}
 
-	categories := make([]models.CategoryGroup, 0, len(catMap))
-	for _, cat := range catMap {
-		categories = append(categories, *cat)
+	categories := make([]models.CategoryGroup, len(catOrder))
+	for i, id := range catOrder {
+		categories[i] = *catMap[id]
 	}
 
 	return &models.DeviceGroupedData{
