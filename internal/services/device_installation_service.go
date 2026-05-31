@@ -33,6 +33,10 @@ func NewDeviceInstallationService(repo *repository.DeviceInstallationRepository,
 	return &DeviceInstallationService{repo: repo, log: log}
 }
 
+func (s *DeviceInstallationService) GetInstallableDevices() ([]models.Device, error) {
+	return s.repo.GetInstallableDevices()
+}
+
 func (s *DeviceInstallationService) ListPaginated(filters repository.InstallationFilters, page, pageSize int) ([]repository.InstallationRow, int, error) {
 	return s.repo.ListPaginated(filters, page, pageSize)
 }

@@ -61,9 +61,15 @@ func (h *Handler) DeviceInstallationCreatePage(c *gin.Context) {
 	if !ok {
 		return
 	}
+	devices, err := h.deviceInstallationService.GetInstallableDevices()
+	if err != nil {
+		devices = nil
+	}
+	deviceID, _ := strconv.Atoi(c.DefaultQuery("device_id", "0"))
 	c.HTML(http.StatusOK, "device_installation/create.html", gin.H{
 		"title": "Tambah Instalasi", "currentPage": "installations",
 		"username": username, "role": role,
+		"devices": devices, "preselectDeviceID": deviceID,
 	})
 }
 

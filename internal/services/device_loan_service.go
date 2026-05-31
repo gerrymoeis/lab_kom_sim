@@ -3,6 +3,7 @@
 import (
 	"time"
 
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
 
@@ -33,6 +34,10 @@ type DeviceLoanService struct {
 
 func NewDeviceLoanService(loanRepo *repository.DeviceLoanRepository, extensionRepo *repository.LoanExtensionRepository, log *ActivityLogService) *DeviceLoanService {
 	return &DeviceLoanService{loanRepo: loanRepo, extensionRepo: extensionRepo, log: log}
+}
+
+func (s *DeviceLoanService) GetLoanableDevices() ([]models.Device, error) {
+	return s.loanRepo.GetLoanableDevices()
 }
 
 func (s *DeviceLoanService) GetByID(id int) (*repository.DeviceLoanRow, error) {
