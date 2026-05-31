@@ -3,58 +3,141 @@
 <div class="container mt-4">
     {{ template "layout/card_create.html" . }}
 
-    <div class="mb-3">
-        <label for="device_type_id" class="form-label">Tipe Perangkat *</label>
-        <select class="form-select" id="device_type_id" name="device_type_id" required>
-            <option value="">Pilih tipe perangkat...</option>
-            {{ range $dt := .deviceTypes }}
-            <option value="{{ $dt.ID }}" data-prefix="{{ $dt.AssetCodePrefix }}" data-usage="{{ $dt.UsageType }}" data-default-location="{{ $dt.DefaultLocation }}">
-                {{ $dt.CategoryName }} — {{ $dt.Name }} ({{ $dt.AssetCodePrefix }})
-            </option>
-            {{ end }}
-        </select>
-        <small class="text-muted">Kategori — Nama Varian (Prefix Asset Code)</small>
-    </div>
-
-    <div class="row g-2 mb-3">
-        <div class="col-md-3">
-            <label for="batch_count" class="form-label">Jumlah Perangkat</label>
-            <div class="input-group">
-                <input type="number" class="form-control" id="batch_count" value="1" min="1" max="100">
-                <button class="btn btn-outline-primary" type="button" id="generateBtn">
-                    <i class="bi bi-table"></i> Generate Tabel
-                </button>
+    <!-- Category Section -->
+    <div class="mb-4 p-3 border rounded">
+        <h5 class="mb-3"><i class="bi bi-folder"></i> Kategori</h5>
+        <div class="mb-2">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="catMode" id="catExisting" value="existing" checked>
+                <label class="form-check-label" for="catExisting">Pilih Kategori</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="catMode" id="catNew" value="new">
+                <label class="form-check-label" for="catNew">Buat Kategori Baru</label>
+            </div>
+        </div>
+        <div id="catExistingSection">
+            <select class="form-select" id="categorySelect">
+                <option value="">Pilih kategori...</option>
+                {{ range $c := .categories }}
+                <option value="{{ $c.ID }}" data-prefix="{{ $c.DefaultPrefix }}">{{ $c.Name }} ({{ $c.DefaultPrefix }})</option>
+                {{ end }}
+            </select>
+        </div>
+        <div id="catNewSection" style="display:none;">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">Nama Kategori *</label>
+                    <input type="text" class="form-control" id="newCatName" placeholder="Contoh: Mouse, CCTV">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Prefix (otomatis)</label>
+                    <input type="text" class="form-control" id="newCatPrefix" placeholder="Contoh: MOUSE, CCTV" readonly>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="batchTableContainer" style="display:none;">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover" id="batchTable">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width:40px;">#</th>
-                        <th style="width:180px;">Asset Code (auto)</th>
-                        <th style="width:150px;">Serial Number</th>
-                        <th style="width:120px;">Kondisi</th>
-                        <th style="width:150px;">Lokasi</th>
-                        <th style="width:130px;">Tgl Beli</th>
-                        <th>Catatan</th>
-                    </tr>
-                </thead>
-                <tbody id="batchBody"></tbody>
-            </table>
+    <!-- Device Type Section -->
+    <div class="mb-4 p-3 border rounded">
+        <h5 class="mb-3"><i class="bi bi-box"></i> Tipe Perangkat</h5>
+        <div class="mb-2">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="typeMode" id="typeExisting" value="existing" checked>
+                <label class="form-check-label" for="typeExisting">Pilih Tipe</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="typeMode" id="typeNew" value="new">
+                <label class="form-check-label" for="typeNew">Buat Tipe Baru</label>
+            </div>
+        </div>
+        <div id="typeExistingSection">
+            <select class="form-select" id="typeSelect">
+                <option value="">Pilih kategori terlebih dahulu...</option>
+                {{ range $t := .deviceTypes }}
+                <option value="{{ $t.ID }}" data-category="{{ $t.CategoryID }}" data-prefix="{{ $t.AssetCodePrefix }}" data-usage="{{ $t.UsageType }}" data-default-location="{{ $t.DefaultLocation }}" style="display:none;">
+                    {{ $t.Name }} ({{ $t.AssetCodePrefix }})
+                </option>
+                {{ end }}
+            </select>
+        </div>
+        <div id="typeNewSection" style="display:none;">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label">Nama Varian *</label>
+                    <input type="text" class="form-control" id="newTypeName" placeholder="Contoh: Axioo, HIKVISION PTZ">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Brand</label>
+                    <input type="text" class="form-control" id="newTypeBrand" placeholder="Contoh: Wacom, HIKVISION">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Model</label>
+                    <input type="text" class="form-control" id="newTypeModel" placeholder="Contoh: Intuos S">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Prefix Asset Code (otomatis)</label>
+                    <input type="text" class="form-control" id="newTypePrefix" placeholder="Otomatis dari kategori + nama" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Tipe Pemakaian *</label>
+                    <select class="form-select" id="newTypeUsage">
+                        <option value="loanable">Dipinjamkan</option>
+                        <option value="consumable">Habis Pakai</option>
+                        <option value="installable">Instalasi</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Lokasi Default</label>
+                    <input type="text" class="form-control" id="newTypeLocation" placeholder="Contoh: Lab, Lemari Kaca">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Section -->
+    <div class="mb-4 p-3 border rounded">
+        <h5 class="mb-3"><i class="bi bi-table"></i> Perangkat</h5>
+        <div class="row g-2 mb-3">
+            <div class="col-md-3">
+                <label for="batchCount" class="form-label">Jumlah Perangkat</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" id="batchCount" value="1" min="1" max="100">
+                    <button class="btn btn-outline-primary" type="button" id="generateBtn">
+                        <i class="bi bi-table"></i> Generate Tabel
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end mt-3">
-            <button class="btn btn-primary" id="saveBatchBtn">
-                <i class="bi bi-save"></i> Simpan Batch
-            </button>
-            <a href="/devices" class="btn btn-secondary">
-                <i class="bi bi-x-circle"></i> Batal
-            </a>
+        <div id="batchTableContainer" style="display:none;">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="batchTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:40px;">#</th>
+                            <th style="width:180px;">Asset Code (auto)</th>
+                            <th style="width:150px;">Serial Number</th>
+                            <th style="width:120px;">Kondisi</th>
+                            <th style="width:150px;">Lokasi</th>
+                            <th style="width:130px;">Tgl Beli</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchBody"></tbody>
+                </table>
+            </div>
+
+            <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end mt-3">
+                <button class="btn btn-primary" id="saveBatchBtn">
+                    <i class="bi bi-save"></i> Simpan Batch
+                </button>
+                <a href="/devices" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Batal
+                </a>
+            </div>
+            <div id="batchError" class="alert alert-danger mt-2" style="display:none;"></div>
         </div>
-        <div id="batchError" class="alert alert-danger mt-2" style="display:none;"></div>
     </div>
 
     {{ template "layout/card_close.html" . }}
@@ -62,40 +145,171 @@
 
 <script>
 (function() {
-    const typeSelect = document.getElementById('device_type_id');
-    const batchCount = document.getElementById('batch_count');
+    // --- DOM refs ---
+    const catExisting = document.getElementById('catExisting');
+    const catNew = document.getElementById('catNew');
+    const catExistingSection = document.getElementById('catExistingSection');
+    const catNewSection = document.getElementById('catNewSection');
+    const categorySelect = document.getElementById('categorySelect');
+    const newCatName = document.getElementById('newCatName');
+    const newCatPrefix = document.getElementById('newCatPrefix');
+
+    const typeExisting = document.getElementById('typeExisting');
+    const typeNew = document.getElementById('typeNew');
+    const typeExistingSection = document.getElementById('typeExistingSection');
+    const typeNewSection = document.getElementById('typeNewSection');
+    const typeSelect = document.getElementById('typeSelect');
+    const newTypeName = document.getElementById('newTypeName');
+    const newTypeBrand = document.getElementById('newTypeBrand');
+    const newTypeModel = document.getElementById('newTypeModel');
+    const newTypePrefix = document.getElementById('newTypePrefix');
+    const newTypeUsage = document.getElementById('newTypeUsage');
+    const newTypeLocation = document.getElementById('newTypeLocation');
+
+    const batchCount = document.getElementById('batchCount');
     const generateBtn = document.getElementById('generateBtn');
     const batchContainer = document.getElementById('batchTableContainer');
     const batchBody = document.getElementById('batchBody');
     const saveBtn = document.getElementById('saveBatchBtn');
     const errorDiv = document.getElementById('batchError');
 
-    let currentPrefix = '';
-    let currentDefaultLocation = '';
-
-    typeSelect.addEventListener('change', function() {
-        const opt = this.options[this.selectedIndex];
-        currentPrefix = opt ? opt.dataset.prefix : '';
-        currentDefaultLocation = opt ? opt.dataset.defaultLocation || '' : '';
+    // --- Category mode toggle ---
+    catExisting.addEventListener('change', function() {
+        catExistingSection.style.display = 'block';
+        catNewSection.style.display = 'none';
+        filterTypes();
+    });
+    catNew.addEventListener('change', function() {
+        catExistingSection.style.display = 'none';
+        catNewSection.style.display = 'block';
+        filterTypes();
+        updateNewTypePrefix();
     });
 
+    // --- Auto prefix for new category ---
+    newCatName.addEventListener('input', function() {
+        newCatPrefix.value = this.value ? toPrefix(this.value) : '';
+    });
+
+    // --- Auto prefix for new type ---
+    newTypeName.addEventListener('input', updateNewTypePrefix);
+
+    function getCategoryPrefix() {
+        if (catExisting.checked && categorySelect.value) {
+            return categorySelect.options[categorySelect.selectedIndex].dataset.prefix;
+        }
+        if (catNew.checked && newCatPrefix.value) {
+            return newCatPrefix.value;
+        }
+        return '';
+    }
+
+    function updateNewTypePrefix() {
+        const catPrefix = getCategoryPrefix();
+        const name = newTypeName.value;
+        if (catPrefix && name) {
+            newTypePrefix.value = catPrefix + '-' + toPrefix(name);
+        } else if (catPrefix) {
+            newTypePrefix.value = catPrefix + '-';
+        } else {
+            newTypePrefix.value = '';
+        }
+    }
+
+    function toPrefix(str) {
+        return str.toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+    }
+
+    // --- Filter device types by category ---
+    categorySelect.addEventListener('change', filterTypes);
+    catExisting.addEventListener('change', filterTypes);
+    catNew.addEventListener('change', filterTypes);
+
+    function getCategoryID() {
+        if (catExisting.checked) return parseInt(categorySelect.value) || 0;
+        return -1; // new category
+    }
+
+    function filterTypes() {
+        const catID = getCategoryID();
+        const options = typeSelect.querySelectorAll('option[data-category]');
+        options.forEach(function(opt) {
+            if (catID > 0 && parseInt(opt.dataset.category) === catID) {
+                opt.style.display = '';
+            } else {
+                opt.style.display = 'none';
+            }
+        });
+        // reset selection if hidden
+        if (typeSelect.selectedIndex > 0) {
+            const sel = typeSelect.options[typeSelect.selectedIndex];
+            if (sel.style.display === 'none') typeSelect.value = '';
+        }
+        updateTypePlaceholder();
+    }
+
+    function updateTypePlaceholder() {
+        const catID = getCategoryID();
+        if (catID > 0 || catID === -1) {
+            typeSelect.options[0].text = 'Pilih tipe perangkat...';
+        } else {
+            typeSelect.options[0].text = 'Pilih kategori terlebih dahulu...';
+        }
+    }
+
+    // --- Device Type mode toggle ---
+    typeExisting.addEventListener('change', function() {
+        typeExistingSection.style.display = 'block';
+        typeNewSection.style.display = 'none';
+    });
+    typeNew.addEventListener('change', function() {
+        typeExistingSection.style.display = 'none';
+        typeNewSection.style.display = 'block';
+    });
+
+    // --- Get type prefix for batch generation ---
+    function getTypePrefix() {
+        if (typeExisting.checked && typeSelect.value) {
+            return typeSelect.options[typeSelect.selectedIndex].dataset.prefix;
+        }
+        if (typeNew.checked && newTypePrefix.value) {
+            return newTypePrefix.value;
+        }
+        return '';
+    }
+
+    function getDefaultLocation() {
+        if (typeExisting.checked && typeSelect.value) {
+            return typeSelect.options[typeSelect.selectedIndex].dataset.defaultLocation || '';
+        }
+        if (typeNew.checked) {
+            return newTypeLocation.value || '';
+        }
+        return '';
+    }
+
+    // --- Generate batch table ---
     generateBtn.addEventListener('click', function() {
-        const typeId = typeSelect.value;
-        if (!typeId) { alert('Pilih tipe perangkat terlebih dahulu'); return; }
+        const prefix = getTypePrefix();
+        if (!prefix) {
+            alert('Pilih atau buat tipe perangkat terlebih dahulu');
+            return;
+        }
+        const catID = getCategoryID();
+        if (catID === 0) {
+            alert('Pilih atau buat kategori terlebih dahulu');
+            return;
+        }
 
         const count = parseInt(batchCount.value);
         if (count < 1 || count > 100) { alert('Jumlah harus 1-100'); return; }
 
-        const opt = typeSelect.options[typeSelect.selectedIndex];
-        const prefix = opt.dataset.prefix;
-        const defaultLoc = opt.dataset.defaultLocation || '';
+        const defaultLoc = getDefaultLocation();
 
-        // Generate table rows
         batchBody.innerHTML = '';
         for (let i = 1; i <= count; i++) {
             const code = prefix + '-' + String(i).padStart(3, '0');
             const tr = document.createElement('tr');
-            tr.dataset.index = i - 1;
             tr.innerHTML =
                 '<td class="text-muted text-center">' + i + '</td>' +
                 '<td><code class="asset-code">' + code + '</code></td>' +
@@ -107,18 +321,14 @@
             batchBody.appendChild(tr);
         }
 
-        // Apply-to-all helpers in header
         addApplyAllButtons();
         batchContainer.style.display = 'block';
     });
 
     function addApplyAllButtons() {
-        // Remove old helper buttons
-        document.querySelectorAll('.apply-all-btn').forEach(el => el.remove());
-
+        document.querySelectorAll('.apply-all-btn').forEach(function(el) { el.remove(); });
         const headers = batchBody.closest('table').querySelectorAll('thead th');
-        // Index 3 = kondisi, 4 = lokasi, 5 = tgl, 6 = catatan
-        [4, 5, 6].forEach(idx => {
+        [4, 5, 6].forEach(function(idx) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn btn-outline-secondary btn-sm ms-1 apply-all-btn';
@@ -127,8 +337,7 @@
             btn.dataset.col = idx;
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                const col = parseInt(this.dataset.col);
-                applyColumn(col);
+                applyColumn(parseInt(this.dataset.col));
             });
             headers[idx].appendChild(btn);
         });
@@ -137,17 +346,12 @@
     function applyColumn(colIndex) {
         const rows = batchBody.querySelectorAll('tr');
         if (rows.length < 2) return;
-        // Get first row's value
         let firstVal = '';
         const firstCells = rows[0].querySelectorAll('input, select');
-        if (colIndex === 4) firstVal = firstCells[1] ? firstCells[1].value : ''; // lokasi
-        else if (colIndex === 5) firstVal = firstCells[2] ? firstCells[2].value : ''; // tgl
-        else if (colIndex === 6) firstVal = firstCells[3] ? firstCells[3].value : ''; // catatan
-
-        if (!firstVal) {
-            alert('Isi baris pertama terlebih dahulu untuk kolom ini');
-            return;
-        }
+        if (colIndex === 4) firstVal = firstCells[1] ? firstCells[1].value : '';
+        else if (colIndex === 5) firstVal = firstCells[2] ? firstCells[2].value : '';
+        else if (colIndex === 6) firstVal = firstCells[3] ? firstCells[3].value : '';
+        if (!firstVal) { alert('Isi baris pertama terlebih dahulu untuk kolom ini'); return; }
         for (let i = 1; i < rows.length; i++) {
             const cells = rows[i].querySelectorAll('input, select');
             if (colIndex === 4 && cells[1]) cells[1].value = firstVal;
@@ -156,19 +360,16 @@
         }
     }
 
+    // --- Save batch ---
     saveBtn.addEventListener('click', function() {
-        const typeId = typeSelect.value;
-        if (!typeId) { alert('Pilih tipe perangkat'); return; }
+        const prefix = getTypePrefix();
+        if (!prefix) { alert('Pilih atau buat tipe perangkat'); return; }
 
         const rows = batchBody.querySelectorAll('tr');
         const devices = [];
-        let valid = true;
-
         rows.forEach(function(row) {
-            const inputs = row.querySelectorAll('input, select');
-            const condition = inputs[0] ? inputs[0].value : 'baik';
             devices.push({
-                serial_number: inputs.length > 0 && row.querySelector('.sn-input') ? row.querySelector('.sn-input').value : '',
+                serial_number: row.querySelector('.sn-input') ? row.querySelector('.sn-input').value : '',
                 condition: row.querySelector('.condition-input') ? row.querySelector('.condition-input').value : 'baik',
                 location: row.querySelector('.loc-input') ? row.querySelector('.loc-input').value : '',
                 purchase_date: row.querySelector('.date-input') ? row.querySelector('.date-input').value : '',
@@ -176,7 +377,35 @@
             });
         });
 
-        if (!valid) return;
+        // Build payload
+        var payload = {
+            category_id: 0,
+            device_type_id: 0,
+            devices: devices
+        };
+
+        if (catExisting.checked && categorySelect.value) {
+            payload.category_id = parseInt(categorySelect.value);
+        } else if (catNew.checked && newCatName.value) {
+            payload.new_category_name = newCatName.value;
+            payload.new_category_prefix = newCatPrefix.value;
+        }
+
+        if (typeExisting.checked && typeSelect.value) {
+            payload.device_type_id = parseInt(typeSelect.value);
+        } else if (typeNew.checked && newTypeName.value) {
+            payload.new_type_name = newTypeName.value;
+            payload.new_type_brand = newTypeBrand.value;
+            payload.new_type_model = newTypeModel.value;
+            payload.new_type_asset_code_prefix = newTypePrefix.value;
+            payload.new_type_usage_type = newTypeUsage.value;
+            payload.new_type_default_location = newTypeLocation.value;
+        }
+
+        if (!payload.device_type_id && !payload.new_type_name) {
+            alert('Pilih atau buat tipe perangkat');
+            return;
+        }
 
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
@@ -185,7 +414,7 @@
         fetch('/devices/batch-create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ device_type_id: parseInt(typeId), devices: devices })
+            body: JSON.stringify(payload)
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
