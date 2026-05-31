@@ -114,6 +114,12 @@ func TestFullIntegration(t *testing.T) {
 		addCookies(req)
 		return client.Do(req)
 	}
+	postJSON := func(path, data string) (*http.Response, error) {
+		req, _ := http.NewRequest("POST", ts.URL+path, strings.NewReader(data))
+		req.Header.Set("Content-Type", "application/json")
+		addCookies(req)
+		return client.Do(req)
+	}
 
 	assert := func(cond bool, msg string, args ...any) {
 		if !cond {
@@ -202,13 +208,14 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT COUNT(*) FROM pcs WHERE pc_number=40").Scan(&pcDeleted)
 	assert(pcDeleted == 0, "PC 40 deleted")
 
+	// Seed category & device type (seed_devices.go was removed in Item 6.1)
+	db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (1, 'Pentab', 'PENTAB')")
+	db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (1, 1, 'Pentab', 'Wacom', 'One', 'PENTAB', 'loanable', 'Lab')")
+
 	// 3. Device CRUD
 	t.Log("\n=== 3. DEVICE CRUD ===")
 	resp, _ = get("/devices")
 	assert(resp.StatusCode == 200, "/devices: %d", resp.StatusCode)
-	closeResp(resp)
-	resp, _ = get("/devices?tab=types")
-	assert(resp.StatusCode == 200, "/devices types: %d", resp.StatusCode)
 	closeResp(resp)
 
 	resp, _ = post("/devices/create", "device_type_id=1&serial_number=SN-TEST001&condition=baik&location=Lab&purchase_date=&notes=Device+test")
@@ -236,6 +243,26 @@ func TestFullIntegration(t *testing.T) {
 	var devSerial string
 	db.QueryRow("SELECT serial_number FROM devices WHERE id=?", devID).Scan(&devSerial)
 	assert(devSerial == "SN-TEST002", "Device serial updated: %s", devSerial)
+
+	// Batch create devices
+	t.Log("--- BATCH CREATE ---")
+	var dtID int
+	db.QueryRow("SELECT id FROM device_types ORDER BY id LIMIT 1").Scan(&dtID)
+	assert(dtID > 0, "device_type exists for batch")
+	body := fmt.Sprintf(`{"device_type_id":%d,"devices":[{"serial_number":"SN-BATCH1","condition":"baik","location":"Lab"},{"serial_number":"SN-BATCH2","condition":"rusak","location":"Lab"}]}`, dtID)
+	resp, _ = postJSON("/devices/batch-create", body)
+	assert(resp.StatusCode == 200, "batch create: %d", resp.StatusCode)
+	var batchRes struct {
+		Success bool     `json:"success"`
+		Codes   []string `json:"codes"`
+	}
+	json.NewDecoder(resp.Body).Decode(&batchRes)
+	closeResp(resp)
+	assert(batchRes.Success, "batch create success")
+	assert(len(batchRes.Codes) == 2, "batch codes: %d", len(batchRes.Codes))
+	var batchCount int
+	db.QueryRow("SELECT COUNT(*) FROM devices WHERE serial_number LIKE 'SN-BATCH%'").Scan(&batchCount)
+	assert(batchCount == 2, "batch devices: %d", batchCount)
 
 	// 4. Software CRUD
 	t.Log("\n=== 4. SOFTWARE CRUD ===")
@@ -475,9 +502,9 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/installations/%d: %d", installID, resp.StatusCode)
 	closeResp(resp)
 
-	// Installation list
-	resp, _ = get("/installations")
-	assert(resp.StatusCode == 200, "/installations: %d", resp.StatusCode)
+	// Installation list (tab)
+	resp, _ = get("/devices?tab=installations")
+	assert(resp.StatusCode == 200, "/devices?tab=installations: %d", resp.StatusCode)
 	closeResp(resp)
 
 	// Installation edit page

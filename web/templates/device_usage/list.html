@@ -1,6 +1,8 @@
 {{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
+    {{ template "device/_tab_nav" . }}
+
     <div class="row mb-4">
         <div class="col-md-6">
             <h2><i class="bi bi-clipboard-data"></i> Pemakaian Perangkat</h2>
@@ -21,7 +23,7 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <form method="GET" action="/device-usages" class="row g-3 mb-3">
+            <form method="GET" action="/devices?tab=usages" class="row g-3 mb-3">
                 <div class="col-md-4">
                     <input type="text" class="form-control" name="search" placeholder="Cari pengguna atau perangkat..." value="{{ .filters.search }}">
                 </div>
@@ -38,7 +40,7 @@
                     </button>
                 </div>
                 <div class="col-md-2">
-                    <a href="/device-usages" class="btn btn-secondary w-100">
+                    <a href="/devices?tab=usages" class="btn btn-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>
                 </div>

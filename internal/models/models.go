@@ -224,3 +224,26 @@ type ActivityLog struct {
 	Status       string    `json:"status"`        // "success", "failed", "error"
 	ErrorMessage string    `json:"error_message"` // If status = "failed"
 }
+
+// Grouped view for device list page
+type DeviceTypeGroup struct {
+	TypeID     int
+	TypeName   string
+	TypePrefix string
+	UsageType  string
+	TypePhoto  string
+	Devices    []Device
+}
+
+type CategoryGroup struct {
+	CategoryID     int
+	CategoryName   string
+	CategoryPrefix string
+	Types          []DeviceTypeGroup
+}
+
+type DeviceGroupedData struct {
+	Categories    []CategoryGroup
+	ActiveLoanIDs map[int]bool
+	DepletedIDs   map[int]bool
+}

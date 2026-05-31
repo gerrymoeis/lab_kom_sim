@@ -96,7 +96,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/installations")
+	c.Redirect(http.StatusFound, "/devices?tab=installations")
 }
 
 func (h *Handler) DeviceInstallationDetail(c *gin.Context) {
@@ -161,7 +161,7 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate instalasi")
 		return
 	}
-	c.Redirect(http.StatusFound, "/installations")
+	c.Redirect(http.StatusFound, "/devices?tab=installations")
 }
 
 func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
@@ -170,8 +170,8 @@ func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceInstallationService.Delete(id, uid, u, r, ip, ua); err != nil {
-		h.redirectWithError(c, "/installations", "Gagal menghapus instalasi")
+		h.redirectWithError(c, "/devices?tab=installations", "Gagal menghapus instalasi")
 		return
 	}
-	c.Redirect(http.StatusFound, "/installations")
+	c.Redirect(http.StatusFound, "/devices?tab=installations")
 }
