@@ -62,8 +62,8 @@ jobs:
           go test ./... -count=1
 
           echo "=== 6. Verify build ==="
-          go build -tags moderncsqlite ./cmd/server/
-          go vet -tags moderncsqlite ./cmd/server/
+          go build ./...
+          go vet ./...
 
           echo "=== 7. Commit and push ==="
           if ! git diff --cached --quiet; then
