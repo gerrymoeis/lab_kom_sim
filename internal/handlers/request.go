@@ -89,6 +89,7 @@ type EditDeviceRequest struct {
 	Location     string `form:"location"`
 	PurchaseDate string `form:"purchase_date"`
 	Notes        string `form:"notes"`
+	UsageType    string `form:"usage_type"`
 }
 
 type CreateDeviceTypeRequest struct {

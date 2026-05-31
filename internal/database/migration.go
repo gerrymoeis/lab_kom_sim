@@ -409,6 +409,13 @@ func runMigrations(db *DB, isPostgres bool) error {
 		return fmt.Errorf("failed to create unique index: %w", err)
 	}
 
+	// Add usage_type override column to devices (nullable, device-level override of device_type.usage_type)
+	if _, err := db.Exec(`ALTER TABLE devices ADD COLUMN usage_type TEXT CHECK(usage_type IN ('loanable', 'consumable', 'installable'))`); err != nil {
+		if !isPostgres && !strings.Contains(err.Error(), "duplicate column") {
+			return fmt.Errorf("failed to add usage_type to devices: %w", err)
+		}
+	}
+
 	if !isPostgres {
 		if _, err := db.Exec("ANALYZE"); err != nil {
 			return fmt.Errorf("failed to run ANALYZE: %w", err)

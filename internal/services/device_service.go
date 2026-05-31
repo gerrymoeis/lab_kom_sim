@@ -27,6 +27,7 @@ type UpdateDeviceInput struct {
 	Location     string
 	PurchaseDate string
 	Notes        string
+	UsageType    string // empty = inherit from device type
 }
 
 type DeviceService struct {
@@ -89,7 +90,7 @@ func (s *DeviceService) GetGrouped() (*models.DeviceGroupedData, error) {
 				TypeID:     row.TypeID,
 				TypeName:   row.TypeName,
 				TypePrefix: row.TypePrefix,
-				UsageType:  row.UsageType,
+				UsageType:  row.TypeUsageType,
 				TypePhoto:  row.TypePhoto,
 			}
 			typeMap[row.TypeID] = tg
@@ -102,6 +103,10 @@ func (s *DeviceService) GetGrouped() (*models.DeviceGroupedData, error) {
 				if t, err := time.Parse("2006-01-02", *row.PurchaseDate); err == nil {
 					pDate = &t
 				}
+			}
+			effectiveUsageType := row.TypeUsageType
+			if row.DeviceUsageType != nil && *row.DeviceUsageType != "" {
+				effectiveUsageType = *row.DeviceUsageType
 			}
 			dev := models.Device{
 				ID:         *row.DeviceID,
@@ -116,7 +121,7 @@ func (s *DeviceService) GetGrouped() (*models.DeviceGroupedData, error) {
 				CategoryPrefix: row.CategoryPrefix,
 				DeviceTypeName: row.TypeName,
 				DeviceTypePrefix: row.TypePrefix,
-				UsageType:  row.UsageType,
+				UsageType:  effectiveUsageType,
 				DeviceTypePhoto: row.TypePhoto,
 			}
 			// Find the type group in the cat and add device
@@ -220,7 +225,7 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 }
 
 func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	err := s.deviceRepo.Update(id, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes)
+	err := s.deviceRepo.Update(id, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes, in.UsageType)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
