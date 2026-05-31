@@ -1,6 +1,8 @@
 {{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
+    {{ template "device/_tab_nav" . }}
+
     <div class="row mb-4">
         <div class="col-md-6">
             <h2><i class="bi bi-hdd-rack"></i> Manajemen Perangkat</h2>
@@ -19,112 +21,117 @@
 
     {{ template "layout/alert.html" . }}
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <form method="GET" action="/devices" class="row g-3 mb-3">
-                <div class="col-md-3">
-                    <input type="text" class="form-control" name="search" placeholder="Cari perangkat..." value="{{ .filters.search }}">
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" name="category">
-                        <option value="">Semua Kategori</option>
-                        {{ range $ct := .deviceTypes }}
-                        <option value="{{ $ct.CategoryName }}" {{ if eq $.filters.category $ct.CategoryName }}selected{{ end }}>{{ $ct.CategoryName }}</option>
-                        {{ end }}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" name="condition">
-                        <option value="">Semua Kondisi</option>
-                        <option value="baik" {{ if eq .filters.condition "baik" }}selected{{ end }}>Baik</option>
-                        <option value="rusak" {{ if eq .filters.condition "rusak" }}selected{{ end }}>Rusak</option>
-                        <option value="maintenance" {{ if eq .filters.condition "maintenance" }}selected{{ end }}>Maintenance</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" name="sort_by">
-                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
-                        <option value="asset_code" {{ if eq .filters.sort_by "asset_code" }}selected{{ end }}>Asset Code</option>
-                        <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>
-                        <option value="condition" {{ if eq .filters.sort_by "condition" }}selected{{ end }}>Kondisi</option>
-                    </select>
-                </div>
-                <div class="col-md-1">
-                    <select class="form-select" name="sort_order">
-                        <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>↑</option>
-                        <option value="DESC" {{ if eq .filters.sort_order "DESC" }}selected{{ end }}>↓</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filter</button>
-                </div>
-            </form>
+    <div class="mb-3">
+        <input type="text" class="form-control" id="searchDevice" placeholder="Cari asset code, nama perangkat, serial number..." oninput="filterDevices()">
+    </div>
 
-            {{ if gt (len .devices) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .devices)) 1 }} dari {{ .totalItems }} perangkat</p>{{ end }}
-            {{ template "layout/pagination.html" . }}
-
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>#</th>
-                            <th>Asset Code</th>
-                            <th>Nama Perangkat</th>
-                            <th>Kategori</th>
-                            <th>Tipe Penggunaan</th>
-                            <th>Serial Number</th>
-                            <th>Kondisi</th>
-                            <th>Lokasi</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{ range $i, $d := .devices }}
-                        <tr class="{{ if eq $d.Condition "rusak" }}table-danger{{ else if eq $d.Condition "maintenance" }}table-warning{{ end }}">
-                            <td class="text-muted">{{ add $i $.startRow }}</td>
-                            <td><code>{{ $d.AssetCode }}</code></td>
-                            <td><strong>{{ $d.DeviceTypeName }}</strong></td>
-                            <td><span class="badge bg-secondary">{{ $d.CategoryName }}</span></td>
-                            <td>
-                                <span class="badge bg-{{ if eq $d.UsageType "loanable" }}primary{{ else if eq $d.UsageType "consumable" }}warning{{ else }}info{{ end }}">
-                                    {{ if eq $d.UsageType "loanable" }}Dipinjamkan{{ else if eq $d.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }}
-                                </span>
-                            </td>
-                            <td><small class="text-muted">{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
-                            <td>
-                                <span class="badge bg-{{ if eq $d.Condition "baik" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
-                                    {{ if eq $d.Condition "baik" }}Baik{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Maintenance{{ end }}
-                                </span>
-                            </td>
-                            <td>{{ if $d.Location }}{{ $d.Location }}{{ else }}-{{ end }}</td>
-                            <td class="text-nowrap">
-                                <a href="/devices/{{ $d.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                {{ if eq $.role "admin" }}
-                                <a href="/devices/{{ $d.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form method="POST" action="/devices/{{ $d.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                {{ end }}
-                            </td>
-                        </tr>
-                        {{ else }}
-                        <tr>
-                            <td colspan="9" class="text-center text-muted">Belum ada data perangkat</td>
-                        </tr>
-                        {{ end }}
-                    </tbody>
-                </table>
+    <div id="deviceGroupContainer">
+        {{ $role := .role }}
+        {{ range $cat := .groupedData.Categories }}
+        <div class="card shadow-sm mb-3 category-group" data-category="{{ $cat.CategoryName }}">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <strong><i class="bi bi-folder"></i> {{ $cat.CategoryName }} <small class="text-muted">({{ $cat.CategoryPrefix }})</small></strong>
+                <span class="badge bg-primary">{{ len $cat.Types }} tipe</span>
             </div>
-
-            {{ template "layout/pagination.html" . }}
+            <div class="card-body p-0">
+                {{ range $i, $tg := $cat.Types }}
+                <div class="p-3 {{ if ne $i 0 }}border-top{{ end }} type-group" data-type="{{ $tg.TypeName }}">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>{{ $tg.TypeName }}</strong>
+                        <span class="badge bg-{{ if eq $tg.UsageType "loanable" }}primary{{ else if eq $tg.UsageType "consumable" }}warning{{ else }}info{{ end }}">
+                            {{ if eq $tg.UsageType "loanable" }}Dipinjamkan{{ else if eq $tg.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }}
+                        </span>
+                    </div>
+                    {{ if len $tg.Devices }}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0 device-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:40px;">#</th>
+                                    <th style="width:160px;">Asset Code</th>
+                                    <th style="width:150px;">Serial Number</th>
+                                    <th style="width:100px;">Kondisi</th>
+                                    <th>Lokasi</th>
+                                    <th style="width:130px;">Status</th>
+                                    <th style="width:130px;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range $i, $d := $tg.Devices }}
+                                <tr class="device-row {{ if eq $d.Condition "rusak" }}table-danger{{ else if eq $d.Condition "maintenance" }}table-warning{{ end }}" data-search="{{ $d.AssetCode }} {{ $d.DeviceTypeName }} {{ $d.SerialNumber }} {{ $d.CategoryName }}">
+                                    <td class="text-muted">{{ add $i 1 }}</td>
+                                    <td><code>{{ $d.AssetCode }}</code></td>
+                                    <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
+                                    <td>
+                                        <span class="badge bg-{{ if eq $d.Condition "baik" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
+                                            {{ if eq $d.Condition "baik" }}Baik{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Maintenance{{ end }}
+                                        </span>
+                                    </td>
+                                    <td><small>{{ if $d.Location }}{{ $d.Location }}{{ else }}-{{ end }}</small></td>
+                                    <td>
+                                        {{ if index $.groupedData.ActiveLoanIDs $d.ID }}
+                                        <span class="badge bg-warning">Dipinjam</span>
+                                        {{ else if index $.groupedData.DepletedIDs $d.ID }}
+                                        <span class="badge bg-danger">Habis</span>
+                                        {{ else }}
+                                        <span class="badge bg-success">Tersedia</span>
+                                        {{ end }}
+                                    </td>
+                                    <td class="text-nowrap">
+                                        <a href="/devices/{{ $d.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {{ if eq $role "admin" }}
+                                        <a href="/devices/{{ $d.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="POST" action="/devices/{{ $d.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                        {{ end }}
+                                    </td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+                    {{ else }}
+                    <p class="text-muted small mb-0">Belum ada perangkat untuk tipe ini</p>
+                    {{ end }}
+                </div>
+                {{ end }}
+            </div>
         </div>
+        {{ else }}
+        <div class="alert alert-info">Belum ada kategori perangkat. Tambah tipe perangkat terlebih dahulu.</div>
+        {{ end }}
     </div>
 </div>
+
+<script>
+function filterDevices() {
+    var q = document.getElementById('searchDevice').value.toLowerCase().trim();
+    var rows = document.querySelectorAll('.device-row');
+    var groups = document.querySelectorAll('.type-group');
+    var cats = document.querySelectorAll('.category-group');
+
+    rows.forEach(function(row) {
+        var text = (row.dataset.search || '').toLowerCase();
+        row.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+    });
+
+    groups.forEach(function(g) {
+        var visible = Array.from(g.querySelectorAll('.device-row')).some(function(r) { return r.style.display !== 'none'; });
+        g.style.display = (visible || !g.querySelector('.device-row')) ? '' : 'none';
+    });
+
+    cats.forEach(function(c) {
+        var visible = Array.from(c.querySelectorAll('.type-group')).some(function(g) { return g.style.display !== 'none'; });
+        c.style.display = visible ? '' : 'none';
+    });
+}
+</script>
 
 {{ template "layout/footer.html" . }}

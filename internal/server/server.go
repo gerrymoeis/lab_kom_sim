@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"html/template"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -217,26 +218,27 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/devices", h.DeviceList)
 		protected.GET("/devices/create", h.DeviceCreatePage)
 		protected.POST("/devices/create", h.DeviceCreate)
+		protected.POST("/devices/batch-create", h.DeviceBatchCreate)
 		protected.GET("/devices/:id", h.DeviceDetail)
 		protected.GET("/devices/:id/edit", h.DeviceEditPage)
 		protected.POST("/devices/:id/edit", h.DeviceEdit)
 		protected.POST("/devices/:id/delete", h.DeviceDelete)
 
-		protected.GET("/device-loans", h.DeviceLoanList)
+		protected.GET("/device-loans", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=loans") })
 		protected.GET("/device-loans/create", h.DeviceLoanCreatePage)
 		protected.POST("/device-loans/create", h.DeviceLoanCreate)
 		protected.GET("/device-loans/:id/edit", h.DeviceLoanEditPage)
 		protected.POST("/device-loans/:id/edit", h.DeviceLoanEdit)
 		protected.POST("/device-loans/:id/delete", h.DeviceLoanDelete)
 
-		protected.GET("/device-usages", h.DeviceUsageList)
+		protected.GET("/device-usages", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=usages") })
 		protected.GET("/device-usages/create", h.DeviceUsageCreatePage)
 		protected.POST("/device-usages/create", h.DeviceUsageCreate)
 		protected.GET("/device-usages/:id/edit", h.DeviceUsageEditPage)
 		protected.POST("/device-usages/:id/edit", h.DeviceUsageEdit)
 		protected.POST("/device-usages/:id/delete", h.DeviceUsageDelete)
 		protected.POST("/device-loans/:id/extend", h.DeviceLoanExtend)
-		protected.GET("/installations", h.DeviceInstallationList)
+		protected.GET("/installations", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=installations") })
 		protected.GET("/installations/create", h.DeviceInstallationCreatePage)
 		protected.GET("/installations/:id", h.DeviceInstallationDetail)
 		protected.POST("/installations/create", h.DeviceInstallationCreate)
