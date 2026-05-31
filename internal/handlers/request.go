@@ -53,6 +53,19 @@ type CreateDeviceRequest struct {
 	Notes        string `form:"notes"`
 }
 
+type BatchDeviceItemRequest struct {
+	SerialNumber string `json:"serial_number"`
+	Condition    string `json:"condition"`
+	Location     string `json:"location"`
+	PurchaseDate string `json:"purchase_date"`
+	Notes        string `json:"notes"`
+}
+
+type BatchCreateDeviceRequest struct {
+	DeviceTypeID int                     `json:"device_type_id" binding:"required"`
+	Devices      []BatchDeviceItemRequest `json:"devices" binding:"required,min=1,dive"`
+}
+
 type EditDeviceRequest struct {
 	DeviceTypeID int    `form:"device_type_id" binding:"required"`
 	AssetCode    string `form:"asset_code"`

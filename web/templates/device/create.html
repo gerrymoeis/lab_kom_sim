@@ -2,60 +2,210 @@
 
 <div class="container mt-4">
     {{ template "layout/card_create.html" . }}
-                    <form method="POST" action="/devices/create">
-                        <div class="mb-3">
-                            <label for="device_type_id" class="form-label">Tipe Perangkat *</label>
-                            <select class="form-select" id="device_type_id" name="device_type_id" required>
-                                <option value="">Pilih tipe perangkat...</option>
-                                {{ range $dt := .deviceTypes }}
-                                <option value="{{ $dt.ID }}" data-prefix="{{ $dt.AssetCodePrefix }}" data-usage="{{ $dt.UsageType }}">
-                                    {{ $dt.CategoryName }} — {{ $dt.Name }} ({{ $dt.AssetCodePrefix }})
-                                </option>
-                                {{ end }}
-                            </select>
-                            <small class="text-muted">Kategori — Nama Varian (Prefix Asset Code)</small>
-                        </div>
 
-                        <div class="mb-3">
-                            <label for="serial_number" class="form-label">Serial Number</label>
-                            <input type="text" class="form-control" id="serial_number" name="serial_number">
-                        </div>
+    <div class="mb-3">
+        <label for="device_type_id" class="form-label">Tipe Perangkat *</label>
+        <select class="form-select" id="device_type_id" name="device_type_id" required>
+            <option value="">Pilih tipe perangkat...</option>
+            {{ range $dt := .deviceTypes }}
+            <option value="{{ $dt.ID }}" data-prefix="{{ $dt.AssetCodePrefix }}" data-usage="{{ $dt.UsageType }}" data-default-location="{{ $dt.DefaultLocation }}">
+                {{ $dt.CategoryName }} — {{ $dt.Name }} ({{ $dt.AssetCodePrefix }})
+            </option>
+            {{ end }}
+        </select>
+        <small class="text-muted">Kategori — Nama Varian (Prefix Asset Code)</small>
+    </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="condition" class="form-label">Kondisi *</label>
-                                <select class="form-select" id="condition" name="condition" required>
-                                    <option value="baik">Baik</option>
-                                    <option value="rusak">Rusak</option>
-                                    <option value="maintenance">Maintenance</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="purchase_date" class="form-label">Tanggal Beli</label>
-                                <input type="date" class="form-control" id="purchase_date" name="purchase_date">
-                            </div>
-                        </div>
+    <div class="row g-2 mb-3">
+        <div class="col-md-3">
+            <label for="batch_count" class="form-label">Jumlah Perangkat</label>
+            <div class="input-group">
+                <input type="number" class="form-control" id="batch_count" value="1" min="1" max="100">
+                <button class="btn btn-outline-primary" type="button" id="generateBtn">
+                    <i class="bi bi-table"></i> Generate Tabel
+                </button>
+            </div>
+        </div>
+    </div>
 
-                        <div class="mb-3">
-                            <label for="location" class="form-label">Lokasi</label>
-                            <input type="text" class="form-control" id="location" name="location">
-                            <small class="text-muted">Lokasi penyimpanan saat ini</small>
-                        </div>
+    <div id="batchTableContainer" style="display:none;">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="batchTable">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th style="width:180px;">Asset Code (auto)</th>
+                        <th style="width:150px;">Serial Number</th>
+                        <th style="width:120px;">Kondisi</th>
+                        <th style="width:150px;">Lokasi</th>
+                        <th style="width:130px;">Tgl Beli</th>
+                        <th>Catatan</th>
+                    </tr>
+                </thead>
+                <tbody id="batchBody"></tbody>
+            </table>
+        </div>
 
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Catatan</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                        </div>
+        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end mt-3">
+            <button class="btn btn-primary" id="saveBatchBtn">
+                <i class="bi bi-save"></i> Simpan Batch
+            </button>
+            <a href="/devices" class="btn btn-secondary">
+                <i class="bi bi-x-circle"></i> Batal
+            </a>
+        </div>
+        <div id="batchError" class="alert alert-danger mt-2" style="display:none;"></div>
+    </div>
 
-                        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Simpan
-                            </button>
-                            <a href="/devices" class="btn btn-secondary">
-                                <i class="bi bi-x-circle"></i> Batal
-                            </a>
-                        </div>
-                    </form>
-{{ template "layout/card_close.html" . }}
+    {{ template "layout/card_close.html" . }}
+</div>
+
+<script>
+(function() {
+    const typeSelect = document.getElementById('device_type_id');
+    const batchCount = document.getElementById('batch_count');
+    const generateBtn = document.getElementById('generateBtn');
+    const batchContainer = document.getElementById('batchTableContainer');
+    const batchBody = document.getElementById('batchBody');
+    const saveBtn = document.getElementById('saveBatchBtn');
+    const errorDiv = document.getElementById('batchError');
+
+    let currentPrefix = '';
+    let currentDefaultLocation = '';
+
+    typeSelect.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        currentPrefix = opt ? opt.dataset.prefix : '';
+        currentDefaultLocation = opt ? opt.dataset.defaultLocation || '' : '';
+    });
+
+    generateBtn.addEventListener('click', function() {
+        const typeId = typeSelect.value;
+        if (!typeId) { alert('Pilih tipe perangkat terlebih dahulu'); return; }
+
+        const count = parseInt(batchCount.value);
+        if (count < 1 || count > 100) { alert('Jumlah harus 1-100'); return; }
+
+        const opt = typeSelect.options[typeSelect.selectedIndex];
+        const prefix = opt.dataset.prefix;
+        const defaultLoc = opt.dataset.defaultLocation || '';
+
+        // Generate table rows
+        batchBody.innerHTML = '';
+        for (let i = 1; i <= count; i++) {
+            const code = prefix + '-' + String(i).padStart(3, '0');
+            const tr = document.createElement('tr');
+            tr.dataset.index = i - 1;
+            tr.innerHTML =
+                '<td class="text-muted text-center">' + i + '</td>' +
+                '<td><code class="asset-code">' + code + '</code></td>' +
+                '<td><input type="text" class="form-control form-control-sm sn-input" placeholder="Serial Number"></td>' +
+                '<td><select class="form-select form-select-sm condition-input"><option value="baik">Baik</option><option value="rusak">Rusak</option><option value="maintenance">Maintenance</option></select></td>' +
+                '<td><input type="text" class="form-control form-control-sm loc-input" value="' + defaultLoc + '" placeholder="Lokasi"></td>' +
+                '<td><input type="date" class="form-control form-control-sm date-input"></td>' +
+                '<td><input type="text" class="form-control form-control-sm notes-input" placeholder="Catatan"></td>';
+            batchBody.appendChild(tr);
+        }
+
+        // Apply-to-all helpers in header
+        addApplyAllButtons();
+        batchContainer.style.display = 'block';
+    });
+
+    function addApplyAllButtons() {
+        // Remove old helper buttons
+        document.querySelectorAll('.apply-all-btn').forEach(el => el.remove());
+
+        const headers = batchBody.closest('table').querySelectorAll('thead th');
+        // Index 3 = kondisi, 4 = lokasi, 5 = tgl, 6 = catatan
+        [4, 5, 6].forEach(idx => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-outline-secondary btn-sm ms-1 apply-all-btn';
+            btn.title = 'Terapkan ke semua baris';
+            btn.innerHTML = '⬇';
+            btn.dataset.col = idx;
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const col = parseInt(this.dataset.col);
+                applyColumn(col);
+            });
+            headers[idx].appendChild(btn);
+        });
+    }
+
+    function applyColumn(colIndex) {
+        const rows = batchBody.querySelectorAll('tr');
+        if (rows.length < 2) return;
+        // Get first row's value
+        let firstVal = '';
+        const firstCells = rows[0].querySelectorAll('input, select');
+        if (colIndex === 4) firstVal = firstCells[1] ? firstCells[1].value : ''; // lokasi
+        else if (colIndex === 5) firstVal = firstCells[2] ? firstCells[2].value : ''; // tgl
+        else if (colIndex === 6) firstVal = firstCells[3] ? firstCells[3].value : ''; // catatan
+
+        if (!firstVal) {
+            alert('Isi baris pertama terlebih dahulu untuk kolom ini');
+            return;
+        }
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].querySelectorAll('input, select');
+            if (colIndex === 4 && cells[1]) cells[1].value = firstVal;
+            else if (colIndex === 5 && cells[2]) cells[2].value = firstVal;
+            else if (colIndex === 6 && cells[3]) cells[3].value = firstVal;
+        }
+    }
+
+    saveBtn.addEventListener('click', function() {
+        const typeId = typeSelect.value;
+        if (!typeId) { alert('Pilih tipe perangkat'); return; }
+
+        const rows = batchBody.querySelectorAll('tr');
+        const devices = [];
+        let valid = true;
+
+        rows.forEach(function(row) {
+            const inputs = row.querySelectorAll('input, select');
+            const condition = inputs[0] ? inputs[0].value : 'baik';
+            devices.push({
+                serial_number: inputs.length > 0 && row.querySelector('.sn-input') ? row.querySelector('.sn-input').value : '',
+                condition: row.querySelector('.condition-input') ? row.querySelector('.condition-input').value : 'baik',
+                location: row.querySelector('.loc-input') ? row.querySelector('.loc-input').value : '',
+                purchase_date: row.querySelector('.date-input') ? row.querySelector('.date-input').value : '',
+                notes: row.querySelector('.notes-input') ? row.querySelector('.notes-input').value : ''
+            });
+        });
+
+        if (!valid) return;
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
+        errorDiv.style.display = 'none';
+
+        fetch('/devices/batch-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_type_id: parseInt(typeId), devices: devices })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                window.location.href = '/devices';
+            } else {
+                errorDiv.textContent = data.error || 'Gagal menyimpan batch';
+                errorDiv.style.display = 'block';
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-save"></i> Simpan Batch';
+            }
+        })
+        .catch(function() {
+            errorDiv.textContent = 'Terjadi kesalahan koneksi';
+            errorDiv.style.display = 'block';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-save"></i> Simpan Batch';
+        });
+    });
+})();
+</script>
 
 {{ template "layout/footer.html" . }}
