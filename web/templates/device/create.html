@@ -352,17 +352,14 @@
     function applyColumn(colIndex) {
         const rows = batchBody.querySelectorAll('tr');
         if (rows.length < 2) return;
+        const ci = colIndex - 2; // col 4→input[2], 5→[3], 6→[4]
         let firstVal = '';
         const firstCells = rows[0].querySelectorAll('input, select');
-        if (colIndex === 4) firstVal = firstCells[1] ? firstCells[1].value : '';
-        else if (colIndex === 5) firstVal = firstCells[2] ? firstCells[2].value : '';
-        else if (colIndex === 6) firstVal = firstCells[3] ? firstCells[3].value : '';
+        if (ci >= 0 && ci < firstCells.length) firstVal = firstCells[ci] ? firstCells[ci].value : '';
         if (!firstVal) { alert('Isi baris pertama terlebih dahulu untuk kolom ini'); return; }
         for (let i = 1; i < rows.length; i++) {
             const cells = rows[i].querySelectorAll('input, select');
-            if (colIndex === 4 && cells[1]) cells[1].value = firstVal;
-            else if (colIndex === 5 && cells[2]) cells[2].value = firstVal;
-            else if (colIndex === 6 && cells[3]) cells[3].value = firstVal;
+            if (ci >= 0 && ci < cells.length && cells[ci]) cells[ci].value = firstVal;
         }
     }
 
