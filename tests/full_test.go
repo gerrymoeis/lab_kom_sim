@@ -355,7 +355,7 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 8. ACTIVITY LOG ===")
 	var logCount int
 	db.QueryRow("SELECT COUNT(*) FROM activity_logs").Scan(&logCount)
-	assert(logCount > 0, "Activity logs: %d", logCount)
+	t.Logf("  Activity logs: %d (async writer mungkin belum flush)", logCount)
 	resp, _ = get("/admin/activity-logs")
 	assert(resp.StatusCode == 200, "/admin/activity-logs: %d", resp.StatusCode)
 	closeResp(resp)
@@ -551,5 +551,7 @@ func TestFullIntegration(t *testing.T) {
 			}
 		}
 	}
+	db.QueryRow("SELECT COUNT(*) FROM activity_logs").Scan(&logCount)
+	assert(logCount > 0, "Activity logs should exist after full test: %d", logCount)
 	t.Logf("  All tests passed!")
 }
