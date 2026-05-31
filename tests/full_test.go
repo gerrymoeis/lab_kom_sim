@@ -27,7 +27,12 @@ func TestFullIntegration(t *testing.T) {
 	projectRoot := filepath.Dir(wd)
 	os.Chdir(projectRoot)
 	defer os.Chdir(wd)
-	defer os.Remove("full_testing.db")
+	defer func() {
+		dbPath := "full_testing.db"
+		os.Remove(dbPath)
+		os.Remove(dbPath + "-shm")
+		os.Remove(dbPath + "-wal")
+	}()
 	defer func() {
 		os.RemoveAll(filepath.Join("uploads", "temp"))
 		os.RemoveAll(filepath.Join("uploads", "pc"))
@@ -350,7 +355,7 @@ func TestFullIntegration(t *testing.T) {
 	t.Log("\n=== 8. ACTIVITY LOG ===")
 	var logCount int
 	db.QueryRow("SELECT COUNT(*) FROM activity_logs").Scan(&logCount)
-	assert(logCount > 0, "Activity logs: %d", logCount)
+	t.Logf("  Activity logs: %d (async writer mungkin belum flush)", logCount)
 	resp, _ = get("/admin/activity-logs")
 	assert(resp.StatusCode == 200, "/admin/activity-logs: %d", resp.StatusCode)
 	closeResp(resp)
@@ -546,5 +551,7 @@ func TestFullIntegration(t *testing.T) {
 			}
 		}
 	}
+	db.QueryRow("SELECT COUNT(*) FROM activity_logs").Scan(&logCount)
+	assert(logCount > 0, "Activity logs should exist after full test: %d", logCount)
 	t.Logf("  All tests passed!")
 }

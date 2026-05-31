@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"inventaris-lab-kom/internal/config"
@@ -74,10 +78,29 @@ func main() {
 	defer publicBuildSvc.Stop()
 
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
-	log.Printf("🚀 Server starting on http://%s", addr)
-	log.Printf("📊 Environment: %s", cfg.Environment)
-	log.Printf("💾 Database: %s", cfg.DatabasePath)
-	if err := router.Run(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	srv := &http.Server{Addr: addr, Handler: router}
+
+	go func() {
+		log.Printf("🚀 Server starting on http://%s", addr)
+		log.Printf("📊 Environment: %s", cfg.Environment)
+		log.Printf("💾 Database: %s", cfg.DatabasePath)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("🛑 Shutting down server gracefully...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
 	}
+
+	log.Println("✅ Server exited gracefully")
 }
