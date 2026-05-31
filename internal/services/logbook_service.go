@@ -148,6 +148,7 @@ func (s *LogbookService) DeleteEntry(id, actorID int, actorUsername, actorRole, 
 func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (saved, dups int, err error) {
 	cfg := config.DefaultDuplicateConfig
 	var clean []repository.BulkEntry
+	dupCache := make(map[string][]models.LogbookEntry)
 
 	for _, e := range entries {
 		e.StudentName = ToTitleCaseWithAbbr(e.StudentName)
@@ -167,7 +168,12 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 			}
 		}
 		if !dup {
-			existing, _ := s.logbookRepo.GetDuplicateCheck(e.Date)
+			dateKey := e.Date.Format("2006-01-02")
+			existing, ok := dupCache[dateKey]
+			if !ok {
+				existing, _ = s.logbookRepo.GetDuplicateCheck(e.Date)
+				dupCache[dateKey] = existing
+			}
 			for _, ex := range existing {
 				if IsDuplicateEntry(e.Date, ex.Date, e.TimeIn, ex.TimeIn, e.StudentName, ex.StudentName, e.NIM, ex.NIM, cfg) {
 					dup = true
