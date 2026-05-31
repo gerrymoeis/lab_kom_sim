@@ -224,6 +224,10 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.POST("/devices/:id/edit", h.DeviceEdit)
 		protected.POST("/devices/:id/delete", h.DeviceDelete)
 
+		protected.GET("/device-types/:id/edit", h.DeviceTypeEditPage)
+		protected.POST("/device-types/:id/edit", h.DeviceTypeEdit)
+		protected.POST("/device-types/:id/delete", h.DeviceTypeDelete)
+
 		protected.GET("/device-loans", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=loans") })
 		protected.GET("/device-loans/create", h.DeviceLoanCreatePage)
 		protected.POST("/device-loans/create", h.DeviceLoanCreate)
