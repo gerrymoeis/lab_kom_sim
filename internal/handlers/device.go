@@ -121,19 +121,47 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"query": query,
 		})
 
-	default:
-		grouped, err := h.deviceService.GetGrouped()
+	default: // types tab — flat paginated list with filter/sort
+		search := c.Query("search")
+		condition := c.Query("condition")
+		category := c.Query("category")
+		sortBy := c.Query("sort_by")
+		sortOrder := c.Query("sort_order")
+
+		devices, total, err := h.deviceService.ListPaginated(repository.DeviceFilters{
+			Search:    search,
+			Category:  category,
+			Condition: condition,
+			SortBy:    sortBy,
+			SortOrder: sortOrder,
+		}, page, pageSize)
 		if err != nil {
 			h.errHTML(c, "Gagal mengambil data perangkat")
 			return
 		}
 
+		activeLoanIDs, _ := h.deviceService.GetActiveLoanIDs()
+		depletedIDs, _ := h.deviceService.GetDepletedIDs()
+		if activeLoanIDs == nil {
+			activeLoanIDs = make(map[int]bool)
+		}
+		if depletedIDs == nil {
+			depletedIDs = make(map[int]bool)
+		}
+
+		totalPages := (total + pageSize - 1) / pageSize
 		c.HTML(http.StatusOK, "device/list.html", gin.H{
 			"title": "Manajemen Perangkat", "currentPage": "devices",
 			"activeTab": "types",
 			"username": username, "role": role,
-			"groupedData": grouped,
-			"deviceTypes": h.fetchDeviceTypes(),
+			"devices":      devices,
+			"activeLoanIDs": activeLoanIDs,
+			"depletedIDs":   depletedIDs,
+			"filters":    gin.H{"search": search, "category": category, "condition": condition, "sort_by": sortBy, "sort_order": sortOrder},
+			"startRow":   (page-1)*pageSize + 1,
+			"page": page, "totalPages": totalPages, "totalItems": total,
+			"query":   query,
+			"categories": h.fetchCategories(),
 		})
 	}
 }
