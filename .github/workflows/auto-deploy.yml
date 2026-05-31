@@ -74,11 +74,7 @@ jobs:
           fi
 
           echo "=== 7. Resolve dependencies ==="
-          if [ "${PLATFORM}" = "linux" ] || [ "${PLATFORM}" = "android" ]; then
-            GOFLAGS="-tags=moderncsqlite" go mod tidy
-          else
-            go mod tidy
-          fi
+          go mod download
 
           echo "=== 8. Run tests ==="
           go test ./... -count=1
@@ -87,12 +83,8 @@ jobs:
           git add -A
 
           echo "=== 10. Verify build ==="
-          BUILD_TAGS=""
-          if [ "${PLATFORM}" = "linux" ] || [ "${PLATFORM}" = "android" ]; then
-            BUILD_TAGS="-tags moderncsqlite"
-          fi
-          go build ${BUILD_TAGS} ./...
-          go vet ${BUILD_TAGS} ./...
+          go build ./...
+          go vet ./...
 
           echo "=== 11. Commit and push ==="
           if ! git diff --cached --quiet; then

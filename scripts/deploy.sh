@@ -50,15 +50,15 @@ mkdir -p "$RELEASE_DIR"
 # 4. Copy web assets
 cp -r "$REPO_DIR/web" "$RELEASE_DIR/"
 
-# 5. Build binary with modernc (pure Go, no CGO needed for Linux/ARM64)
-CGO_ENABLED=0 go build -tags moderncsqlite \
+# 5. Build binary with modernc (pure Go, no CGO needed)
+CGO_ENABLED=0 go build \
   -ldflags="-s -w" \
   -o "$RELEASE_DIR/app-simlab" \
   "$REPO_DIR/cmd/server/main.go"
 
 # 6. Verify build
-go vet -tags moderncsqlite "$REPO_DIR/..."
-go test -tags moderncsqlite "$REPO_DIR/..." -short
+go vet "$REPO_DIR/..."
+go test "$REPO_DIR/..." -short
 
 # 7. Backup database
 if [ -f "$DATA_DIR/inventaris_lab.db" ]; then

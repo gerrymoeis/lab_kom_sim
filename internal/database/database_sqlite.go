@@ -1,4 +1,4 @@
-//go:build !moderncsqlite
+//go:build mattn
 
 package database
 
