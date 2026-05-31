@@ -434,8 +434,12 @@ function togglePlacementFields() {
         fields.style.display = 'none';
         document.getElementById('row').value = 0;
         document.getElementById('column').value = 0;
+        document.getElementById('row').disabled = true;
+        document.getElementById('column').disabled = true;
     } else {
         fields.style.display = 'flex';
+        document.getElementById('row').disabled = false;
+        document.getElementById('column').disabled = false;
     }
 }
 document.addEventListener('DOMContentLoaded', togglePlacementFields);
