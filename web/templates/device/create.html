@@ -1,146 +1,152 @@
 {{ template "layout/base.html" . }}
 
-<div class="container mt-4">
-    {{ template "layout/card_create.html" . }}
+<div class="container-fluid mt-4 px-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-plus-circle"></i> {{ .title }}</h5>
+        </div>
+        <div class="card-body">
+            {{ template "layout/alert.html" . }}
 
-    <!-- Category Section -->
-    <div class="mb-4 p-3 border rounded">
-        <h5 class="mb-3"><i class="bi bi-folder"></i> Kategori</h5>
-        <div class="mb-2">
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="catMode" id="catExisting" value="existing" checked>
-                <label class="form-check-label" for="catExisting">Pilih Kategori</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="catMode" id="catNew" value="new">
-                <label class="form-check-label" for="catNew">Buat Kategori Baru</label>
-            </div>
-        </div>
-        <div id="catExistingSection">
-            <select class="form-select" id="categorySelect">
-                <option value="">Pilih kategori...</option>
-                {{ range $c := .categories }}
-                <option value="{{ $c.ID }}" data-prefix="{{ $c.DefaultPrefix }}">{{ $c.Name }} ({{ $c.DefaultPrefix }})</option>
-                {{ end }}
-            </select>
-        </div>
-        <div id="catNewSection" style="display:none;">
-            <div class="row g-2">
-                <div class="col-md-6">
-                    <label class="form-label">Nama Kategori *</label>
-                    <input type="text" class="form-control" id="newCatName" placeholder="Contoh: Mouse, CCTV">
+            <!-- Category Section -->
+            <div class="mb-4 p-3 border rounded">
+                <h5 class="mb-3"><i class="bi bi-folder"></i> Kategori</h5>
+                <div class="mb-2">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="catMode" id="catExisting" value="existing" checked>
+                        <label class="form-check-label" for="catExisting">Pilih Kategori</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="catMode" id="catNew" value="new">
+                        <label class="form-check-label" for="catNew">Buat Kategori Baru</label>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <label class="form-label">Prefix (otomatis)</label>
-                    <input type="text" class="form-control" id="newCatPrefix" placeholder="Contoh: MOUSE, CCTV" readonly>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Device Type Section -->
-    <div class="mb-4 p-3 border rounded">
-        <h5 class="mb-3"><i class="bi bi-box"></i> Tipe Perangkat</h5>
-        <div class="mb-2">
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="typeMode" id="typeExisting" value="existing" checked>
-                <label class="form-check-label" for="typeExisting">Pilih Tipe</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="typeMode" id="typeNew" value="new">
-                <label class="form-check-label" for="typeNew">Buat Tipe Baru</label>
-            </div>
-        </div>
-        <div id="typeExistingSection">
-            <select class="form-select" id="typeSelect">
-                <option value="">Pilih kategori terlebih dahulu...</option>
-                {{ range $t := .deviceTypes }}
-                <option value="{{ $t.ID }}" data-category="{{ $t.CategoryID }}" data-prefix="{{ $t.AssetCodePrefix }}" data-usage="{{ $t.UsageType }}" data-default-location="{{ $t.DefaultLocation }}" style="display:none;">
-                    {{ $t.Name }} ({{ $t.AssetCodePrefix }})
-                </option>
-                {{ end }}
-            </select>
-        </div>
-        <div id="typeNewSection" style="display:none;">
-            <div class="row g-2">
-                <div class="col-md-4">
-                    <label class="form-label">Nama Varian *</label>
-                    <input type="text" class="form-control" id="newTypeName" placeholder="Contoh: Axioo, HIKVISION PTZ">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Brand</label>
-                    <input type="text" class="form-control" id="newTypeBrand" placeholder="Contoh: Wacom, HIKVISION">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Model</label>
-                    <input type="text" class="form-control" id="newTypeModel" placeholder="Contoh: Intuos S">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Prefix Asset Code (otomatis)</label>
-                    <input type="text" class="form-control" id="newTypePrefix" placeholder="Otomatis dari kategori + nama" readonly>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Tipe Pemakaian *</label>
-                    <select class="form-select" id="newTypeUsage">
-                        <option value="loanable">Dipinjamkan</option>
-                        <option value="consumable">Habis Pakai</option>
-                        <option value="installable">Instalasi</option>
+                <div id="catExistingSection">
+                    <select class="form-select" id="categorySelect">
+                        <option value="">Pilih kategori...</option>
+                        {{ range $c := .categories }}
+                        <option value="{{ $c.ID }}" data-prefix="{{ $c.DefaultPrefix }}">{{ $c.Name }} ({{ $c.DefaultPrefix }})</option>
+                        {{ end }}
                     </select>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label">Lokasi Default</label>
-                    <input type="text" class="form-control" id="newTypeLocation" placeholder="Contoh: Lab, Lemari Kaca">
+                <div id="catNewSection" style="display:none;">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Nama Kategori *</label>
+                            <input type="text" class="form-control" id="newCatName" placeholder="Contoh: Mouse, CCTV">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Prefix (otomatis)</label>
+                            <input type="text" class="form-control" id="newCatPrefix" placeholder="Contoh: MOUSE, CCTV" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device Type Section -->
+            <div class="mb-4 p-3 border rounded">
+                <h5 class="mb-3"><i class="bi bi-box"></i> Tipe Perangkat</h5>
+                <div class="mb-2">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="typeMode" id="typeExisting" value="existing" checked>
+                        <label class="form-check-label" for="typeExisting">Pilih Tipe</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="typeMode" id="typeNew" value="new">
+                        <label class="form-check-label" for="typeNew">Buat Tipe Baru</label>
+                    </div>
+                </div>
+                <div id="typeExistingSection">
+                    <select class="form-select" id="typeSelect">
+                        <option value="">Pilih kategori terlebih dahulu...</option>
+                        {{ range $t := .deviceTypes }}
+                        <option value="{{ $t.ID }}" data-category="{{ $t.CategoryID }}" data-prefix="{{ $t.AssetCodePrefix }}" data-usage="{{ $t.UsageType }}" data-default-location="{{ $t.DefaultLocation }}" style="display:none;">
+                            {{ $t.Name }} ({{ $t.AssetCodePrefix }})
+                        </option>
+                        {{ end }}
+                    </select>
+                </div>
+                <div id="typeNewSection" style="display:none;">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Nama Varian *</label>
+                            <input type="text" class="form-control" id="newTypeName" placeholder="Contoh: Axioo, HIKVISION PTZ">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Brand</label>
+                            <input type="text" class="form-control" id="newTypeBrand" placeholder="Contoh: Wacom, HIKVISION">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Model</label>
+                            <input type="text" class="form-control" id="newTypeModel" placeholder="Contoh: Intuos S">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Prefix Asset Code (otomatis)</label>
+                            <input type="text" class="form-control" id="newTypePrefix" placeholder="Otomatis dari kategori + nama" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tipe Pemakaian *</label>
+                            <select class="form-select" id="newTypeUsage">
+                                <option value="loanable">Dipinjamkan</option>
+                                <option value="consumable">Habis Pakai</option>
+                                <option value="installable">Instalasi</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Lokasi Default</label>
+                            <input type="text" class="form-control" id="newTypeLocation" placeholder="Contoh: Lab, Lemari Kaca">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Batch Section -->
+            <div class="mb-4 p-3 border rounded">
+                <h5 class="mb-3"><i class="bi bi-table"></i> Perangkat</h5>
+                <div class="row g-2 mb-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="batchCount" class="form-label fw-semibold">Jumlah Perangkat</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-hash"></i></span>
+                            <input type="number" class="form-control text-center fw-bold" id="batchCount" value="1" min="1" max="100" style="font-size:1.1rem;">
+                            <button class="btn btn-outline-primary" type="button" id="generateBtn">
+                                <i class="bi bi-table"></i> Generate Tabel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="batchTableContainer" style="display:none;">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle" id="batchTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center" style="width:50px;">#</th>
+                                    <th style="width:200px;">Asset Code (auto)</th>
+                                    <th style="width:180px;">Serial Number</th>
+                                    <th style="width:140px;">Kondisi</th>
+                                    <th style="width:180px;">Lokasi</th>
+                                    <th style="width:150px;">Tgl Beli</th>
+                                    <th>Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batchBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end mt-3">
+                        <button class="btn btn-primary" id="saveBatchBtn">
+                            <i class="bi bi-save"></i> Simpan Batch
+                        </button>
+                        <a href="/devices" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Batal
+                        </a>
+                    </div>
+                    <div id="batchError" class="alert alert-danger mt-2" style="display:none;"></div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Batch Section -->
-    <div class="mb-4 p-3 border rounded">
-        <h5 class="mb-3"><i class="bi bi-table"></i> Perangkat</h5>
-        <div class="row g-2 mb-3">
-            <div class="col-md-3">
-                <label for="batchCount" class="form-label">Jumlah Perangkat</label>
-                <div class="input-group">
-                    <input type="number" class="form-control" id="batchCount" value="1" min="1" max="100">
-                    <button class="btn btn-outline-primary" type="button" id="generateBtn">
-                        <i class="bi bi-table"></i> Generate Tabel
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div id="batchTableContainer" style="display:none;">
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover" id="batchTable">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width:40px;">#</th>
-                            <th style="width:180px;">Asset Code (auto)</th>
-                            <th style="width:150px;">Serial Number</th>
-                            <th style="width:120px;">Kondisi</th>
-                            <th style="width:150px;">Lokasi</th>
-                            <th style="width:130px;">Tgl Beli</th>
-                            <th>Catatan</th>
-                        </tr>
-                    </thead>
-                    <tbody id="batchBody"></tbody>
-                </table>
-            </div>
-
-            <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end mt-3">
-                <button class="btn btn-primary" id="saveBatchBtn">
-                    <i class="bi bi-save"></i> Simpan Batch
-                </button>
-                <a href="/devices" class="btn btn-secondary">
-                    <i class="bi bi-x-circle"></i> Batal
-                </a>
-            </div>
-            <div id="batchError" class="alert alert-danger mt-2" style="display:none;"></div>
-        </div>
-    </div>
-
-    {{ template "layout/card_close.html" . }}
 </div>
 
 <script>
@@ -311,7 +317,7 @@
             const code = prefix + '-' + String(i).padStart(3, '0');
             const tr = document.createElement('tr');
             tr.innerHTML =
-                '<td class="text-muted text-center">' + i + '</td>' +
+                '<td class="text-center fw-bold">' + i + '</td>' +
                 '<td><code class="asset-code">' + code + '</code></td>' +
                 '<td><input type="text" class="form-control form-control-sm sn-input" placeholder="Serial Number"></td>' +
                 '<td><select class="form-select form-select-sm condition-input"><option value="baik">Baik</option><option value="rusak">Rusak</option><option value="maintenance">Maintenance</option></select></td>' +

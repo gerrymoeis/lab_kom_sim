@@ -27,13 +27,16 @@
 
     <div id="deviceGroupContainer">
         {{ $role := .role }}
-        {{ range $cat := .groupedData.Categories }}
+        {{ range $catIndex, $cat := .groupedData.Categories }}
         <div class="card shadow-sm mb-3 category-group" data-category="{{ $cat.CategoryName }}">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <strong><i class="bi bi-folder"></i> {{ $cat.CategoryName }} <small class="text-muted">({{ $cat.CategoryPrefix }})</small></strong>
-                <span class="badge bg-primary">{{ len $cat.Types }} tipe</span>
+            <div class="card-header bg-light d-flex justify-content-between align-items-center" role="button" data-bs-toggle="collapse" data-bs-target="#catCollapse{{ $catIndex }}" aria-expanded="false">
+                <strong><i class="bi bi-folder"></i> {{ $cat.CategoryName }} <small class="text-muted">({{ $cat.CategoryPrefix }})</small>
+                    <span class="badge bg-primary ms-2">{{ len $cat.Types }} tipe</span>
+                </strong>
+                <i class="bi bi-chevron-down collapse-icon"></i>
             </div>
-            <div class="card-body p-0">
+            <div class="collapse" id="catCollapse{{ $catIndex }}">
+                <div class="card-body p-0">
                 {{ range $i, $tg := $cat.Types }}
                 <div class="p-3 {{ if ne $i 0 }}border-top{{ end }} type-group" data-type="{{ $tg.TypeName }}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -103,6 +106,7 @@
                 </div>
                 {{ end }}
             </div>
+            </div>
         </div>
         {{ else }}
         <div class="alert alert-info">Belum ada kategori perangkat. Tambah tipe perangkat terlebih dahulu.</div>
@@ -130,8 +134,25 @@ function filterDevices() {
     cats.forEach(function(c) {
         var visible = Array.from(c.querySelectorAll('.type-group')).some(function(g) { return g.style.display !== 'none'; });
         c.style.display = visible ? '' : 'none';
+        // Auto-expand category when search has results
+        if (q && visible) {
+            var collapseEl = c.querySelector('.collapse');
+            if (collapseEl) {
+                var bsCollapse = new bootstrap.Collapse(collapseEl, { toggle: false });
+                bsCollapse.show();
+            }
+        }
     });
 }
 </script>
+
+<style>
+.category-group .card-header[data-bs-toggle="collapse"] .collapse-icon {
+    transition: transform 0.2s ease;
+}
+.category-group .card-header[data-bs-toggle="collapse"][aria-expanded="true"] .collapse-icon {
+    transform: rotate(180deg);
+}
+</style>
 
 {{ template "layout/footer.html" . }}
