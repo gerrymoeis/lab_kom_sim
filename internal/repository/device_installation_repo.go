@@ -138,6 +138,27 @@ func (r *DeviceInstallationRepository) GetDistinctLocations() ([]string, error) 
 	return locs, nil
 }
 
+func (r *DeviceInstallationRepository) GetInstallableDevices() ([]models.Device, error) {
+	rows, err := r.db.Query(`SELECT d.id, d.asset_code, COALESCE(d.serial_number,''), d.condition
+		FROM devices d
+		JOIN device_types dt ON dt.id = d.device_type_id
+		WHERE dt.usage_type = 'installable'
+		ORDER BY d.asset_code`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var devices []models.Device
+	for rows.Next() {
+		var d models.Device
+		if rows.Scan(&d.ID, &d.AssetCode, &d.SerialNumber, &d.Condition) == nil {
+			devices = append(devices, d)
+		}
+	}
+	return devices, nil
+}
+
 func (r *DeviceInstallationRepository) Create(deviceID int, location string, startDate, finishDate sql.NullString, photo, notes string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO device_installations (device_id, location_installed, installation_start_date, installation_finish_date, photo, notes)
 		VALUES (?, ?, ?, ?, ?, ?)`, deviceID, location, startDate, finishDate, photo, notes)

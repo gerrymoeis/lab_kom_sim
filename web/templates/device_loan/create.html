@@ -4,9 +4,14 @@
     {{ template "layout/card_create.html" . }}
                     <form method="POST" action="/device-loans/create">
                         <div class="mb-3">
-                            <label for="device_id" class="form-label">ID Perangkat *</label>
-                            <input type="number" class="form-control" id="device_id" name="device_id" min="1" required>
-                            <small class="text-muted">Masukkan ID perangkat yang akan dipinjam</small>
+                            <label for="device_id" class="form-label">Perangkat *</label>
+                            <select class="form-select" id="device_id" name="device_id" required>
+                                <option value="">Pilih perangkat...</option>
+                                {{ range $d := .devices }}
+                                <option value="{{ $d.ID }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.AssetCode }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
+                                {{ end }}
+                            </select>
+                            <small class="text-muted">Hanya menampilkan perangkat yang tersedia untuk dipinjam</small>
                         </div>
 
                         <div class="mb-3">

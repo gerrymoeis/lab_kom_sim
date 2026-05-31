@@ -1,6 +1,7 @@
 ﻿package services
 
 import (
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
 
@@ -33,6 +34,10 @@ func NewDeviceUsageService(repo *repository.DeviceUsageRepository, log *Activity
 
 func (s *DeviceUsageService) GetByID(id int) (*repository.DeviceUsageRow, error) {
 	return s.repo.GetByID(id)
+}
+
+func (s *DeviceUsageService) GetConsumableDevices() ([]models.Device, error) {
+	return s.repo.GetConsumableDevices()
 }
 
 func (s *DeviceUsageService) ListPaginated(filters repository.DeviceUsageFilters, page, pageSize int) ([]repository.DeviceUsageRow, int, error) {

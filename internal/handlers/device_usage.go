@@ -61,9 +61,15 @@ func (h *Handler) DeviceUsageCreatePage(c *gin.Context) {
 	if !ok {
 		return
 	}
+	devices, err := h.deviceUsageService.GetConsumableDevices()
+	if err != nil {
+		devices = nil
+	}
+	deviceID, _ := strconv.Atoi(c.DefaultQuery("device_id", "0"))
 	c.HTML(http.StatusOK, "device_usage/create.html", gin.H{
 		"title": "Tambah Pemakaian", "currentPage": "usages",
 		"username": username, "role": role,
+		"devices": devices, "preselectDeviceID": deviceID,
 	})
 }
 
