@@ -1,46 +1,59 @@
 {{ template "layout/base.html" . }}
 
-<div class="container mt-4">
-    {{ template "layout/card_create.html" . }}
-                    <form method="POST" action="/installations/create">
-                        <div class="mb-3">
-                            <label for="device_id" class="form-label">ID Perangkat *</label>
-                            <input type="number" class="form-control" id="device_id" name="device_id" min="1" required>
-                            <small class="text-muted">Masukkan ID perangkat yang akan diinstalasi</small>
-                        </div>
+<div class="container-fluid mt-4 px-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-pc-display"></i> {{ .title }}</h5>
+        </div>
+        <div class="card-body">
+            {{ template "layout/alert.html" . }}
 
-                        <div class="mb-3">
-                            <label for="location_installed" class="form-label">Lokasi Instalasi *</label>
-                            <input type="text" class="form-control" id="location_installed" name="location_installed" required>
-                            <small class="text-muted">Contoh: Lab Kom 1, Ruang Server, Gedung A Lantai 2</small>
-                        </div>
+            <form method="POST" action="/installations/create">
+                <div class="mb-3">
+                    <label for="device_id" class="form-label">Perangkat *</label>
+                    <select class="form-select" id="device_id" name="device_id" required>
+                        <option value="">Pilih perangkat...</option>
+                        {{ range $d := .devices }}
+                        <option value="{{ $d.ID }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.AssetCode }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
+                        {{ end }}
+                    </select>
+                    <small class="text-muted">Hanya menampilkan perangkat instalasi yang tersedia</small>
+                </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="installation_start_date" class="form-label">Tanggal Mulai</label>
-                                <input type="date" class="form-control" id="installation_start_date" name="installation_start_date">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="installation_finish_date" class="form-label">Tanggal Selesai</label>
-                                <input type="date" class="form-control" id="installation_finish_date" name="installation_finish_date">
-                            </div>
-                        </div>
+                <div class="mb-3">
+                    <label for="location_installed" class="form-label">Lokasi Instalasi *</label>
+                    <input type="text" class="form-control" id="location_installed" name="location_installed" required>
+                    <small class="text-muted">Contoh: Lab Kom 1, Ruang Server, Gedung A Lantai 2</small>
+                </div>
 
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Catatan</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                            <small class="text-muted">Catatan terkait instalasi</small>
-                        </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="installation_start_date" class="form-label">Tanggal Mulai</label>
+                        <input type="date" class="form-control" id="installation_start_date" name="installation_start_date">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="installation_finish_date" class="form-label">Tanggal Selesai</label>
+                        <input type="date" class="form-control" id="installation_finish_date" name="installation_finish_date">
+                    </div>
+                </div>
 
-                        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Simpan
-                            </button>
-                            <a href="/devices?tab=installations" class="btn btn-secondary">
-                                <i class="bi bi-x-circle"></i> Batal
-                            </a>
-                        </div>
-                    </form>
-{{ template "layout/card_close.html" . }}
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Catatan</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    <small class="text-muted">Catatan terkait instalasi</small>
+                </div>
+
+                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Simpan
+                    </button>
+                    <a href="/devices?tab=installations" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Batal
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {{ template "layout/footer.html" . }}
