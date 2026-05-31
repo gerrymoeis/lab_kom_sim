@@ -62,8 +62,23 @@ type BatchDeviceItemRequest struct {
 }
 
 type BatchCreateDeviceRequest struct {
-	DeviceTypeID int                     `json:"device_type_id" binding:"required"`
-	Devices      []BatchDeviceItemRequest `json:"devices" binding:"required,min=1,dive"`
+	// Existing IDs (0 = create new inline)
+	CategoryID   int `json:"category_id"`
+	DeviceTypeID int `json:"device_type_id"`
+
+	// Inline category creation (used when CategoryID == 0)
+	NewCategoryName   string `json:"new_category_name"`
+	NewCategoryPrefix string `json:"new_category_prefix"`
+
+	// Inline device type creation (used when DeviceTypeID == 0)
+	NewTypeName            string `json:"new_type_name"`
+	NewTypeBrand           string `json:"new_type_brand"`
+	NewTypeModel           string `json:"new_type_model"`
+	NewTypeAssetCodePrefix string `json:"new_type_asset_code_prefix"`
+	NewTypeUsageType       string `json:"new_type_usage_type"`
+	NewTypeDefaultLocation string `json:"new_type_default_location"`
+
+	Devices []BatchDeviceItemRequest `json:"devices" binding:"required,min=1,dive"`
 }
 
 type EditDeviceRequest struct {
