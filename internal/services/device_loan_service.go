@@ -84,14 +84,12 @@ func (s *DeviceLoanService) UpdateLoan(id int, in UpdateLoanInput, actorID int, 
 }
 
 func (s *DeviceLoanService) ExtendLoan(loanID int, newReturnDate string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	// Read current return_date before updating
-	loan, err := s.loanRepo.GetByID(loanID)
+	oldReturnDate, err := s.loanRepo.GetReturnDate(loanID)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", loanID,
 			map[string]any{"id": loanID}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	oldReturnDate := loan.ReturnDate.Format("2006-01-02")
 
 	// Update return_date on loan
 	if err := s.loanRepo.ExtendReturnDate(loanID, newReturnDate); err != nil {

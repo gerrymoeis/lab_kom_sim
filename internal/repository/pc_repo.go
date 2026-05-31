@@ -324,18 +324,9 @@ func (r *PCRepository) GetStatus(id int) (string, error) {
 }
 
 func (r *PCRepository) SeedRequiredSoftware(pcID int) error {
-	swRows, err := r.db.Query(`SELECT id FROM software_catalog WHERE category = 'required'`)
-	if err != nil {
-		return err
-	}
-	defer swRows.Close()
-
-	for swRows.Next() {
-		var swID int
-		swRows.Scan(&swID)
-		r.db.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
-	}
-	return nil
+	_, err := r.db.Exec(`INSERT INTO pc_software (pc_id, software_id, installed)
+		SELECT ?, id, TRUE FROM software_catalog WHERE category = 'required'`, pcID)
+	return err
 }
 
 func (r *PCRepository) SyncSoftware(pcID int, requiredIDs []string, otherNames, otherDescs []string) error {

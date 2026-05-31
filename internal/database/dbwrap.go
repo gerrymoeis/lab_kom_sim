@@ -46,7 +46,7 @@ func wrapSQLite(reader, writer *sql.DB) *DB {
 
 	go func() {
 		for range time.NewTicker(30 * time.Second).C {
-			if _, err := writer.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+			if _, err := writer.Exec("PRAGMA wal_checkpoint(PASSIVE)"); err != nil {
 				_ = err
 			}
 		}
