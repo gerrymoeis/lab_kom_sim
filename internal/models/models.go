@@ -16,7 +16,6 @@ type User struct {
 // PC represents a computer in the lab
 type PC struct {
 	ID              int        `json:"id"`
-	PCNumber        int        `json:"pc_number"`        // 1-43
 	Row             int        `json:"row"`              // 1-5 (0 for special/cadangan)
 	Column          int        `json:"column"`           // 1-8 (0 for special/cadangan)
 	Status          string     `json:"status"`           // "normal", "warning", "broken"
@@ -31,7 +30,7 @@ type PC struct {
 	SerialNumber    string     `json:"serial_number"`
 	OperatingSystem string     `json:"operating_system"`
 	PCType          string     `json:"pc_type"`          // "PC All-in-one", etc
-	Label           string     `json:"label"`            // Display label (e.g. "PC-Dosen")
+	Label           string     `json:"label"`            // Lowercase unique slug (e.g. "pc-8", "pc-dosen")
 	BrandModel      string     `json:"brand_model"`      // Combined brand + model
 	Accessories     string     `json:"accessories"`      // "Keyboard & Mouse Axioo (Wired Set)"
 	PhotoSerial     string     `json:"photo_serial"`     // Filename foto S/N + barcode

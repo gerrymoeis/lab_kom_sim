@@ -6,7 +6,7 @@ import (
 )
 
 type CreatePCInput struct {
-	PCNumber, Row, Column               int
+	Row, Column                         int
 	Status, Placement                   string
 	Processor, RAM, Storage             string
 	SerialNumber, OperatingSystem       string
@@ -43,12 +43,12 @@ func (s *PCService) ListPaginated(filters repository.PCFilters, page, pageSize i
 	return s.pcRepo.ListPaginated(filters, page, pageSize)
 }
 
-func (s *PCService) GetByPCNumber(num int) (*models.PC, error) {
-	return s.pcRepo.GetByPCNumber(num)
+func (s *PCService) GetByLabel(label string) (*models.PC, error) {
+	return s.pcRepo.GetByLabel(label)
 }
 
-func (s *PCService) GetByPCNumberEdit(num int) (*models.PC, error) {
-	return s.pcRepo.GetByPCNumberEdit(num)
+func (s *PCService) GetByLabelEdit(label string) (*models.PC, error) {
+	return s.pcRepo.GetByLabelEdit(label)
 }
 
 func (s *PCService) GetSoftware(pcID int) (requiredSW, otherSW []models.PCSoftware, err error) {
@@ -68,48 +68,54 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 	if in.Processor == "" { in.Processor = "Intel Core i7" }
 	if in.RAM == "" { in.RAM = "16GB DDR4" }
 	if in.Storage == "" { in.Storage = "1TB NVMe" }
+	if in.Label == "" {
+		in.Label = s.pcRepo.NextLabel(in.Placement, in.PCType)
+	}
 
-	result, err := s.pcRepo.Create(in.PCNumber, in.Row, in.Column, in.Status, in.Placement, in.Processor, in.RAM, in.Storage,
+	result, err := s.pcRepo.Create(in.Row, in.Column, in.Status, in.Placement, in.Processor, in.RAM, in.Storage,
 		in.SerialNumber, in.OperatingSystem, in.PCType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label)
 	if err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "pc", 0,
-			map[string]any{"pc_number": in.PCNumber, "serial_number": in.SerialNumber},
+			map[string]any{"label": in.Label, "serial_number": in.SerialNumber},
 			ipAddress, userAgent, err.Error())
 		return 0, err
 	}
 	pcID, _ := result.LastInsertId()
 	if pcID > 0 {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "pc", int(pcID),
-			map[string]any{"pc_number": in.PCNumber, "serial_number": in.SerialNumber, "operating_system": in.OperatingSystem},
+			map[string]any{"label": in.Label, "serial_number": in.SerialNumber, "operating_system": in.OperatingSystem},
 			ipAddress, userAgent)
 		s.pcRepo.SeedRequiredSoftware(int(pcID))
 	}
 	return int(pcID), nil
 }
 
-func (s *PCService) UpdatePC(pcNumber int, in UpdatePCInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	err := s.pcRepo.Update(pcNumber, in.Status, in.Placement, in.PCType, in.SerialNumber, in.BrandModel, in.Accessories,
+func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	if in.Label == "" {
+		in.Label = label
+	}
+	err := s.pcRepo.Update(label, in.Status, in.Placement, in.PCType, in.SerialNumber, in.BrandModel, in.Accessories,
 		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.PhotoSerial, in.PhotoFront, in.Label)
 	if err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcNumber,
-			map[string]any{"pc_number": pcNumber}, nil, ipAddress, userAgent, err.Error())
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+			map[string]any{"label": label}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcNumber,
-		map[string]any{"pc_number": pcNumber},
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		map[string]any{"label": label},
 		map[string]any{"status": in.Status, "placement": in.Placement, "operating_system": in.OperatingSystem},
 		ipAddress, userAgent)
 	return nil
 }
 
-func (s *PCService) DeletePC(pcNumber, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	if err := s.pcRepo.DeleteByPCNumber(pcNumber); err != nil {
+func (s *PCService) DeletePC(label string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	if err := s.pcRepo.DeleteByLabel(label); err != nil {
 		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", 0,
-			map[string]any{"pc_number": pcNumber}, ipAddress, userAgent, err.Error())
+			map[string]any{"label": label}, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", 0,
-		map[string]any{"pc_number": pcNumber}, ipAddress, userAgent)
+		map[string]any{"label": label}, ipAddress, userAgent)
 	return nil
 }
 
@@ -129,21 +135,21 @@ func (s *PCService) UpdateStatus(id int, status string, actorID int, actorUserna
 	return nil
 }
 
-func (s *PCService) SyncSoftware(pcNumber int, requiredIDs []string, otherNames, otherDescs []string,
+func (s *PCService) SyncSoftware(label string, requiredIDs []string, otherNames, otherDescs []string,
 	actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 
-	pc, _ := s.pcRepo.GetByPCNumber(pcNumber)
+	pc, _ := s.pcRepo.GetByLabel(label)
 	pcID := 0
 	if pc != nil { pcID = pc.ID }
 
 	if err := s.pcRepo.SyncSoftware(pcID, requiredIDs, otherNames, otherDescs); err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
-			map[string]any{"pc_number": pcNumber}, nil, ipAddress, userAgent, err.Error())
+			map[string]any{"label": label}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
-		map[string]any{"pc_number": pcNumber},
+		map[string]any{"label": label},
 		map[string]any{"required_ids": requiredIDs, "other_names": otherNames},
 		ipAddress, userAgent)
 	return nil

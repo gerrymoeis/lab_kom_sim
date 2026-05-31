@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"inventaris-lab-kom/internal/config"
@@ -69,7 +70,7 @@ func loadPublicFuncMap() template.FuncMap {
 			if pc.Label != "" {
 				return pc.Label
 			}
-			return fmt.Sprintf("PC-%02d", pc.PCNumber)
+			return "-"
 		},
 		"localTime": func(t interface{}) interface{} {
 			switch v := t.(type) {
@@ -171,11 +172,11 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, models.PC, models.PC, m
 		}
 		if pc.Row >= 1 && pc.Row <= 5 && pc.Column >= 1 && pc.Column <= 8 {
 			grid[pc.Row-1][pc.Column-1] = pc
-		} else if pc.Label == "PC-Dosen" {
+		} else if strings.EqualFold(pc.Label, "pc-dosen") {
 			pcLecturer = pc
-		} else if pc.Label == "PC-Laboran" {
+		} else if strings.EqualFold(pc.Label, "pc-laboran") {
 			pcLaboran = pc
-		} else if pc.Label == "PC-CCTV" {
+		} else if strings.EqualFold(pc.Label, "pc-cctv") {
 			pcCCTV = pc
 		}
 	}
@@ -285,9 +286,9 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 
 	// PC detail — one file per PC
 	for _, pc := range pcs {
-		label := fmt.Sprintf("PC-%02d", pc.PCNumber)
-		if pc.Label != "" {
-			label = pc.Label
+		label := pc.Label
+		if label == "" {
+			label = fmt.Sprintf("pc-%d", pc.ID)
 		}
 		re("pc/detail.html", filepath.Join(outDir, "pc", "detail", label+".html"), map[string]interface{}{
 			"title": "Detail " + label, "currentPage": "pc",

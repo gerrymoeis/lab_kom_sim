@@ -111,9 +111,9 @@ async function uploadForProcessing(file, type) {
     formData.append('image', file);
     formData.append('type', type);
 
-    var pcNumberInput = document.querySelector('input[name="pc_number"]');
-    var pcNumber = pcNumberInput ? pcNumberInput.value : window.location.pathname.split('/')[2];
-    if (pcNumber) { formData.append('pc_number', pcNumber); }
+    var labelInput = document.querySelector('input[name="label"]');
+    var label = labelInput ? labelInput.value : window.location.pathname.split('/')[2];
+    if (label) { formData.append('label', label); }
 
     var response = await fetch('/api/upload-image', { method: 'POST', body: formData });
     var json = await response.json();
