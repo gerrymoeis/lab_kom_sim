@@ -311,16 +311,10 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 		return
 	}
 
-	dt, _ := h.deviceTypeService.GetByID(d.DeviceTypeID)
-	dtName := ""
-	if dt != nil {
-		dtName = dt.Name
-	}
-
 	c.HTML(http.StatusOK, "device/detail.html", gin.H{
 		"title": "Detail Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
-		"device": d, "deviceTypeName": dtName,
+		"device": d,
 	})
 }
 

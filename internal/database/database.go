@@ -49,6 +49,9 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 			return nil, fmt.Errorf("failed to set cache_size: %w", err)
 		}
 	}
+	var mode string
+	writer.QueryRow("PRAGMA journal_mode").Scan(&mode)
+	log.Printf("SQLite journal_mode: %s", mode)
 	return wrapSQLite(reader, writer), nil
 }
 

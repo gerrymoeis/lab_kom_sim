@@ -231,11 +231,13 @@ func (r *DeviceLoanRepository) Update(id int, borrowerName, borrowerType string,
 	return err
 }
 
+func (r *DeviceLoanRepository) GetReturnDate(id int) (string, error) {
+	var ret string
+	err := r.db.QueryRow("SELECT return_date FROM device_loans WHERE id = ?", id).Scan(&ret)
+	return ret, err
+}
+
 func (r *DeviceLoanRepository) ExtendReturnDate(id int, newReturnDate string) error {
-	var oldReturnDate string
-	if err := r.db.QueryRow("SELECT return_date FROM device_loans WHERE id = ?", id).Scan(&oldReturnDate); err != nil {
-		return err
-	}
 	_, err := r.db.Exec("UPDATE device_loans SET return_date=?, updated_at=CURRENT_TIMESTAMP WHERE id=?", newReturnDate, id)
 	return err
 }
