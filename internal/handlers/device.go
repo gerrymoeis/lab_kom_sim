@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
@@ -137,6 +138,14 @@ func (h *Handler) DeviceList(c *gin.Context) {
 	}
 }
 
+func (h *Handler) fetchCategories() []models.Category {
+	cats, err := h.categoryService.List()
+	if err != nil {
+		return nil
+	}
+	return cats
+}
+
 func (h *Handler) DeviceCreatePage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok {
@@ -146,6 +155,7 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 		"title": "Tambah Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"deviceTypes": h.fetchDeviceTypes(),
+		"categories":  h.fetchCategories(),
 	})
 }
 
@@ -194,6 +204,53 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
+	// Resolve category: create inline if needed
+	catID := req.CategoryID
+	if catID == 0 && req.NewCategoryName != "" {
+		prefix := req.NewCategoryPrefix
+		if prefix == "" {
+			prefix = strings.ToUpper(strings.ReplaceAll(req.NewCategoryName, " ", "_"))
+		}
+		id, err := h.categoryService.Create(req.NewCategoryName, prefix, uid, u, r, ip, ua)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat kategori: " + err.Error()})
+			return
+		}
+		catID = id
+	}
+
+	// Resolve device type: create inline if needed
+	typeID := req.DeviceTypeID
+	if typeID == 0 && req.NewTypeName != "" {
+		if catID == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Pilih atau buat kategori terlebih dahulu"})
+			return
+		}
+		prefix := req.NewTypeAssetCodePrefix
+		if prefix == "" {
+			prefix = strings.ToUpper(strings.ReplaceAll(req.NewTypeName, " ", "_"))
+		}
+		id, err := h.deviceTypeService.Create(services.DeviceTypeCreateInput{
+			CategoryID:      catID,
+			Name:            req.NewTypeName,
+			Brand:           req.NewTypeBrand,
+			Model:           req.NewTypeModel,
+			AssetCodePrefix: prefix,
+			UsageType:       req.NewTypeUsageType,
+			DefaultLocation: req.NewTypeDefaultLocation,
+		}, uid, u, r, ip, ua)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat tipe perangkat: " + err.Error()})
+			return
+		}
+		typeID = id
+	}
+
+	if typeID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe perangkat diperlukan"})
+		return
+	}
+
 	var devices []services.BatchDeviceCreateInput
 	for _, d := range req.Devices {
 		devices = append(devices, services.BatchDeviceCreateInput{
@@ -205,7 +262,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 		})
 	}
 
-	codes, err := h.deviceService.BatchCreate(req.DeviceTypeID, devices, uid, u, r, ip, ua)
+	codes, err := h.deviceService.BatchCreate(typeID, devices, uid, u, r, ip, ua)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan batch perangkat"})
 		return
