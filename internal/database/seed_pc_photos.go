@@ -72,7 +72,8 @@ func seedPCPhotos(db *DB) error {
 	for num := range allNums {
 		serial := serialMap[num]
 		front := frontMap[num]
-		result, err := db.Exec(`UPDATE pcs SET photo_serial=COALESCE(NULLIF(?, ''), photo_serial), photo_front=COALESCE(NULLIF(?, ''), photo_front) WHERE pc_number=?`, serial, front, num)
+		label := fmt.Sprintf("pc-%d", num)
+		result, err := db.Exec(`UPDATE pcs SET photo_serial=COALESCE(NULLIF(?, ''), photo_serial), photo_front=COALESCE(NULLIF(?, ''), photo_front) WHERE label=?`, serial, front, label)
 		if err != nil {
 			return fmt.Errorf("seedPCPhotos: failed to update pc %d: %w", num, err)
 		}

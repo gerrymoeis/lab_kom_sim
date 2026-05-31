@@ -58,7 +58,7 @@
                 <div class="col-md-2">
                     <label for="sort_by" class="form-label">Urut Berdasar</label>
                     <select class="form-select" id="sort_by" name="sort_by">
-                        <option value="pc_number" {{ if eq .filters.sort_by "pc_number" }}selected{{ end }}>No. PC</option>
+                        <option value="label" {{ if eq .filters.sort_by "label" }}selected{{ end }}>No. PC</option>
                         <option value="status" {{ if eq .filters.sort_by "status" }}selected{{ end }}>Status</option>
                         <option value="brand_model" {{ if eq .filters.sort_by "brand_model" }}selected{{ end }}>Merek</option>
                         <option value="operating_system" {{ if eq .filters.sort_by "operating_system" }}selected{{ end }}>Windows Version</option>
@@ -92,7 +92,7 @@
                     <tbody>
                         {{ range .pcs }}
                         <tr>
-                            <td><strong>{{ if .Label }}{{ .Label }}{{ else }}PC-{{ printf "%02d" .PCNumber }}{{ end }}</strong></td>
+                            <td><strong>{{ .Label }}</strong></td>
                             <td>{{ if .SerialNumber }}<small><code>{{ .SerialNumber }}</code></small>{{ else }}-{{ end }}</td>
                             <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else }}-{{ end }}</td>
                             <td>{{ if eq .Placement "dipakai" }}Baris {{ .Column }}, Kolom {{ .Row }}{{ else }}-{{ end }}</td>
@@ -106,14 +106,14 @@
                                 </small>
                             </td>
                             <td class="text-nowrap">
-                                <a href="/pc/{{ .PCNumber }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                <a href="/pc/{{ .Label }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {{ if eq $.role "admin" }}
-                                <a href="/pc/{{ .PCNumber }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                <a href="/pc/{{ .Label }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/pc/{{ .PCNumber }}/delete" style="display: inline;" onsubmit="return confirmDelete()">
+                                <form method="POST" action="/pc/{{ .Label }}/delete" style="display: inline;" onsubmit="return confirmDelete()">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>

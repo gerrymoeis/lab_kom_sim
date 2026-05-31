@@ -65,7 +65,7 @@
                              role="button" tabindex="0"
                              aria-label="{{ .pcLecturer.Label }}, Status {{ .pcLecturer.Status }}"
                              data-pc-id="{{ .pcLecturer.ID }}"
-                             data-pc-number="{{ .pcLecturer.PCNumber }}"
+                             data-pc-label="{{ .pcLecturer.Label }}"
                              data-pc-row="0" data-pc-column="0"
                              data-pc-status="{{ .pcLecturer.Status }}"
                              data-pc-processor="{{ .pcLecturer.Processor }}"
@@ -96,9 +96,9 @@
                             <div class="pc-card status-{{ $pc.Status }} pc-card-clickable" 
                                  role="button"
                                  tabindex="0"
-								 aria-label="PC {{ printf "%02d" $pc.PCNumber }}, Status {{ $pc.Status }}, Baris {{ $pc.Column }}, Kolom {{ $pc.Row }}"
+								 aria-label="PC {{ $pc.Label }}, Status {{ $pc.Status }}, Baris {{ $pc.Column }}, Kolom {{ $pc.Row }}"
                                  data-pc-id="{{ $pc.ID }}"
-                                 data-pc-number="{{ printf "%02d" $pc.PCNumber }}"
+                                 data-pc-label="{{ $pc.Label }}"
                                  data-pc-row="{{ $pc.Row }}"
 								 data-pc-column="{{ $pc.Column }}"
                                  data-pc-status="{{ $pc.Status }}"
@@ -108,7 +108,7 @@
                                  data-pc-os="{{ $pc.OperatingSystem }}"
                                  data-pc-notes="{{ $pc.Notes }}"
                                  style="cursor: pointer;">
-                                <div class="pc-number">PC-{{ printf "%02d" $pc.PCNumber }}</div>
+                                <div class="pc-number">{{ $pc.Label }}</div>
                                 <div class="pc-icon">
                                     <i class="bi bi-pc-display" aria-hidden="true"></i>
                                 </div>
@@ -118,12 +118,12 @@
                                     <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
                                 </div>
                                 <!-- Windows Version Badge -->
-                                <div class="pc-windows-badge" id="win-badge-{{ $pc.PCNumber }}">
+                                <div class="pc-windows-badge" id="win-badge-{{ $pc.Label }}">
                                     <span class="visually-hidden">Windows Version</span>
                                 </div>
                             </div>
                             <!-- Windows Version Text -->
-                            <div class="pc-windows-text" id="win-text-{{ $pc.PCNumber }}"></div>
+                            <div class="pc-windows-text" id="win-text-{{ $pc.Label }}"></div>
                         </div>
                         {{ else }}
                         <div class="pc-card-wrapper">
@@ -149,7 +149,7 @@
                                  role="button" tabindex="0"
                                  aria-label="{{ .pcLaboran.Label }}, Status {{ .pcLaboran.Status }}"
                                  data-pc-id="{{ .pcLaboran.ID }}"
-                                 data-pc-number="{{ .pcLaboran.PCNumber }}"
+                                 data-pc-label="{{ .pcLaboran.Label }}"
                                  data-pc-row="0" data-pc-column="0"
                                  data-pc-status="{{ .pcLaboran.Status }}"
                                  data-pc-processor="{{ .pcLaboran.Processor }}"
@@ -177,7 +177,7 @@
                                  role="button" tabindex="0"
                                  aria-label="{{ .pcCCTV.Label }}, Status {{ .pcCCTV.Status }}"
                                  data-pc-id="{{ .pcCCTV.ID }}"
-                                 data-pc-number="{{ .pcCCTV.PCNumber }}"
+                                 data-pc-label="{{ .pcCCTV.Label }}"
                                  data-pc-row="0" data-pc-column="0"
                                  data-pc-status="{{ .pcCCTV.Status }}"
                                  data-pc-processor="{{ .pcCCTV.Processor }}"
@@ -364,13 +364,13 @@
         const pcCards = document.querySelectorAll('.pc-card-clickable');
         
         pcCards.forEach(card => {
-            const pcNumber = card.dataset.pcNumber;
+            const pcLabel = card.dataset.pcLabel;
             const osString = card.dataset.pcOs;
             
             const winInfo = parseWindowsVersion(osString);
             
             // Update badge
-            const badge = document.getElementById('win-badge-' + parseInt(pcNumber));
+            const badge = document.getElementById('win-badge-' + pcLabel);
             if (badge && winInfo.shortText !== '-') {
                 badge.textContent = winInfo.shortText;
                 badge.className = 'pc-windows-badge ' + winInfo.badgeClass;
@@ -379,7 +379,7 @@
             }
             
             // Update text
-            const text = document.getElementById('win-text-' + parseInt(pcNumber));
+            const text = document.getElementById('win-text-' + pcLabel);
             if (text && winInfo.fullText !== '-') {
                 text.textContent = winInfo.fullText;
             }
@@ -395,7 +395,7 @@
         function openPCModal(card) {
             // Get data from card attributes
             const pcId = card.dataset.pcId;
-            const pcNumber = card.dataset.pcNumber;
+            const pcLabel = card.dataset.pcLabel;
             const pcRow = card.dataset.pcRow;
             const pcColumn = card.dataset.pcColumn;
             const pcStatus = card.dataset.pcStatus;
@@ -406,9 +406,8 @@
             const pcNotes = card.dataset.pcNotes || '-';
             
             // Update modal title
-            const pcLabel = card.getAttribute('aria-label') || '';
-            const modalTitle = pcLabel ? pcLabel.replace(', Status', '') : ('PC-' + pcNumber);
-            document.getElementById('pcDetailModalLabel').textContent = modalTitle + ' Detail';
+            const modalTitle = card.getAttribute('aria-label') || '';
+            document.getElementById('pcDetailModalLabel').textContent = (modalTitle ? modalTitle.replace(', Status', '') : pcLabel) + ' Detail';
             
             // Update modal content
             document.getElementById('modal-position').textContent = 'Baris ' + pcColumn + ', Kolom ' + pcRow;
@@ -434,10 +433,10 @@
             }
             
             // Update action links
-            document.getElementById('modal-detail-link').href = '/pc/' + pcNumber;
+            document.getElementById('modal-detail-link').href = '/pc/' + pcLabel;
             const editLink = document.getElementById('modal-edit-link');
             if (editLink) {
-                editLink.href = '/pc/' + pcNumber + '/edit';
+                editLink.href = '/pc/' + pcLabel + '/edit';
             }
             
             // Show modal

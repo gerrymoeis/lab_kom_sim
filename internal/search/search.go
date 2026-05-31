@@ -27,9 +27,9 @@ func defaultConfigs() map[string]Config {
 	return map[string]Config{
 		"pc": {
 			Alias: "", Columns: []string{
-				"CAST(pc_number AS TEXT)", "serial_number", "brand_model",
+				"label", "serial_number", "brand_model",
 				"operating_system", "processor", "ram", "storage",
-				"pc_type", "accessories", "notes", "label",
+				"pc_type", "accessories", "notes",
 			},
 		},
 		"device": {

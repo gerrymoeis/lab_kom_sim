@@ -115,7 +115,7 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 		"pcPlacementInfo": func(placement string) PlacementInfo { return getPCPlacementInfo(placement) },
 		"formatPCLabel": func(pc models.PC) string {
 			if pc.Label != "" { return pc.Label }
-			return fmt.Sprintf("PC-%02d", pc.PCNumber)
+			return "-"
 		},
 		"localTime": func(t interface{}) interface{} {
 			switch v := t.(type) {
@@ -210,10 +210,10 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/pc/create", h.PCCreatePage)
 		protected.POST("/pc/create", h.PCCreate)
 		protected.GET("/pc/export", h.PCExport)
-		protected.GET("/pc/:pc_number", h.PCDetail)
-		protected.GET("/pc/:pc_number/edit", h.PCEditPage)
-		protected.POST("/pc/:pc_number/edit", h.PCEdit)
-		protected.POST("/pc/:pc_number/delete", h.PCDelete)
+		protected.GET("/pc/:label", h.PCDetail)
+		protected.GET("/pc/:label/edit", h.PCEditPage)
+		protected.POST("/pc/:label/edit", h.PCEdit)
+		protected.POST("/pc/:label/delete", h.PCDelete)
 
 		protected.GET("/devices", h.DeviceList)
 		protected.GET("/devices/create", h.DeviceCreatePage)

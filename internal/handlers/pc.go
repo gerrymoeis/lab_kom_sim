@@ -56,8 +56,8 @@ func (h *Handler) PCDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	num, _ := strconv.Atoi(c.Param("pc_number"))
-	pc, err := h.pcService.GetByPCNumber(num)
+	label := c.Param("label")
+	pc, err := h.pcService.GetByLabel(label)
 	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
 
 	requiredSW, otherSW, _ := h.pcService.GetSoftware(pc.ID)
@@ -98,7 +98,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	ip, ua := getRequestContext(c)
 
 	_, err := h.pcService.CreatePC(services.CreatePCInput{
-		PCNumber: req.PCNumber, Row: req.Row, Column: req.Column,
+		Row: req.Row, Column: req.Column,
 		Status: req.Status, Placement: req.Placement,
 		Processor: req.Processor, RAM: req.RAM, Storage: req.Storage,
 		SerialNumber: req.SerialNumber, OperatingSystem: req.OperatingSystem,
@@ -108,7 +108,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
-			"title": "Tambah PC Baru", "error": "Gagal menyimpan. Mungkin nomor PC sudah digunakan.",
+			"title": "Tambah PC Baru", "error": "Gagal menyimpan. Mungkin label PC sudah digunakan.",
 			"currentPage": "pc", "username": u, "role": r,
 		})
 		return
@@ -120,8 +120,8 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	num, _ := strconv.Atoi(c.Param("pc_number"))
-	pc, err := h.pcService.GetByPCNumberEdit(num)
+	label := c.Param("label")
+	pc, err := h.pcService.GetByLabelEdit(label)
 	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
 
 	requiredSW, otherSW, _ := h.pcService.GetSoftware(pc.ID)
@@ -135,7 +135,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 }
 
 func (h *Handler) PCEdit(c *gin.Context) {
-	num, _ := strconv.Atoi(c.Param("pc_number"))
+	label := c.Param("label")
 
 	var req EditPCRequest
 	if err := c.ShouldBind(&req); err != nil {
@@ -147,7 +147,12 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.pcService.UpdatePC(num, services.UpdatePCInput{
+	newLabel := req.Label
+	if newLabel == "" {
+		newLabel = label
+	}
+
+	if err := h.pcService.UpdatePC(label, services.UpdatePCInput{
 		Status: req.Status, Placement: req.Placement,
 		SerialNumber: req.SerialNumber, BrandModel: req.BrandModel,
 		Accessories: req.Accessories, Processor: req.Processor,
@@ -155,22 +160,22 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		RAM: req.RAM, Storage: req.Storage, OperatingSystem: req.OperatingSystem,
 		Notes: req.Notes,
 		PhotoSerial: photoSerial, PhotoFront: photoFront,
-		Label: req.Label,
+		Label: newLabel,
 	}, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, "Gagal mengupdate PC")
 		return
 	}
 
-	h.pcService.SyncSoftware(num, req.RequiredSw, req.OtherName, req.OtherDesc, uid, u, r, ip, ua)
-	c.Redirect(http.StatusFound, fmt.Sprintf("/pc/%d", num))
+	h.pcService.SyncSoftware(newLabel, req.RequiredSw, req.OtherName, req.OtherDesc, uid, u, r, ip, ua)
+	c.Redirect(http.StatusFound, fmt.Sprintf("/pc/%s", newLabel))
 }
 
 func (h *Handler) PCDelete(c *gin.Context) {
-	num, _ := strconv.Atoi(c.Param("pc_number"))
+	label := c.Param("label")
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.pcService.DeletePC(num, uid, u, r, ip, ua); err != nil {
+	if err := h.pcService.DeletePC(label, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/pc", "Gagal menghapus PC. Mungkin PC sedang dipinjam.")
 		return
 	}
@@ -216,7 +221,7 @@ func (h *Handler) PCExport(c *gin.Context) {
 		pos := fmt.Sprintf("(%d,%d)", pc.Row, pc.Column)
 		pd := "-"; if pc.PurchaseDate != nil { pd = pc.PurchaseDate.Format("2006-01-02") }
 		ld := "-"; if pc.LastChecked != nil { ld = pc.LastChecked.Format("2006-01-02") }
-		data = append(data, []any{pc.PCNumber, pos, pc.Status, pc.Placement, pc.PCType, pc.SerialNumber, pc.BrandModel, pc.Processor, pc.RAM, pc.Storage, pc.OperatingSystem, pc.Accessories, pd, ld, pc.Notes})
+		data = append(data, []any{pc.Label, pos, pc.Status, pc.Placement, pc.PCType, pc.SerialNumber, pc.BrandModel, pc.Processor, pc.RAM, pc.Storage, pc.OperatingSystem, pc.Accessories, pd, ld, pc.Notes})
 	}
 	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
 		{
