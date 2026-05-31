@@ -1,9 +1,7 @@
 {{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
-    {{ template "device/_tab_nav" . }}
-
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-md-6">
             <h2><i class="bi bi-pc-display"></i> Instalasi Perangkat</h2>
             <p class="text-muted">Daftar lokasi instalasi perangkat</p>
@@ -18,6 +16,8 @@
             {{ end }}
         </div>
     </div>
+
+    {{ template "device/_tab_nav" . }}
 
     {{ template "layout/alert.html" . }}
 
