@@ -74,6 +74,10 @@ function setupFileHandlers() {
 
 async function handleFileSelect(file, type, source) {
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        showError(type, 'Ukuran file maksimal 5MB');
+        return;
+    }
     showLoadingState(type);
 
     try {
@@ -99,6 +103,8 @@ async function handleFileSelect(file, type, source) {
         var result = await uploadForProcessing(file, type);
         if (result.success) {
             storeFileReference(result.file_ref, type);
+            // Clear file input agar tidak dikirim ulang saat form submit
+            document.getElementById('photo_' + type + '_' + source).value = '';
         }
     } catch (error) {
         console.error('Photo upload error:', error.message);
