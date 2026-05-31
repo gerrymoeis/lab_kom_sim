@@ -1,0 +1,25 @@
+{{ define "device/_tab_nav" }}
+{{ $tab := or .activeTab "types" }}
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link {{ if or (eq $tab "types") (eq $tab "") }}active{{ end }}" href="/devices">
+            <i class="bi bi-hdd-rack"></i> Perangkat
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ if eq $tab "loans" }}active{{ end }}" href="/devices?tab=loans">
+            <i class="bi bi-journal-arrow-up"></i> Peminjaman
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ if eq $tab "usages" }}active{{ end }}" href="/devices?tab=usages">
+            <i class="bi bi-clipboard-data"></i> Pemakaian
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ if eq $tab "installations" }}active{{ end }}" href="/devices?tab=installations">
+            <i class="bi bi-pc-display"></i> Instalasi
+        </a>
+    </li>
+</ul>
+{{ end }}

@@ -27,6 +27,8 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		return
 	}
 
+	tab := c.DefaultQuery("tab", "types")
+
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if page < 1 {
 		page = 1
@@ -40,36 +42,99 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		query = template.URL("&" + values.Encode())
 	}
 
-	search := c.Query("search")
-	category := c.Query("category")
-	condition := c.Query("condition")
-	sortBy := c.Query("sort_by")
-	sortOrder := c.DefaultQuery("sort_order", "ASC")
+	switch tab {
+	case "loans":
+		search := c.Query("search")
+		status := c.Query("status")
+		sortBy := c.Query("sort_by")
 
-	devices, total, err := h.deviceService.ListPaginated(repository.DeviceFilters{
-		Search:    search,
-		Category:  category,
-		Condition: condition,
-		SortBy:    sortBy,
-		SortOrder: sortOrder,
-	}, page, pageSize)
-	if err != nil {
-		h.errHTML(c, "Gagal mengambil data perangkat")
-		return
+		loans, total, err := h.deviceLoanService.ListPaginated(repository.DeviceLoanFilters{
+			Search: search,
+			Status: status,
+			SortBy: sortBy,
+		}, page, pageSize)
+		if err != nil {
+			h.errHTML(c, "Gagal mengambil data peminjaman")
+			return
+		}
+
+		totalPages := (total + pageSize - 1) / pageSize
+		c.HTML(http.StatusOK, "device_loan/list.html", gin.H{
+			"title": "Peminjaman", "currentPage": "devices",
+			"activeTab": "loans",
+			"username": username, "role": role,
+			"loans": loans,
+			"filters":    gin.H{"search": search, "status": status, "sort_by": sortBy},
+			"startRow":   (page-1)*pageSize + 1,
+			"page": page, "totalPages": totalPages, "totalItems": total,
+			"query": query,
+		})
+
+	case "usages":
+		search := c.Query("search")
+		sortBy := c.Query("sort_by")
+
+		usages, total, err := h.deviceUsageService.ListPaginated(repository.DeviceUsageFilters{
+			Search: search,
+			SortBy: sortBy,
+		}, page, pageSize)
+		if err != nil {
+			h.errHTML(c, "Gagal mengambil data pemakaian")
+			return
+		}
+
+		totalPages := (total + pageSize - 1) / pageSize
+		c.HTML(http.StatusOK, "device_usage/list.html", gin.H{
+			"title": "Pemakaian Perangkat", "currentPage": "devices",
+			"activeTab": "usages",
+			"username": username, "role": role,
+			"usages": usages,
+			"filters":    gin.H{"search": search, "sort_by": sortBy},
+			"startRow":   (page-1)*pageSize + 1,
+			"page": page, "totalPages": totalPages, "totalItems": total,
+			"query": query,
+		})
+
+	case "installations":
+		search := c.Query("search")
+		sortBy := c.Query("sort_by")
+
+		installations, total, err := h.deviceInstallationService.ListPaginated(repository.InstallationFilters{
+			Search: search,
+			SortBy: sortBy,
+		}, page, pageSize)
+		if err != nil {
+			h.errHTML(c, "Gagal mengambil data instalasi")
+			return
+		}
+
+		totalPages := (total + pageSize - 1) / pageSize
+		c.HTML(http.StatusOK, "device_installation/list.html", gin.H{
+			"title": "Instalasi Perangkat", "currentPage": "devices",
+			"activeTab": "installations",
+			"username": username, "role": role,
+			"installations": installations,
+			"filters":       gin.H{"search": search, "sort_by": sortBy},
+			"startRow":      (page-1)*pageSize + 1,
+			"page": page, "totalPages": totalPages, "totalItems": total,
+			"query": query,
+		})
+
+	default:
+		grouped, err := h.deviceService.GetGrouped()
+		if err != nil {
+			h.errHTML(c, "Gagal mengambil data perangkat")
+			return
+		}
+
+		c.HTML(http.StatusOK, "device/list.html", gin.H{
+			"title": "Manajemen Perangkat", "currentPage": "devices",
+			"activeTab": "types",
+			"username": username, "role": role,
+			"groupedData": grouped,
+			"deviceTypes": h.fetchDeviceTypes(),
+		})
 	}
-
-	totalPages := (total + pageSize - 1) / pageSize
-
-	c.HTML(http.StatusOK, "device/list.html", gin.H{
-		"title": "Manajemen Perangkat", "currentPage": "devices",
-		"username": username, "role": role,
-		"devices": devices,
-		"deviceTypes": h.fetchDeviceTypes(),
-		"filters": gin.H{"search": search, "category": category, "condition": condition, "sort_by": sortBy, "sort_order": sortOrder},
-		"startRow": (page-1)*pageSize + 1,
-		"page": page, "totalPages": totalPages, "totalItems": total,
-		"query": query,
-	})
 }
 
 func (h *Handler) DeviceCreatePage(c *gin.Context) {
@@ -86,9 +151,13 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 
 func (h *Handler) DeviceCreate(c *gin.Context) {
 	var req CreateDeviceRequest
+	_, username, role, _ := h.user(c)
+
 	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "device/create.html", gin.H{
-			"title": "Tambah Perangkat", "error": "Lengkapi data yang diperlukan",
+			"title": "Tambah Perangkat", "currentPage": "devices",
+			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
+			"deviceTypes": h.fetchDeviceTypes(),
 		})
 		return
 	}
@@ -106,11 +175,42 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "device/create.html", gin.H{
-			"title": "Tambah Perangkat", "error": "Gagal menyimpan perangkat",
+			"title": "Tambah Perangkat", "currentPage": "devices",
+			"username": username, "role": role, "error": "Gagal menyimpan perangkat",
+			"deviceTypes": h.fetchDeviceTypes(),
 		})
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices")
+}
+
+func (h *Handler) DeviceBatchCreate(c *gin.Context) {
+	var req BatchCreateDeviceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data batch tidak valid"})
+		return
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	var devices []services.BatchDeviceCreateInput
+	for _, d := range req.Devices {
+		devices = append(devices, services.BatchDeviceCreateInput{
+			SerialNumber: d.SerialNumber,
+			Condition:    d.Condition,
+			Location:     d.Location,
+			PurchaseDate: d.PurchaseDate,
+			Notes:        d.Notes,
+		})
+	}
+
+	codes, err := h.deviceService.BatchCreate(req.DeviceTypeID, devices, uid, u, r, ip, ua)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan batch perangkat"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "codes": codes})
 }
 
 func (h *Handler) DeviceDetail(c *gin.Context) {

@@ -415,8 +415,5 @@ func runMigrations(db *DB, isPostgres bool) error {
 		}
 	}
 
-	if err := seedDevicesIfEmpty(db); err != nil {
-		return err
-	}
 	return SeedSchedules(db)
 }

@@ -189,9 +189,39 @@ func (r *DeviceRepository) GetNextAssetCode(prefix string) string {
 	return fmt.Sprintf("%s-%03d", prefix, next)
 }
 
+type BatchCreateInput struct {
+	DeviceTypeID int
+	AssetCode    string
+	SerialNumber string
+	Condition    string
+	Location     string
+	PurchaseDate string
+	Notes        string
+}
+
 func (r *DeviceRepository) Create(deviceTypeID int, assetCode, serial, condition, location, pDate, notes string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO devices (device_type_id, asset_code, serial_number, condition, location, purchase_date, notes)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`, deviceTypeID, assetCode, serial, condition, location, pDate, notes)
+}
+
+func (r *DeviceRepository) BatchCreate(inputs []BatchCreateInput) error {
+	rawDB, ok := r.db.(*database.DB)
+	if !ok {
+		return fmt.Errorf("batch create requires direct database access")
+	}
+	tx, err := rawDB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for _, in := range inputs {
+		if _, err := tx.Exec(`INSERT INTO devices (device_type_id, asset_code, serial_number, condition, location, purchase_date, notes)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (r *DeviceRepository) Update(id, deviceTypeID int, assetCode, serial, condition, location, pDate, notes string) error {
