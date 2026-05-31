@@ -11,6 +11,7 @@ type CreatePCRequest struct {
 	Column          int    `form:"column"`
 	Status          string `form:"status"`
 	Placement       string `form:"placement"`
+	IsMahasiswa     string `form:"is_mahasiswa"`
 	SerialNumber    string `form:"serial_number" binding:"required"`
 	OperatingSystem string `form:"operating_system" binding:"required"`
 	PCType          string `form:"pc_type"`

@@ -189,6 +189,7 @@ func TestFullIntegration(t *testing.T) {
 	pcCreateData := url.Values{
 		"row": {"5"}, "column": {"8"},
 		"status": {"normal"}, "placement": {"dipakai"},
+		"is_mahasiswa": {"true"},
 		"serial_number": {"SN-TEST40"},
 		"operating_system": {"Win11"}, "pc_type": {"PC"},
 		"brand_model": {"Dell"}, "accessories": {"KB"},

@@ -134,19 +134,19 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 	return pcs, nil
 }
 
-func (r *PCRepository) NextLabel(placement, pcType string) string {
-	var prefix string
+func (r *PCRepository) NextLabel(placement string, isMahasiswa bool) string {
 	switch {
 	case placement == "cadangan":
-		prefix = "pc-cadangan-"
-	case pcType == "PC-Dosen" || pcType == "PC-Laboran" || pcType == "PC-CCTV":
-		return strings.ToLower(pcType)
+		var max int
+		r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 14) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&max)
+		return fmt.Sprintf("pc-cadangan-%d", max)
+	case isMahasiswa:
+		var max int
+		r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 4) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-[0-9]*'`).Scan(&max)
+		return fmt.Sprintf("pc-%d", max)
 	default:
-		prefix = "pc-"
+		return ""
 	}
-	var max int
-	r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, ?) AS INTEGER)), 0) + 1 FROM pcs WHERE label LIKE ? || '%'`, len(prefix)+1, prefix).Scan(&max)
-	return fmt.Sprintf("%s%d", prefix, max)
 }
 
 func (r *PCRepository) GetStatusCounts() (map[string]int, error) {

@@ -9,26 +9,23 @@
                 >
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label for="label" class="form-label">Label PC</label>
-                            <input type="text" class="form-control" id="label" name="label" placeholder="Kosongkan untuk auto-generate">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="label" class="form-label">Label Tampilan</label>
-                            <input
-                                type="text"
-                                class="form-control"
-                                id="label"
-                                name="label"
-                                placeholder="Contoh: PC-Dosen, PC-Laboran, PC-CCTV"
-                            />
-                            <small class="text-muted">Kosongkan jika tidak perlu. Jika diisi akan tampil sebagai nama PC</small>
-                        </div>
-                        <div class="col-md-4 mb-3">
                             <label for="placement" class="form-label">Penempatan *</label>
-                            <select class="form-select" id="placement" name="placement" required onchange="togglePlacementFields()">
+                            <select class="form-select" id="placement" name="placement" required onchange="togglePCCreateFields()">
                                 <option value="dipakai">Dipakai (Terpasang)</option>
                                 <option value="cadangan">Cadangan (Belum Terpasang)</option>
                             </select>
+                        </div>
+                        <div class="col-md-4 mb-3" id="jenisField">
+                            <label for="is_mahasiswa" class="form-label">Jenis PC</label>
+                            <select class="form-select" id="is_mahasiswa" name="is_mahasiswa" onchange="toggleLabelField()">
+                                <option value="true">PC Mahasiswa</option>
+                                <option value="false">Bukan Mahasiswa (Dosen/Laboran/dll)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="label" class="form-label">Label PC</label>
+                            <input type="text" class="form-control" id="label" name="label">
+                            <small class="text-muted" id="labelHelp">Label otomatis untuk PC Mahasiswa</small>
                         </div>
                     </div>
 
@@ -359,18 +356,49 @@
 {{ template "layout/card_close.html" . }}
 
 <script>
-function togglePlacementFields() {
+var nextMahasiswaLabel = '{{ .nextMahasiswaLabel }}';
+var nextCadanganLabel = '{{ .nextCadanganLabel }}';
+
+function togglePCCreateFields() {
     const placement = document.getElementById('placement').value;
+    const jenisField = document.getElementById('jenisField');
     const fields = document.getElementById('positionFields');
+    const labelInput = document.getElementById('label');
+    const labelHelp = document.getElementById('labelHelp');
+
     if (placement === 'cadangan') {
+        jenisField.style.display = 'none';
         fields.style.display = 'none';
         document.getElementById('row').value = 0;
         document.getElementById('column').value = 0;
+        labelInput.value = nextCadanganLabel;
+        labelInput.readOnly = true;
+        labelHelp.textContent = 'Label otomatis untuk PC Cadangan';
     } else {
+        jenisField.style.display = 'block';
         fields.style.display = 'flex';
+        toggleLabelField();
     }
 }
-document.addEventListener('DOMContentLoaded', togglePlacementFields);
+
+function toggleLabelField() {
+    const isMahasiswa = document.getElementById('is_mahasiswa').value === 'true';
+    const labelInput = document.getElementById('label');
+    const labelHelp = document.getElementById('labelHelp');
+
+    if (isMahasiswa) {
+        labelInput.value = nextMahasiswaLabel;
+        labelInput.readOnly = true;
+        labelHelp.textContent = 'Label otomatis untuk PC Mahasiswa';
+    } else {
+        labelInput.value = '';
+        labelInput.readOnly = false;
+        labelInput.placeholder = 'Contoh: pc-dosen, pc-laboran, pc-cctv';
+        labelHelp.textContent = 'Tulis label manual untuk PC non-Mahasiswa';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', togglePCCreateFields);
 window.ANDROID_MODE = {{ .android }};
 </script>
 {{ if .android }}
