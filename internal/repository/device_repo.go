@@ -209,8 +209,11 @@ type BatchCreateInput struct {
 }
 
 func (r *DeviceRepository) Create(deviceTypeID int, assetCode, serial, condition, location, pDate, notes string) (sql.Result, error) {
+	var pDateArg, notesArg interface{}
+	if pDate != "" { pDateArg = pDate }
+	if notes != "" { notesArg = notes }
 	return r.db.Exec(`INSERT INTO devices (device_type_id, asset_code, serial_number, condition, location, purchase_date, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`, deviceTypeID, assetCode, serial, condition, location, pDate, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, deviceTypeID, assetCode, serial, condition, location, pDateArg, notesArg)
 }
 
 func (r *DeviceRepository) BatchCreate(inputs []BatchCreateInput) error {
@@ -225,8 +228,11 @@ func (r *DeviceRepository) BatchCreate(inputs []BatchCreateInput) error {
 	defer tx.Rollback()
 
 	for _, in := range inputs {
+		var pDateArg, notesArg interface{}
+		if in.PurchaseDate != "" { pDateArg = in.PurchaseDate }
+		if in.Notes != "" { notesArg = in.Notes }
 		if _, err := tx.Exec(`INSERT INTO devices (device_type_id, asset_code, serial_number, condition, location, purchase_date, notes)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes); err != nil {
+			VALUES (?, ?, ?, ?, ?, ?, ?)`, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, pDateArg, notesArg); err != nil {
 			return err
 		}
 	}
@@ -234,13 +240,13 @@ func (r *DeviceRepository) BatchCreate(inputs []BatchCreateInput) error {
 }
 
 func (r *DeviceRepository) Update(id, deviceTypeID int, assetCode, serial, condition, location, pDate, notes, usageType string) error {
-	var usageArg interface{}
-	if usageType != "" {
-		usageArg = usageType
-	}
+	var pDateArg, notesArg, usageArg interface{}
+	if pDate != "" { pDateArg = pDate }
+	if notes != "" { notesArg = notes }
+	if usageType != "" { usageArg = usageType }
 	_, err := r.db.Exec(`UPDATE devices SET device_type_id=?, asset_code=?, serial_number=?,
 		condition=?, location=?, purchase_date=?, notes=?, usage_type=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-		deviceTypeID, assetCode, serial, condition, location, pDate, notes, usageArg, id)
+		deviceTypeID, assetCode, serial, condition, location, pDateArg, notesArg, usageArg, id)
 	return err
 }
 
