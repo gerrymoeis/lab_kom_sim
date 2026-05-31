@@ -144,11 +144,11 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT COUNT(*) FROM pcs").Scan(&pcCount)
 	assert(pcCount > 0, "PCs seeded: %d", pcCount)
 
-	resp, _ = get("/pc/1")
-	assert(resp.StatusCode == 200, "/pc/1: %d", resp.StatusCode)
+	resp, _ = get("/pc/pc-1")
+	assert(resp.StatusCode == 200, "/pc/pc-1: %d", resp.StatusCode)
 	closeResp(resp)
-	resp, _ = get("/pc/1/edit")
-	assert(resp.StatusCode == 200, "/pc/1 edit: %d", resp.StatusCode)
+	resp, _ = get("/pc/pc-1/edit")
+	assert(resp.StatusCode == 200, "/pc/pc-1 edit: %d", resp.StatusCode)
 	closeResp(resp)
 
 	//  2b. PC Photo Upload →
