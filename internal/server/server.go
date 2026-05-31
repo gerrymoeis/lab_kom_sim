@@ -1,8 +1,8 @@
 package server
 
 import (
+	"fmt"
 	"html/template"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +12,7 @@ import (
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/handlers"
 	"inventaris-lab-kom/internal/middleware"
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
 
@@ -111,6 +112,10 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 		"allCategories":   func() []Category { return loadCategories() },
 		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },
 		"pcPlacementInfo": func(placement string) PlacementInfo { return getPCPlacementInfo(placement) },
+		"formatPCLabel": func(pc models.PC) string {
+			if pc.Label != "" { return pc.Label }
+			return fmt.Sprintf("PC-%02d", pc.PCNumber)
+		},
 		"localTime": func(t interface{}) interface{} {
 			switch v := t.(type) {
 			case time.Time:
@@ -154,7 +159,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 
 	templ, err := LoadTemplates("web/templates")
 	if err != nil {
-		log.Fatalf("Failed to load templates: %v", err)
+		panic(fmt.Sprintf("Failed to load templates: %v", err))
 	}
 	router.SetHTMLTemplate(templ)
 
@@ -176,6 +181,17 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	}
 
 	h := handlers.NewHandler(db, cfg, notifier)
+
+	router.GET("/healthz", func(c *gin.Context) {
+		c.String(200, "ok")
+	})
+	router.GET("/readyz", func(c *gin.Context) {
+		if err := db.Ping(); err != nil {
+			c.String(503, "not ready")
+			return
+		}
+		c.String(200, "ready")
+	})
 
 	public := router.Group("/")
 	{
