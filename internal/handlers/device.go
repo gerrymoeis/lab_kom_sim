@@ -336,6 +336,7 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 		Location:     req.Location,
 		PurchaseDate: req.PurchaseDate,
 		Notes:        req.Notes,
+		UsageType:    req.UsageType,
 	}, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, "Gagal mengupdate perangkat")
 		return

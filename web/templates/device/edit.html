@@ -1,66 +1,86 @@
 {{ template "layout/base.html" . }}
 
-<div class="container mt-4">
-    {{ template "layout/card_edit.html" . }}
-                    <form method="POST" action="/devices/{{ .device.ID }}/edit">
-                        <div class="mb-3">
-                            <label for="device_type_id" class="form-label">Tipe Perangkat *</label>
-                            <select class="form-select" id="device_type_id" name="device_type_id" required>
-                                <option value="">Pilih tipe perangkat...</option>
-                                {{ range $dt := .deviceTypes }}
-                                <option value="{{ $dt.ID }}" {{ if eq $.device.DeviceTypeID $dt.ID }}selected{{ end }}>
-                                    {{ $dt.CategoryName }} — {{ $dt.Name }} ({{ $dt.AssetCodePrefix }})
-                                </option>
-                                {{ end }}
-                            </select>
-                        </div>
+<div class="container-fluid mt-4 px-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-pencil"></i> {{ .title }}</h5>
+        </div>
+        <div class="card-body">
+            {{ template "layout/alert.html" . }}
 
-                        <div class="mb-3">
-                            <label for="asset_code" class="form-label">Asset Code *</label>
-                            <input type="text" class="form-control" id="asset_code" name="asset_code" value="{{ .device.AssetCode }}" required>
-                            <small class="form-text text-muted">Format: PREFIX-NNN (contoh: MOUSE-AXIOO-001)</small>
-                        </div>
+            <form method="POST" action="/devices/{{ .device.ID }}/edit">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="device_type_id" class="form-label">Tipe Perangkat *</label>
+                        <select class="form-select" id="device_type_id" name="device_type_id" required>
+                            <option value="">Pilih tipe perangkat...</option>
+                            {{ range $dt := .deviceTypes }}
+                            <option value="{{ $dt.ID }}" {{ if eq $.device.DeviceTypeID $dt.ID }}selected{{ end }}>
+                                {{ $dt.CategoryName }} — {{ $dt.Name }} ({{ $dt.AssetCodePrefix }}) — {{ if eq $dt.UsageType "loanable" }}Dipinjamkan{{ else if eq $dt.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }}
+                            </option>
+                            {{ end }}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="usage_type" class="form-label">Tipe Penggunaan *</label>
+                        <select class="form-select" id="usage_type" name="usage_type">
+                            <option value="">Ikuti Tipe Perangkat ({{ if eq .device.UsageType "loanable" }}Dipinjamkan{{ else if eq .device.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }})</option>
+                            <option value="loanable" {{ if eq .device.UsageTypeOverride "loanable" }}selected{{ end }}>Dipinjamkan</option>
+                            <option value="consumable" {{ if eq .device.UsageTypeOverride "consumable" }}selected{{ end }}>Habis Pakai</option>
+                            <option value="installable" {{ if eq .device.UsageTypeOverride "installable" }}selected{{ end }}>Instalasi</option>
+                        </select>
+                        <small class="text-muted">Kosongkan untuk mengikuti tipe perangkat. Isi jika ingin override untuk perangkat ini saja.</small>
+                    </div>
+                </div>
 
-                        <div class="mb-3">
-                            <label for="serial_number" class="form-label">Serial Number</label>
-                            <input type="text" class="form-control" id="serial_number" name="serial_number" value="{{ .device.SerialNumber }}">
-                        </div>
+                <div class="mb-3">
+                    <label for="asset_code" class="form-label">Asset Code *</label>
+                    <input type="text" class="form-control" id="asset_code" name="asset_code" value="{{ .device.AssetCode }}" required>
+                    <small class="form-text text-muted">Format: PREFIX-NNN (contoh: MOUSE-AXIOO-001)</small>
+                </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="condition" class="form-label">Kondisi *</label>
-                                <select class="form-select" id="condition" name="condition" required>
-                                    <option value="baik" {{ if eq .device.Condition "baik" }}selected{{ end }}>Baik</option>
-                                    <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
-                                    <option value="maintenance" {{ if eq .device.Condition "maintenance" }}selected{{ end }}>Maintenance</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="purchase_date" class="form-label">Tanggal Beli</label>
-                                <input type="date" class="form-control" id="purchase_date" name="purchase_date" 
-                                    value="{{ if .device.PurchaseDate }}{{ (localTime .device.PurchaseDate).Format "2006-01-02" }}{{ end }}">
-                            </div>
-                        </div>
+                <div class="mb-3">
+                    <label for="serial_number" class="form-label">Serial Number</label>
+                    <input type="text" class="form-control" id="serial_number" name="serial_number" value="{{ .device.SerialNumber }}">
+                </div>
 
-                        <div class="mb-3">
-                            <label for="location" class="form-label">Lokasi</label>
-                            <input type="text" class="form-control" id="location" name="location" value="{{ .device.Location }}">
-                        </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="condition" class="form-label">Kondisi *</label>
+                        <select class="form-select" id="condition" name="condition" required>
+                            <option value="baik" {{ if eq .device.Condition "baik" }}selected{{ end }}>Baik</option>
+                            <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
+                            <option value="maintenance" {{ if eq .device.Condition "maintenance" }}selected{{ end }}>Maintenance</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="purchase_date" class="form-label">Tanggal Beli</label>
+                        <input type="date" class="form-control" id="purchase_date" name="purchase_date" 
+                            value="{{ if .device.PurchaseDate }}{{ (localTime .device.PurchaseDate).Format "2006-01-02" }}{{ end }}">
+                    </div>
+                </div>
 
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Catatan</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ .device.Notes }}</textarea>
-                        </div>
+                <div class="mb-3">
+                    <label for="location" class="form-label">Lokasi</label>
+                    <input type="text" class="form-control" id="location" name="location" value="{{ .device.Location }}">
+                </div>
 
-                        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
-                            <button type="submit" class="btn btn-warning">
-                                <i class="bi bi-save"></i> Update
-                            </button>
-                            <a href="/devices" class="btn btn-secondary">
-                                <i class="bi bi-x-circle"></i> Batal
-                            </a>
-                        </div>
-                    </form>
-{{ template "layout/card_close.html" . }}
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Catatan</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3">{{ .device.Notes }}</textarea>
+                </div>
+
+                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-save"></i> Update
+                    </button>
+                    <a href="/devices" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Batal
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {{ template "layout/footer.html" . }}
