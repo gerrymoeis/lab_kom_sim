@@ -79,6 +79,8 @@ func (h *Handler) PCCreatePage(c *gin.Context) {
 		"title": "Tambah PC Baru", "currentPage": "pc",
 		"username": username, "role": role,
 		"android": h.cfg.Android,
+		"nextMahasiswaLabel": h.pcService.NextLabel("dipakai", true),
+		"nextCadanganLabel":  h.pcService.NextLabel("cadangan", false),
 	})
 }
 
@@ -104,7 +106,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		SerialNumber: req.SerialNumber, OperatingSystem: req.OperatingSystem,
 		PCType: req.PCType, BrandModel: req.BrandModel, Accessories: req.Accessories,
 		PhotoSerial: photoSerial, PhotoFront: photoFront,
-		Label: req.Label,
+		Label: req.Label, IsMahasiswa: req.IsMahasiswa == "true",
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
