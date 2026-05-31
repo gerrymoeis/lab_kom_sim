@@ -6,7 +6,6 @@ import (
 	"log"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "modernc.org/sqlite"
 )
 
 func InitDB(dbPath, dbURL string) (*DB, error) {
@@ -25,13 +24,13 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 	}
 
 	log.Println("Using SQLite (local)")
-	dsn := dbPath + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)&loc=UTC"
+	dsn := dbPath + "?" + sqliteDSNSuffix()
 
-	reader, err := sql.Open("sqlite", dsn)
+	reader, err := sql.Open(sqliteDriverName(), dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite reader: %w", err)
 	}
-	writer, err := sql.Open("sqlite", dsn)
+	writer, err := sql.Open(sqliteDriverName(), dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite writer: %w", err)
 	}

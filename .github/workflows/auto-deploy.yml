@@ -41,16 +41,31 @@ jobs:
           OLD_HEAD=$(git rev-parse HEAD)
 
           echo "=== 2. Merge refactoring (theirs for conflicts) ==="
-          git merge origin/refactoring -X theirs --no-commit
+          # Merge mungkin gagal dengan modify/delete conflict untuk files
+          # yang dihapus di refactoring tapi masih ada di deploy branch
+          # (contoh: deploy-local.sh). Gagal merge akan di-resolve di step 3.
+          git merge origin/refactoring -X theirs --no-commit 2>&1 || true
 
-          echo "=== 3. Restore deploy-specific files ==="
+          echo "=== 3. Resolve modify/delete conflict ==="
+          # deploy-local.sh sudah dihapus dari refactoring → hapus juga dari deploy branch
+          git rm --ignore-unmatch --force scripts/deploy-local.sh 2>/dev/null || true
+          # Pastikan tidak ada conflict lain yang gagal diresolve
+          if [ -n "$(git ls-files -u)" ]; then
+            echo "Fatal: unresolved merge conflicts:"
+            git status
+            exit 1
+          fi
+
+          echo "=== 4. Restore deploy-specific files ==="
           git checkout "${OLD_HEAD}" -- README.md go.mod go.sum
           git checkout "${OLD_HEAD}" -- scripts/
+          # deploy-local.sh tidak boleh di-restore — sudah dihapus di refactoring
+          git rm --ignore-unmatch scripts/deploy-local.sh 2>/dev/null || true
 
-          echo "=== 3b. Force .env.example dari refactoring (3-way merge bisa pilih versi lama karena revert history) ==="
+          echo "=== 5. Force .env.example dari refactoring (3-way merge bisa pilih versi lama karena revert history) ==="
           git checkout origin/refactoring -- .env.example
 
-          echo "=== 4. Cleanup Windows scripts on deploy_linux ==="
+          echo "=== 6. Cleanup Windows scripts on deploy_linux ==="
           if [ "${PLATFORM}" = "linux" ]; then
             git rm --ignore-unmatch \
               scripts/build-windows.ps1 \
@@ -58,28 +73,28 @@ jobs:
               scripts/download-vendor.ps1
           fi
 
-          echo "=== 5. Fix database driver (modernc vs mattn) ==="
-          sed -i 's|_ "github.com/mattn/go-sqlite3"|_ "modernc.org/sqlite"|' internal/database/database.go || true
-          sed -i 's|sql.Open("sqlite3"|sql.Open("sqlite"|' internal/database/database.go || true
+          echo "=== 7. Resolve dependencies ==="
+          if [ "${PLATFORM}" = "linux" ] || [ "${PLATFORM}" = "android" ]; then
+            GOFLAGS="-tags=moderncsqlite" go mod tidy
+          else
+            go mod tidy
+          fi
 
-          echo "=== 5b. Transform DSN parameters for modernc _pragma= format ==="
-          sed -i 's|_journal_mode=WAL|_pragma=journal_mode(WAL)|' internal/database/database.go
-          sed -i 's|_busy_timeout=5000|_pragma=busy_timeout(5000)|' internal/database/database.go
-          sed -i 's|_synchronous=NORMAL|_pragma=synchronous(NORMAL)|' internal/database/database.go
-          sed -i 's|_foreign_keys=ON|_pragma=foreign_keys(ON)|' internal/database/database.go
-          sed -i 's|_loc=UTC|loc=UTC|' internal/database/database.go
+          echo "=== 8. Run tests ==="
+          go test ./... -count=1
 
-          echo "=== 6. Resolve dependencies ==="
-          go mod tidy
-
-          echo "=== 7. Stage all changes ==="
+          echo "=== 9. Stage all changes ==="
           git add -A
 
-          echo "=== 8. Verify build ==="
-          go build ./...
-          go vet ./...
+          echo "=== 10. Verify build ==="
+          BUILD_TAGS=""
+          if [ "${PLATFORM}" = "linux" ] || [ "${PLATFORM}" = "android" ]; then
+            BUILD_TAGS="-tags moderncsqlite"
+          fi
+          go build ${BUILD_TAGS} ./...
+          go vet ${BUILD_TAGS} ./...
 
-          echo "=== 9. Commit and push ==="
+          echo "=== 11. Commit and push ==="
           if ! git diff --cached --quiet; then
             git commit -m "sync: merge refactoring into ${DEPLOY_BRANCH}"
             git push origin "${DEPLOY_BRANCH}"

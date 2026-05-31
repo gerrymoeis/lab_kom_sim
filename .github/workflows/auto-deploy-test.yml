@@ -58,11 +58,14 @@ jobs:
           done
           rm -rf "$SAVEDIR"
 
-          echo "=== 5. Verify build ==="
-          go build -tags sqlite_fts5 ./cmd/server/
-          go vet -tags sqlite_fts5 ./cmd/server/
+          echo "=== 5. Run tests ==="
+          go test ./... -count=1
 
-          echo "=== 6. Commit and push ==="
+          echo "=== 6. Verify build ==="
+          go build -tags moderncsqlite ./cmd/server/
+          go vet -tags moderncsqlite ./cmd/server/
+
+          echo "=== 7. Commit and push ==="
           if ! git diff --cached --quiet; then
             git commit -m "sync: align deploy_test with refactoring"
             git push origin deploy_test
