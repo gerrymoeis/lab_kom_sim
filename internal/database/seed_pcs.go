@@ -177,6 +177,11 @@ func seedPCs(db *DB) error {
 		{41, "", "", nil, nil, "normal", "-"},
 		{42, "", "", nil, nil, "normal", "-"},
 		{43, "", "", nil, nil, "normal", "-"},
+		{44, "", "", nil, nil, "normal", "-"},
+		{45, "", "", nil, nil, "normal", "-"},
+		{46, "", "", nil, nil, "normal", "-"},
+		{47, "", "", nil, nil, "normal", "-"},
+		{48, "", "", nil, nil, "normal", "-"},
 	}
 
 	// Default values
@@ -192,6 +197,7 @@ func seedPCs(db *DB) error {
 	)
 
 	rowFor := func(n int) int {
+		if n >= 44 { return ((n - 1) / 8) + 1 }
 		if n >= 41 { return 0 }
 		return ((n - 1) / 8) + 1
 	}
@@ -261,7 +267,7 @@ func seedPCs(db *DB) error {
 		label := labelFor(pc.Number)
 		pcType := defPCType
 		brandModel := defBrandModel
-		if pc.Number >= 41 {
+		if pc.Number >= 41 && pc.Number <= 43 {
 			pcType = label
 			brandModel = ""
 		}

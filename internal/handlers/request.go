@@ -22,6 +22,8 @@ type CreatePCRequest struct {
 	Storage         string `form:"storage"`
 	SerialFileRef   string `form:"serial_file_ref"`
 	FrontFileRef    string `form:"front_file_ref"`
+	PurchaseDate    string `form:"purchase_date"`
+	LastChecked     string `form:"last_checked"`
 }
 
 type EditPCRequest struct {
@@ -37,6 +39,10 @@ type EditPCRequest struct {
 	Storage         string   `form:"storage"`
 	Notes           string   `form:"notes"`
 	Label           string   `form:"label"`
+	Row             int      `form:"row"`
+	Column          int      `form:"column"`
+	PurchaseDate    string   `form:"purchase_date"`
+	LastChecked     string   `form:"last_checked"`
 	SerialFileRef   string   `form:"serial_file_ref"`
 	FrontFileRef    string   `form:"front_file_ref"`
 	RequiredSw      []string `form:"required_sw"`
