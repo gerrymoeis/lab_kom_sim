@@ -151,6 +151,14 @@ func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, 
 	return nil
 }
 
+func (s *DeviceService) CountByDeviceTypeID(deviceTypeID int) (int, error) {
+	return s.deviceRepo.CountByDeviceTypeID(deviceTypeID)
+}
+
+func (s *DeviceService) CountByCategoryID(categoryID int) (int, error) {
+	return s.deviceRepo.CountByCategoryID(categoryID)
+}
+
 func (s *DeviceService) DeleteDevice(id int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	if err := s.deviceRepo.Delete(id); err != nil {
 		s.log.LogDelete(actorID, actorUsername, actorRole, "device", id,
