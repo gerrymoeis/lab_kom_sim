@@ -24,6 +24,7 @@ type CreatePCRequest struct {
 	FrontFileRef    string `form:"front_file_ref"`
 	PurchaseDate    string `form:"purchase_date"`
 	LastChecked     string `form:"last_checked"`
+	Notes           string `form:"notes"`
 }
 
 type EditPCRequest struct {

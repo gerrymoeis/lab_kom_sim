@@ -5,9 +5,9 @@
                     <form method="POST" action="/pc/{{ .pc.Label }}/edit" enctype="multipart/form-data">
                         <div class="row mb-3">
                             <div class="col-md-4">
-                                <label for="label" class="form-label">Nomor PC</label>
-                                <input type="text" class="form-control" id="label" name="label" value="{{ .pc.Label }}">
-                                <small class="text-muted">Label/nomor identitas PC</small>
+                                <label for="label" class="form-label">Nomor PC {{ if .isRegularPC }}<small class="text-muted">(read-only — label meja)</small>{{ end }}</label>
+                                <input type="text" class="form-control" id="label" name="label" value="{{ .pc.Label }}"{{ if .isRegularPC }} readonly{{ end }}>
+                                <small class="text-muted">{{ if .isRegularPC }}Label meja tidak dapat diubah manual. Gunakan "Kelola Layout" untuk menukar.{{ else }}Label/nomor identitas PC{{ end }}</small>
                             </div>
                             <div class="col-md-4">
                                 <label for="placement" class="form-label">Penempatan *</label>
@@ -15,6 +15,11 @@
                                     <option value="dipakai" {{ if eq .pc.Placement "dipakai" }}selected{{ end }}>Dipakai (Terpasang)</option>
                                     <option value="cadangan" {{ if eq .pc.Placement "cadangan" }}selected{{ end }}>Cadangan (Belum Terpasang)</option>
                                 </select>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end mb-3">
+                                <button type="button" class="btn btn-outline-primary w-100" onclick="PCLayoutManager.openManager()">
+                                    <i class="bi bi-grid-3x3-gap"></i> Kelola Layout
+                                </button>
                             </div>
                         </div>
 
@@ -26,8 +31,8 @@
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="row" class="form-label">Kolom</label>
-                                <input type="number" class="form-control" id="row" name="row" min="1" max="6" value="{{ .pc.Row }}">
-                                <small class="text-muted">1-6</small>
+                                <input type="number" class="form-control" id="row" name="row" min="0" max="99" value="{{ .pc.Row }}">
+                                <small class="text-muted">0-99</small>
                             </div>
                         </div>
 
@@ -428,4 +433,6 @@ window.ANDROID_MODE = {{ .android }};
 <script src="/static/vendor/heic-to.js"></script>
 {{ end }}
 <script src="/static/js/photo-upload.js"></script>
+<script src="/static/js/layout-manager.js"></script>
+{{ template "pc/layout_modal.html" . }}
 {{ template "layout/footer.html" . }}

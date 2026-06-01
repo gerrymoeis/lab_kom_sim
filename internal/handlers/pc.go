@@ -109,6 +109,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		Label: req.Label, IsMahasiswa: req.IsMahasiswa == "true",
 		PurchaseDate: req.PurchaseDate,
 		LastChecked: req.LastChecked,
+		Notes: req.Notes,
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
@@ -139,6 +140,16 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		lcDisplay = pc.LastChecked.Format("02/01/2006 15:04")
 	}
 
+	isRegular := len(pc.Label) > 3 && strings.HasPrefix(pc.Label, "pc-")
+	if isRegular {
+		for _, c := range pc.Label[3:] {
+			if c < '0' || c > '9' {
+				isRegular = false
+				break
+			}
+		}
+	}
+
 	c.HTML(http.StatusOK, "pc/edit.html", gin.H{
 		"title": "Edit PC", "currentPage": "pc",
 		"username": username, "role": role, "pc": pc,
@@ -147,6 +158,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		"purchaseDate": pd,
 		"lastChecked": lc,
 		"lastCheckedDisplay": lcDisplay,
+		"isRegularPC": isRegular,
 	})
 }
 
@@ -256,6 +268,127 @@ func (h *Handler) PCExport(c *gin.Context) {
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", "attachment; filename="+fn)
 	f.Write(c.Writer)
+}
+
+type pcLayoutItem struct {
+	Label     string `json:"label"`
+	Row       int    `json:"row"`
+	Column    int    `json:"column"`
+	Status    string `json:"status"`
+	Placement string `json:"placement"`
+}
+
+func isNumericLabel(label string) bool {
+	if len(label) < 4 || !strings.HasPrefix(label, "pc-") {
+		return false
+	}
+	for _, c := range label[3:] {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func (h *Handler) PCGetLayout(c *gin.Context) {
+	pcs, err := h.pcService.List(repository.PCFilters{})
+	if err != nil {
+		h.errJSON(c, http.StatusInternalServerError, "Gagal mengambil data layout")
+		return
+	}
+
+	maxRow := 5
+	for _, pc := range pcs {
+		if pc.Placement == "dipakai" && isNumericLabel(pc.Label) && pc.Row > maxRow {
+			maxRow = pc.Row
+		}
+	}
+
+	grid := make([][]pcLayoutItem, maxRow)
+	for i := range grid {
+		grid[i] = make([]pcLayoutItem, 8)
+	}
+	var cadangan, special []pcLayoutItem
+
+	for _, pc := range pcs {
+		item := pcLayoutItem{Label: pc.Label, Row: pc.Row, Column: pc.Column, Status: pc.Status, Placement: pc.Placement}
+		if pc.Placement == "cadangan" {
+			cadangan = append(cadangan, item)
+		} else if isNumericLabel(pc.Label) && pc.Row >= 1 && pc.Row <= maxRow && pc.Column >= 1 && pc.Column <= 8 {
+			grid[pc.Row-1][pc.Column-1] = item
+		} else {
+			special = append(special, item)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"grid":     grid,
+		"cadangan": cadangan,
+		"special":  special,
+		"maxRow":   maxRow,
+	})
+}
+
+func (h *Handler) PCSwap(c *gin.Context) {
+	var req struct {
+		A string `json:"a" binding:"required"`
+		B string `json:"b" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
+		return
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	if err := h.pcService.SwapPCs(req.A, req.B, uid, u, r, ip, ua); err != nil {
+		h.errJSON(c, http.StatusInternalServerError, "Gagal menukar PC")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *Handler) PCReplace(c *gin.Context) {
+	var req struct {
+		Target string `json:"target" binding:"required"`
+		Spare  string `json:"spare" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
+		return
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	if err := h.pcService.ReplacePC(req.Target, req.Spare, uid, u, r, ip, ua); err != nil {
+		h.errJSON(c, http.StatusInternalServerError, "Gagal mengganti PC")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
+	var req struct {
+		Row int `json:"row" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
+		return
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	if err := h.pcService.MoveRowToCadangan(req.Row, uid, u, r, ip, ua); err != nil {
+		h.errJSON(c, http.StatusInternalServerError, "Gagal memindahkan baris")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 func processPhotoRefs(serialRef, frontRef string) (serial, front string) {
