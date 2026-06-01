@@ -61,10 +61,10 @@
                         <td>{{ .Description }}</td>
                         <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
                         <td class="text-nowrap">
-                            <a href="/software/{{ .ID }}" class="btn btn-sm btn-info me-1" title="Detail"><i class="bi bi-eye"></i></a>
-                            <a href="/software/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit"><i class="bi bi-pencil"></i></a>
+                            <a href="/software/{{ .Slug }}" class="btn btn-sm btn-info me-1" title="Detail"><i class="bi bi-eye"></i></a>
+                            <a href="/software/{{ .Slug }}/edit" class="btn btn-sm btn-warning me-1" title="Edit"><i class="bi bi-pencil"></i></a>
                             <button type="button" class="btn btn-sm btn-danger" title="Hapus" onclick="if(confirm('Hapus {{ .Name }}?')){ document.getElementById('del-{{ .ID }}').submit(); }"><i class="bi bi-trash"></i></button>
-                            <form id="del-{{ .ID }}" method="POST" action="/software/{{ .ID }}/delete" style="display:none;"></form>
+                            <form id="del-{{ .ID }}" method="POST" action="/software/{{ .Slug }}/delete" style="display:none;"></form>
                         </td>
                     </tr>
                     {{ else }}

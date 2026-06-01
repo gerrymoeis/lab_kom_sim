@@ -477,6 +477,16 @@ func runMigrations(db *DB, isPostgres bool) error {
 		}
 	}
 
+	// Slug column for software_catalog only (name has spaces/special chars, needs slugify)
+	if exists, err := d.columnExists(db, "software_catalog", "slug"); err != nil {
+		return fmt.Errorf("failed to check software_catalog.slug: %w", err)
+	} else if !exists {
+		if _, err := db.Exec(`ALTER TABLE software_catalog ADD COLUMN slug TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("failed to add software_catalog.slug: %w", err)
+		}
+		// Backfill will be done by repository.Create() during seed
+	}
+
 	if !isPostgres {
 		if _, err := db.Exec("ANALYZE"); err != nil {
 			return fmt.Errorf("failed to run ANALYZE: %w", err)

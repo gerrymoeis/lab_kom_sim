@@ -36,6 +36,10 @@ func (s *SoftwareService) GetByID(id int) (*models.SoftwareCatalog, error) {
 	return s.repo.GetByID(id)
 }
 
+func (s *SoftwareService) GetBySlug(slug string) (*models.SoftwareCatalog, error) {
+	return s.repo.GetBySlug(slug)
+}
+
 func (s *SoftwareService) GetPCInstallStatus(id int) ([]repository.PCInstallStatus, error) {
 	return s.repo.GetPCInstallStatus(id)
 }
@@ -53,16 +57,10 @@ func (s *SoftwareService) Create(in SoftwareCreateInput, actorID int, actorUsern
 
 	_, err := s.repo.Create(in.Name, in.Category, in.Description)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
-			s.log.LogCreate(actorID, actorUsername, actorRole, "software", 0,
-				map[string]any{"name": in.Name, "category": in.Category},
-				ipAddress, userAgent, "Duplicate: "+in.Name)
-			return err
-		}
 		s.log.LogCreate(actorID, actorUsername, actorRole, "software", 0,
 			map[string]any{"name": in.Name, "category": in.Category},
 			ipAddress, userAgent, err.Error())
-		return err
+		return sanitizeDBError(err)
 	}
 	s.log.LogCreate(actorID, actorUsername, actorRole, "software", 0,
 		map[string]any{"name": in.Name, "category": in.Category, "description": in.Description},
