@@ -93,7 +93,6 @@
                 <div class="pc-grid">
                     {{ range $barisIndex, $baris := .grid }}
                     <div class="pc-row mb-3">
-                        <span class="small text-muted me-2" style="width:48px">Baris {{ add $barisIndex 1 }}</span>
                         {{ range $kolomIndex, $pc := $baris }}
                         {{ if $pc.ID }}
                         <div class="pc-card-wrapper">
@@ -363,50 +362,37 @@
         };
     }
     
-    // Initialize Windows Version Badges
-    document.addEventListener('DOMContentLoaded', function() {
-        const pcCards = document.querySelectorAll('.pc-card-clickable');
-        
-        pcCards.forEach(card => {
-            const pcLabel = card.dataset.pcLabel;
-            const osString = card.dataset.pcOs;
-            
-            const winInfo = parseWindowsVersion(osString);
-            
-            // Update badge
-            const badge = document.getElementById('win-badge-' + pcLabel);
-            if (badge && winInfo.shortText !== '-') {
-                badge.textContent = winInfo.shortText;
-                badge.className = 'pc-windows-badge ' + winInfo.badgeClass;
-            } else if (badge) {
-                badge.style.display = 'none';
-            }
-            
-            // Update text
-            const text = document.getElementById('win-text-' + pcLabel);
-            if (text && winInfo.fullText !== '-') {
-                text.textContent = winInfo.fullText;
-            }
-        });
-    });
+    var pcDetailModal = null;
+    function getPCDetailModal() {
+        if (!pcDetailModal) { var el = document.getElementById('pcDetailModal'); if (el) pcDetailModal = new bootstrap.Modal(el); }
+        return pcDetailModal;
+    }
     
-    // Handle PC Card Click - Populate Modal with Dynamic Content
-    var pcDetailModal = new bootstrap.Modal(document.getElementById('pcDetailModal'));
+    function initWindowsBadges() {
+        document.querySelectorAll('.pc-card-clickable').forEach(function(card) {
+            var label = card.dataset.pcLabel;
+            var os = card.dataset.pcOs || '';
+            var winInfo = parseWindowsVersion(os);
+            var badge = document.getElementById('win-badge-' + label);
+            if (badge && winInfo.shortText !== '-') { badge.textContent = winInfo.shortText; badge.className = 'pc-windows-badge ' + winInfo.badgeClass; }
+            else if (badge) { badge.style.display = 'none'; }
+            var text = document.getElementById('win-text-' + label);
+            if (text && winInfo.fullText !== '-') { text.textContent = winInfo.fullText; }
+        });
+    }
     
     window.openPCModal = function(card) {
-        const pcLabel = card.dataset.pcLabel;
-        const pcRow = card.dataset.pcRow;
-        const pcColumn = card.dataset.pcColumn;
-        const pcStatus = card.dataset.pcStatus;
-        const pcProcessor = card.dataset.pcProcessor || '-';
-        const pcRam = card.dataset.pcRam || '-';
-        const pcStorage = card.dataset.pcStorage || '-';
-        const pcOs = card.dataset.pcOs || '-';
-        const pcNotes = card.dataset.pcNotes || '-';
+        var pcLabel = card.dataset.pcLabel;
+        var pcRow = card.dataset.pcRow;
+        var pcColumn = card.dataset.pcColumn;
+        var pcStatus = card.dataset.pcStatus;
+        var pcProcessor = card.dataset.pcProcessor || '-';
+        var pcRam = card.dataset.pcRam || '-';
+        var pcStorage = card.dataset.pcStorage || '-';
+        var pcOs = card.dataset.pcOs || '-';
+        var pcNotes = card.dataset.pcNotes || '-';
         
-        const modalTitle = card.getAttribute('aria-label') || '';
-        document.getElementById('pcDetailModalLabel').textContent = (modalTitle ? modalTitle.replace(', Status', '') : pcLabel) + ' Detail';
-        
+        document.getElementById('pcDetailModalLabel').textContent = pcLabel + ' Detail';
         document.getElementById('modal-position').textContent = 'Baris ' + pcColumn + ', Kolom ' + pcRow;
         document.getElementById('modal-processor').textContent = pcProcessor;
         document.getElementById('modal-ram').textContent = pcRam;
@@ -414,37 +400,33 @@
         document.getElementById('modal-os').textContent = pcOs;
         document.getElementById('modal-notes').textContent = pcNotes;
         
-        const statusBadge = document.getElementById('modal-status-badge');
+        var statusBadge = document.getElementById('modal-status-badge');
         statusBadge.textContent = pcStatus;
         statusBadge.className = 'badge';
-        
-        if (pcStatus === 'normal') {
-            statusBadge.classList.add('bg-success');
-        } else if (pcStatus === 'warning') {
-            statusBadge.classList.add('bg-warning');
-        } else if (pcStatus === 'broken') {
-            statusBadge.classList.add('bg-danger');
-        } else {
-            statusBadge.classList.add('bg-secondary');
-        }
+        if (pcStatus === 'normal') { statusBadge.classList.add('bg-success'); }
+        else if (pcStatus === 'warning') { statusBadge.classList.add('bg-warning'); }
+        else if (pcStatus === 'broken') { statusBadge.classList.add('bg-danger'); }
+        else { statusBadge.classList.add('bg-secondary'); }
         
         document.getElementById('modal-detail-link').href = '/pc/' + pcLabel;
-        const editLink = document.getElementById('modal-edit-link');
-        if (editLink) {
-            editLink.href = '/pc/' + pcLabel + '/edit';
-        }
+        var editLink = document.getElementById('modal-edit-link');
+        if (editLink) { editLink.href = '/pc/' + pcLabel + '/edit'; }
         
-        pcDetailModal.show();
+        var modal = getPCDetailModal();
+        if (modal) modal.show();
     }
     
-    function initPCCards() {
+    function bindPCCards() {
         document.querySelectorAll('.pc-card-clickable').forEach(function(card) {
             card.addEventListener('click', function() { openPCModal(this); });
             card.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPCModal(this); } });
         });
     }
     
-    document.addEventListener('DOMContentLoaded', initPCCards);
+    document.addEventListener('DOMContentLoaded', function() {
+        initWindowsBadges();
+        bindPCCards();
+    });
     </script>
 
 <script>
@@ -475,12 +457,12 @@ window.refreshDashboardGrid = function() {
             });
             var html = '';
             for (var r = 0; r < grid.length; r++) {
-                html += '<div class="pc-row mb-3"><span class="small text-muted me-2" style="width:48px">Baris ' + (r + 1) + '</span>';
+                html += '<div class="pc-row mb-3">';
                 for (var c = 0; c < grid[r].length; c++) {
                     var pc = grid[r][c];
                     if (pc && pc.ID) {
                         var statusClass = pc.Status || 'normal';
-                        html += '<div class="pc-card-wrapper"><div class="pc-card status-' + statusClass + ' pc-card-clickable" role="button" tabindex="0" aria-label="PC ' + pc.Label + ', Status ' + statusClass + ', Baris ' + (r + 1) + ', Kolom ' + (c + 1) + '" data-pc-id="' + pc.ID + '" data-pc-label="' + pc.Label + '" data-pc-row="' + pc.Row + '" data-pc-column="' + pc.Column + '" data-pc-status="' + statusClass + '" data-pc-processor="' + (pc.Processor || '') + '" data-pc-ram="' + (pc.RAM || '') + '" data-pc-storage="' + (pc.Storage || '') + '" data-pc-os="' + (pc.OperatingSystem || '') + '" data-pc-notes="' + (pc.Notes || '') + '" style="cursor:pointer"><div class="pc-number">' + pc.Label + '</div><div class="pc-icon"><i class="bi bi-pc-display"></i></div><div class="pc-status-badge"><i class="bi ' + (statusClass === 'warning' ? 'bi-exclamation-triangle text-white' : statusClass === 'broken' ? 'bi-x-circle text-white' : 'bi-check-circle text-white') + '"></i><span class="visually-hidden">Status ' + (statusClass === 'warning' ? 'Warning' : statusClass === 'broken' ? 'Rusak' : 'Normal') + '</span></div><div class="pc-windows-badge" id="win-badge-' + pc.Label + '"><span class="visually-hidden">Windows Version</span></div></div><div class="pc-windows-text" id="win-text-' + pc.Label + '"></div></div>';
+                        html += '<div class="pc-card-wrapper"><div class="pc-card status-' + statusClass + ' pc-card-clickable" role="button" tabindex="0" aria-label="PC ' + pc.Label + ', Status ' + statusClass + '" data-pc-id="' + pc.ID + '" data-pc-label="' + pc.Label + '" data-pc-row="' + pc.Row + '" data-pc-column="' + pc.Column + '" data-pc-status="' + statusClass + '" data-pc-processor="' + (pc.Processor || '') + '" data-pc-ram="' + (pc.RAM || '') + '" data-pc-storage="' + (pc.Storage || '') + '" data-pc-os="' + (pc.OperatingSystem || '') + '" data-pc-notes="' + (pc.Notes || '') + '" style="cursor:pointer"><div class="pc-number">' + pc.Label + '</div><div class="pc-icon"><i class="bi bi-pc-display"></i></div><div class="pc-status-badge"><i class="bi ' + (statusClass === 'warning' ? 'bi-exclamation-triangle text-white' : statusClass === 'broken' ? 'bi-x-circle text-white' : 'bi-check-circle text-white') + '"></i><span class="visually-hidden">Status ' + (statusClass === 'warning' ? 'Warning' : statusClass === 'broken' ? 'Rusak' : 'Normal') + '</span></div><div class="pc-windows-badge" id="win-badge-' + pc.Label + '"><span class="visually-hidden">Windows Version</span></div></div><div class="pc-windows-text" id="win-text-' + pc.Label + '"></div></div>';
                     } else {
                         html += '<div class="pc-card-wrapper"><div class="pc-card pc-empty"><div class="pc-number">-</div><div class="pc-icon text-muted"><i class="bi bi-dash"></i></div></div></div>';
                     }
@@ -490,20 +472,8 @@ window.refreshDashboardGrid = function() {
             var gridContainer = document.querySelector('.pc-grid');
             if (gridContainer) {
                 gridContainer.innerHTML = html;
-                // re-init windows badges
-                document.querySelectorAll('.pc-card-clickable').forEach(function(card) {
-                    var label = card.dataset.pcLabel;
-                    var os = card.dataset.pcOs || '';
-                    var winInfo = parseWindowsVersion(os);
-                    var badge = document.getElementById('win-badge-' + label);
-                    if (badge && winInfo.shortText !== '-') { badge.textContent = winInfo.shortText; badge.className = 'pc-windows-badge ' + winInfo.badgeClass; }
-                    else if (badge) { badge.style.display = 'none'; }
-                    var text = document.getElementById('win-text-' + label);
-                    if (text && winInfo.fullText !== '-') { text.textContent = winInfo.fullText; }
-                    // click handler
-                    card.addEventListener('click', function() { openPCModal(this); });
-                    card.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPCModal(this); } });
-                });
+                initWindowsBadges();
+                bindPCCards();
             }
         })
         .catch(function() {});
