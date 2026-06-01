@@ -71,26 +71,26 @@
             {{ template "layout/pagination.html" . }}
 
             {{ range $ci, $cat := .groupedData.Categories }}
-            <div class="category-group mb-2">
-                <h5 class="fw-bold collapsible-header d-flex align-items-center py-1 px-2 rounded bg-light" onclick="toggleGroup(this)" style="cursor:pointer" data-target="#cat-{{ $ci }}-body">
-                    <i class="bi bi-chevron-right me-2 chevron"></i>
-                    {{ $cat.CategoryName }}
+            <div class="category-group mb-3 border rounded">
+                <div class="category-header d-flex align-items-center py-2 px-3 rounded-top bg-light" onclick="toggleGroup(this)" style="cursor:pointer" data-target="#cat-{{ $ci }}-body">
+                    <i class="bi bi-chevron-right me-2 chevron fs-6"></i>
+                    <span class="fw-semibold fs-6">{{ $cat.CategoryName }}</span>
                     <span class="badge bg-secondary ms-2">{{ len $cat.Types }} tipe</span>
-                </h5>
-                <div id="cat-{{ $ci }}-body" class="collapse" style="display:none">
+                </div>
+                <div id="cat-{{ $ci }}-body" style="display:none" class="p-2">
                     {{ $typeCount := len $cat.Types }}
                     {{ range $ti, $type := $cat.Types }}
-                    <div class="device-type-group ms-3 mb-3">
-                        <h6 class="fw-semibold collapsible-header d-flex align-items-center py-1 px-2 rounded" onclick="toggleGroup(this)" style="cursor:pointer" data-target="#cat-{{ $ci }}-type-{{ $ti }}-body">
-                            <i class="bi bi-chevron-down me-2 chevron"></i>
-                            {{ $type.TypeName }}
+                    <div class="device-type-group mb-2 border-bottom pb-2">
+                        <div class="type-header d-flex align-items-center py-1 px-2" onclick="toggleGroup(this)" style="cursor:pointer" data-target="#cat-{{ $ci }}-type-{{ $ti }}-body">
+                            <i class="bi bi-chevron-{{ if gt $typeCount 1 }}right{{ else }}down{{ end }} me-2 chevron fs-6"></i>
+                            <span class="fw-medium fs-6">{{ $type.TypeName }}</span>
                             <span class="badge bg-{{ if eq $type.UsageType "loanable" }}primary{{ else if eq $type.UsageType "consumable" }}warning{{ else }}info{{ end }} ms-2">
                                 {{ if eq $type.UsageType "loanable" }}Pinjam{{ else if eq $type.UsageType "consumable" }}Habis{{ else }}Instal{{ end }}
                             </span>
                             <span class="badge bg-secondary ms-1">{{ len $type.Devices }} perangkat</span>
-                        </h6>
-                        <div id="cat-{{ $ci }}-type-{{ $ti }}-body" class="{{ if gt $typeCount 1 }}collapse{{ end }}" {{ if gt $typeCount 1 }}style="display:none"{{ end }}>
-                            <div class="table-responsive ms-3">
+                        </div>
+                        <div id="cat-{{ $ci }}-type-{{ $ti }}-body" class="px-2" {{ if gt $typeCount 1 }}style="display:none"{{ end }}>
+                            <div class="table-responsive">
                                 <table class="table table-hover table-sm mb-0">
                                     <thead class="table-light">
                                         <tr>
@@ -170,29 +170,12 @@
                 var chevron = el.querySelector('.chevron');
                 if (body.style.display === 'none') {
                     body.style.display = '';
-                    if (chevron) chevron.className = 'bi bi-chevron-down me-2 chevron';
+                    if (chevron) chevron.className = 'bi bi-chevron-down me-2 chevron fs-6';
                 } else {
                     body.style.display = 'none';
-                    if (chevron) chevron.className = 'bi bi-chevron-right me-2 chevron';
+                    if (chevron) chevron.className = 'bi bi-chevron-right me-2 chevron fs-6';
                 }
             }
-
-            // Categories default collapsed, types with >1 per category also collapsed
-            document.addEventListener('DOMContentLoaded', function() {
-                // Category bodies start collapsed — already done via style="display:none"
-                // Type bodies with gt $typeCount 1 also have style="display:none" — already done
-                // Update chevrons: collapsed → chevron-right, expanded → chevron-down
-                document.querySelectorAll('.collapse').forEach(function(el) {
-                    var isVisible = el.style.display !== 'none';
-                    var header = document.querySelector('[data-target="#' + el.id + '"]');
-                    if (header) {
-                        var chevron = header.querySelector('.chevron');
-                        if (chevron) {
-                            chevron.className = isVisible ? 'bi bi-chevron-down me-2 chevron' : 'bi bi-chevron-right me-2 chevron';
-                        }
-                    }
-                });
-            });
             </script>
         </div>
     </div>
