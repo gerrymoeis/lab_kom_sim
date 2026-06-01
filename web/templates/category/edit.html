@@ -3,7 +3,7 @@
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
 
-                    <form method="POST" action="/categories/{{ .category.ID }}/edit">
+                    <form method="POST" action="/categories/{{ .category.DefaultPrefix | lower }}/edit">
                         <div class="mb-3">
                             <label for="name" class="form-label">Nama Kategori *</label>
                             <input type="text" class="form-control" id="name" name="name" value="{{ .category.Name }}" required>
@@ -19,7 +19,7 @@
                             <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
-                            <a href="/categories/{{ .category.ID }}" class="btn btn-secondary">
+                            <a href="/categories/{{ .category.DefaultPrefix | lower }}" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>

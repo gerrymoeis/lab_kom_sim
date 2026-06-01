@@ -53,6 +53,16 @@ func (r *CategoryRepository) GetByName(name string) (*models.Category, error) {
 	return &c, nil
 }
 
+func (r *CategoryRepository) GetByPrefixSlug(slug string) (*models.Category, error) {
+	var c models.Category
+	err := r.db.QueryRow("SELECT id, name, default_prefix, created_at FROM categories WHERE LOWER(default_prefix) = LOWER(?)", slug).
+		Scan(&c.ID, &c.Name, &c.DefaultPrefix, &c.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
 func (r *CategoryRepository) Create(name, prefix string) (sql.Result, error) {
 	return r.db.Exec("INSERT INTO categories (name, default_prefix) VALUES (?, ?)", name, prefix)
 }

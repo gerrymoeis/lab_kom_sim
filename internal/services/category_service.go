@@ -22,6 +22,10 @@ func (s *CategoryService) GetByID(id int) (*models.Category, error) {
 	return s.repo.GetByID(id)
 }
 
+func (s *CategoryService) GetByPrefixSlug(slug string) (*models.Category, error) {
+	return s.repo.GetByPrefixSlug(slug)
+}
+
 func (s *CategoryService) Create(name, prefix string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
 	result, err := s.repo.Create(name, prefix)
 	if err != nil {

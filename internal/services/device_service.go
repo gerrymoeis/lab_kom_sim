@@ -76,11 +76,17 @@ func (s *DeviceService) GetByID(id int) (*models.Device, error) {
 	return s.deviceRepo.GetByID(id)
 }
 
+func (s *DeviceService) GetBySlug(slug string) (*models.Device, error) {
+	return s.deviceRepo.GetBySlug(slug)
+}
+
+func (s *DeviceService) GetByAssetCodeSlug(slug string) (*models.Device, error) {
+	return s.deviceRepo.GetByAssetCodeSlug(slug)
+}
+
 func (s *DeviceService) GetByAssetCode(code string) (*models.Device, error) {
 	return s.deviceRepo.GetByAssetCode(code)
 }
-
-
 
 func (s *DeviceService) GetActiveLoanIDs() (map[int]bool, error) {
 	return s.deviceRepo.GetActiveLoanDeviceIDs()

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -75,13 +74,8 @@ func (h *Handler) UserDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		h.redirectWithError(c, "/admin/users", "ID tidak valid")
-		return
-	}
-
-	user, err := h.userService.GetByID(id)
+	targetUsername := c.Param("username")
+	user, err := h.userService.GetByUsername(targetUsername)
 	if err != nil {
 		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
 		return
@@ -103,13 +97,8 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		h.redirectWithError(c, "/admin/users", "ID tidak valid")
-		return
-	}
-
-	user, err := h.userService.GetByID(id)
+	targetUsername := c.Param("username")
+	user, err := h.userService.GetByUsername(targetUsername)
 	if err != nil {
 		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
 		return
@@ -128,20 +117,15 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 }
 
 func (h *Handler) UserEdit(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	targetUsername := c.Param("username")
+	target, err := h.userService.GetByUsername(targetUsername)
 	if err != nil {
-		h.redirectWithError(c, "/admin/users", "ID tidak valid")
+		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
 		return
 	}
 
 	_, u, _, ok := h.user(c)
 	if !ok { return }
-
-	target, err := h.userService.GetByID(id)
-	if err != nil {
-		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
-		return
-	}
 
 	if !h.canAccessProfile(u, target.Username) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
@@ -150,7 +134,7 @@ func (h *Handler) UserEdit(c *gin.Context) {
 
 	var req UpdateUserRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.Redirect(http.StatusFound, fmt.Sprintf("/admin/users/%d/edit?error=Semua field harus diisi", id))
+		c.Redirect(http.StatusFound, "/admin/users/"+targetUsername+"/edit?error=Semua field harus diisi")
 		return
 	}
 
@@ -158,21 +142,22 @@ func (h *Handler) UserEdit(c *gin.Context) {
 	if !ok { return }
 	ip, ua := getRequestContext(c)
 
-	if err := h.userService.UpdateUser(uid, id, u, r, ip, ua, req.Username, req.FullName, req.Role, req.NewPassword); err != nil {
+	if err := h.userService.UpdateUser(uid, target.ID, u, r, ip, ua, req.Username, req.FullName, req.Role, req.NewPassword); err != nil {
 		msg := "Gagal mengupdate user"
 		if errors.Is(err, services.ErrUsernameTaken) { msg = "Username sudah digunakan" }
 		if errors.Is(err, services.ErrProtectedUpdate) { msg = "Tidak dapat mengubah role user ini" }
-		c.Redirect(http.StatusFound, fmt.Sprintf("/admin/users/%d/edit?error=%s", id, msg))
+		c.Redirect(http.StatusFound, "/admin/users/"+targetUsername+"/edit?error="+msg)
 		return
 	}
 
-	c.Redirect(http.StatusFound, fmt.Sprintf("/admin/users/%d?success=User berhasil diupdate", id))
+	c.Redirect(http.StatusFound, "/admin/users/"+targetUsername+"?success=User berhasil diupdate")
 }
 
 func (h *Handler) UserDelete(c *gin.Context) {
-	targetID, err := strconv.Atoi(c.Param("id"))
+	targetUsername := c.Param("username")
+	target, err := h.userService.GetByUsername(targetUsername)
 	if err != nil {
-		h.redirectWithError(c, "/admin/users", "ID tidak valid")
+		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
 		return
 	}
 	sess := sessions.Default(c)
@@ -181,7 +166,7 @@ func (h *Handler) UserDelete(c *gin.Context) {
 	r, _ := sess.Get("role").(string)
 	ip, ua := getRequestContext(c)
 
-	if err := h.userService.DeleteUser(currentUserID, targetID, u, r, ip, ua); err != nil {
+	if err := h.userService.DeleteUser(currentUserID, target.ID, u, r, ip, ua); err != nil {
 		msg := "Gagal menghapus user"
 		if errors.Is(err, services.ErrSelfDelete) { msg = "Tidak dapat menghapus akun sendiri" }
 		if errors.Is(err, services.ErrProtectedDelete) { msg = "Tidak dapat menghapus akun admin utama" }

@@ -3,7 +3,7 @@
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
 
-                    <form method="POST" action="/software/{{ .software.ID }}/edit">
+                    <form method="POST" action="/software/{{ .software.Slug }}/edit">
 
                         <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Edit Informasi Software</h6>
                         <div class="mb-3">
@@ -65,7 +65,7 @@
                         <hr class="my-4">
                         <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
                             <button type="submit" class="btn btn-warning"><i class="bi bi-save"></i> Update</button>
-                            <a href="/software/{{ .software.ID }}" class="btn btn-info"><i class="bi bi-eye"></i> Lihat Detail</a>
+                            <a href="/software/{{ .software.Slug }}" class="btn btn-info"><i class="bi bi-eye"></i> Lihat Detail</a>
                             <a href="/software" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
                         </div>
                     </form>

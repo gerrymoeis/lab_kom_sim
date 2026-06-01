@@ -233,15 +233,22 @@ func (h *Handler) PCStatusAPI(c *gin.Context) {
 }
 
 func (h *Handler) UpdatePCStatusAPI(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	var req struct { Status string `json:"status" form:"status"` }
-	if err := c.ShouldBind(&req); err != nil {
-		h.errJSON(c, http.StatusBadRequest, "Status diperlukan")
+	label := c.Param("label")
+	pc, err := h.pcService.GetByLabel(label)
+	if err != nil {
+		h.errJSON(c, http.StatusNotFound, "PC tidak ditemukan")
+		return
+	}
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
 		return
 	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	if err := h.pcService.UpdateStatus(id, req.Status, uid, u, r, ip, ua); err != nil {
+	if err := h.pcService.UpdateStatus(pc.ID, req.Status, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal mengupdate status")
 		return
 	}

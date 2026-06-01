@@ -73,14 +73,14 @@ func (h *Handler) SoftwareDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 
-	id, _ := strconv.Atoi(c.Param("id"))
-	sw, err := h.softwareService.GetByID(id)
+	slug := c.Param("slug")
+	sw, err := h.softwareService.GetBySlug(slug)
 	if err != nil {
 		h.errHTML(c, "Software tidak ditemukan")
 		return
 	}
 
-	pcList, err := h.softwareService.GetPCInstallStatus(id)
+	pcList, err := h.softwareService.GetPCInstallStatus(sw.ID)
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
 
 	installedCount := 0
@@ -102,14 +102,14 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 	if !ok { return }
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat mengedit software"); return }
 
-	id, _ := strconv.Atoi(c.Param("id"))
-	sw, err := h.softwareService.GetByID(id)
+	slug := c.Param("slug")
+	sw, err := h.softwareService.GetBySlug(slug)
 	if err != nil {
 		h.errHTML(c, "Software tidak ditemukan")
 		return
 	}
 
-	pcList, err := h.softwareService.GetPCInstallStatus(id)
+	pcList, err := h.softwareService.GetPCInstallStatus(sw.ID)
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
 
 	installedCount := 0
@@ -127,8 +127,8 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 }
 
 func (h *Handler) SoftwareEdit(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
-	sw, err := h.softwareService.GetByID(id)
+	slug := c.Param("slug")
+	sw, err := h.softwareService.GetBySlug(slug)
 	if err != nil {
 		h.errHTML(c, "Software tidak ditemukan")
 		return
@@ -151,12 +151,8 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	if err := h.softwareService.Update(id, req.Name, req.Category, req.Description, req.PCIDs, uid, u, r, ip, ua); err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
-			h.redirectWithError(c, "/software/"+c.Param("id")+"/edit", "Nama software sudah ada")
-			return
-		}
-		h.redirectWithError(c, "/software/"+c.Param("id")+"/edit", "Gagal mengupdate software")
+	if err := h.softwareService.Update(sw.ID, req.Name, req.Category, req.Description, req.PCIDs, uid, u, r, ip, ua); err != nil {
+		h.redirectWithError(c, "/software/"+slug+"/edit", err.Error())
 		return
 	}
 
@@ -164,12 +160,17 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 }
 
 func (h *Handler) SoftwareDelete(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	slug := c.Param("slug")
+	sw, err := h.softwareService.GetBySlug(slug)
+	if err != nil {
+		h.redirectWithError(c, "/software", "Software tidak ditemukan")
+		return
+	}
 
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	if err := h.softwareService.Delete(id, uid, u, r, ip, ua); err != nil {
-		h.redirectWithError(c, "/software", "Gagal menghapus software")
+	if err := h.softwareService.Delete(sw.ID, uid, u, r, ip, ua); err != nil {
+		h.redirectWithError(c, "/software", err.Error())
 		return
 	}
 	c.Redirect(http.StatusFound, "/software")

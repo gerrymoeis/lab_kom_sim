@@ -73,7 +73,7 @@
                         {{ range $i, $u := .users }}
                         <tr>
                             <td>{{ add $i $.startRow }}</td>
-                            <td><strong><a href="/admin/users/{{ .ID }}" class="text-decoration-none">{{ .Username }}</a></strong></td>
+                            <td><strong><a href="/admin/users/{{ .Username }}" class="text-decoration-none">{{ .Username }}</a></strong></td>
                             <td>
                                 {{ .FullName }}
                                 {{ if or (eq .Username "admin") (eq .Username "rekan") }}
@@ -88,10 +88,10 @@
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td class="text-nowrap">
                                 {{ if and (ne .Username "admin") (ne .Username "rekan") }}
-                                <a href="/admin/users/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                <a href="/admin/users/{{ .Username }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/admin/users/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">
+                                <form method="POST" action="/admin/users/{{ .Username }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
