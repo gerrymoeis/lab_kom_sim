@@ -23,10 +23,15 @@
                                 <option value="false">Bukan Mahasiswa (Dosen/Laboran/dll)</option>
                             </select>
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-4 mb-3" id="labelFieldGroup">
                             <label for="label" class="form-label">Label PC</label>
                             <input type="text" class="form-control" id="label" name="label">
                             <small class="text-muted" id="labelHelp">Label otomatis untuk PC Mahasiswa</small>
+                        </div>
+                        <div class="col-md-4 mb-3 d-none" id="autoLabelDisplay">
+                            <label class="form-label">Label PC</label>
+                            <div class="form-control bg-light" id="autoLabelText">Pilih posisi terlebih dahulu</div>
+                            <small class="text-muted">Label otomatis dari posisi meja</small>
                         </div>
                     </div>
 
@@ -37,7 +42,7 @@
                                 <input type="hidden" id="row" name="row" value="0">
                                 <input type="hidden" id="column" name="column" value="0">
                                 <div class="form-control bg-light" id="positionDisplay" style="cursor:default;">Belum dipilih</div>
-                                <button type="button" class="btn btn-outline-primary" id="pickPositionBtn" onclick="PCLayoutManager.openPicker(function(r, c) { document.getElementById('row').value = r; document.getElementById('column').value = c; document.getElementById('positionDisplay').textContent = 'Baris ' + r + ', Kolom ' + c; document.getElementById('positionDisplay').className = 'form-control'; })">
+                                <button type="button" class="btn btn-outline-primary" id="pickPositionBtn" onclick="PCLayoutManager.openPicker(function(r, c) { document.getElementById('row').value = r; document.getElementById('column').value = c; document.getElementById('positionDisplay').textContent = 'Baris ' + r + ', Kolom ' + c; document.getElementById('positionDisplay').className = 'form-control'; updateAutoLabel(); })">
                                     <i class="bi bi-grid-3x3-gap"></i> Pilih
                                 </button>
                             </div>
@@ -361,23 +366,39 @@ function validatePCForm() {
     return true;
 }
 
+function updateAutoLabel() {
+    var row = parseInt(document.getElementById('row').value, 10);
+    var col = parseInt(document.getElementById('column').value, 10);
+    if (row && col) {
+        var label = 'pc-' + ((row - 1) * 8 + col);
+        document.getElementById('autoLabelText').textContent = label;
+        document.getElementById('label').value = label;
+    } else {
+        document.getElementById('autoLabelText').textContent = 'Pilih posisi terlebih dahulu';
+        document.getElementById('label').value = '';
+    }
+}
+
 function togglePCCreateFields() {
     const placement = document.getElementById('placement').value;
     const jenisField = document.getElementById('jenisField');
     const fields = document.getElementById('positionFields');
     const labelInput = document.getElementById('label');
-    const labelHelp = document.getElementById('labelHelp');
+    const labelFieldGroup = document.getElementById('labelFieldGroup');
+    const autoLabelDisplay = document.getElementById('autoLabelDisplay');
 
     if (placement === 'cadangan') {
         jenisField.style.display = 'none';
         fields.style.display = 'none';
+        labelFieldGroup.style.display = 'block';
+        autoLabelDisplay.classList.add('d-none');
         document.getElementById('row').value = 0;
         document.getElementById('column').value = 0;
         document.getElementById('positionDisplay').textContent = 'Belum dipilih';
         document.getElementById('positionDisplay').className = 'form-control bg-light';
         labelInput.value = nextCadanganLabel;
         labelInput.readOnly = true;
-        labelHelp.textContent = 'Label otomatis untuk PC Cadangan';
+        document.getElementById('labelHelp').textContent = 'Label otomatis untuk PC Cadangan';
     } else {
         jenisField.style.display = 'block';
         fields.style.display = 'flex';
@@ -388,17 +409,20 @@ function togglePCCreateFields() {
 function toggleLabelField() {
     const isMahasiswa = document.getElementById('is_mahasiswa').value === 'true';
     const labelInput = document.getElementById('label');
-    const labelHelp = document.getElementById('labelHelp');
+    const labelFieldGroup = document.getElementById('labelFieldGroup');
+    const autoLabelDisplay = document.getElementById('autoLabelDisplay');
 
     if (isMahasiswa) {
-        labelInput.value = nextMahasiswaLabel;
-        labelInput.readOnly = true;
-        labelHelp.textContent = 'Label otomatis untuk PC Mahasiswa';
+        labelFieldGroup.style.display = 'none';
+        autoLabelDisplay.classList.remove('d-none');
+        updateAutoLabel();
     } else {
+        labelFieldGroup.style.display = 'block';
+        autoLabelDisplay.classList.add('d-none');
         labelInput.value = '';
         labelInput.readOnly = false;
         labelInput.placeholder = 'Contoh: pc-dosen, pc-laboran, pc-cctv';
-        labelHelp.textContent = 'Tulis label manual untuk PC non-Mahasiswa';
+        document.getElementById('labelHelp').textContent = 'Tulis label manual untuk PC non-Mahasiswa';
     }
 }
 

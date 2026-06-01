@@ -430,11 +430,14 @@
     </script>
 
 <script>
-window.refreshDashboardGrid = function() {
+window.refreshDashboardGrid = function(optCallback) {
     fetch('/api/pc/status')
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (!data.pcs) return;
+            if (!data.pcs) {
+                if (optCallback) optCallback(false);
+                return;
+            }
             var pcs = data.pcs;
             var maxRow = 5;
             pcs.forEach(function(pc) {
@@ -475,8 +478,12 @@ window.refreshDashboardGrid = function() {
                 initWindowsBadges();
                 bindPCCards();
             }
+            if (optCallback) optCallback(true);
         })
-        .catch(function() {});
+        .catch(function(err) {
+            console.error('refreshDashboardGrid error:', err);
+            if (optCallback) optCallback(false);
+        });
 };
 </script>
 <script src="/static/js/layout-manager.js"></script>
