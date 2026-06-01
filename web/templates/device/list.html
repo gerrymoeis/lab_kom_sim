@@ -67,76 +67,133 @@
                 </div>
             </form>
 
-            {{ if gt (len .devices) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .devices)) 1 }} dari {{ .totalItems }} perangkat</p>{{ end }}
+            {{ if gt (len .groupedData.Categories) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow .totalItems) 1 }} dari {{ .totalItems }} perangkat</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>#</th>
-                            <th>Asset Code</th>
-                            <th>Tipe Perangkat</th>
-                            <th>Serial Number</th>
-                            <th>Kondisi</th>
-                            <th>Lokasi</th>
-                            <th>Status</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{ range $i, $d := .devices }}
-                        <tr class="{{ if eq $d.Condition "rusak" }}table-danger{{ else if eq $d.Condition "warning" }}table-warning{{ end }}">
-                            <td class="text-muted">{{ add $i $.startRow }}</td>
-                            <td><code>{{ $d.AssetCode }}</code></td>
-                            <td>
-                                {{ $d.DeviceTypeName }}
-                                <span class="badge bg-{{ if eq $d.UsageType "loanable" }}primary{{ else if eq $d.UsageType "consumable" }}warning{{ else }}info{{ end }}">
-                                    {{ if eq $d.UsageType "loanable" }}Pinjam{{ else if eq $d.UsageType "consumable" }}Habis{{ else }}Instal{{ end }}
-                                </span>
-                            </td>
-                            <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
-                            <td>
-                                <span class="badge bg-{{ if eq $d.Condition "normal" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
-                                    {{ if eq $d.Condition "normal" }}Normal{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Warning{{ end }}
-                                </span>
-                            </td>
-                            <td><small>{{ if $d.Location }}{{ $d.Location }}{{ else }}-{{ end }}</small></td>
-                            <td>
-                                {{ if index $.activeLoanIDs $d.ID }}
-                                <span class="badge bg-warning">Dipinjam</span>
-                                {{ else if index $.depletedIDs $d.ID }}
-                                <span class="badge bg-danger">Habis</span>
-                                {{ else }}
-                                <span class="badge bg-success">Tersedia</span>
-                                {{ end }}
-                            </td>
-                            <td class="text-nowrap">
-                                <a href="/devices/{{ $d.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                {{ if eq $.role "admin" }}
-                                <a href="/devices/{{ $d.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form method="POST" action="/devices/{{ $d.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                {{ end }}
-                            </td>
-                        </tr>
-                        {{ else }}
-                        <tr>
-                            <td colspan="8" class="text-center text-muted">Belum ada data perangkat</td>
-                        </tr>
-                        {{ end }}
-                    </tbody>
-                </table>
+            {{ range $ci, $cat := .groupedData.Categories }}
+            <div class="category-group mb-2">
+                <h5 class="fw-bold collapsible-header d-flex align-items-center py-1 px-2 rounded bg-light" onclick="toggleGroup(this)" style="cursor:pointer" data-target="#cat-{{ $ci }}-body">
+                    <i class="bi bi-chevron-right me-2 chevron"></i>
+                    {{ $cat.CategoryName }}
+                    <span class="badge bg-secondary ms-2">{{ len $cat.Types }} tipe</span>
+                </h5>
+                <div id="cat-{{ $ci }}-body" class="collapse" style="display:none">
+                    {{ $typeCount := len $cat.Types }}
+                    {{ range $ti, $type := $cat.Types }}
+                    <div class="device-type-group ms-3 mb-3">
+                        <h6 class="fw-semibold collapsible-header d-flex align-items-center py-1 px-2 rounded" onclick="toggleGroup(this)" style="cursor:pointer" data-target="#cat-{{ $ci }}-type-{{ $ti }}-body">
+                            <i class="bi bi-chevron-down me-2 chevron"></i>
+                            {{ $type.TypeName }}
+                            <span class="badge bg-{{ if eq $type.UsageType "loanable" }}primary{{ else if eq $type.UsageType "consumable" }}warning{{ else }}info{{ end }} ms-2">
+                                {{ if eq $type.UsageType "loanable" }}Pinjam{{ else if eq $type.UsageType "consumable" }}Habis{{ else }}Instal{{ end }}
+                            </span>
+                            <span class="badge bg-secondary ms-1">{{ len $type.Devices }} perangkat</span>
+                        </h6>
+                        <div id="cat-{{ $ci }}-type-{{ $ti }}-body" class="{{ if gt $typeCount 1 }}collapse{{ end }}" {{ if gt $typeCount 1 }}style="display:none"{{ end }}>
+                            <div class="table-responsive ms-3">
+                                <table class="table table-hover table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Asset Code</th>
+                                            <th>Serial Number</th>
+                                            <th>Kondisi</th>
+                                            <th>Lokasi</th>
+                                            <th>Status</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{ range $idx, $d := $type.Devices }}
+                                        <tr class="{{ if eq $d.Condition "rusak" }}table-danger{{ else if eq $d.Condition "warning" }}table-warning{{ end }}">
+                                            <td class="text-muted">{{ add $idx $.startRow }}</td>
+                                            <td><code>{{ $d.AssetCode }}</code></td>
+                                            <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
+                                            <td>
+                                                <span class="badge bg-{{ if eq $d.Condition "normal" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
+                                                    {{ if eq $d.Condition "normal" }}Normal{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Warning{{ end }}
+                                                </span>
+                                            </td>
+                                            <td><small>{{ if $d.Location }}{{ $d.Location }}{{ else }}-{{ end }}</small></td>
+                                            <td>
+                                                {{ if index $.activeLoanIDs $d.ID }}
+                                                <span class="badge bg-warning">Dipinjam</span>
+                                                {{ else if index $.depletedIDs $d.ID }}
+                                                <span class="badge bg-danger">Habis</span>
+                                                {{ else }}
+                                                <span class="badge bg-success">Tersedia</span>
+                                                {{ end }}
+                                            </td>
+                                            <td class="text-nowrap">
+                                                <a href="/devices/{{ $d.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                {{ if eq $.role "admin" }}
+                                                <a href="/devices/{{ $d.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <form method="POST" action="/devices/{{ $d.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                                {{ end }}
+                                            </td>
+                                        </tr>
+                                        {{ else }}
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-3">Tidak ada perangkat dalam grup ini</td>
+                                        </tr>
+                                        {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {{ end }}
+                </div>
             </div>
+            {{ else }}
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-inbox" style="font-size:2rem"></i>
+                <p class="mt-2">Belum ada data perangkat</p>
+            </div>
+            {{ end }}
 
             {{ template "layout/pagination.html" . }}
+
+            <script>
+            function toggleGroup(el) {
+                var targetId = el.dataset.target;
+                var body = document.querySelector(targetId);
+                if (!body) return;
+                var chevron = el.querySelector('.chevron');
+                if (body.style.display === 'none') {
+                    body.style.display = '';
+                    if (chevron) chevron.className = 'bi bi-chevron-down me-2 chevron';
+                } else {
+                    body.style.display = 'none';
+                    if (chevron) chevron.className = 'bi bi-chevron-right me-2 chevron';
+                }
+            }
+
+            // Categories default collapsed, types with >1 per category also collapsed
+            document.addEventListener('DOMContentLoaded', function() {
+                // Category bodies start collapsed — already done via style="display:none"
+                // Type bodies with gt $typeCount 1 also have style="display:none" — already done
+                // Update chevrons: collapsed → chevron-right, expanded → chevron-down
+                document.querySelectorAll('.collapse').forEach(function(el) {
+                    var isVisible = el.style.display !== 'none';
+                    var header = document.querySelector('[data-target="#' + el.id + '"]');
+                    if (header) {
+                        var chevron = header.querySelector('.chevron');
+                        if (chevron) {
+                            chevron.className = isVisible ? 'bi bi-chevron-down me-2 chevron' : 'bi bi-chevron-right me-2 chevron';
+                        }
+                    }
+                });
+            });
+            </script>
         </div>
     </div>
 </div>

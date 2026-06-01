@@ -219,7 +219,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 200, "/devices: %d", resp.StatusCode)
 	closeResp(resp)
 
-	resp, _ = post("/devices/create", "device_type_id=1&serial_number=SN-TEST001&condition=baik&location=Lab&purchase_date=&notes=Device+test")
+	resp, _ = post("/devices/create", "device_type_id=1&serial_number=SN-TEST001&condition=normal&location=Lab&purchase_date=&notes=Device+test")
 	assert(resp.StatusCode == 302, "create device: %d", resp.StatusCode)
 	closeResp(resp)
 	var devID int
@@ -250,7 +250,7 @@ func TestFullIntegration(t *testing.T) {
 	var dtID int
 	db.QueryRow("SELECT id FROM device_types ORDER BY id LIMIT 1").Scan(&dtID)
 	assert(dtID > 0, "device_type exists for batch")
-	body := fmt.Sprintf(`{"device_type_id":%d,"devices":[{"serial_number":"SN-BATCH1","condition":"baik","location":"Lab"},{"serial_number":"SN-BATCH2","condition":"rusak","location":"Lab"}]}`, dtID)
+	body := fmt.Sprintf(`{"device_type_id":%d,"devices":[{"serial_number":"SN-BATCH1","condition":"normal","location":"Lab"},{"serial_number":"SN-BATCH2","condition":"rusak","location":"Lab"}]}`, dtID)
 	resp, _ = postJSON("/devices/batch-create", body)
 	assert(resp.StatusCode == 200, "batch create: %d", resp.StatusCode)
 	var batchRes struct {
