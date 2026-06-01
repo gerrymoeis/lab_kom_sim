@@ -490,14 +490,14 @@ func (h *Handler) CategoryDetail(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("id"))
-	cat, err := h.categoryService.GetByID(id)
+	slug := c.Param("slug")
+	cat, err := h.categoryService.GetByPrefixSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Kategori tidak ditemukan")
 		return
 	}
-	types, _ := h.deviceTypeService.GetByCategoryID(id)
-	deviceCount, _ := h.deviceService.CountByCategoryID(id)
+	types, _ := h.deviceTypeService.GetByCategoryID(cat.ID)
+	deviceCount, _ := h.deviceService.CountByCategoryID(cat.ID)
 
 	c.HTML(http.StatusOK, "category/detail.html", gin.H{
 		"title": cat.Name, "currentPage": "devices",
@@ -514,8 +514,8 @@ func (h *Handler) CategoryEditPage(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("id"))
-	cat, err := h.categoryService.GetByID(id)
+	slug := c.Param("slug")
+	cat, err := h.categoryService.GetByPrefixSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Kategori tidak ditemukan")
 		return
@@ -528,7 +528,12 @@ func (h *Handler) CategoryEditPage(c *gin.Context) {
 }
 
 func (h *Handler) CategoryEdit(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	slug := c.Param("slug")
+	cat, err := h.categoryService.GetByPrefixSlug(slug)
+	if err != nil {
+		h.errHTML(c, "Kategori tidak ditemukan")
+		return
+	}
 	var req EditCategoryRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Data tidak valid")
@@ -537,7 +542,7 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.categoryService.Update(id, req.Name, req.DefaultPrefix, uid, u, r, ip, ua); err != nil {
+	if err := h.categoryService.Update(cat.ID, req.Name, req.DefaultPrefix, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, err.Error())
 		return
 	}
@@ -545,13 +550,18 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 }
 
 func (h *Handler) CategoryDelete(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	slug := c.Param("slug")
+	cat, err := h.categoryService.GetByPrefixSlug(slug)
+	if err != nil {
+		h.redirectWithError(c, "/devices", "Kategori tidak ditemukan")
+		return
+	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
 	// Check cascade
-	typeCount, _ := h.deviceTypeService.CountByCategoryID(id)
-	deviceCount, _ := h.deviceService.CountByCategoryID(id)
+	typeCount, _ := h.deviceTypeService.CountByCategoryID(cat.ID)
+	deviceCount, _ := h.deviceService.CountByCategoryID(cat.ID)
 
 	if typeCount > 0 || deviceCount > 0 {
 		h.redirectWithError(c, "/devices",
@@ -559,7 +569,7 @@ func (h *Handler) CategoryDelete(c *gin.Context) {
 		return
 	}
 
-	if err := h.categoryService.Delete(id, uid, u, r, ip, ua); err != nil {
+	if err := h.categoryService.Delete(cat.ID, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/devices", err.Error())
 		return
 	}
