@@ -42,6 +42,7 @@ var PCLayoutManager = (function() {
   function render() {
     renderGrid();
     renderCadangan();
+    renderSpecial();
     renderActions();
     updateMessage();
     document.getElementById('layoutSelectedInfo').textContent = '';
@@ -51,35 +52,29 @@ var PCLayoutManager = (function() {
     var container = document.getElementById('layoutGridBody');
     var html = '';
     for (var r = 0; r < Math.max(maxRow, grid.length); r++) {
-      html += '<div class="layout-row" data-row="' + (r + 1) + '">';
+      html += '<div class="d-flex align-items-center gap-1 mb-1">';
       if (mode === 'manager') {
-        html += '<button type="button" class="btn btn-sm btn-outline-danger layout-remove-row" data-row="' + (r + 1) + '" title="Pindahkan semua PC di baris ini ke cadangan"><i class="bi bi-trash"></i></button>';
+        html += '<button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" style="padding:2px 4px;font-size:0.7rem" data-row="' + (r + 1) + '" title="Pindahkan semua PC di baris ini ke cadangan"><i class="bi bi-trash"></i></button>';
       }
-      html += '<span class="layout-row-label">Baris ' + (r + 1) + '</span>';
+      html += '<span class="flex-shrink-0 small text-muted" style="width:48px">Baris ' + (r + 1) + '</span>';
       for (var c = 0; c < COLUMNS; c++) {
         var pc = (grid[r] && grid[r][c]) ? grid[r][c] : null;
-        var slotId = 'slot-' + r + '-' + c;
-        var cls = 'layout-slot';
-        var label = '-';
-        var status = '';
-        if (pc && pc.label) {
-          cls += ' layout-filled layout-status-' + (pc.status || 'normal');
-          label = pc.label;
-          status = pc.status;
-        } else {
-          cls += ' layout-empty';
-        }
-        if (selectedSlot && selectedSlot.row === r && selectedSlot.col === c) {
-          cls += ' layout-selected';
-        }
-        html += '<div class="' + cls + '" data-row="' + r + '" data-col="' + c + '" data-label="' + (pc ? (pc.label || '') : '') + '" data-status="' + status + '" onclick="PCLayoutManager.onSlotClick(' + r + ',' + c + ')">' + label + '</div>';
+        var selected = selectedSlot && selectedSlot.row === r && selectedSlot.col === c;
+        var label = pc && pc.label ? pc.label : '-';
+        var status = pc && pc.status ? pc.status : '';
+        var filled = pc && pc.label;
+        var cls = 'border rounded text-center flex-shrink-0';
+        cls += ' ' + (selected ? 'border-primary border-2 shadow-sm' : 'border-secondary');
+        cls += ' ' + (filled ? 'text-white fw-semibold' : 'text-muted bg-light');
+        cls += ' ' + (filled ? (status === 'warning' ? 'bg-warning' : status === 'broken' ? 'bg-danger' : 'bg-success') : '');
+        cls += ' ' + (mode === 'picker' || mode === 'manager' ? 'cursor-pointer' : '');
+        html += '<div class="' + cls + '" style="width:64px;height:48px;font-size:0.7rem;display:flex;align-items:center;justify-content:center;' + (mode === 'picker' || mode === 'manager' ? 'cursor:pointer' : '') + '" data-row="' + r + '" data-col="' + c + '" data-label="' + (pc ? (pc.label || '') : '') + '" data-status="' + status + '" onclick="PCLayoutManager.onSlotClick(' + r + ',' + c + ')">' + label + '</div>';
       }
       html += '</div>';
     }
     container.innerHTML = html;
 
-    // Remove row handlers
-    document.querySelectorAll('.layout-remove-row').forEach(function(btn) {
+    document.querySelectorAll('[data-row] > .btn-outline-danger').forEach(function(btn) {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         var row = parseInt(this.dataset.row);
@@ -93,16 +88,27 @@ var PCLayoutManager = (function() {
   function renderCadangan() {
     var container = document.getElementById('layoutCadanganBody');
     var html = '';
-    var allSpare = cadangan.concat(special);
-    allSpare.forEach(function(pc) {
+    cadangan.forEach(function(pc) {
       if (!pc.label) return;
-      var cls = 'layout-cadangan-item layout-status-' + (pc.status || 'normal');
-      if (selectedSlot && selectedSlot.label === pc.label && selectedSlot.type === 'cadangan') {
-        cls += ' layout-selected';
-      }
-      html += '<div class="' + cls + '" data-label="' + pc.label + '" onclick="PCLayoutManager.onCadanganClick(\'' + pc.label + '\')">' + pc.label + '<br><small>' + (pc.status || '') + '</small></div>';
+      var selected = selectedSlot && selectedSlot.label === pc.label && selectedSlot.type === 'cadangan';
+      var cls = 'border rounded p-1 small text-center flex-shrink-0';
+      cls += ' ' + (selected ? 'border-primary border-2 shadow-sm' : 'border-secondary');
+      cls += ' text-white fw-semibold';
+      cls += ' ' + (pc.status === 'warning' ? 'bg-warning' : pc.status === 'broken' ? 'bg-danger' : 'bg-success');
+      html += '<div class="' + cls + '" style="min-width:80px;cursor:pointer" data-label="' + pc.label + '" onclick="PCLayoutManager.onCadanganClick(\'' + pc.label + '\')">' + pc.label + '<br><small>' + (pc.status || '') + '</small></div>';
     });
     container.innerHTML = html || '<div class="text-muted small p-2">Tidak ada PC cadangan</div>';
+  }
+
+  function renderSpecial() {
+    var container = document.getElementById('layoutSpecialBody');
+    var html = '';
+    special.forEach(function(pc) {
+      if (!pc.label) return;
+      var cls = 'border rounded p-1 small text-center flex-shrink-0 border-secondary bg-light';
+      html += '<div class="' + cls + '" style="min-width:80px">' + pc.label + '<br><small>' + (pc.status || '') + '</small></div>';
+    });
+    container.innerHTML = html || '';
   }
 
   function renderActions() {
@@ -114,12 +120,12 @@ var PCLayoutManager = (function() {
     var el = document.getElementById('layoutModeMessage');
     if (mode === 'manager') {
       el.className = 'alert alert-info small py-1 mb-2';
-      el.textContent = 'Klik dua slot PC untuk menukar posisi, atau klik PC cadangan lalu slot tujuan untuk mengganti.';
+      el.textContent = 'Klik PC untuk memilih, lalu klik tujuan (slot kosong/PC lain/cadangan).';
     }
   }
 
   function onSlotClick(row, col) {
-    var slot = document.querySelector('.layout-slot[data-row="' + row + '"][data-col="' + col + '"]');
+    var slot = document.querySelector('[data-row="' + row + '"][data-col="' + col + '"]');
     var label = slot ? slot.dataset.label : '';
     var status = slot ? slot.dataset.status : '';
 
@@ -132,40 +138,53 @@ var PCLayoutManager = (function() {
     }
 
     if (!selectedSlot) {
-      if (!label) return; // ignore empty slot as first selection in manager mode
+      if (!label) return;
       selectedSlot = { type: 'grid', row: row, col: col, label: label };
       render();
       document.getElementById('layoutSelectedInfo').textContent = 'Terpilih: ' + label;
       return;
     }
 
-    // Second click
-    var secondLabel = label;
-    var isSecondCadangan = false;
+    if (selectedSlot.row === row && selectedSlot.col === col && selectedSlot.type === 'grid') {
+      selectedSlot = null;
+      render();
+      document.getElementById('layoutSelectedInfo').textContent = '';
+      return;
+    }
+
+    var confirmBtn = document.getElementById('layoutConfirmBtn');
+    var confirmText = document.getElementById('layoutConfirmText');
 
     if (selectedSlot.type === 'grid') {
-      if (selectedSlot.row === row && selectedSlot.col === col) {
-        selectedSlot = null;
-        render();
-        document.getElementById('layoutSelectedInfo').textContent = '';
-        return;
+      if (!label) {
+        // Filled → Empty slot: Move
+        confirmBtn.dataset.label = selectedSlot.label;
+        confirmBtn.dataset.row = row + 1;
+        confirmBtn.dataset.col = col + 1;
+        confirmBtn.dataset.op = 'move';
+        confirmText.textContent = 'Pindahkan ' + selectedSlot.label + ' ke Baris ' + (row + 1) + ', Kolom ' + (col + 1) + '?';
+      } else {
+        // Filled → Filled: Swap
+        confirmBtn.dataset.a = selectedSlot.label;
+        confirmBtn.dataset.b = label;
+        confirmBtn.dataset.op = 'swap';
+        confirmText.textContent = 'Tukar ' + selectedSlot.label + ' dengan ' + label + '?';
       }
-      document.getElementById('layoutConfirmBtn').dataset.a = selectedSlot.label;
-      document.getElementById('layoutConfirmBtn').dataset.b = secondLabel;
-      document.getElementById('layoutConfirmBtn').dataset.op = 'swap';
-      document.getElementById('layoutConfirmText').textContent = 'Tukar ' + selectedSlot.label + ' dengan ' + secondLabel + '?';
     } else if (selectedSlot.type === 'cadangan') {
-      if (!secondLabel) {
-        // user clicked empty slot → deselect
-        selectedSlot = null;
-        render();
-        document.getElementById('layoutSelectedInfo').textContent = '';
-        return;
+      if (!label) {
+        // Cadangan → Empty slot: Place
+        confirmBtn.dataset.label = selectedSlot.label;
+        confirmBtn.dataset.row = row + 1;
+        confirmBtn.dataset.col = col + 1;
+        confirmBtn.dataset.op = 'place';
+        confirmText.textContent = 'Tempatkan ' + selectedSlot.label + ' di Baris ' + (row + 1) + ', Kolom ' + (col + 1) + '?';
+      } else {
+        // Cadangan → Filled: Replace
+        confirmBtn.dataset.target = label;
+        confirmBtn.dataset.spare = selectedSlot.label;
+        confirmBtn.dataset.op = 'replace';
+        confirmText.textContent = 'Ganti ' + label + ' dengan ' + selectedSlot.label + '?';
       }
-      document.getElementById('layoutConfirmBtn').dataset.target = secondLabel;
-      document.getElementById('layoutConfirmBtn').dataset.spare = selectedSlot.label;
-      document.getElementById('layoutConfirmBtn').dataset.op = 'replace';
-      document.getElementById('layoutConfirmText').textContent = 'Ganti ' + secondLabel + ' dengan ' + selectedSlot.label + '?';
     }
 
     var confirmModal = new bootstrap.Modal(document.getElementById('layoutConfirmDialog'));
@@ -184,20 +203,18 @@ var PCLayoutManager = (function() {
 
     if (selectedSlot.type === 'cadangan') {
       if (selectedSlot.label === label) {
-        // same item → deselect
         selectedSlot = null;
         render();
         document.getElementById('layoutSelectedInfo').textContent = '';
         return;
       }
-      // different cadangan → switch selection
       selectedSlot = { type: 'cadangan', label: label };
       render();
       document.getElementById('layoutSelectedInfo').textContent = 'Terpilih: ' + label;
       return;
     }
 
-    // Selected a grid slot first, now a cadangan → the user wants to replace
+    // Grid → Cadangan: Replace
     document.getElementById('layoutConfirmBtn').dataset.target = selectedSlot.label;
     document.getElementById('layoutConfirmBtn').dataset.spare = label;
     document.getElementById('layoutConfirmBtn').dataset.op = 'replace';
@@ -210,7 +227,25 @@ var PCLayoutManager = (function() {
   function onConfirm() {
     var btn = document.getElementById('layoutConfirmBtn');
     var op = btn.dataset.op;
-    var a, b, target, spare, row;
+    var a, b, target, spare, label, row, col;
+
+    function onDone() {
+      selectedSlot = null;
+      var confirmModalEl = document.getElementById('layoutConfirmDialog');
+      var confirmModal = bootstrap.Modal.getInstance(confirmModalEl);
+      if (confirmModal) confirmModal.hide();
+      fetchLayout();
+      if (window.refreshDashboardGrid) window.refreshDashboardGrid();
+    }
+
+    function handleResponse(r) { return r.json(); }
+
+    function handleSuccess(data) {
+      if (data.success) { onDone(); }
+      else { alert('Gagal: ' + (data.error || 'unknown error')); }
+    }
+
+    function handleError() { alert('Gagal menghubungi server'); }
 
     switch (op) {
       case 'swap':
@@ -221,14 +256,7 @@ var PCLayoutManager = (function() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ a: a, b: b })
-        }).then(function(r) { return r.json(); }).then(function(data) {
-          if (data.success) {
-            selectedSlot = null;
-            fetchLayout();
-          } else {
-            alert('Gagal menukar: ' + (data.error || 'unknown error'));
-          }
-        }).catch(function() { alert('Gagal menghubungi server'); });
+        }).then(handleResponse).then(handleSuccess).catch(handleError);
         break;
 
       case 'replace':
@@ -239,20 +267,33 @@ var PCLayoutManager = (function() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ target: target, spare: spare })
-        }).then(function(r) { return r.json(); }).then(function(data) {
-          if (data.success) {
-            selectedSlot = null;
-            fetchLayout();
-          } else {
-            alert('Gagal mengganti: ' + (data.error || 'unknown error'));
-          }
-        }).catch(function() { alert('Gagal menghubungi server'); });
+        }).then(handleResponse).then(handleSuccess).catch(handleError);
+        break;
+
+      case 'move':
+        label = btn.dataset.label;
+        row = parseInt(btn.dataset.row);
+        col = parseInt(btn.dataset.col);
+        if (!label || !row || !col) return;
+        fetch('/api/pc/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: label, row: row, col: col })
+        }).then(handleResponse).then(handleSuccess).catch(handleError);
+        break;
+
+      case 'place':
+        label = btn.dataset.label;
+        row = parseInt(btn.dataset.row);
+        col = parseInt(btn.dataset.col);
+        if (!label || !row || !col) return;
+        fetch('/api/pc/place', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: label, row: row, col: col })
+        }).then(handleResponse).then(handleSuccess).catch(handleError);
         break;
     }
-
-    var confirmModalEl = document.getElementById('layoutConfirmDialog');
-    var confirmModal = bootstrap.Modal.getInstance(confirmModalEl);
-    if (confirmModal) confirmModal.hide();
   }
 
   function moveRowToCadangan(row) {
@@ -264,6 +305,7 @@ var PCLayoutManager = (function() {
       if (data.success) {
         selectedSlot = null;
         fetchLayout();
+        if (window.refreshDashboardGrid) window.refreshDashboardGrid();
       } else {
         alert('Gagal memindahkan baris');
       }
