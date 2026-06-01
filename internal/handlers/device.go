@@ -307,8 +307,8 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 		return
 	}
 
-	id, _ := strconv.Atoi(c.Param("id"))
-	d, err := h.deviceService.GetByID(id)
+	slug := c.Param("slug")
+	d, err := h.deviceService.GetBySlug(slug)
 	if err != nil {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
@@ -327,8 +327,8 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 		return
 	}
 
-	id, _ := strconv.Atoi(c.Param("id"))
-	d, err := h.deviceService.GetByID(id)
+	slug := c.Param("slug")
+	d, err := h.deviceService.GetBySlug(slug)
 	if err != nil {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
@@ -343,7 +343,13 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceEdit(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	slug := c.Param("slug")
+	d, err := h.deviceService.GetBySlug(slug)
+	if err != nil {
+		h.errHTML(c, "Perangkat tidak ditemukan")
+		return
+	}
+
 	var req EditDeviceRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Data tidak valid")
@@ -353,7 +359,7 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.deviceService.UpdateDevice(id, services.UpdateDeviceInput{
+	if err := h.deviceService.UpdateDevice(d.ID, services.UpdateDeviceInput{
 		DeviceTypeID: req.DeviceTypeID,
 		AssetCode:    req.AssetCode,
 		SerialNumber: req.SerialNumber,
@@ -370,11 +376,17 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 }
 
 func (h *Handler) DeviceDelete(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	slug := c.Param("slug")
+	d, err := h.deviceService.GetBySlug(slug)
+	if err != nil {
+		h.redirectWithError(c, "/devices", "Perangkat tidak ditemukan")
+		return
+	}
+
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.deviceService.DeleteDevice(id, uid, u, r, ip, ua); err != nil {
+	if err := h.deviceService.DeleteDevice(d.ID, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/devices", "Gagal menghapus perangkat")
 		return
 	}
@@ -392,8 +404,8 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, _ := strconv.Atoi(c.Param("id"))
-	dt, err := h.deviceTypeService.GetByID(id)
+	slug := c.Param("slug")
+	dt, err := h.deviceTypeService.GetBySlug(slug)
 	if err != nil {
 		h.errHTML(c, "Tipe perangkat tidak ditemukan")
 		return
@@ -408,7 +420,12 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceTypeEdit(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	slug := c.Param("slug")
+	dt, err := h.deviceTypeService.GetBySlug(slug)
+	if err != nil {
+		h.errHTML(c, "Tipe perangkat tidak ditemukan")
+		return
+	}
 	var req EditDeviceTypeRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Data tidak valid")
@@ -417,7 +434,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.deviceTypeService.Update(id, services.DeviceTypeUpdateInput{
+	if err := h.deviceTypeService.Update(dt.ID, services.DeviceTypeUpdateInput{
 		CategoryID:      req.CategoryID,
 		Name:            req.Name,
 		Brand:           req.Brand,
@@ -433,15 +450,37 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 }
 
 func (h *Handler) DeviceTypeDelete(c *gin.Context) {
-	id, _ := strconv.Atoi(c.Param("id"))
+	slug := c.Param("slug")
+	dt, err := h.deviceTypeService.GetBySlug(slug)
+	if err != nil {
+		h.redirectWithError(c, "/devices", "Tipe perangkat tidak ditemukan")
+		return
+	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.deviceTypeService.Delete(id, uid, u, r, ip, ua); err != nil {
+	if err := h.deviceTypeService.Delete(dt.ID, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/devices", err.Error())
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices")
+}
+
+func (h *Handler) DeviceTypeDetail(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok { return }
+	slug := c.Param("slug")
+	dt, err := h.deviceTypeService.GetBySlug(slug)
+	if err != nil {
+		h.errHTML(c, "Tipe perangkat tidak ditemukan")
+		return
+	}
+	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
+		"title": "Detail Tipe Perangkat", "currentPage": "devices",
+		"username": username, "role": role,
+		"deviceType": dt,
+		"categories": h.fetchCategories(),
+	})
 }
 
 // ============== Category Handlers ==============
@@ -525,29 +564,6 @@ func (h *Handler) CategoryDelete(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices")
-}
-
-// ============== Device Type Detail Handler ==============
-
-func (h *Handler) DeviceTypeDetail(c *gin.Context) {
-	_, username, role, ok := h.user(c)
-	if !ok {
-		return
-	}
-	id, _ := strconv.Atoi(c.Param("id"))
-	dt, err := h.deviceTypeService.GetByID(id)
-	if err != nil {
-		h.errHTML(c, "Tipe perangkat tidak ditemukan")
-		return
-	}
-	deviceCount, _ := h.deviceService.CountByDeviceTypeID(id)
-
-	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
-		"title": dt.Name, "currentPage": "devices",
-		"username": username, "role": role,
-		"deviceType":  dt,
-		"deviceCount": deviceCount,
-	})
 }
 
 func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bool) models.DeviceGroupedData {

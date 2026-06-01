@@ -226,18 +226,23 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT id FROM devices WHERE serial_number='SN-TEST001'").Scan(&devID)
 	assert(devID > 0, "Device ID=%d", devID)
 
+	// Query slug for device
+	var devSlug string
+	db.QueryRow("SELECT slug FROM devices WHERE id=?", devID).Scan(&devSlug)
+	assert(devSlug != "", "Device slug=%s", devSlug)
+
 	// Device detail
-	resp, _ = get("/devices/" + fmt.Sprint(devID))
-	assert(resp.StatusCode == 200, "/devices/%d: %d", devID, resp.StatusCode)
+	resp, _ = get("/devices/" + devSlug)
+	assert(resp.StatusCode == 200, "/devices/%s: %d", devSlug, resp.StatusCode)
 	closeResp(resp)
 
 	// Device edit page
-	resp, _ = get("/devices/" + fmt.Sprint(devID) + "/edit")
-	assert(resp.StatusCode == 200, "/devices/%d/edit: %d", devID, resp.StatusCode)
+	resp, _ = get("/devices/" + devSlug + "/edit")
+	assert(resp.StatusCode == 200, "/devices/%s/edit: %d", devSlug, resp.StatusCode)
 	closeResp(resp)
 
 	// Device edit POST
-	resp, _ = post("/devices/"+fmt.Sprint(devID)+"/edit",
+	resp, _ = post("/devices/"+devSlug+"/edit",
 		"device_type_id=1&asset_code=PENTAB-001&serial_number=SN-TEST002&condition=rusak&location=Lab2&purchase_date=&notes=Updated")
 	assert(resp.StatusCode == 302, "edit device: %d", resp.StatusCode)
 	closeResp(resp)
@@ -278,18 +283,26 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT id FROM software_catalog WHERE name='TestSW'").Scan(&swID)
 	assert(swID > 0, "Software ID=%d", swID)
 
-	resp, _ = get("/software/" + fmt.Sprint(swID) + "/edit")
-	assert(resp.StatusCode == 200, "/software/%d/edit: %d", swID, resp.StatusCode)
+	// Query slug for software
+	var swSlug string
+	db.QueryRow("SELECT slug FROM software_catalog WHERE id=?", swID).Scan(&swSlug)
+	assert(swSlug != "", "Software slug=%s", swSlug)
+
+	resp, _ = get("/software/" + swSlug + "/edit")
+	assert(resp.StatusCode == 200, "/software/%s/edit: %d", swSlug, resp.StatusCode)
 	closeResp(resp)
 
-	resp, _ = post("/software/"+fmt.Sprint(swID)+"/edit", "name=TestSW2&category=required&description=Test2+updated")
+	resp, _ = post("/software/"+swSlug+"/edit", "name=TestSW2&category=required&description=Test2+updated")
 	assert(resp.StatusCode == 302, "edit software: %d", resp.StatusCode)
 	closeResp(resp)
 	var swName string
 	db.QueryRow("SELECT name FROM software_catalog WHERE id=?", swID).Scan(&swName)
 	assert(swName == "TestSW2", "Software name updated: %s", swName)
 
-	resp, _ = post("/software/"+fmt.Sprint(swID)+"/delete", "")
+	// Query updated slug after name change
+	db.QueryRow("SELECT slug FROM software_catalog WHERE id=?", swID).Scan(&swSlug)
+
+	resp, _ = post("/software/"+swSlug+"/delete", "")
 	assert(resp.StatusCode == 302, "delete software: %d", resp.StatusCode)
 	closeResp(resp)
 	db.QueryRow("SELECT COUNT(*) FROM software_catalog WHERE id=?", swID).Scan(&swID)
@@ -557,7 +570,9 @@ func TestFullIntegration(t *testing.T) {
 
 	// Cleanup: delete device created in §3
 	t.Log("\n=== DEVICE CLEANUP ===")
-	resp, _ = post("/devices/"+fmt.Sprint(devID)+"/delete", "")
+	// Re-query slug in case it changed
+	db.QueryRow("SELECT slug FROM devices WHERE id=?", devID).Scan(&devSlug)
+	resp, _ = post("/devices/"+devSlug+"/delete", "")
 	assert(resp.StatusCode == 302, "delete device: %d", resp.StatusCode)
 	closeResp(resp)
 	var devDelCount int

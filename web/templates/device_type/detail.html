@@ -13,10 +13,10 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-box"></i> {{ .deviceType.Name }}</h5>
             <div>
-                <a href="/device-types/{{ .deviceType.ID }}/edit" class="btn btn-sm btn-warning me-1">
+                <a href="/device-types/{{ .deviceType.Slug }}/edit" class="btn btn-sm btn-warning me-1">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
-                <form method="POST" action="/device-types/{{ .deviceType.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus tipe perangkat {{ .deviceType.Name }}?\n\nTipe ini memiliki {{ .deviceCount }} perangkat. Semua perangkat akan terhapus permanen.')">
+                <form method="POST" action="/device-types/{{ .deviceType.Slug }}/delete" style="display:inline;" onsubmit="return confirm('Hapus tipe perangkat {{ .deviceType.Name }}?\n\nTipe ini memiliki {{ .deviceCount }} perangkat. Semua perangkat akan terhapus permanen.')">
                     <button type="submit" class="btn btn-sm btn-danger" {{ if gt .deviceCount 0 }}disabled title="Hapus perangkat terlebih dahulu"{{ end }}>
                         <i class="bi bi-trash"></i> Hapus
                     </button>

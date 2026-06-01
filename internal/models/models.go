@@ -163,6 +163,7 @@ type SoftwareCatalog struct {
 	Name        string    `json:"name"`     // UNIQUE
 	Category    string    `json:"category"` // "required" or "other"
 	Description string    `json:"description"`
+	Slug        string    `json:"slug"`     // URL slug from name
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

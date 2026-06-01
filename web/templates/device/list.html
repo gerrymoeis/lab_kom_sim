@@ -125,14 +125,14 @@
                                                 {{ end }}
                                             </td>
                                             <td class="text-nowrap">
-                                                <a href="/devices/{{ $d.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                                <a href="/devices/{{ $d.Slug }}" class="btn btn-sm btn-info me-1" title="Detail">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
                                                 {{ if eq $.role "admin" }}
-                                                <a href="/devices/{{ $d.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                                <a href="/devices/{{ $d.Slug }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <form method="POST" action="/devices/{{ $d.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
+                                                <form method="POST" action="/devices/{{ $d.Slug }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
                                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                                         <i class="bi bi-trash"></i>
                                                     </button>

@@ -80,6 +80,10 @@ func (s *DeviceTypeService) GetByID(id int) (*models.DeviceType, error) {
 	return s.repo.GetByID(id)
 }
 
+func (s *DeviceTypeService) GetBySlug(slug string) (*models.DeviceType, error) {
+	return s.repo.GetBySlug(slug)
+}
+
 func (s *DeviceTypeService) GetAllSimple() ([]models.DeviceType, error) {
 	return s.repo.GetAllSimple()
 }

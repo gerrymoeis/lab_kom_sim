@@ -2,6 +2,7 @@
 
 import (
 	"database/sql"
+	"fmt"
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
@@ -120,6 +121,30 @@ func (r *DeviceTypeRepository) GetAllSimple() ([]models.DeviceType, error) {
 		dts = append(dts, dt)
 	}
 	return dts, nil
+}
+
+func (r *DeviceTypeRepository) GetBySlug(slug string) (*models.DeviceType, error) {
+	return r.getByField("slug", slug)
+}
+
+func (r *DeviceTypeRepository) getByField(field, value string) (*models.DeviceType, error) {
+	var dt models.DeviceType
+	var brand, model, loc, photo sql.NullString
+	query := fmt.Sprintf(`SELECT dt.id, dt.category_id, c.name, dt.name, dt.brand, dt.model,
+		dt.asset_code_prefix, dt.usage_type, dt.default_location, COALESCE(dt.photo,''),
+		dt.created_at, dt.updated_at
+		FROM device_types dt JOIN categories c ON c.id = dt.category_id WHERE dt.%s = ?`, field)
+	err := r.db.QueryRow(query, value).
+		Scan(&dt.ID, &dt.CategoryID, &dt.CategoryName, &dt.Name, &brand, &model,
+			&dt.AssetCodePrefix, &dt.UsageType, &loc, &photo, &dt.CreatedAt, &dt.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	dt.Brand = valStr(brand)
+	dt.Model = valStr(model)
+	dt.DefaultLocation = valStr(loc)
+	dt.Photo = valStr(photo)
+	return &dt, nil
 }
 
 func (r *DeviceTypeRepository) GetByID(id int) (*models.DeviceType, error) {
