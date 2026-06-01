@@ -9,6 +9,7 @@ import (
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/search"
+	"inventaris-lab-kom/internal/util"
 )
 
 type PCRepository struct {
@@ -402,11 +403,12 @@ func (r *PCRepository) SyncSoftware(pcID int, requiredIDs []string, otherNames, 
 
 		swID := 0
 		if err2 := tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID); err2 != nil {
-			pgErr := tx.QueryRow(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', ?) RETURNING id`, name, desc).Scan(&swID)
-			if pgErr != nil {
-				tx.Exec(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', ?)`, name, desc)
-				tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID)
-			}
+slug := util.Slugify(name)
+				pgErr := tx.QueryRow(`INSERT INTO software_catalog (name, category, description, slug) VALUES (?, 'other', ?, ?) RETURNING id`, name, desc, slug).Scan(&swID)
+				if pgErr != nil {
+					tx.Exec(`INSERT INTO software_catalog (name, category, description, slug) VALUES (?, 'other', ?, ?)`, name, desc, slug)
+					tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID)
+				}
 		} else if desc != "" {
 			tx.Exec(`UPDATE software_catalog SET description = ? WHERE id = ?`, desc, swID)
 		}
