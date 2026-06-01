@@ -188,6 +188,30 @@ func (s *PCService) MoveRowToCadangan(row int, actorID int, actorUsername, actor
 	return nil
 }
 
+func (s *PCService) MovePC(label string, row, col int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	if err := s.pcRepo.MoveToPosition(label, row, col); err != nil {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+			map[string]any{"operation": "move"}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		map[string]any{"operation": "move", "label": label, "row": row, "col": col},
+		map[string]any{"status": "moved"}, ipAddress, userAgent)
+	return nil
+}
+
+func (s *PCService) PlaceCadangan(label string, row, col int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	if err := s.pcRepo.PlaceCadangan(label, row, col); err != nil {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+			map[string]any{"operation": "place"}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		map[string]any{"operation": "place", "label": label, "row": row, "col": col},
+		map[string]any{"status": "placed"}, ipAddress, userAgent)
+	return nil
+}
+
 func (s *PCService) SyncSoftware(label string, requiredIDs []string, otherNames, otherDescs []string,
 	actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 

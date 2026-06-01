@@ -312,9 +312,9 @@ func (h *Handler) PCGetLayout(c *gin.Context) {
 
 	for _, pc := range pcs {
 		item := pcLayoutItem{Label: pc.Label, Row: pc.Row, Column: pc.Column, Status: pc.Status, Placement: pc.Placement}
-		if pc.Placement == "cadangan" {
+		if pc.Placement == "cadangan" || (pc.Placement == "dipakai" && isNumericLabel(pc.Label) && (pc.Row < 1 || pc.Column < 1)) {
 			cadangan = append(cadangan, item)
-		} else if isNumericLabel(pc.Label) && pc.Row >= 1 && pc.Row <= maxRow && pc.Column >= 1 && pc.Column <= 8 {
+		} else if pc.Placement == "dipakai" && isNumericLabel(pc.Label) && pc.Row >= 1 && pc.Row <= maxRow && pc.Column >= 1 && pc.Column <= 8 {
 			grid[pc.Row-1][pc.Column-1] = item
 		} else {
 			special = append(special, item)
@@ -385,6 +385,50 @@ func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
 
 	if err := h.pcService.MoveRowToCadangan(req.Row, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal memindahkan baris")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *Handler) PCMove(c *gin.Context) {
+	var req struct {
+		Label string `json:"label" binding:"required"`
+		Row   int    `json:"row" binding:"required"`
+		Col   int    `json:"col" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
+		return
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	if err := h.pcService.MovePC(req.Label, req.Row, req.Col, uid, u, r, ip, ua); err != nil {
+		h.errJSON(c, http.StatusInternalServerError, "Gagal memindahkan PC")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *Handler) PCPlace(c *gin.Context) {
+	var req struct {
+		Label string `json:"label" binding:"required"`
+		Row   int    `json:"row" binding:"required"`
+		Col   int    `json:"col" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
+		return
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	if err := h.pcService.PlaceCadangan(req.Label, req.Row, req.Col, uid, u, r, ip, ua); err != nil {
+		h.errJSON(c, http.StatusInternalServerError, "Gagal menempatkan PC cadangan")
 		return
 	}
 

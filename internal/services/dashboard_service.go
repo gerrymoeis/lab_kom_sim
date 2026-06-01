@@ -43,33 +43,36 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 		}
 	}
 
-	grid := make([][]models.PC, 5)
+	maxRow := 5
+	for _, pc := range pcs {
+		if pc.Placement == "dipakai" && isNumericLabel(pc.Label) && pc.Row > maxRow {
+			maxRow = pc.Row
+		}
+	}
+
+	grid := make([][]models.PC, maxRow)
 	for i := range grid {
 		grid[i] = make([]models.PC, 8)
 	}
 
-	var specialPCs, extraPCs []models.PC
+	var specialPCs []models.PC
 	data := &DashboardData{}
 
 	for _, pc := range pcs {
 		if pc.Placement == "cadangan" {
 			continue
 		}
-		if pc.Row >= 1 && pc.Row <= 5 && pc.Column >= 1 && pc.Column <= 8 {
+		if isNumericLabel(pc.Label) && pc.Row >= 1 && pc.Column >= 1 && pc.Row <= maxRow && pc.Column <= 8 {
 			grid[pc.Row-1][pc.Column-1] = pc
 		} else if pc.Label != "" {
-			if isNumericLabel(pc.Label) {
-				extraPCs = append(extraPCs, pc)
-			} else {
-				specialPCs = append(specialPCs, pc)
-				switch pc.Label {
-				case "pc-dosen":
-					data.PCLecturer = pc
-				case "pc-laboran":
-					data.PCLaboran = pc
-				case "pc-cctv":
-					data.PCCCTV = pc
-				}
+			specialPCs = append(specialPCs, pc)
+			switch pc.Label {
+			case "pc-dosen":
+				data.PCLecturer = pc
+			case "pc-laboran":
+				data.PCLaboran = pc
+			case "pc-cctv":
+				data.PCCCTV = pc
 			}
 		}
 	}
@@ -77,7 +80,6 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 	deviceCount, softwareCount, _ := s.dashboardRepo.CountAll()
 	data.PCs = pcs
 	data.Grid = grid
-	data.ExtraPCs = extraPCs
 	data.StatusCounts = statusCounts
 	data.SpareCount = spareCount
 	data.DeviceCount = deviceCount
