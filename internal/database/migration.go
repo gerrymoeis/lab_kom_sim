@@ -109,7 +109,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS pcs (
 			id {{PK}},
-			{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0 AND {{ROW}} <= 5),
+			{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0 AND {{ROW}} <= 6),
 			{{COL}} INTEGER NOT NULL DEFAULT 0 CHECK({{COL}} >= 0 AND {{COL}} <= 8),
 			status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken')),
 			processor TEXT,
@@ -406,6 +406,51 @@ func runMigrations(db *DB, isPostgres bool) error {
 				log.Printf("WARN: could not drop pcs.pc_number (%v), skipping", err)
 			}
 			db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_pcs_label ON pcs(label)")
+		}
+	}
+
+	// Step 6: Extend row CHECK constraint from max 5 to max 6
+	if !isPostgres {
+		var pcsSQL string
+		if err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='pcs'`).Scan(&pcsSQL); err == nil && strings.Contains(pcsSQL, "<= 5") {
+			db.Exec("PRAGMA foreign_keys=OFF")
+			pcsV2 := `CREATE TABLE pcs_v2 (
+				id {{PK}},
+				{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0 AND {{ROW}} <= 6),
+				{{COL}} INTEGER NOT NULL DEFAULT 0 CHECK({{COL}} >= 0 AND {{COL}} <= 8),
+				status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken')),
+				processor TEXT, ram TEXT, storage TEXT, purchase_date DATE, notes TEXT,
+				last_checked {{TS}}, asset_id TEXT, serial_number TEXT, operating_system TEXT,
+				pc_type TEXT NOT NULL DEFAULT 'PC All-in-one',
+				brand_model TEXT NOT NULL DEFAULT 'Axioo Mypc One Pro K7-24 (16N9)',
+				accessories TEXT NOT NULL DEFAULT 'Keyboard & Mouse Axioo (Wired Set)',
+				photo_serial TEXT, photo_front TEXT,
+				label TEXT NOT NULL DEFAULT '' UNIQUE,
+				placement TEXT NOT NULL DEFAULT 'dipakai' CHECK(placement IN ('dipakai', 'cadangan')),
+				created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
+				updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
+			)`
+			pcsV2 = strings.ReplaceAll(pcsV2, "{{PK}}", d.pkType)
+			pcsV2 = strings.ReplaceAll(pcsV2, "{{ROW}}", d.qRow)
+			pcsV2 = strings.ReplaceAll(pcsV2, "{{COL}}", d.qCol)
+			pcsV2 = strings.ReplaceAll(pcsV2, "{{TS}}", d.tsType)
+			if _, err := db.Exec(pcsV2); err == nil {
+				db.Exec(`INSERT INTO pcs_v2 SELECT * FROM pcs`)
+				db.Exec(`DROP TABLE pcs`)
+				db.Exec(`ALTER TABLE pcs_v2 RENAME TO pcs`)
+				for _, idx := range []string{
+					"idx_pcs_status ON pcs(status)",
+					"idx_pcs_asset_id ON pcs(asset_id)",
+					"idx_pcs_pc_type ON pcs(pc_type)",
+					"idx_pcs_brand_model ON pcs(brand_model)",
+					"idx_pcs_serial_number ON pcs(serial_number)",
+					"idx_pcs_grid ON pcs(\"row\", \"column\")",
+				} {
+					db.Exec("CREATE INDEX IF NOT EXISTS " + idx)
+				}
+				log.Println("Migrated pcs row CHECK constraint from 5 to 6")
+			}
+			db.Exec("PRAGMA foreign_keys=ON")
 		}
 	}
 

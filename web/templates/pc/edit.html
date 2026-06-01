@@ -3,30 +3,22 @@
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
                     <form method="POST" action="/pc/{{ .pc.Label }}/edit" enctype="multipart/form-data">
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i> Nomor PC dan posisi tidak dapat diubah. Untuk mengubahnya, hapus dan buat PC baru.
-                        </div>
-
                         <div class="row mb-3">
                             <div class="col-md-4">
-                                <label class="form-label">Nomor PC</label>
-                                <input type="text" class="form-control" value="{{ .pc.Label }}" disabled>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Label Tampilan</label>
-                                <input type="text" class="form-control" id="label" name="label" value="{{ .pc.Label }}" placeholder="Kosongkan jika tidak perlu">
-                                <small class="text-muted">Kosongkan jika tidak perlu. Jika diisi akan tampil sebagai nama PC</small>
+                                <label for="label" class="form-label">Nomor PC</label>
+                                <input type="text" class="form-control" id="label" name="label" value="{{ .pc.Label }}">
+                                <small class="text-muted">Label/nomor identitas PC</small>
                             </div>
                             <div class="col-md-4">
                                 <label for="placement" class="form-label">Penempatan *</label>
-                                <select class="form-select" id="placement" name="placement" required onchange="togglePlacementFields()">
+                                <select class="form-select" id="placement" name="placement" required>
                                     <option value="dipakai" {{ if eq .pc.Placement "dipakai" }}selected{{ end }}>Dipakai (Terpasang)</option>
                                     <option value="cadangan" {{ if eq .pc.Placement "cadangan" }}selected{{ end }}>Cadangan (Belum Terpasang)</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div class="row" id="positionFields">
+                        <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="column" class="form-label">Baris</label>
                                 <input type="number" class="form-control" id="column" name="column" min="1" max="8" value="{{ .pc.Column }}">
@@ -34,8 +26,8 @@
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="row" class="form-label">Kolom</label>
-                                <input type="number" class="form-control" id="row" name="row" min="1" max="5" value="{{ .pc.Row }}">
-                                <small class="text-muted">1-5</small>
+                                <input type="number" class="form-control" id="row" name="row" min="1" max="6" value="{{ .pc.Row }}">
+                                <small class="text-muted">1-6</small>
                             </div>
                         </div>
 
@@ -427,24 +419,6 @@ function updateNumbers() {
     });
 }
 
-function togglePlacementFields() {
-    const placement = document.getElementById('placement').value;
-    const fields = document.getElementById('positionFields');
-    if (placement === 'cadangan') {
-        fields.style.display = 'none';
-        document.getElementById('row').value = 0;
-        document.getElementById('column').value = 0;
-        document.getElementById('row').disabled = true;
-        document.getElementById('column').disabled = true;
-    } else {
-        fields.style.display = 'flex';
-        document.getElementById('row').disabled = false;
-        document.getElementById('column').disabled = false;
-        document.getElementById('row').value = '';
-        document.getElementById('column').value = '';
-    }
-}
-document.addEventListener('DOMContentLoaded', togglePlacementFields);
 </script>
 
 <script>

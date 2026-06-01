@@ -215,7 +215,7 @@ func (r *PCRepository) GetByLabel(label string) (*models.PC, error) {
 func (r *PCRepository) GetByLabelEdit(label string) (*models.PC, error) {
 	var pc models.PC
 	var processor, ram, storage, os, notes, sn, bm, pt, acc, ps, pf, lbl sql.NullString
-	var pDate, lc sql.NullString
+	var pDate, lc sql.NullTime
 	err := r.db.QueryRow(`SELECT id, label, "row", "column", status, placement, processor, ram, storage,
 		purchase_date, last_checked, operating_system, notes, pc_type, serial_number, brand_model,
 		accessories, photo_serial, photo_front FROM pcs WHERE label = ?`, label).
@@ -236,6 +236,12 @@ func (r *PCRepository) GetByLabelEdit(label string) (*models.PC, error) {
 	pc.PhotoSerial = valStr(ps)
 	pc.PhotoFront = valStr(pf)
 	pc.Label = valStr(lbl)
+	if pDate.Valid {
+		pc.PurchaseDate = &pDate.Time
+	}
+	if lc.Valid {
+		pc.LastChecked = &lc.Time
+	}
 	return &pc, nil
 }
 
@@ -290,22 +296,24 @@ func (r *PCRepository) GetSoftware(pcID int) (requiredSW, otherSW []models.PCSof
 	return requiredSW, otherSW, nil
 }
 
-func (r *PCRepository) Create(row, col int, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label string) (sql.Result, error) {
+func (r *PCRepository) Create(row, col int, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label, purchaseDate, lastChecked string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO pcs ("row", "column", status, placement, processor, ram, storage,
 		serial_number, operating_system, pc_type, brand_model, accessories,
-		photo_serial, photo_front, label)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		row, col, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label)
+		photo_serial, photo_front, label, purchase_date, last_checked)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''))`,
+		row, col, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label, purchaseDate, lastChecked)
 }
 
-func (r *PCRepository) Update(label, status, placement, pt, sn, bm, acc, processor, ram, storage, os, notes, photoSerial, photoFront, newLabel string) error {
-	_, err := r.db.Exec(`UPDATE pcs SET status=?, placement=?, pc_type=?, serial_number=?, brand_model=?, accessories=?,
+func (r *PCRepository) Update(label string, row, col int, status, placement, pt, sn, bm, acc, processor, ram, storage, os, notes, photoSerial, photoFront, newLabel, purchaseDate, lastChecked string) error {
+	_, err := r.db.Exec(`UPDATE pcs SET "row"=?, "column"=?, status=?, placement=?, pc_type=?, serial_number=?, brand_model=?, accessories=?,
 		processor=?, ram=?, storage=?, operating_system=?, notes=?, label=?,
+		purchase_date=COALESCE(NULLIF(?, ''), purchase_date),
+		last_checked=COALESCE(NULLIF(?, ''), last_checked),
 		photo_serial=COALESCE(NULLIF(?, ''), photo_serial),
 		photo_front=COALESCE(NULLIF(?, ''), photo_front),
 		updated_at=CURRENT_TIMESTAMP
 		WHERE label=?`,
-		status, placement, pt, sn, bm, acc, processor, ram, storage, os, notes, newLabel, photoSerial, photoFront, label)
+		row, col, status, placement, pt, sn, bm, acc, processor, ram, storage, os, notes, newLabel, purchaseDate, lastChecked, photoSerial, photoFront, label)
 	return err
 }
 
