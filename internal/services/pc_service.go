@@ -15,6 +15,7 @@ type CreatePCInput struct {
 	Label                               string
 	IsMahasiswa                         bool
 	PurchaseDate, LastChecked           string
+	Notes                               string
 }
 
 type UpdatePCInput struct {
@@ -78,7 +79,7 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 
 	result, err := s.pcRepo.Create(in.Row, in.Column, in.Status, in.Placement, in.Processor, in.RAM, in.Storage,
 		in.SerialNumber, in.OperatingSystem, in.PCType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label,
-		in.PurchaseDate, in.LastChecked)
+		in.PurchaseDate, in.LastChecked, in.Notes)
 	if err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "pc", 0,
 			map[string]any{"label": in.Label, "serial_number": in.SerialNumber},
@@ -144,6 +145,46 @@ func (s *PCService) UpdateStatus(id int, status string, actorID int, actorUserna
 		map[string]any{"pc_id": id},
 		map[string]any{"old_status": oldStatus, "new_status": status},
 		ipAddress, userAgent)
+	return nil
+}
+
+func (s *PCService) SwapPCs(labelA, labelB string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	if err := s.pcRepo.SwapLabels(labelA, labelB); err != nil {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+			map[string]any{"operation": "swap"}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		map[string]any{"operation": "swap", "a": labelA, "b": labelB},
+		map[string]any{"status": "swapped"}, ipAddress, userAgent)
+	return nil
+}
+
+func (s *PCService) ReplacePC(target, spare string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	if err := s.pcRepo.ReplaceWithSpare(target, spare); err != nil {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+			map[string]any{"operation": "replace"}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	// Seed required software for the newly placed PC
+	if pc, _ := s.pcRepo.GetByLabel(target); pc != nil {
+		_ = s.pcRepo.SeedRequiredSoftware(pc.ID)
+	}
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		map[string]any{"operation": "replace", "target": target, "spare": spare},
+		map[string]any{"status": "replaced"}, ipAddress, userAgent)
+	return nil
+}
+
+func (s *PCService) MoveRowToCadangan(row int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	if err := s.pcRepo.MoveRowToCadangan(row); err != nil {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+			map[string]any{"operation": "move_row", "row": row}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		map[string]any{"operation": "move_row", "row": row},
+		map[string]any{"status": "moved"}, ipAddress, userAgent)
 	return nil
 }
 

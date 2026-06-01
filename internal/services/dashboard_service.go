@@ -43,7 +43,7 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 		}
 	}
 
-	grid := make([][]models.PC, 6)
+	grid := make([][]models.PC, 5)
 	for i := range grid {
 		grid[i] = make([]models.PC, 8)
 	}
@@ -55,7 +55,7 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 		if pc.Placement == "cadangan" {
 			continue
 		}
-		if pc.Row >= 1 && pc.Row <= 6 && pc.Column >= 1 && pc.Column <= 8 {
+		if pc.Row >= 1 && pc.Row <= 5 && pc.Column >= 1 && pc.Column <= 8 {
 			grid[pc.Row-1][pc.Column-1] = pc
 		} else if pc.Label != "" {
 			if isNumericLabel(pc.Label) {

@@ -409,14 +409,15 @@ func runMigrations(db *DB, isPostgres bool) error {
 		}
 	}
 
-	// Step 6: Extend row CHECK constraint from max 5 to max 6
+	// Step 6: Remove row CHECK upper bound (was `<= 5` or `<= 6` → now unlimited)
 	if !isPostgres {
 		var pcsSQL string
-		if err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='pcs'`).Scan(&pcsSQL); err == nil && strings.Contains(pcsSQL, "<= 5") {
+		err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='pcs'`).Scan(&pcsSQL)
+		if err == nil && (strings.Contains(pcsSQL, "<= 5") || strings.Contains(pcsSQL, "<= 6")) {
 			db.Exec("PRAGMA foreign_keys=OFF")
 			pcsV2 := `CREATE TABLE pcs_v2 (
 				id {{PK}},
-				{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0 AND {{ROW}} <= 6),
+				{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0),
 				{{COL}} INTEGER NOT NULL DEFAULT 0 CHECK({{COL}} >= 0 AND {{COL}} <= 8),
 				status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken')),
 				processor TEXT, ram TEXT, storage TEXT, purchase_date DATE, notes TEXT,
@@ -448,7 +449,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 				} {
 					db.Exec("CREATE INDEX IF NOT EXISTS " + idx)
 				}
-				log.Println("Migrated pcs row CHECK constraint from 5 to 6")
+				log.Println("Removed pcs row CHECK upper bound (was <=5 or <=6, now unlimited)")
 			}
 			db.Exec("PRAGMA foreign_keys=ON")
 		}

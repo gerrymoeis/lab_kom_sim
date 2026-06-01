@@ -1,0 +1,47 @@
+{{ define "pc/layout_modal.html" }}
+<div class="modal fade" id="pcLayoutModal" tabindex="-1" aria-labelledby="pcLayoutModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pcLayoutModalLabel"><i class="bi bi-grid-3x3-gap"></i> Kelola Layout PC</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+      </div>
+      <div class="modal-body">
+        <div id="layoutModeMessage" class="d-none"></div>
+        <div id="layoutSelectedInfo" class="text-primary small mb-2"></div>
+
+        <div class="layout-grid-container">
+          <div id="layoutGridBody"></div>
+        </div>
+
+        <div id="layoutActions" class="mt-2"></div>
+
+        <hr>
+        <h6 class="text-muted mb-2"><i class="bi bi-box-seam"></i> PC Cadangan</h6>
+        <div id="layoutCadanganBody" class="d-flex flex-wrap gap-1"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="layoutConfirmDialog" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Konfirmasi</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p id="layoutConfirmText" class="mb-0"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+        <button type="button" class="btn btn-primary btn-sm" id="layoutConfirmBtn">Ya, Konfirmasi</button>
+      </div>
+    </div>
+  </div>
+</div>
+{{ end }}

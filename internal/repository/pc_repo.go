@@ -296,12 +296,12 @@ func (r *PCRepository) GetSoftware(pcID int) (requiredSW, otherSW []models.PCSof
 	return requiredSW, otherSW, nil
 }
 
-func (r *PCRepository) Create(row, col int, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label, purchaseDate, lastChecked string) (sql.Result, error) {
+func (r *PCRepository) Create(row, col int, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label, purchaseDate, lastChecked, notes string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO pcs ("row", "column", status, placement, processor, ram, storage,
 		serial_number, operating_system, pc_type, brand_model, accessories,
-		photo_serial, photo_front, label, purchase_date, last_checked)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''))`,
-		row, col, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label, purchaseDate, lastChecked)
+		photo_serial, photo_front, label, purchase_date, last_checked, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?)`,
+		row, col, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label, purchaseDate, lastChecked, notes)
 }
 
 func (r *PCRepository) Update(label string, row, col int, status, placement, pt, sn, bm, acc, processor, ram, storage, os, notes, photoSerial, photoFront, newLabel, purchaseDate, lastChecked string) error {
@@ -413,6 +413,106 @@ func (r *PCRepository) SyncSoftware(pcID int, requiredIDs []string, otherNames, 
 		if swID > 0 {
 			tx.Exec(`INSERT INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)`, pcID, swID)
 		}
+	}
+
+	return tx.Commit()
+}
+
+func (r *PCRepository) SwapLabels(labelA, labelB string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	pcA := struct{ id, row, col int }{}
+	pcB := struct{ id, row, col int }{}
+	if err := tx.QueryRow(`SELECT id, "row", "column" FROM pcs WHERE label = ?`, labelA).
+		Scan(&pcA.id, &pcA.row, &pcA.col); err != nil {
+		return err
+	}
+	if err := tx.QueryRow(`SELECT id, "row", "column" FROM pcs WHERE label = ?`, labelB).
+		Scan(&pcB.id, &pcB.row, &pcB.col); err != nil {
+		return err
+	}
+
+	// 3-step temp label swap to avoid UNIQUE violation
+	tx.Exec(`UPDATE pcs SET label = '__SWAP_' || ? WHERE id = ?`, pcA.id, pcA.id)
+	tx.Exec(`UPDATE pcs SET label = ? WHERE id = ?`, labelA, pcB.id)
+	tx.Exec(`UPDATE pcs SET label = ? WHERE id = ?`, labelB, pcA.id)
+
+	// Swap positions
+	tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, pcB.row, pcB.col, pcA.id)
+	tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, pcA.row, pcA.col, pcB.id)
+
+	return tx.Commit()
+}
+
+func (r *PCRepository) ReplaceWithSpare(target, spare string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var tgtID, tgtRow, tgtCol int
+	if err := tx.QueryRow(`SELECT id, "row", "column" FROM pcs WHERE label = ?`, target).
+		Scan(&tgtID, &tgtRow, &tgtCol); err != nil {
+		return err
+	}
+	var sprID int
+	if err := tx.QueryRow(`SELECT id FROM pcs WHERE label = ?`, spare).
+		Scan(&sprID); err != nil {
+		return err
+	}
+
+	var next int
+	tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 14) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&next)
+	newLabel := fmt.Sprintf("pc-cadangan-%d", next)
+
+	// 3-step temp label swap
+	tx.Exec(`UPDATE pcs SET label = '__SWAP_' || ? WHERE id = ?`, tgtID, tgtID)
+	tx.Exec(`UPDATE pcs SET label = ? WHERE id = ?`, target, sprID)
+	tx.Exec(`UPDATE pcs SET label = ? WHERE id = ?`, newLabel, tgtID)
+
+	// Spare takes target's position as dipakai
+	tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, tgtRow, tgtCol, sprID)
+	// Target becomes cadangan
+	tx.Exec(`UPDATE pcs SET "row"=0, "column"=0, placement='cadangan', updated_at=CURRENT_TIMESTAMP WHERE id=?`, tgtID)
+
+	return tx.Commit()
+}
+
+func (r *PCRepository) MoveRowToCadangan(row int) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.Query(`SELECT id FROM pcs WHERE "row" = ? AND placement = 'dipakai'`, row)
+	if err != nil {
+		return err
+	}
+	var ids []int
+	for rows.Next() {
+		var id int
+		rows.Scan(&id)
+		ids = append(ids, id)
+	}
+	rows.Close()
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	var next int
+	tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 14) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&next)
+
+	for _, id := range ids {
+		label := fmt.Sprintf("pc-cadangan-%d", next)
+		next++
+		tx.Exec(`UPDATE pcs SET label=?, "row"=0, "column"=0, placement='cadangan', updated_at=CURRENT_TIMESTAMP WHERE id=?`, label, id)
 	}
 
 	return tx.Commit()
