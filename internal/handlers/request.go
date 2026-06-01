@@ -119,6 +119,11 @@ type EditDeviceTypeRequest struct {
 	DefaultLocation string `form:"default_location"`
 }
 
+type EditCategoryRequest struct {
+	Name          string `form:"name" binding:"required"`
+	DefaultPrefix string `form:"default_prefix" binding:"required"`
+}
+
 type CreateDeviceLoanRequest struct {
 	DeviceID     string `form:"device_id" binding:"required"`
 	BorrowerName string `form:"borrower_name" binding:"required"`

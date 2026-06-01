@@ -1,6 +1,7 @@
 ﻿package handlers
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -449,6 +450,112 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices")
+}
+
+// ============== Category Handlers ==============
+
+func (h *Handler) CategoryDetail(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	cat, err := h.categoryService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Kategori tidak ditemukan")
+		return
+	}
+	types, _ := h.deviceTypeService.GetByCategoryID(id)
+	deviceCount, _ := h.deviceService.CountByCategoryID(id)
+
+	c.HTML(http.StatusOK, "category/detail.html", gin.H{
+		"title": cat.Name, "currentPage": "devices",
+		"username": username, "role": role,
+		"category":     cat,
+		"deviceTypes":  types,
+		"deviceCount":  deviceCount,
+		"typeCount":    len(types),
+	})
+}
+
+func (h *Handler) CategoryEditPage(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	cat, err := h.categoryService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Kategori tidak ditemukan")
+		return
+	}
+	c.HTML(http.StatusOK, "category/edit.html", gin.H{
+		"title": "Edit Kategori", "currentPage": "devices",
+		"username": username, "role": role,
+		"category": cat,
+	})
+}
+
+func (h *Handler) CategoryEdit(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	var req EditCategoryRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.errHTML(c, "Data tidak valid")
+		return
+	}
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	if err := h.categoryService.Update(id, req.Name, req.DefaultPrefix, uid, u, r, ip, ua); err != nil {
+		h.errHTML(c, "Gagal mengupdate kategori")
+		return
+	}
+	c.Redirect(http.StatusFound, "/devices")
+}
+
+func (h *Handler) CategoryDelete(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	// Check cascade
+	typeCount, _ := h.deviceTypeService.CountByCategoryID(id)
+	deviceCount, _ := h.deviceService.CountByCategoryID(id)
+
+	if typeCount > 0 || deviceCount > 0 {
+		h.redirectWithError(c, "/devices",
+			fmt.Sprintf("Tidak dapat menghapus: masih ada %d tipe dan %d perangkat dalam kategori ini", typeCount, deviceCount))
+		return
+	}
+
+	if err := h.categoryService.Delete(id, uid, u, r, ip, ua); err != nil {
+		h.redirectWithError(c, "/devices", "Gagal menghapus kategori")
+		return
+	}
+	c.Redirect(http.StatusFound, "/devices")
+}
+
+// ============== Device Type Detail Handler ==============
+
+func (h *Handler) DeviceTypeDetail(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	dt, err := h.deviceTypeService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Tipe perangkat tidak ditemukan")
+		return
+	}
+	deviceCount, _ := h.deviceService.CountByDeviceTypeID(id)
+
+	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
+		"title": dt.Name, "currentPage": "devices",
+		"username": username, "role": role,
+		"deviceType":  dt,
+		"deviceCount": deviceCount,
+	})
 }
 
 func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bool) models.DeviceGroupedData {
