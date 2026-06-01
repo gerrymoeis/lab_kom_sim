@@ -182,6 +182,7 @@ func (r *DeviceLoanRepository) GetLoanableDevices() ([]models.Device, error) {
 		FROM devices d
 		JOIN device_types dt ON dt.id = d.device_type_id
 		WHERE dt.usage_type = 'loanable'
+		AND d.condition = 'normal'
 		AND d.id NOT IN (SELECT device_id FROM device_loans WHERE actual_return_date IS NULL)
 		ORDER BY d.asset_code`)
 	if err != nil {
