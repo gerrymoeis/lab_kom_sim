@@ -105,7 +105,7 @@
                                     </thead>
                                     <tbody>
                                         {{ range $idx, $d := $type.Devices }}
-                                        <tr class="{{ if eq $d.Condition "rusak" }}table-danger{{ else if eq $d.Condition "warning" }}table-warning{{ end }}">
+                                        <tr>
                                             <td class="text-muted">{{ add $idx $.startRow }}</td>
                                             <td><code>{{ $d.AssetCode }}</code></td>
                                             <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
