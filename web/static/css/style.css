@@ -182,18 +182,5 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 .diff-old { background-color: #ffebee; padding: 10px; border-radius: 4px; }
 .diff-new { background-color: #e8f5e9; padding: 10px; border-radius: 4px; }
 
-/* Layout Manager */
-.layout-grid-container { overflow-x: auto; }
-.layout-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
-.layout-row-label { width: 48px; font-size: 0.75rem; color: #6c757d; white-space: nowrap; flex-shrink: 0; }
-.layout-remove-row { flex-shrink: 0; padding: 2px 4px; font-size: 0.7rem; }
-.layout-slot { width: 64px; height: 48px; border: 1px solid #dee2e6; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; cursor: pointer; user-select: none; flex-shrink: 0; transition: all 0.15s; }
-.layout-empty { background: #f8f9fa; color: #adb5bd; }
-.layout-filled { font-weight: 600; color: #fff; }
-.layout-status-normal { background: #28a745; }
-.layout-status-warning { background: #ffc107; color: #000; }
-.layout-status-broken { background: #dc3545; }
-.layout-selected { outline: 3px solid #0d6efd; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(13,110,253,0.25); transform: scale(1.05); }
-.layout-slot:hover { opacity: 0.85; }
-.layout-cadangan-item { border: 1px solid #dee2e6; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; text-align: center; min-width: 80px; transition: all 0.15s; }
-.layout-cadangan-item:hover { opacity: 0.85; }
+.cursor-pointer { cursor: pointer; }
+.cursor-pointer:hover { opacity: 0.85; }

@@ -518,6 +518,33 @@ func (r *PCRepository) MoveRowToCadangan(row int) error {
 	return tx.Commit()
 }
 
+func (r *PCRepository) MoveToPosition(label string, row, col int) error {
+	_, err := r.db.Exec(`UPDATE pcs SET "row"=?, "column"=?, updated_at=CURRENT_TIMESTAMP WHERE label=?`, row, col, label)
+	return err
+}
+
+func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var id int
+	if err := tx.QueryRow(`SELECT id FROM pcs WHERE label=?`, label).Scan(&id); err != nil {
+		return err
+	}
+
+	tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, row, col, id)
+	tx.Exec(`DELETE FROM pc_software WHERE pc_id=?`, id)
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	_ = r.SeedRequiredSoftware(id)
+	return nil
+}
+
 func (r *PCRepository) ExportAll() ([]models.PC, error) {
 	rows, err := r.db.Query(`SELECT label, "row", "column", status, placement, pc_type, serial_number, brand_model,
 		processor, ram, storage, operating_system, accessories, purchase_date, last_checked, notes
