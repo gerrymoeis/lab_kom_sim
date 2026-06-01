@@ -160,7 +160,7 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, []models.PC, models.PC,
 		}
 	}
 
-	grid := make([][]models.PC, 5)
+	grid := make([][]models.PC, 6)
 	for i := range grid {
 		grid[i] = make([]models.PC, 8)
 	}
@@ -171,7 +171,7 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, []models.PC, models.PC,
 		if pc.Placement == "cadangan" {
 			continue
 		}
-		if pc.Row >= 1 && pc.Row <= 5 && pc.Column >= 1 && pc.Column <= 8 {
+		if pc.Row >= 1 && pc.Row <= 6 && pc.Column >= 1 && pc.Column <= 8 {
 			grid[pc.Row-1][pc.Column-1] = pc
 		} else if pc.Label != "" && isNumericLabel(pc.Label) {
 			extraPCs = append(extraPCs, pc)
@@ -200,12 +200,12 @@ func isNumericLabel(label string) bool {
 }
 
 func buildSoftwareGrid(pcList []repository.PCInstallStatus) [][]repository.PCInstallStatus {
-	grid := make([][]repository.PCInstallStatus, 5)
+	grid := make([][]repository.PCInstallStatus, 6)
 	for i := range grid {
 		grid[i] = make([]repository.PCInstallStatus, 8)
 	}
 	for _, p := range pcList {
-		if p.Row >= 1 && p.Row <= 5 && p.Column >= 1 && p.Column <= 8 {
+		if p.Row >= 1 && p.Row <= 6 && p.Column >= 1 && p.Column <= 8 {
 			grid[p.Row-1][p.Column-1] = p
 		}
 	}
