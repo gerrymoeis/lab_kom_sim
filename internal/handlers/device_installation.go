@@ -1,10 +1,15 @@
 package handlers
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
@@ -84,15 +89,26 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 		return
 	}
 
+	photo, err := saveInstallationPhoto(c)
+	if err != nil {
+		_, username, role, _ := h.user(c)
+		c.HTML(http.StatusBadRequest, "device_installation/create.html", gin.H{
+			"title": "Tambah Instalasi", "currentPage": "devices",
+			"username": username, "role": role, "error": err.Error(),
+		})
+		return
+	}
+
 	deviceID, _ := strconv.Atoi(req.DeviceID)
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	_, err := h.deviceInstallationService.Create(services.CreateInstallationInput{
+	_, err = h.deviceInstallationService.Create(services.CreateInstallationInput{
 		DeviceID:               deviceID,
 		LocationInstalled:      req.LocationInstalled,
 		InstallationStartDate:  req.InstallationStartDate,
 		InstallationFinishDate: req.InstallationFinishDate,
+		Photo:                  photo,
 		Notes:                  req.Notes,
 	}, uid, u, r, ip, ua)
 	if err != nil {
@@ -155,6 +171,20 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		return
 	}
 
+	photo, err := saveInstallationPhoto(c)
+	if err != nil {
+		h.errHTML(c, err.Error())
+		return
+	}
+
+	// If no new photo uploaded, keep existing
+	if photo == "" {
+		inst, err := h.deviceInstallationService.GetByID(id)
+		if err == nil {
+			photo = inst.Photo
+		}
+	}
+
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
@@ -162,6 +192,7 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		LocationInstalled:      req.LocationInstalled,
 		InstallationStartDate:  req.InstallationStartDate,
 		InstallationFinishDate: req.InstallationFinishDate,
+		Photo:                  photo,
 		Notes:                  req.Notes,
 	}, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, "Gagal mengupdate instalasi")
@@ -180,4 +211,39 @@ func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices?tab=installations")
+}
+
+func saveInstallationPhoto(c *gin.Context) (string, error) {
+	file, err := c.FormFile("photo")
+	if err != nil {
+		// No file uploaded
+		return "", nil
+	}
+
+	// Validate size (max 5MB)
+	if file.Size > 5*1024*1024 {
+		return "", fmt.Errorf("File terlalu besar (max 5MB)")
+	}
+
+	// Validate extension
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		return "", fmt.Errorf("Format file tidak didukung. Gunakan JPEG atau PNG")
+	}
+
+	// Ensure directory exists
+	dir := filepath.Join("uploads", "device_installations")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", fmt.Errorf("Gagal membuat direktori upload")
+	}
+
+	// Generate unique filename
+	filename := fmt.Sprintf("inst_%s%s", time.Now().Format("150405_02012006"), ext)
+	dst := filepath.Join(dir, filename)
+
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		return "", fmt.Errorf("Gagal menyimpan file")
+	}
+
+	return filename, nil
 }
