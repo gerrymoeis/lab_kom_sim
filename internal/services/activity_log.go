@@ -206,8 +206,8 @@ type ActivityLogFilters struct {
 }
 
 // GetLogs retrieves activity logs with filters
-func (s *ActivityLogService) GetUsernames() ([]string, error) {
-	rows, err := s.db.Query(`SELECT DISTINCT username FROM activity_logs ORDER BY username`)
+func (s *ActivityLogService) GetAllUsernames() ([]string, error) {
+	rows, err := s.db.Query(`SELECT DISTINCT username FROM activity_logs UNION SELECT username FROM users ORDER BY username`)
 	if err != nil { return nil, err }
 	defer rows.Close()
 	var usernames []string
@@ -217,6 +217,19 @@ func (s *ActivityLogService) GetUsernames() ([]string, error) {
 		usernames = append(usernames, u)
 	}
 	return usernames, rows.Err()
+}
+
+func (s *ActivityLogService) GetAllEntityTypes() ([]string, error) {
+	rows, err := s.db.Query(`SELECT DISTINCT entity_type FROM activity_logs ORDER BY entity_type`)
+	if err != nil { return nil, err }
+	defer rows.Close()
+	var types []string
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err != nil { return nil, err }
+		types = append(types, t)
+	}
+	return types, rows.Err()
 }
 
 func (s *ActivityLogService) GetLogs(filters ActivityLogFilters) ([]models.ActivityLog, int, error) {

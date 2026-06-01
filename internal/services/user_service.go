@@ -33,8 +33,8 @@ func (s *UserService) List() ([]models.User, error) {
 	return s.userRepo.List()
 }
 
-func (s *UserService) ListPaginated(search string, page, pageSize int) ([]models.User, int, error) {
-	return s.userRepo.ListPaginated(search, page, pageSize)
+func (s *UserService) ListPaginated(search, role, sortBy, sortOrder string, page, pageSize int) ([]models.User, int, error) {
+	return s.userRepo.ListPaginated(search, role, sortBy, sortOrder, page, pageSize)
 }
 
 func (s *UserService) GetByID(id int) (*models.User, error) {
