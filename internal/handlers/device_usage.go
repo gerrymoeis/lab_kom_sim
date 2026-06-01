@@ -46,7 +46,7 @@ func (h *Handler) DeviceUsageList(c *gin.Context) {
 	totalPages := (total + pageSize - 1) / pageSize
 
 	c.HTML(http.StatusOK, "device_usage/list.html", gin.H{
-		"title": "Pemakaian", "currentPage": "usages",
+		"title": "Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"usages": usages,
 		"filters": gin.H{"search": search, "sort_by": sortBy},
@@ -67,7 +67,7 @@ func (h *Handler) DeviceUsageCreatePage(c *gin.Context) {
 	}
 	deviceID, _ := strconv.Atoi(c.DefaultQuery("device_id", "0"))
 	c.HTML(http.StatusOK, "device_usage/create.html", gin.H{
-		"title": "Tambah Pemakaian", "currentPage": "usages",
+		"title": "Tambah Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"devices": devices, "preselectDeviceID": deviceID,
 	})
@@ -78,7 +78,7 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	if err := c.ShouldBind(&req); err != nil {
 		_, username, role, _ := h.user(c)
 		c.HTML(http.StatusBadRequest, "device_usage/create.html", gin.H{
-			"title": "Tambah Pemakaian", "currentPage": "usages",
+			"title": "Tambah Pemakaian", "currentPage": "devices",
 			"username": username, "role": role, "error": "Data tidak lengkap",
 		})
 		return
@@ -98,7 +98,7 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "device_usage/create.html", gin.H{
-			"title": "Tambah Pemakaian", "currentPage": "usages",
+			"title": "Tambah Pemakaian", "currentPage": "devices",
 			"username": u, "role": r, "error": "Gagal menyimpan pemakaian",
 		})
 		return
@@ -120,7 +120,7 @@ func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "device_usage/edit.html", gin.H{
-		"title": "Edit Pemakaian", "currentPage": "usages",
+		"title": "Edit Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"usage": usage,
 		"deviceTypeName": usage.DeviceTypeName,
