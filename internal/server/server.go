@@ -109,6 +109,7 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 			for i := 0; i < count; i++ { r[i] = i }
 			return r
 		},
+		"lower":           func(s string) string { return strings.ToLower(s) },
 		"navItems":        func(currentPage, role string) []NavItem { return loadNavItems(currentPage, role) },
 		"allCategories":   func() []Category { return loadCategories() },
 		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },

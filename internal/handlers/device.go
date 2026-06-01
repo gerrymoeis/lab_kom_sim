@@ -308,7 +308,7 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 	}
 
 	slug := c.Param("slug")
-	d, err := h.deviceService.GetBySlug(slug)
+	d, err := h.deviceService.GetByAssetCodeSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
@@ -328,7 +328,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 	}
 
 	slug := c.Param("slug")
-	d, err := h.deviceService.GetBySlug(slug)
+	d, err := h.deviceService.GetByAssetCodeSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
@@ -344,7 +344,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceEdit(c *gin.Context) {
 	slug := c.Param("slug")
-	d, err := h.deviceService.GetBySlug(slug)
+	d, err := h.deviceService.GetByAssetCodeSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
@@ -377,7 +377,7 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 
 func (h *Handler) DeviceDelete(c *gin.Context) {
 	slug := c.Param("slug")
-	d, err := h.deviceService.GetBySlug(slug)
+	d, err := h.deviceService.GetByAssetCodeSlug(slug)
 	if err != nil {
 		h.redirectWithError(c, "/devices", "Perangkat tidak ditemukan")
 		return

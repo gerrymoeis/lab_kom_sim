@@ -80,6 +80,10 @@ func (s *DeviceService) GetBySlug(slug string) (*models.Device, error) {
 	return s.deviceRepo.GetBySlug(slug)
 }
 
+func (s *DeviceService) GetByAssetCodeSlug(slug string) (*models.Device, error) {
+	return s.deviceRepo.GetByAssetCodeSlug(slug)
+}
+
 func (s *DeviceService) GetByAssetCode(code string) (*models.Device, error) {
 	return s.deviceRepo.GetByAssetCode(code)
 }

@@ -170,6 +170,31 @@ func (r *DeviceRepository) GetBySlug(slug string) (*models.Device, error) {
 	return r.getByField("slug", slug)
 }
 
+func (r *DeviceRepository) GetByAssetCodeSlug(slug string) (*models.Device, error) {
+	var d models.Device
+	var pDate sql.NullString
+	err := r.db.QueryRow(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
+		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
+		d.created_at, d.updated_at,
+		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
+		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
+		COALESCE(d.usage_type, '') AS usage_type_override,
+		COALESCE(dt.photo,'')
+		FROM devices d
+		JOIN device_types dt ON d.device_type_id = dt.id
+		JOIN categories c ON c.id = dt.category_id WHERE LOWER(d.asset_code) = LOWER(?)`, slug).
+		Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
+			&d.Condition, &d.Location, &pDate, &d.Notes,
+			&d.CreatedAt, &d.UpdatedAt,
+			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
+			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto)
+	if err != nil {
+		return nil, err
+	}
+	d.PurchaseDate = parseDate(pDate)
+	return &d, nil
+}
+
 func (r *DeviceRepository) getByField(field, value string) (*models.Device, error) {
 	var d models.Device
 	var pDate sql.NullString
