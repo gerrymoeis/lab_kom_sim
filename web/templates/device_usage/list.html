@@ -84,6 +84,9 @@
                             </td>
                             <td>{{ if $u.Purpose }}{{ $u.Purpose }}{{ else }}-{{ end }}</td>
                             <td class="text-nowrap">
+                                <a href="/device-usages/{{ $u.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
+                                    <i class="bi bi-eye"></i>
+                                </a>
                                 {{ if eq $.role "admin" }}
                                 <a href="/device-usages/{{ $u.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>

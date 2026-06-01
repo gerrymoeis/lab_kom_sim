@@ -95,9 +95,17 @@
                             </td>
                             <td class="text-center">{{ if $l.ExtensionCount }}<span class="badge bg-info">{{ $l.ExtensionCount }}x</span>{{ else }}-{{ end }}</td>
                             <td class="text-nowrap">
+                                <a href="/device-loans/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
+                                    <i class="bi bi-eye"></i>
+                                </a>
                                 <a href="/device-loans/{{ $l.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                {{ if and (eq $.role "admin") (eq $l.ComputedStatus "active") }}
+                                <button type="button" class="btn btn-sm btn-success me-1" title="Perpanjang" onclick="openExtendModal({{ $l.ID }}, '{{ (localTime $l.ReturnDate).Format "2006-01-02" }}', '{{ (localTime $l.ReturnDate).Format "02/01/2006" }}')">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </button>
+                                {{ end }}
                                 <button type="button" class="btn btn-sm btn-danger" title="Hapus" onclick="if(confirm('Hapus peminjaman ini?')){ document.getElementById('del-{{ $l.ID }}').submit(); }">
                                     <i class="bi bi-trash"></i>
                                 </button>
@@ -117,5 +125,68 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="extendModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Perpanjang Pinjaman</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="extendForm">
+                <input type="hidden" id="extendLoanId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tanggal Kembali Baru</label>
+                        <input type="date" class="form-control" id="newReturnDate" name="return_date" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Tanggal kembali sebelumnya: <strong id="prevReturnDate"></strong>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success">Simpan Perpanjangan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+function openExtendModal(loanId, returnDate, prevDate) {
+    document.getElementById('extendLoanId').value = loanId;
+    document.getElementById('newReturnDate').value = '';
+    document.getElementById('newReturnDate').min = returnDate;
+    document.getElementById('prevReturnDate').textContent = prevDate;
+    var modal = new bootstrap.Modal(document.getElementById('extendModal'));
+    modal.show();
+}
+document.getElementById('extendForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var loanId = document.getElementById('extendLoanId').value;
+    var returnDate = document.getElementById('newReturnDate').value;
+    if (!loanId || !returnDate) return;
+
+    var btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
+
+    fetch('/device-loans/' + loanId + '/extend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'return_date=' + encodeURIComponent(returnDate)
+    }).then(function(r) {
+        if (r.ok) {
+            window.location.reload();
+        } else {
+            return r.json().then(function(d) { throw new Error(d.error || 'Gagal memperpanjang'); });
+        }
+    }).catch(function(err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.innerHTML = 'Simpan Perpanjangan';
+    });
+});
+</script>
 
 {{ template "layout/footer.html" . }}

@@ -27,7 +27,7 @@ func (s *CategoryService) Create(name, prefix string, actorID int, actorUsername
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "category", 0,
 			map[string]any{"name": name}, ipAddress, userAgent, err.Error())
-		return 0, err
+		return 0, sanitizeDBError(err)
 	}
 	id, _ := result.LastInsertId()
 	s.log.LogCreate(actorID, actorUsername, actorRole, "category", int(id),
@@ -40,7 +40,7 @@ func (s *CategoryService) Update(id int, name, prefix string, actorID int, actor
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "category", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-		return err
+		return sanitizeDBError(err)
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "category", id,
 		map[string]any{"id": id}, map[string]any{"name": name, "prefix": prefix}, ipAddress, userAgent)

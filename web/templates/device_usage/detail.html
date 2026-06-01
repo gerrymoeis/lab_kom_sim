@@ -1,0 +1,90 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/devices?tab=usages">Pemakaian</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ .assetCode }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informasi Pemakaian</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th style="width:200px;">Asset Code</th>
+                            <td><code>{{ .assetCode }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Tipe Perangkat</th>
+                            <td><strong>{{ .usage.DeviceTypeName }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Kategori</th>
+                            <td><span class="badge bg-secondary">{{ .usage.CategoryName }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Pengguna</th>
+                            <td><strong>{{ .usage.UserName }}</strong><br><small class="text-muted">{{ .usage.UserType }}</small></td>
+                        </tr>
+                        <tr>
+                            <th>Tanggal Pemakaian</th>
+                            <td>{{ (localTime .usage.UsageDate).Format "02/01/2006" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Keperluan</th>
+                            <td>{{ if .usage.Purpose }}{{ .usage.Purpose }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
+                        </tr>
+                        <tr>
+                            <th>Catatan</th>
+                            <td>{{ if .usage.Notes }}{{ .usage.Notes }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Status Stok</h5>
+                </div>
+                <div class="card-body">
+                    {{ if eq .usage.IsAvailable "yes" }}
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle"></i> Barang masih tersedia
+                    </div>
+                    {{ else }}
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-x-circle"></i> Barang sudah habis
+                    </div>
+                    {{ end }}
+                </div>
+            </div>
+
+            <div class="d-flex flex-column gap-2">
+                {{ if eq .role "admin" }}
+                <a href="/device-usages/{{ .usage.ID }}/edit" class="btn btn-warning">
+                    <i class="bi bi-pencil"></i> Edit Pemakaian
+                </a>
+                {{ end }}
+                <a href="/devices/{{ .usage.DeviceID }}" class="btn btn-info">
+                    <i class="bi bi-hdd-rack"></i> Lihat Perangkat
+                </a>
+            </div>
+
+            <div class="mt-3">
+                <small class="text-muted">
+                    Dibuat: {{ (localTime .usage.CreatedAt).Format "02/01/2006 15:04" }} {{ tzCode }}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ template "layout/footer.html" . }}

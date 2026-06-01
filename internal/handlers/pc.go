@@ -448,6 +448,23 @@ func (h *Handler) PCPlace(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
 }
 
+func processPhotoRef(photoRef, subDir string) string {
+	ref := strings.TrimSpace(photoRef)
+	if ref == "" {
+		return ""
+	}
+	src := filepath.Join("uploads", "temp", ref)
+	dst := filepath.Join("uploads", subDir, ref)
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return ""
+	}
+	if err := services.CopyFile(src, dst); err != nil {
+		return ""
+	}
+	os.Remove(src)
+	return ref
+}
+
 func processPhotoRefs(serialRef, frontRef string) (serial, front string) {
 	for _, p := range []struct{ ref string; result *string }{
 		{serialRef, &serial}, {frontRef, &front},
