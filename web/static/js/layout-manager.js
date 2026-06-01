@@ -229,7 +229,7 @@ var PCLayoutManager = (function() {
     .then(function(data) {
       busy = false;
       if (data.success) {
-        onDone();
+        onDone(data.pcs || null);
       } else {
         alert('Gagal: ' + (data.error || 'unknown error'));
       }
@@ -240,14 +240,16 @@ var PCLayoutManager = (function() {
     });
   }
 
-  function onDone() {
+  function onDone(pcs) {
     selectedSlot = null;
     fetchLayout();
-    refreshDashboard();
+    refreshOrUpdateDashboard(pcs);
   }
 
-  function refreshDashboard() {
-    if (window.refreshDashboardGrid) {
+  function refreshOrUpdateDashboard(pcs) {
+    if (pcs && window.updateDashboardFromData) {
+      window.updateDashboardFromData(pcs);
+    } else if (window.refreshDashboardGrid) {
       window.refreshDashboardGrid(function(success) {
         if (!success) {
           console.warn('Dashboard refresh gagal, reload...');
@@ -266,7 +268,7 @@ var PCLayoutManager = (function() {
       if (data.success) {
         selectedSlot = null;
         fetchLayout();
-        refreshDashboard();
+        refreshOrUpdateDashboard(data.pcs || null);
       } else {
         alert('Gagal memindahkan baris');
       }

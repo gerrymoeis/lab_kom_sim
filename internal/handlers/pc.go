@@ -347,7 +347,8 @@ func (h *Handler) PCSwap(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	pcs, _ := h.pcService.List(repository.PCFilters{})
+	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
 }
 
 func (h *Handler) PCReplace(c *gin.Context) {
@@ -368,7 +369,8 @@ func (h *Handler) PCReplace(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	pcs, _ := h.pcService.List(repository.PCFilters{})
+	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
 }
 
 func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
@@ -388,7 +390,8 @@ func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	pcs, _ := h.pcService.List(repository.PCFilters{})
+	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
 }
 
 func (h *Handler) PCMove(c *gin.Context) {
@@ -410,7 +413,8 @@ func (h *Handler) PCMove(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	pcs, _ := h.pcService.List(repository.PCFilters{})
+	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
 }
 
 func (h *Handler) PCPlace(c *gin.Context) {
@@ -432,7 +436,8 @@ func (h *Handler) PCPlace(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	pcs, _ := h.pcService.List(repository.PCFilters{})
+	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
 }
 
 func processPhotoRefs(serialRef, frontRef string) (serial, front string) {
