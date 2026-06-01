@@ -152,7 +152,7 @@ func sourceMapBlocker() gin.HandlerFunc {
 	}
 }
 
-func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotifier) *gin.Engine {
+func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotifier) (*gin.Engine, func()) {
 	router := gin.New()
 	router.Use(sourceMapBlocker())
 	router.Use(gin.Logger())
@@ -308,5 +308,5 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		api.GET("/devices/next-asset-code", h.GetNextAssetCode)
 	}
 
-	return router
+	return router, func() { h.Close() }
 }
