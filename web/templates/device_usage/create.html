@@ -1,72 +1,66 @@
 {{ template "layout/base.html" . }}
 
-<div class="container-fluid mt-4 px-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-clipboard-data"></i> {{ .title }}</h5>
-        </div>
-        <div class="card-body">
-            {{ template "layout/alert.html" . }}
+<div class="container mt-4">
+    {{ template "layout/card_create.html" . }}
 
-            <form method="POST" action="/device-usages/create">
-                <div class="mb-3">
-                    <label for="device_id" class="form-label">Perangkat *</label>
-                    <select class="form-select" id="device_id" name="device_id" required>
-                        <option value="">Pilih perangkat...</option>
-                        {{ range $d := .devices }}
-                        <option value="{{ $d.ID }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.AssetCode }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
-                        {{ end }}
-                    </select>
-                    <small class="text-muted">Hanya menampilkan perangkat habis pakai yang tersedia</small>
-                </div>
+                    <form method="POST" action="/device-usages/create">
+                        <div class="mb-3">
+                            <label for="device_id" class="form-label">Perangkat *</label>
+                            <select class="form-select" id="device_id" name="device_id" required>
+                                <option value="">Pilih perangkat...</option>
+                                {{ range $d := .devices }}
+                                <option value="{{ $d.ID }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.AssetCode }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
+                                {{ end }}
+                            </select>
+                            <small class="text-muted">Hanya menampilkan perangkat habis pakai yang tersedia</small>
+                        </div>
 
-                <div class="mb-3">
-                    <label for="user_name" class="form-label">Nama Pengguna *</label>
-                    <input type="text" class="form-control" id="user_name" name="user_name" required>
-                </div>
+                        <div class="mb-3">
+                            <label for="user_name" class="form-label">Nama Pengguna *</label>
+                            <input type="text" class="form-control" id="user_name" name="user_name" required>
+                        </div>
 
-                <div class="mb-3">
-                    <label for="user_type" class="form-label">Kategori Pengguna *</label>
-                    <select class="form-select" id="user_type" name="user_type" required>
-                        <option value="">Pilih kategori...</option>
-                        <option value="mahasiswa">Mahasiswa</option>
-                        <option value="dosen">Dosen</option>
-                        <option value="staff">Staff</option>
-                        <option value="lainnya">Lainnya</option>
-                    </select>
-                </div>
+                        <div class="mb-3">
+                            <label for="user_type" class="form-label">Kategori Pengguna *</label>
+                            <select class="form-select" id="user_type" name="user_type" required>
+                                <option value="">Pilih kategori...</option>
+                                <option value="mahasiswa">Mahasiswa</option>
+                                <option value="dosen">Dosen</option>
+                                <option value="staff">Staff</option>
+                                <option value="lainnya">Lainnya</option>
+                            </select>
+                        </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="usage_date" class="form-label">Tanggal Pemakaian *</label>
-                        <input type="date" class="form-control" id="usage_date" name="usage_date" required data-default-date>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="is_available" class="form-label">Status Stok *</label>
-                        <select class="form-select" id="is_available" name="is_available" required>
-                            <option value="yes">Ada (Masih Tersedia)</option>
-                            <option value="no">Habis (Stok Habis)</option>
-                        </select>
-                        <small class="text-muted">Pilih "Habis" jika barang benar-benar habis</small>
-                    </div>
-                </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="usage_date" class="form-label">Tanggal Pemakaian *</label>
+                                <input type="date" class="form-control" id="usage_date" name="usage_date" required data-default-date>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="is_available" class="form-label">Status Stok *</label>
+                                <select class="form-select" id="is_available" name="is_available" required>
+                                    <option value="yes">Ada (Masih Tersedia)</option>
+                                    <option value="no">Habis (Stok Habis)</option>
+                                </select>
+                                <small class="text-muted">Pilih "Habis" jika barang benar-benar habis</small>
+                            </div>
+                        </div>
 
-                <div class="mb-3">
-                    <label for="purpose" class="form-label">Keperluan</label>
-                    <textarea class="form-control" id="purpose" name="purpose" rows="3"></textarea>
-                </div>
+                        <div class="mb-3">
+                            <label for="purpose" class="form-label">Keperluan</label>
+                            <textarea class="form-control" id="purpose" name="purpose" rows="3"></textarea>
+                        </div>
 
-                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> Simpan
-                    </button>
-                    <a href="/devices?tab=usages" class="btn btn-secondary">
-                        <i class="bi bi-x-circle"></i> Batal
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
+                        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Simpan
+                            </button>
+                            <a href="/devices?tab=usages" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Batal
+                            </a>
+                        </div>
+                    </form>
+    {{ template "layout/card_close.html" . }}
 </div>
 
 {{ template "layout/footer.html" . }}
