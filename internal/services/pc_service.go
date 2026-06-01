@@ -86,7 +86,9 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "pc", int(pcID),
 			map[string]any{"label": in.Label, "serial_number": in.SerialNumber, "operating_system": in.OperatingSystem},
 			ipAddress, userAgent)
-		s.pcRepo.SeedRequiredSoftware(int(pcID))
+		if in.Placement != "cadangan" {
+			s.pcRepo.SeedRequiredSoftware(int(pcID))
+		}
 	}
 	return int(pcID), nil
 }

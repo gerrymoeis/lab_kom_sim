@@ -9,7 +9,18 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run tests
+        run: go test ./... -count=1
+
   sync:
+    needs: [test]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -41,15 +52,10 @@ jobs:
           OLD_HEAD=$(git rev-parse HEAD)
 
           echo "=== 2. Merge refactoring (theirs for conflicts) ==="
-          # Merge mungkin gagal dengan modify/delete conflict untuk files
-          # yang dihapus di refactoring tapi masih ada di deploy branch
-          # (contoh: deploy-local.sh). Gagal merge akan di-resolve di step 3.
           git merge origin/refactoring -X theirs --no-commit 2>&1 || true
 
           echo "=== 3. Resolve modify/delete conflict ==="
-          # deploy-local.sh sudah dihapus dari refactoring → hapus juga dari deploy branch
           git rm --ignore-unmatch --force scripts/deploy-local.sh 2>/dev/null || true
-          # Pastikan tidak ada conflict lain yang gagal diresolve
           if [ -n "$(git ls-files -u)" ]; then
             echo "Fatal: unresolved merge conflicts:"
             git status
@@ -59,10 +65,9 @@ jobs:
           echo "=== 4. Restore deploy-specific files ==="
           git checkout "${OLD_HEAD}" -- README.md go.mod go.sum
           git checkout "${OLD_HEAD}" -- scripts/
-          # deploy-local.sh tidak boleh di-restore — sudah dihapus di refactoring
           git rm --ignore-unmatch scripts/deploy-local.sh 2>/dev/null || true
 
-          echo "=== 5. Force .env.example dari refactoring (3-way merge bisa pilih versi lama karena revert history) ==="
+          echo "=== 5. Force .env.example dari refactoring ==="
           git checkout origin/refactoring -- .env.example
 
           echo "=== 6. Cleanup Windows scripts on deploy_linux ==="
@@ -76,17 +81,14 @@ jobs:
           echo "=== 7. Resolve dependencies ==="
           go mod download
 
-          echo "=== 8. Run tests ==="
-          go test ./... -count=1
-
-          echo "=== 9. Stage all changes ==="
+          echo "=== 8. Stage all changes ==="
           git add -A
 
-          echo "=== 10. Verify build ==="
+          echo "=== 9. Verify build ==="
           go build ./...
           go vet ./...
 
-          echo "=== 11. Commit and push ==="
+          echo "=== 10. Commit and push ==="
           if ! git diff --cached --quiet; then
             git commit -m "sync: merge refactoring into ${DEPLOY_BRANCH}"
             git push origin "${DEPLOY_BRANCH}"

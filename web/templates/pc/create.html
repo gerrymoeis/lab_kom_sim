@@ -381,6 +381,8 @@ function togglePCCreateFields() {
         fields.style.display = 'flex';
         document.getElementById('row').disabled = false;
         document.getElementById('column').disabled = false;
+        document.getElementById('row').value = '';
+        document.getElementById('column').value = '';
         toggleLabelField();
     }
 }
