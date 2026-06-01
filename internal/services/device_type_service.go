@@ -1,8 +1,6 @@
 ﻿package services
 
 import (
-	"strings"
-
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
@@ -41,12 +39,9 @@ func NewDeviceTypeService(repo *repository.DeviceTypeRepository, log *ActivityLo
 func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
 	result, err := s.repo.Create(in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
-			return 0, err
-		}
 		s.log.LogCreate(actorID, actorUsername, actorRole, "device_type", 0,
 			map[string]any{"name": in.Name}, ipAddress, userAgent, err.Error())
-		return 0, err
+		return 0, sanitizeDBError(err)
 	}
 	id, _ := result.LastInsertId()
 	s.log.LogCreate(actorID, actorUsername, actorRole, "device_type", int(id),
@@ -58,12 +53,9 @@ func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorU
 func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	err := s.repo.Update(id, in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
-			return err
-		}
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", 0,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
-		return err
+		return sanitizeDBError(err)
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", 0,
 		map[string]any{"id": id},
@@ -75,12 +67,9 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 func (s *DeviceTypeService) Delete(id int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	err := s.repo.Delete(id)
 	if err != nil {
-		if strings.Contains(err.Error(), "foreign key") {
-			return err
-		}
 		s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", 0,
 			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-		return err
+		return sanitizeDBError(err)
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", 0,
 		map[string]any{"id": id}, ipAddress, userAgent)

@@ -166,6 +166,7 @@ type CreateInstallationRequest struct {
 	LocationInstalled      string `form:"location_installed" binding:"required"`
 	InstallationStartDate  string `form:"installation_start_date"`
 	InstallationFinishDate string `form:"installation_finish_date"`
+	PhotoFileRef           string `form:"photo_file_ref"`
 	Notes                  string `form:"notes"`
 }
 
@@ -173,6 +174,7 @@ type EditInstallationRequest struct {
 	LocationInstalled      string `form:"location_installed" binding:"required"`
 	InstallationStartDate  string `form:"installation_start_date"`
 	InstallationFinishDate string `form:"installation_finish_date"`
+	PhotoFileRef           string `form:"photo_file_ref"`
 	Notes                  string `form:"notes"`
 }
 

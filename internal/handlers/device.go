@@ -244,7 +244,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 		}
 		id, err := h.categoryService.Create(req.NewCategoryName, prefix, uid, u, r, ip, ua)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat kategori: " + err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		catID = id
@@ -271,7 +271,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 			DefaultLocation: req.NewTypeDefaultLocation,
 		}, uid, u, r, ip, ua)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat tipe perangkat: " + err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		typeID = id
@@ -426,11 +426,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		UsageType:       req.UsageType,
 		DefaultLocation: req.DefaultLocation,
 	}, uid, u, r, ip, ua); err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
-			h.errHTML(c, "Nama tipe atau prefix sudah digunakan")
-			return
-		}
-		h.errHTML(c, "Gagal mengupdate tipe perangkat")
+		h.errHTML(c, err.Error())
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices")
@@ -442,11 +438,7 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceTypeService.Delete(id, uid, u, r, ip, ua); err != nil {
-		if strings.Contains(err.Error(), "foreign key") {
-			h.redirectWithError(c, "/devices", "Tidak dapat menghapus: masih ada perangkat dengan tipe ini")
-			return
-		}
-		h.redirectWithError(c, "/devices", "Gagal menghapus tipe perangkat")
+		h.redirectWithError(c, "/devices", err.Error())
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices")
@@ -507,7 +499,7 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 	ip, ua := getRequestContext(c)
 
 	if err := h.categoryService.Update(id, req.Name, req.DefaultPrefix, uid, u, r, ip, ua); err != nil {
-		h.errHTML(c, "Gagal mengupdate kategori")
+		h.errHTML(c, err.Error())
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices")
@@ -529,7 +521,7 @@ func (h *Handler) CategoryDelete(c *gin.Context) {
 	}
 
 	if err := h.categoryService.Delete(id, uid, u, r, ip, ua); err != nil {
-		h.redirectWithError(c, "/devices", "Gagal menghapus kategori")
+		h.redirectWithError(c, "/devices", err.Error())
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices")
