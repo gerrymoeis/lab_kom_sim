@@ -99,7 +99,7 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 		query += ` ORDER BY
 			CASE WHEN label GLOB 'pc-[0-9]*' THEN 1 WHEN label GLOB 'pc-cadangan-[0-9]*' THEN 3 ELSE 2 END,
 			CASE WHEN label GLOB 'pc-[0-9]*' THEN CAST(SUBSTR(label, 4) AS INTEGER)
-				WHEN label GLOB 'pc-cadangan-[0-9]*' THEN CAST(SUBSTR(label, 14) AS INTEGER) ELSE 0 END,
+				WHEN label GLOB 'pc-cadangan-[0-9]*' THEN CAST(SUBSTR(label, 13) AS INTEGER) ELSE 0 END,
 			label ` + sortOrder
 	} else {
 		query += fmt.Sprintf(` ORDER BY %s %s`, sortBy, sortOrder)
@@ -146,7 +146,7 @@ func (r *PCRepository) NextLabel(placement string, isMahasiswa bool) string {
 	switch {
 	case placement == "cadangan":
 		var max int
-		r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 14) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&max)
+		r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&max)
 		return fmt.Sprintf("pc-cadangan-%d", max)
 	case isMahasiswa:
 		var max int
@@ -336,7 +336,7 @@ func (r *PCRepository) GetAllStatus() ([]models.PC, error) {
 	rows, err := r.db.Query(`SELECT id, label, status FROM pcs ORDER BY
 		CASE WHEN label GLOB 'pc-[0-9]*' THEN 1 WHEN label GLOB 'pc-cadangan-[0-9]*' THEN 3 ELSE 2 END,
 		CASE WHEN label GLOB 'pc-[0-9]*' THEN CAST(SUBSTR(label, 4) AS INTEGER)
-			WHEN label GLOB 'pc-cadangan-[0-9]*' THEN CAST(SUBSTR(label, 14) AS INTEGER) ELSE 0 END,
+			WHEN label GLOB 'pc-cadangan-[0-9]*' THEN CAST(SUBSTR(label, 13) AS INTEGER) ELSE 0 END,
 		label`)
 	if err != nil {
 		return nil, err
@@ -467,7 +467,7 @@ func (r *PCRepository) ReplaceWithSpare(target, spare string) error {
 	}
 
 	var next int
-	tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 14) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&next)
+	tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&next)
 	newLabel := fmt.Sprintf("pc-cadangan-%d", next)
 
 	// 3-step temp label swap
@@ -507,7 +507,7 @@ func (r *PCRepository) MoveRowToCadangan(row int) error {
 	}
 
 	var next int
-	tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 14) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&next)
+	tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&next)
 
 	for _, id := range ids {
 		label := fmt.Sprintf("pc-cadangan-%d", next)
@@ -535,7 +535,11 @@ func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
 		return err
 	}
 
-	tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, row, col, id)
+	newLabel := fmt.Sprintf("pc-%d", (row-1)*8+col)
+	var clash int
+	tx.QueryRow(`SELECT id FROM pcs WHERE label=? AND id!=?`, newLabel, id).Scan(&clash)
+
+	tx.Exec(`UPDATE pcs SET label=?, "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, row, col, id)
 	tx.Exec(`DELETE FROM pc_software WHERE pc_id=?`, id)
 	if err := tx.Commit(); err != nil {
 		return err
@@ -551,7 +555,7 @@ func (r *PCRepository) ExportAll() ([]models.PC, error) {
 		FROM pcs ORDER BY
 		CASE WHEN label GLOB 'pc-[0-9]*' THEN 1 WHEN label GLOB 'pc-cadangan-[0-9]*' THEN 3 ELSE 2 END,
 		CASE WHEN label GLOB 'pc-[0-9]*' THEN CAST(SUBSTR(label, 4) AS INTEGER)
-			WHEN label GLOB 'pc-cadangan-[0-9]*' THEN CAST(SUBSTR(label, 14) AS INTEGER) ELSE 0 END,
+			WHEN label GLOB 'pc-cadangan-[0-9]*' THEN CAST(SUBSTR(label, 13) AS INTEGER) ELSE 0 END,
 		label`)
 	if err != nil {
 		return nil, err
