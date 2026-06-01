@@ -106,6 +106,27 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/devices?tab=usages")
 }
 
+func (h *Handler) DeviceUsageDetail(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+
+	id, _ := strconv.Atoi(c.Param("id"))
+	usage, err := h.deviceUsageService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Pemakaian tidak ditemukan")
+		return
+	}
+
+	c.HTML(http.StatusOK, "device_usage/detail.html", gin.H{
+		"title": "Detail Pemakaian", "currentPage": "devices",
+		"username": username, "role": role,
+		"usage":     usage,
+		"assetCode": usage.DeviceAssetCode,
+	})
+}
+
 func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok {

@@ -109,6 +109,30 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/devices?tab=loans")
 }
 
+func (h *Handler) DeviceLoanDetail(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+
+	id, _ := strconv.Atoi(c.Param("id"))
+	loan, err := h.deviceLoanService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Peminjaman tidak ditemukan")
+		return
+	}
+
+	extensions, _ := h.deviceLoanService.GetExtensionsByLoanID(id)
+
+	c.HTML(http.StatusOK, "device_loan/detail.html", gin.H{
+		"title": "Detail Peminjaman", "currentPage": "devices",
+		"username": username, "role": role,
+		"loan":       loan,
+		"assetCode":  loan.DeviceAssetCode,
+		"extensions": extensions,
+	})
+}
+
 func (h *Handler) DeviceLoanEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok {

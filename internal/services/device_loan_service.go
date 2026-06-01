@@ -112,6 +112,10 @@ func (s *DeviceLoanService) ExtendLoan(loanID int, newReturnDate string, actorID
 	return nil
 }
 
+func (s *DeviceLoanService) GetExtensionsByLoanID(loanID int) ([]models.LoanExtension, error) {
+	return s.extensionRepo.ListByLoanID(loanID)
+}
+
 func (s *DeviceLoanService) DeleteLoan(id, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	if err := s.loanRepo.Delete(id); err != nil {
 		s.log.LogDelete(actorID, actorUsername, actorRole, "device_loan", id,
