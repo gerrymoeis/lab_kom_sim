@@ -55,7 +55,7 @@ func (s *SoftwareService) Create(in SoftwareCreateInput, actorID int, actorUsern
 		in.Category = "other"
 	}
 
-	_, err := s.repo.Create(in.Name, in.Category, in.Description, "")
+	_, err := s.repo.Create(in.Name, in.Category, in.Description)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "software", 0,
 			map[string]any{"name": in.Name, "category": in.Category},
