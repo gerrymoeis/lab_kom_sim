@@ -19,26 +19,29 @@
     <div class="card-body">
         <form method="GET" action="/software" class="row g-3 mb-3">
             <div class="col-md-4">
-                <input type="text" name="search" class="form-control" placeholder="Cari software..." value="{{ .filters.search }}">
+                <label for="search" class="form-label">Cari</label>
+                <input type="text" id="search" name="search" class="form-control" placeholder="Cari software..." value="{{ .filters.search }}">
             </div>
             <div class="col-md-2">
-                <select name="category" class="form-select">
+                <label for="category" class="form-label">Kategori</label>
+                <select id="category" name="category" class="form-select">
                     <option value="">Semua</option>
                     <option value="required" {{ if eq .filters.category "required" }}selected{{ end }}>Required</option>
                     <option value="other" {{ if eq .filters.category "other" }}selected{{ end }}>Other</option>
                 </select>
             </div>
             <div class="col-md-2">
-                <select name="sort_by" class="form-select">
+                <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                <select id="sort_by" name="sort_by" class="form-select">
                     <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
                     <option value="name" {{ if eq .filters.sort_by "name" }}selected{{ end }}>Nama</option>
                     <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filter</button>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-2 d-flex align-items-end">
                 <a href="/software" class="btn btn-secondary w-100"><i class="bi bi-x-circle"></i> Reset</a>
             </div>
         </form>

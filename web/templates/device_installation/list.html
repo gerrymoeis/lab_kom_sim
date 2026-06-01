@@ -25,22 +25,24 @@
         <div class="card-body">
             <form method="GET" action="/devices?tab=installations" class="row g-3 mb-3">
                 <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Cari asset code, lokasi, tipe..." value="{{ .filters.search }}">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari asset code, lokasi, tipe..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select" name="sort_by">
+                    <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
                         <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
                         <option value="asset_code" {{ if eq .filters.sort_by "asset_code" }}selected{{ end }}>Asset Code</option>
                         <option value="location" {{ if eq .filters.sort_by "location" }}selected{{ end }}>Lokasi</option>
                         <option value="start_date" {{ if eq .filters.sort_by "start_date" }}selected{{ end }}>Tgl Mulai</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2 d-flex align-items-end">
                     <a href="/devices?tab=installations" class="btn btn-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>

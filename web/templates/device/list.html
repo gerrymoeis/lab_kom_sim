@@ -26,10 +26,12 @@
             <form method="GET" action="/devices" class="row g-3 mb-3">
                 <input type="hidden" name="tab" value="types">
                 <div class="col-md-3">
-                    <input type="text" class="form-control" name="search" placeholder="Cari asset code, serial number..." value="{{ .filters.search }}">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari asset code, serial number..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select" name="category">
+                    <label for="category" class="form-label">Kategori</label>
+                    <select class="form-select" id="category" name="category">
                         <option value="">Semua Kategori</option>
                         {{ range .categories }}
                         <option value="{{ .Name }}" {{ if eq $.filters.category .Name }}selected{{ end }}>{{ .Name }}</option>
@@ -37,7 +39,8 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select" name="condition">
+                    <label for="condition" class="form-label">Kondisi</label>
+                    <select class="form-select" id="condition" name="condition">
                         <option value="">Semua Kondisi</option>
                         <option value="baik" {{ if eq .filters.condition "baik" }}selected{{ end }}>Baik</option>
                         <option value="rusak" {{ if eq .filters.condition "rusak" }}selected{{ end }}>Rusak</option>
@@ -45,7 +48,8 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select" name="sort_by">
+                    <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
                         <option value="">Default</option>
                         <option value="asset_code" {{ if eq .filters.sort_by "asset_code" }}selected{{ end }}>Asset Code</option>
                         <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>

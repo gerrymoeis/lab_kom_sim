@@ -20,14 +20,35 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <form method="GET" action="/admin/users" class="row g-3 mb-3">
-                <div class="col-md-4">
-                    <label for="search" class="form-label">Cari User</label>
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Cari</label>
                     <input type="text" class="form-control" id="search" name="search" placeholder="Cari username atau nama..." value="{{ .filters.search }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="role" class="form-label">Role</label>
+                    <select class="form-select" id="role" name="role">
+                        <option value="">Semua Role</option>
+                        <option value="admin" {{ if eq .filters.role "admin" }}selected{{ end }}>Admin</option>
+                        <option value="dosen" {{ if eq .filters.role "dosen" }}selected{{ end }}>Dosen</option>
+                        <option value="mahasiswa" {{ if eq .filters.role "mahasiswa" }}selected{{ end }}>Mahasiswa</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default (Terbaru)</option>
+                        <option value="username" {{ if eq .filters.sort_by "username" }}selected{{ end }}>Username</option>
+                        <option value="full_name" {{ if eq .filters.sort_by "full_name" }}selected{{ end }}>Nama Lengkap</option>
+                        <option value="role" {{ if eq .filters.sort_by "role" }}selected{{ end }}>Role</option>
+                        <option value="created_at" {{ if eq .filters.sort_by "created_at" }}selected{{ end }}>Dibuat</option>
+                    </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Cari
+                        <i class="bi bi-search"></i> Filter
                     </button>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
                     <a href="/admin/users" class="btn btn-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>
@@ -53,7 +74,12 @@
                         <tr>
                             <td>{{ add $i $.startRow }}</td>
                             <td><strong><a href="/admin/users/{{ .ID }}" class="text-decoration-none">{{ .Username }}</a></strong></td>
-                            <td>{{ .FullName }}</td>
+                            <td>
+                                {{ .FullName }}
+                                {{ if or (eq .Username "admin") (eq .Username "rekan") }}
+                                <span class="badge bg-secondary ms-1">Akun utama</span>
+                                {{ end }}
+                            </td>
                             <td>
                                 <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">
                                     {{ .Role }}
@@ -61,9 +87,6 @@
                             </td>
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td class="text-nowrap">
-                                <a href="/admin/users/{{ .ID }}" class="btn btn-sm btn-info me-1" title="Detail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
                                 {{ if and (ne .Username "admin") (ne .Username "rekan") }}
                                 <a href="/admin/users/{{ .ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
@@ -74,7 +97,7 @@
                                     </button>
                                 </form>
                                 {{ else }}
-                                <span class="text-muted small">Akun utama</span>
+                                -
                                 {{ end }}
                             </td>
                         </tr>
