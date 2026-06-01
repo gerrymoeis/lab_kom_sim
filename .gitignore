@@ -63,3 +63,6 @@ app-simlab
 
 # SSG Public Site Build Output
 dist/
+
+# Docs & backups (moved to root docs_and_backup/)
+docs_and_backup/
