@@ -226,9 +226,10 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT id FROM devices WHERE serial_number='SN-TEST001'").Scan(&devID)
 	assert(devID > 0, "Device ID=%d", devID)
 
-	// Query slug for device
-	var devSlug string
-	db.QueryRow("SELECT slug FROM devices WHERE id=?", devID).Scan(&devSlug)
+	// Query asset_code for device (no slug column, use LOWER(asset_code) as slug)
+	var devAssetCode string
+	db.QueryRow("SELECT asset_code FROM devices WHERE id=?", devID).Scan(&devAssetCode)
+	devSlug := strings.ToLower(devAssetCode)
 	assert(devSlug != "", "Device slug=%s", devSlug)
 
 	// Device detail
@@ -570,8 +571,9 @@ func TestFullIntegration(t *testing.T) {
 
 	// Cleanup: delete device created in §3
 	t.Log("\n=== DEVICE CLEANUP ===")
-	// Re-query slug in case it changed
-	db.QueryRow("SELECT slug FROM devices WHERE id=?", devID).Scan(&devSlug)
+	// Re-query asset_code in case it changed
+	db.QueryRow("SELECT asset_code FROM devices WHERE id=?", devID).Scan(&devAssetCode)
+	devSlug = strings.ToLower(devAssetCode)
 	resp, _ = post("/devices/"+devSlug+"/delete", "")
 	assert(resp.StatusCode == 302, "delete device: %d", resp.StatusCode)
 	closeResp(resp)
