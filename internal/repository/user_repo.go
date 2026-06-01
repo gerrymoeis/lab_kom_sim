@@ -35,36 +35,48 @@ func (r *UserRepository) List() ([]models.User, error) {
 	return users, nil
 }
 
-func (r *UserRepository) ListPaginated(search string, page, pageSize int) ([]models.User, int, error) {
+func (r *UserRepository) ListPaginated(search, role, sortBy, sortOrder string, page, pageSize int) ([]models.User, int, error) {
 	if page < 1 { page = 1 }
 	if pageSize < 1 { pageSize = 20 }
 
-	var total int
-	countQuery := `SELECT COUNT(*) FROM users WHERE 1=1`
-	var args []any
-	if search != "" {
-		sClause, sArgs := r.search.Where("user", search)
-		countQuery += sClause
-		args = append(args, sArgs...)
+	buildCount := func() (string, []any) {
+		q := `SELECT COUNT(*) FROM users WHERE 1=1`
+		var a []any
+		if search != "" {
+			sClause, sArgs := r.search.Where("user", search)
+			q += sClause; a = append(a, sArgs...)
+		}
+		if role != "" {
+			q += ` AND role = ?`; a = append(a, role)
+		}
+		return q, a
 	}
-	if err := r.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
+
+	countQ, countArgs := buildCount()
+	var total int
+	if err := r.db.QueryRow(countQ, countArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * pageSize
-	query := `SELECT id, username, full_name, role, created_at FROM users WHERE 1=1`
-	var qArgs []any
+	q := `SELECT id, username, full_name, role, created_at FROM users WHERE 1=1`
+	var qa []any
 	if search != "" {
 		sClause, sArgs := r.search.Where("user", search)
-		query += sClause
-		qArgs = append(qArgs, sArgs...)
+		q += sClause; qa = append(qa, sArgs...)
 	}
-	query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
-	qArgs = append(qArgs, pageSize, offset)
-	rows, err := r.db.Query(query, qArgs...)
-	if err != nil {
-		return nil, 0, err
+	if role != "" {
+		q += ` AND role = ?`; qa = append(qa, role)
 	}
+
+	validSort := map[string]bool{"username": true, "full_name": true, "role": true, "created_at": true}
+	if !validSort[sortBy] { sortBy = "created_at" }
+	if sortOrder != "ASC" { sortOrder = "DESC" }
+	q += ` ORDER BY ` + sortBy + ` ` + sortOrder + ` LIMIT ? OFFSET ?`
+	qa = append(qa, pageSize, offset)
+
+	rows, err := r.db.Query(q, qa...)
+	if err != nil { return nil, 0, err }
 	defer rows.Close()
 
 	var users []models.User

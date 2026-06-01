@@ -177,21 +177,17 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="operating_system" class="form-label"
-                            >Sistem Operasi *</label
-                        >
-                        <input
-                            type="text"
-                            class="form-control"
-                            id="operating_system"
-                            name="operating_system"
-                            placeholder="Contoh: Windows 11 Pro 25H2"
-                            required
-                        />
-                        <small class="text-muted"
-                            >Contoh: Windows 11 Pro 25H2, Windows 10 Pro 23H2,
-                            Ubuntu 22.04 LTS</small
-                        >
+                        <label for="operating_system" class="form-label">Sistem Operasi *</label>
+                        <input type="text" class="form-control" id="operating_system" name="operating_system" list="os-list" placeholder="Contoh: Windows 11 Pro 25H2" required />
+                        <datalist id="os-list">
+                            <option value="Windows 11 Pro 25H2">
+                            <option value="Windows 10 Pro 22H2">
+                            <option value="Ubuntu 22.04 LTS">
+                            {{ range .operatingSystems }}
+                            <option value="{{ . }}">
+                            {{ end }}
+                        </datalist>
+                        <small class="text-muted">Ketik atau pilih dari daftar</small>
                     </div>
 
                     <hr class="my-4" />

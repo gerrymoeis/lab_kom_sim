@@ -57,7 +57,8 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 	totalPages := (totalCount + pageSize - 1) / pageSize
 	if totalPages < 1 { totalPages = 1 }
 
-	usernames, _ := h.activityLogService.GetUsernames()
+	usernames, _ := h.activityLogService.GetAllUsernames()
+	entityTypes, _ := h.activityLogService.GetAllEntityTypes()
 
 	filterMap := gin.H{
 		"date_from": c.Query("date_from"), "date_to": c.Query("date_to"),
@@ -76,7 +77,8 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 		"startRow":   (page-1)*pageSize + 1,
 		"query":      query,
 		"filters":    filterMap,
-		"usernames":  usernames,
+		"usernames":   usernames,
+		"entityTypes": entityTypes,
 	})
 }
 
@@ -97,7 +99,7 @@ func (h *Handler) ActivityLogExport(c *gin.Context) {
 	if err != nil { h.errHTML(c, "Gagal mengambil activity logs"); return }
 
 	actionMap := map[string]string{"create": "Create", "update": "Update", "delete": "Delete", "upload": "Upload", "login": "Login", "logout": "Logout", "view": "View", "export": "Export"}
-	entityMap := map[string]string{"pc": "PC", "device": "Device", "software": "Software", "logbook": "Logbook", "user": "User", "auth": "Auth", "device_loan": "Device Loan", "device_usage": "Device Usage", "schedule": "Schedule"}
+	entityMap := map[string]string{"pc": "PC", "device": "Device", "software": "Software", "logbook": "Logbook", "user": "User", "auth": "Auth", "device_loan": "Device Loan", "device_usage": "Device Usage", "device_installation": "Device Installation", "schedule": "Schedule"}
 	statusMap := map[string]string{"success": "Success", "failed": "Failed", "error": "Error"}
 
 	data := [][]any{}

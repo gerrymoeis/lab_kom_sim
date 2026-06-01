@@ -22,13 +22,16 @@ func (h *Handler) UserList(c *gin.Context) {
 	if page < 1 { page = 1 }
 	pageSize := h.cfg.DefaultPageSize
 	search := c.Query("search")
+	roleFilter := c.Query("role")
+	sortBy := c.Query("sort_by")
+	sortOrder := c.Query("sort_order")
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
 	var query interface{} = ""
 	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
-	users, total, err := h.userService.ListPaginated(search, page, pageSize)
+	users, total, err := h.userService.ListPaginated(search, roleFilter, sortBy, sortOrder, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
 
 	totalPages := (total + pageSize - 1) / pageSize
@@ -38,7 +41,7 @@ func (h *Handler) UserList(c *gin.Context) {
 		"title": "Manajemen User", "currentPage": "users",
 		"username": username, "role": role, "users": users,
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
-		"query": query, "filters": gin.H{"search": search},
+		"query": query, "filters": gin.H{"search": search, "role": roleFilter, "sort_by": sortBy, "sort_order": sortOrder},
 		"error": c.Query("error"),
 	})
 }

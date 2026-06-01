@@ -66,7 +66,7 @@ func (r *ScheduleRepository) listWithQuery(search, dayFilter, sortBy string, suf
 	case "time_start":
 		query += ` ORDER BY time_start`
 	default:
-		query += ` ORDER BY ` + dayOrder + `, time_start`
+		query += ` ORDER BY ` + dayOrder + `, course_name, time_start`
 	}
 	query += suffix
 	if suffix != "" {

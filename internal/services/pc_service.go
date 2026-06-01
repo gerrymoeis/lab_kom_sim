@@ -64,6 +64,10 @@ func (s *PCService) ExportAll() ([]models.PC, error) {
 	return s.pcRepo.ExportAll()
 }
 
+func (s *PCService) GetDistinctOS() ([]string, error) {
+	return s.pcRepo.GetDistinctOS()
+}
+
 func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
 	if in.Status == "" { in.Status = "normal" }
 	if in.Placement == "" { in.Placement = "dipakai" }

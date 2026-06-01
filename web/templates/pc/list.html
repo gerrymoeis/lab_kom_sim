@@ -47,12 +47,12 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label for="os" class="form-label">Windows Version</label>
+                    <label for="os" class="form-label">Sistem Operasi</label>
                     <select class="form-select" id="os" name="os">
-                        <option value="">Semua Versi</option>
-                        <option value="Windows 11 Pro 23H2" {{ if eq .filters.os "Windows 11 Pro 23H2" }}selected{{ end }}>Windows 11 Pro 23H2</option>
-                        <option value="Windows 11 Pro 25H2" {{ if eq .filters.os "Windows 11 Pro 25H2" }}selected{{ end }}>Windows 11 Pro 25H2</option>
-                        <option value="Windows 10 Pro 22H2" {{ if eq .filters.os "Windows 10 Pro 22H2" }}selected{{ end }}>Windows 10 Pro 22H2</option>
+                        <option value="">Semua</option>
+                        {{ range .operatingSystems }}
+                        <option value="{{ . }}" {{ if eq $.filters.os . }}selected{{ end }}>{{ . }}</option>
+                        {{ end }}
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -95,7 +95,7 @@
                             <td><strong>{{ .Label }}</strong></td>
                             <td>{{ if .SerialNumber }}<small><code>{{ .SerialNumber }}</code></small>{{ else }}-{{ end }}</td>
                             <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else }}-{{ end }}</td>
-                            <td>{{ if eq .Placement "dipakai" }}Baris {{ .Column }}, Kolom {{ .Row }}{{ else }}-{{ end }}</td>
+                            <td>{{ if eq .Placement "dipakai" }}Baris {{ .Row }}, Kolom {{ .Column }}{{ else }}-{{ end }}</td>
                             <td>
 <span class="badge bg-{{ (pcStatusInfo .Status).BadgeClass }} me-1">{{ .Status }}</span>
 <span class="badge bg-{{ (pcPlacementInfo .Placement).BadgeClass }}">{{ (pcPlacementInfo .Placement).VisLabel }}</span>

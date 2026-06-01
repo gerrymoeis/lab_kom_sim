@@ -40,6 +40,8 @@ func (h *Handler) PCList(c *gin.Context) {
 	pcs, total, err := h.pcService.ListPaginated(filters, page, pageSize)
 	if err != nil { h.errHTML(c, "Gagal mengambil data PC"); return }
 
+	operatingSystems, _ := h.pcService.GetDistinctOS()
+
 	totalPages := (total + pageSize - 1) / pageSize
 	startRow := (page-1)*pageSize + 1
 
@@ -49,6 +51,7 @@ func (h *Handler) PCList(c *gin.Context) {
 		"page": page, "totalPages": totalPages, "totalItems": total,
 		"startRow": startRow,
 		"query": query, "filters": gin.H{"search": filters.Search, "status": filters.Status, "placement": filters.Placement, "sort_by": filters.SortBy, "sort_order": filters.SortOrder, "os": filters.OS},
+		"operatingSystems": operatingSystems,
 	})
 }
 
@@ -75,12 +78,14 @@ func (h *Handler) PCDetail(c *gin.Context) {
 func (h *Handler) PCCreatePage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
+	operatingSystems, _ := h.pcService.GetDistinctOS()
 	c.HTML(http.StatusOK, "pc/create.html", gin.H{
 		"title": "Tambah PC Baru", "currentPage": "pc",
 		"username": username, "role": role,
 		"android": h.cfg.Android,
 		"nextMahasiswaLabel": h.pcService.NextLabel("dipakai", true),
 		"nextCadanganLabel":  h.pcService.NextLabel("cadangan", false),
+		"operatingSystems":   operatingSystems,
 	})
 }
 
@@ -150,6 +155,8 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		}
 	}
 
+	operatingSystems, _ := h.pcService.GetDistinctOS()
+
 	c.HTML(http.StatusOK, "pc/edit.html", gin.H{
 		"title": "Edit PC", "currentPage": "pc",
 		"username": username, "role": role, "pc": pc,
@@ -159,6 +166,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		"lastChecked": lc,
 		"lastCheckedDisplay": lcDisplay,
 		"isRegularPC": isRegular,
+		"operatingSystems": operatingSystems,
 	})
 }
 

@@ -570,6 +570,19 @@ func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
 	return nil
 }
 
+func (r *PCRepository) GetDistinctOS() ([]string, error) {
+	rows, err := r.db.Query(`SELECT DISTINCT operating_system FROM pcs WHERE operating_system != '' ORDER BY operating_system`)
+	if err != nil { return nil, err }
+	defer rows.Close()
+	var oss []string
+	for rows.Next() {
+		var os string
+		if err := rows.Scan(&os); err != nil { return nil, err }
+		oss = append(oss, os)
+	}
+	return oss, rows.Err()
+}
+
 func (r *PCRepository) ExportAll() ([]models.PC, error) {
 	rows, err := r.db.Query(`SELECT label, "row", "column", status, placement, pc_type, serial_number, brand_model,
 		processor, ram, storage, operating_system, accessories, purchase_date, last_checked, notes

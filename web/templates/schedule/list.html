@@ -21,26 +21,29 @@
     <div class="card-body">
         <form method="GET" action="/schedules" class="row g-3 mb-3">
             <div class="col-md-3">
-                <select name="day" class="form-select">
+                <label for="search" class="form-label">Cari</label>
+                <input type="text" class="form-control" id="search" name="search" placeholder="Cari mata kuliah, dosen..." value="{{ .filters.search }}">
+            </div>
+            <div class="col-md-2">
+                <label for="day" class="form-label">Hari</label>
+                <select id="day" name="day" class="form-select">
                     <option value="">Semua Hari</option>
                     {{ range .days }}<option value="{{ . }}" {{ if eq $.filters.day . }}selected{{ end }}>{{ . }}</option>{{ end }}
                 </select>
             </div>
-            <div class="col-md-3">
-                <input type="text" name="search" class="form-control" placeholder="Cari mata kuliah, dosen..." value="{{ .filters.search }}">
-            </div>
             <div class="col-md-2">
-                <select name="sort_by" class="form-select">
+                <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                <select id="sort_by" name="sort_by" class="form-select">
                     <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
                     <option value="course_name" {{ if eq .filters.sort_by "course_name" }}selected{{ end }}>Mata Kuliah</option>
                     <option value="day" {{ if eq .filters.sort_by "day" }}selected{{ end }}>Hari</option>
                     <option value="time_start" {{ if eq .filters.sort_by "time_start" }}selected{{ end }}>Jam Mulai</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filter</button>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-1 d-flex align-items-end">
                 <a href="/schedules" class="btn btn-secondary w-100"><i class="bi bi-x-circle"></i> Reset</a>
             </div>
         </form>
@@ -56,7 +59,7 @@
                 </thead>
                 <tbody>
                     {{ range $i, $s := .schedules }}
-                    <tr class="{{ if eq $s.Day $.today }}table-primary{{ end }}">
+                    <tr class="{{ if eq $s.Day $.today }}table-primary{{ end }}" data-day="{{ $s.Day }}" data-course="{{ $s.CourseName }}">
                         <td>{{ add $i $.startRow }}</td>
                         <td>{{ if eq $s.Day $.today }}<span class="badge bg-primary">{{ $s.Day }}</span>{{ else }}{{ $s.Day }}{{ end }}</td>
                         <td><strong>{{ $s.CourseName }}</strong></td>
@@ -83,4 +86,100 @@
     </div>
 </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var tbody = document.querySelector('table.table tbody');
+    if (!tbody) return;
+    var bodyRows = Array.from(tbody.querySelectorAll('tr:not(.group-header)'));
+    if (bodyRows.length === 0) return;
+
+    var today = "{{ .today }}";
+    var dayOrder = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+
+    // Build day→course→rows map
+    var days = {};
+    bodyRows.forEach(function(row) {
+        var d = row.getAttribute('data-day');
+        var c = row.getAttribute('data-course');
+        if (!days[d]) days[d] = {};
+        if (!days[d][c]) days[d][c] = [];
+        days[d][c].push(row);
+    });
+
+    tbody.innerHTML = '';
+
+    dayOrder.forEach(function(day) {
+        var courses = days[day];
+        if (!courses) return;
+        var courseNames = Object.keys(courses).sort();
+        var colspan = document.querySelector('table.table thead tr').children.length;
+
+        // Day header
+        var totalRows = 0;
+        courseNames.forEach(function(n) { totalRows += courses[n].length; });
+        var dh = document.createElement('tr');
+        dh.className = 'group-header-day';
+        dh.innerHTML = '<td colspan="' + colspan + '"><div class="d-flex align-items-center py-2"><i class="bi bi-chevron-down me-2"></i><span class="fw-bold">' + day + '</span><span class="badge bg-secondary ms-2">' + totalRows + '</span></div></td>';
+        if (day === today) dh.querySelector('div').classList.add('text-primary');
+        dh.style.cursor = 'pointer';
+        tbody.appendChild(dh);
+
+        // Toggle day rows & course headers
+        var dayToggle = function(hide) {
+            var els = tbody.querySelectorAll('tr[data-day="' + day + '"], tr[data-day-header="' + day + '"]');
+            els.forEach(function(el) {
+                el.style.display = hide ? 'none' : '';
+                var icon = el.querySelector('.bi');
+                if (icon && el.classList.contains('group-header-course')) {
+                    icon.className = hide ? 'bi bi-chevron-right me-1' : 'bi bi-chevron-down me-1';
+                }
+            });
+            var icon = dh.querySelector('.bi');
+            icon.className = hide ? 'bi bi-chevron-right me-2' : 'bi bi-chevron-down me-2';
+        };
+        dh.addEventListener('click', function() {
+            var first = tbody.querySelector('tr[data-day="' + day + '"]');
+            dayToggle(first && first.style.display !== 'none');
+        });
+
+        // Course headers + rows
+        courseNames.forEach(function(course) {
+            var ch = document.createElement('tr');
+            ch.className = 'group-header-course';
+            ch.setAttribute('data-day', day);
+            ch.setAttribute('data-day-header', day);
+            ch.setAttribute('data-course', course);
+            var cnt = courses[course].length;
+            var icon = cnt > 1
+                ? '<i class="bi bi-chevron-down me-1"></i>'
+                : '<i class="bi bi-dot me-1"></i>';
+            ch.innerHTML = '<td colspan="' + colspan + '"><div class="d-flex align-items-center py-1 ps-4"><span class="fw-semibold text-secondary">' + icon + course + '</span><span class="badge bg-light text-muted ms-2">' + cnt + '</span></div></td>';
+            ch.style.cursor = cnt > 1 ? 'pointer' : '';
+            tbody.appendChild(ch);
+
+            // Course rows
+            courses[course].forEach(function(r) {
+                r.style.display = ''; // ensure visible
+                tbody.appendChild(r);
+            });
+
+            // Toggle course rows
+            if (cnt > 1) {
+                ch.addEventListener('click', function() {
+                    var courseRows = tbody.querySelectorAll('tr[data-day="' + day + '"][data-course="' + course + '"]:not(.group-header)');
+                    var hidden = courseRows[0] && courseRows[0].style.display === 'none';
+                    courseRows.forEach(function(r) { r.style.display = hidden ? '' : 'none'; });
+                    var iconEl = ch.querySelector('.bi');
+                    iconEl.className = hidden ? 'bi bi-chevron-down me-1' : 'bi bi-chevron-right me-1';
+                });
+            }
+        });
+
+        // Auto-collapse if more than 1 unique course
+        if (courseNames.length > 1) {
+            dayToggle(true);
+        }
+    });
+});
+</script>
 {{ template "layout/footer.html" . }}
