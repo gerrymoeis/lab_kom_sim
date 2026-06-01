@@ -80,9 +80,10 @@ func (db *DB) NewWriteQueue(bufferSize, batchSize int, flushEvery time.Duration)
 			return db.writer.Exec(query, args...)
 		}
 
-		// Bypass async for device operations (critical for loans/usages)
+		// Bypass async for constraints and critical tables
 		tbl := extractTableName(query)
-		if tbl == "devices" {
+		switch tbl {
+		case "devices", "categories", "device_types":
 			return db.writer.Exec(query, args...)
 		}
 
