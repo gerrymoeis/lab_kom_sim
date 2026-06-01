@@ -34,8 +34,8 @@ initPublicTable({
           }},
         { field: "condition", label: "Kondisi", sortable: true, filterable: true,
           render: function(v) {
-              var badge = {baik: "success", rusak: "danger", maintenance: "warning"}[v] || "secondary";
-              var label = {baik: "Baik", rusak: "Rusak", maintenance: "Maintenance"}[v] || v;
+              var badge = {normal: "success", rusak: "danger", warning: "warning"}[v] || "secondary";
+              var label = {normal: "Normal", rusak: "Rusak", warning: "Warning"}[v] || v;
               return '<span class="badge bg-' + badge + '">' + label + '</span>';
           }},
         { field: "location", label: "Lokasi", sortable: true },
