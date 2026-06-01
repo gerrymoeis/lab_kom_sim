@@ -320,7 +320,7 @@
                 '<td class="text-center fw-bold">' + i + '</td>' +
                 '<td><code class="asset-code">' + code + '</code></td>' +
                 '<td><input type="text" class="form-control form-control-sm sn-input" placeholder="Serial Number"></td>' +
-                '<td><select class="form-select form-select-sm condition-input"><option value="baik">Baik</option><option value="rusak">Rusak</option><option value="maintenance">Maintenance</option></select></td>' +
+                '<td><select class="form-select form-select-sm condition-input"><option value="normal">Normal</option><option value="rusak">Rusak</option><option value="warning">Warning</option></select></td>' +
                 '<td><input type="text" class="form-control form-control-sm loc-input" value="' + defaultLoc + '" placeholder="Lokasi"></td>' +
                 '<td><input type="date" class="form-control form-control-sm date-input"></td>' +
                 '<td><input type="text" class="form-control form-control-sm notes-input" placeholder="Catatan"></td>';
@@ -373,7 +373,7 @@
         rows.forEach(function(row) {
             devices.push({
                 serial_number: row.querySelector('.sn-input') ? row.querySelector('.sn-input').value : '',
-                condition: row.querySelector('.condition-input') ? row.querySelector('.condition-input').value : 'baik',
+                condition: row.querySelector('.condition-input') ? row.querySelector('.condition-input').value : 'normal',
                 location: row.querySelector('.loc-input') ? row.querySelector('.loc-input').value : '',
                 purchase_date: row.querySelector('.date-input') ? row.querySelector('.date-input').value : '',
                 notes: row.querySelector('.notes-input') ? row.querySelector('.notes-input').value : ''
