@@ -48,9 +48,9 @@
                     <div class="col-md-6 mb-3">
                         <label for="condition" class="form-label">Kondisi *</label>
                         <select class="form-select" id="condition" name="condition" required>
-                            <option value="baik" {{ if eq .device.Condition "baik" }}selected{{ end }}>Baik</option>
+                            <option value="normal" {{ if eq .device.Condition "normal" }}selected{{ end }}>Normal</option>
                             <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
-                            <option value="maintenance" {{ if eq .device.Condition "maintenance" }}selected{{ end }}>Maintenance</option>
+                            <option value="warning" {{ if eq .device.Condition "warning" }}selected{{ end }}>Warning</option>
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">

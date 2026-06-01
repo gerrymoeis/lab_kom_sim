@@ -105,7 +105,7 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 		"created_at": "d.created_at",
 	}[filters.SortBy]
 	if sortBy == "" {
-		sortBy = "d.asset_code"
+		sortBy = "c.name, dt.name, d.asset_code"
 	}
 	sortOrder := "ASC"
 	if filters.SortOrder == "DESC" {

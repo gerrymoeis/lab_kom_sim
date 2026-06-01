@@ -70,7 +70,7 @@ type Device struct {
 	DeviceTypeID int        `json:"device_type_id"`
 	AssetCode    string     `json:"asset_code"`     // UNIQUE: "MOUSE-AXIOO-001"
 	SerialNumber string     `json:"serial_number"`
-	Condition    string     `json:"condition"`      // 'baik'|'rusak'|'maintenance'
+	Condition    string     `json:"condition"`      // 'normal'|'warning'|'rusak'
 	Location     string     `json:"location"`
 	PurchaseDate *time.Time `json:"purchase_date"`
 	Notes        string     `json:"notes"`

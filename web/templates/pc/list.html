@@ -97,7 +97,7 @@
                             <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else }}-{{ end }}</td>
                             <td>{{ if eq .Placement "dipakai" }}Baris {{ .Row }}, Kolom {{ .Column }}{{ else }}-{{ end }}</td>
                             <td>
-<span class="badge bg-{{ (pcStatusInfo .Status).BadgeClass }} me-1">{{ .Status }}</span>
+<span class="badge bg-{{ (pcStatusInfo .Status).BadgeClass }} me-1">{{ (pcStatusInfo .Status).VisLabel }}</span>
 <span class="badge bg-{{ (pcPlacementInfo .Placement).BadgeClass }}">{{ (pcPlacementInfo .Placement).VisLabel }}</span>
                             </td>
                             <td>

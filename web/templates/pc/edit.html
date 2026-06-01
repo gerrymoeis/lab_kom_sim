@@ -91,9 +91,6 @@
                             <label for="operating_system" class="form-label">Sistem Operasi *</label>
                             <input type="text" class="form-control" id="operating_system" name="operating_system" list="os-list" value="{{ .pc.OperatingSystem }}" required>
                             <datalist id="os-list">
-                                <option value="Windows 11 Pro 25H2">
-                                <option value="Windows 10 Pro 22H2">
-                                <option value="Ubuntu 22.04 LTS">
                                 {{ range .operatingSystems }}
                                 <option value="{{ . }}">
                                 {{ end }}

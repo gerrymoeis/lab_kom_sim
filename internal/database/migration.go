@@ -156,7 +156,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 			device_type_id INTEGER NOT NULL REFERENCES device_types(id) ON DELETE RESTRICT,
 			asset_code TEXT NOT NULL UNIQUE,
 			serial_number TEXT,
-			condition TEXT NOT NULL DEFAULT 'baik' CHECK(condition IN ('baik', 'rusak', 'maintenance')),
+			condition TEXT NOT NULL DEFAULT 'normal' CHECK(condition IN ('normal', 'warning', 'rusak')),
 			location TEXT,
 			purchase_date DATE,
 			notes TEXT,

@@ -121,7 +121,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"query": query,
 		})
 
-	default: // types tab — flat paginated list with filter/sort
+	default: // types tab — grouped by category → device type
 		search := c.Query("search")
 		condition := c.Query("condition")
 		category := c.Query("category")
@@ -149,12 +149,14 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			depletedIDs = make(map[int]bool)
 		}
 
+		groupedData := groupDevices(devices, activeLoanIDs, depletedIDs)
+
 		totalPages := (total + pageSize - 1) / pageSize
 		c.HTML(http.StatusOK, "device/list.html", gin.H{
 			"title": "Manajemen Perangkat", "currentPage": "devices",
 			"activeTab": "types",
 			"username": username, "role": role,
-			"devices":      devices,
+			"groupedData":  groupedData,
 			"activeLoanIDs": activeLoanIDs,
 			"depletedIDs":   depletedIDs,
 			"filters":    gin.H{"search": search, "category": category, "condition": condition, "sort_by": sortBy, "sort_order": sortOrder},
@@ -447,4 +449,34 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices")
+}
+
+func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bool) models.DeviceGroupedData {
+	grouped := models.DeviceGroupedData{
+		ActiveLoanIDs: activeLoanIDs,
+		DepletedIDs:   depletedIDs,
+	}
+	var curCat *models.CategoryGroup
+	var curType *models.DeviceTypeGroup
+	for _, d := range devices {
+		if curCat == nil || curCat.CategoryName != d.CategoryName {
+			grouped.Categories = append(grouped.Categories, models.CategoryGroup{
+				CategoryName:   d.CategoryName,
+				CategoryPrefix: d.CategoryPrefix,
+			})
+			curCat = &grouped.Categories[len(grouped.Categories)-1]
+			curType = nil
+		}
+		if curType == nil || curType.TypeName != d.DeviceTypeName {
+			curCat.Types = append(curCat.Types, models.DeviceTypeGroup{
+				TypeName:   d.DeviceTypeName,
+				TypePrefix: d.DeviceTypePrefix,
+				UsageType:  d.UsageType,
+				TypePhoto:  d.DeviceTypePhoto,
+			})
+			curType = &curCat.Types[len(curCat.Types)-1]
+		}
+		curType.Devices = append(curType.Devices, d)
+	}
+	return grouped
 }
