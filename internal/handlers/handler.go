@@ -96,6 +96,10 @@ func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bo
 	return
 }
 
+func (h *Handler) Close() {
+	h.activityLogService.Close()
+}
+
 func (h *Handler) errJSON(c *gin.Context, status int, msg string) {
 	c.JSON(status, gin.H{"error": msg})
 }
