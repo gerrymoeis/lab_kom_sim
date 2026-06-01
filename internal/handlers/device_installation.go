@@ -46,7 +46,7 @@ func (h *Handler) DeviceInstallationList(c *gin.Context) {
 	totalPages := (total + pageSize - 1) / pageSize
 
 	c.HTML(http.StatusOK, "device_installation/list.html", gin.H{
-		"title": "Instalasi Perangkat", "currentPage": "installations",
+		"title": "Instalasi Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"installations": installations,
 		"filters":       gin.H{"search": search, "sort_by": sortBy},
@@ -67,7 +67,7 @@ func (h *Handler) DeviceInstallationCreatePage(c *gin.Context) {
 	}
 	deviceID, _ := strconv.Atoi(c.DefaultQuery("device_id", "0"))
 	c.HTML(http.StatusOK, "device_installation/create.html", gin.H{
-		"title": "Tambah Instalasi", "currentPage": "installations",
+		"title": "Tambah Instalasi", "currentPage": "devices",
 		"username": username, "role": role,
 		"devices": devices, "preselectDeviceID": deviceID,
 	})
@@ -78,7 +78,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 	if err := c.ShouldBind(&req); err != nil {
 		_, username, role, _ := h.user(c)
 		c.HTML(http.StatusBadRequest, "device_installation/create.html", gin.H{
-			"title": "Tambah Instalasi", "currentPage": "installations",
+			"title": "Tambah Instalasi", "currentPage": "devices",
 			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
 		})
 		return
@@ -97,7 +97,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "device_installation/create.html", gin.H{
-			"title": "Tambah Instalasi", "currentPage": "installations",
+			"title": "Tambah Instalasi", "currentPage": "devices",
 			"username": u, "role": r, "error": "Gagal menyimpan instalasi",
 		})
 		return
@@ -119,7 +119,7 @@ func (h *Handler) DeviceInstallationDetail(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "device_installation/detail.html", gin.H{
-		"title": "Detail Instalasi", "currentPage": "installations",
+		"title": "Detail Instalasi", "currentPage": "devices",
 		"username": username, "role": role,
 		"installation": inst,
 		"assetCode":    inst.DeviceAssetCode,
@@ -140,7 +140,7 @@ func (h *Handler) DeviceInstallationEditPage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "device_installation/edit.html", gin.H{
-		"title": "Edit Instalasi", "currentPage": "installations",
+		"title": "Edit Instalasi", "currentPage": "devices",
 		"username": username, "role": role,
 		"installation": inst,
 		"assetCode":    inst.DeviceAssetCode,
