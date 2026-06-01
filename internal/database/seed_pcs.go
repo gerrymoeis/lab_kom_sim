@@ -1,6 +1,10 @@
 package database
 
-import "fmt"
+import (
+	"fmt"
+
+	"inventaris-lab-kom/internal/util"
+)
 
 type pcSeedData struct {
 	Number     int
@@ -235,9 +239,11 @@ func seedPCs(db *DB) error {
 			swID, ok := swByName[name]
 			if !ok {
 				if skipMissing { continue }
-				pgErr := tx.QueryRow(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '') RETURNING id`, name).Scan(&swID)
+				slug := util.Slugify(name)
+				pgErr := tx.QueryRow(`INSERT INTO software_catalog (name, category, description, slug) VALUES (?, 'other', '', ?) RETURNING id`, name, slug).Scan(&swID)
 				if pgErr != nil {
-					tx.Exec(`INSERT INTO software_catalog (name, category, description) VALUES (?, 'other', '')`, name)
+					// Fallback for DBs that don't support RETURNING (e.g., older SQLite)
+					tx.Exec(`INSERT INTO software_catalog (name, category, description, slug) VALUES (?, 'other', '', ?)`, name, slug)
 					tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID)
 				}
 				if swID > 0 { swByName[name] = swID }
