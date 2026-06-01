@@ -25,21 +25,23 @@
         <div class="card-body">
             <form method="GET" action="/devices?tab=usages" class="row g-3 mb-3">
                 <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Cari pengguna atau perangkat..." value="{{ .filters.search }}">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari pengguna atau perangkat..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
-                    <select class="form-select" name="sort_by">
+                    <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
                         <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
                         <option value="usage_date" {{ if eq .filters.sort_by "usage_date" }}selected{{ end }}>Tanggal Pemakaian</option>
                         <option value="user_name" {{ if eq .filters.sort_by "user_name" }}selected{{ end }}>Nama Pengguna</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2 d-flex align-items-end">
                     <a href="/devices?tab=usages" class="btn btn-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>

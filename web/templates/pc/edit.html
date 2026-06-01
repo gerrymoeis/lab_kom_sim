@@ -25,14 +25,14 @@
 
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label for="column" class="form-label">Baris</label>
-                                <input type="number" class="form-control" id="column" name="column" min="1" max="8" value="{{ .pc.Column }}">
-                                <small class="text-muted">1-8</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="row" class="form-label">Kolom</label>
+                                <label for="row" class="form-label">Baris</label>
                                 <input type="number" class="form-control" id="row" name="row" min="0" max="99" value="{{ .pc.Row }}">
                                 <small class="text-muted">0-99</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="column" class="form-label">Kolom</label>
+                                <input type="number" class="form-control" id="column" name="column" min="0" max="8" value="{{ .pc.Column }}">
+                                <small class="text-muted">1-8</small>
                             </div>
                         </div>
 
@@ -89,8 +89,16 @@
 
                         <div class="mb-3">
                             <label for="operating_system" class="form-label">Sistem Operasi *</label>
-                            <input type="text" class="form-control" id="operating_system" name="operating_system" value="{{ .pc.OperatingSystem }}" required>
-                            <small class="text-muted">Contoh: Windows 11 Pro 25H2, Windows 10 Pro 23H2, Ubuntu 22.04 LTS</small>
+                            <input type="text" class="form-control" id="operating_system" name="operating_system" list="os-list" value="{{ .pc.OperatingSystem }}" required>
+                            <datalist id="os-list">
+                                <option value="Windows 11 Pro 25H2">
+                                <option value="Windows 10 Pro 22H2">
+                                <option value="Ubuntu 22.04 LTS">
+                                {{ range .operatingSystems }}
+                                <option value="{{ . }}">
+                                {{ end }}
+                            </datalist>
+                            <small class="text-muted">Ketik atau pilih dari daftar</small>
                         </div>
 
                         <hr class="my-4">

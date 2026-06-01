@@ -185,5 +185,13 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 .cursor-pointer { cursor: pointer; }
 .cursor-pointer:hover { opacity: 0.85; }
 
+.group-header-day { background-color: #f0f4ff !important; }
+.group-header-day:hover { background-color: #e8eeff !important; }
+.group-header-course { background-color: #f8f9fa !important; }
+.group-header-course:hover { background-color: #f0f1f3 !important; }
+
+.nav-tabs { border-bottom: 1px solid #dee2e6; }
+.nav-tabs ~ .card.shadow-sm { border-top-left-radius: 0; border-top-right-radius: 0; border-top: none; }
+
 .layout-grid-scroll { overflow-x: auto; }
 .layout-grid-scroll .layout-row { min-width: 760px; }

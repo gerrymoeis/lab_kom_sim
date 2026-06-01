@@ -18,11 +18,15 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <form method="GET" action="/admin/activity-logs" class="row g-3 mb-3">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Cari</label>
+                        <input type="text" class="form-control" id="search" name="search" placeholder="Cari di description, username, entity..." value="{{ .filters.search }}">
+                    </div>
+                    <div class="col-md-2">
                         <label for="date_from" class="form-label">Tanggal Dari</label>
                         <input type="date" class="form-control" id="date_from" name="date_from" value="{{ .filters.date_from }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label for="date_to" class="form-label">Tanggal Sampai</label>
                         <input type="date" class="form-control" id="date_to" name="date_to" value="{{ .filters.date_to }}">
                     </div>
@@ -42,10 +46,9 @@
                         <label for="entity_type" class="form-label">Entity</label>
                         <select class="form-select" id="entity_type" name="entity_type">
                             <option value="">Semua</option>
-                            <option value="pc" {{ if eq .filters.entity_type "pc" }}selected{{ end }}>PC</option>
-                            <option value="device" {{ if eq .filters.entity_type "device" }}selected{{ end }}>Device</option>
-                            <option value="logbook" {{ if eq .filters.entity_type "logbook" }}selected{{ end }}>Logbook</option>
-                            <option value="auth" {{ if eq .filters.entity_type "auth" }}selected{{ end }}>Auth</option>
+                            {{ range .entityTypes }}
+                            <option value="{{ . }}" {{ if eq $.filters.entity_type . }}selected{{ end }}>{{ . }}</option>
+                            {{ end }}
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -65,12 +68,8 @@
                             <option value="failed" {{ if eq .filters.status "failed" }}selected{{ end }}>Failed</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label for="search" class="form-label">Search</label>
-                        <input type="text" class="form-control" id="search" name="search" placeholder="Cari di description, username, entity..." value="{{ .filters.search }}">
-                    </div>
                     <div class="col-md-2">
-                        <label for="sort_by" class="form-label">Urut</label>
+                        <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
                         <select class="form-select" id="sort_by" name="sort_by">
                             <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default (Waktu)</option>
                             <option value="username" {{ if eq .filters.sort_by "username" }}selected{{ end }}>User</option>
@@ -78,10 +77,13 @@
                             <option value="entity_type" {{ if eq .filters.sort_by "entity_type" }}selected{{ end }}>Entity</option>
                         </select>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
+                    <div class="col-md-2 d-flex align-items-end gap-2">
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="bi bi-search"></i> Filter
                         </button>
+                        <a href="/admin/activity-logs" class="btn btn-secondary w-100">
+                            <i class="bi bi-x-circle"></i> Reset
+                        </a>
                     </div>
                 </form>
 
