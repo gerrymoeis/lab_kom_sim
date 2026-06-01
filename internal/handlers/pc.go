@@ -107,6 +107,8 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		PCType: req.PCType, BrandModel: req.BrandModel, Accessories: req.Accessories,
 		PhotoSerial: photoSerial, PhotoFront: photoFront,
 		Label: req.Label, IsMahasiswa: req.IsMahasiswa == "true",
+		PurchaseDate: req.PurchaseDate,
+		LastChecked: req.LastChecked,
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
@@ -128,11 +130,23 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 
 	requiredSW, otherSW, _ := h.pcService.GetSoftware(pc.ID)
 
+	pd := ""
+	if pc.PurchaseDate != nil { pd = pc.PurchaseDate.Format("2006-01-02") }
+	lc := ""
+	lcDisplay := ""
+	if pc.LastChecked != nil {
+		lc = pc.LastChecked.Format("2006-01-02T15:04")
+		lcDisplay = pc.LastChecked.Format("02/01/2006 15:04")
+	}
+
 	c.HTML(http.StatusOK, "pc/edit.html", gin.H{
 		"title": "Edit PC", "currentPage": "pc",
 		"username": username, "role": role, "pc": pc,
 		"requiredSW": requiredSW, "otherSW": otherSW,
 		"android": h.cfg.Android,
+		"purchaseDate": pd,
+		"lastChecked": lc,
+		"lastCheckedDisplay": lcDisplay,
 	})
 }
 
@@ -155,6 +169,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	}
 
 	if err := h.pcService.UpdatePC(label, services.UpdatePCInput{
+		Row: req.Row, Column: req.Column,
 		Status: req.Status, Placement: req.Placement,
 		SerialNumber: req.SerialNumber, BrandModel: req.BrandModel,
 		Accessories: req.Accessories, Processor: req.Processor,
@@ -163,6 +178,8 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		Notes: req.Notes,
 		PhotoSerial: photoSerial, PhotoFront: photoFront,
 		Label: newLabel,
+		PurchaseDate: req.PurchaseDate,
+		LastChecked: req.LastChecked,
 	}, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, "Gagal mengupdate PC")
 		return

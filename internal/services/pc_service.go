@@ -14,9 +14,11 @@ type CreatePCInput struct {
 	PhotoSerial, PhotoFront             string
 	Label                               string
 	IsMahasiswa                         bool
+	PurchaseDate, LastChecked           string
 }
 
 type UpdatePCInput struct {
+	Row, Column                         int
 	Status, Placement                   string
 	SerialNumber                        string
 	PCType, BrandModel, Accessories     string
@@ -25,6 +27,7 @@ type UpdatePCInput struct {
 	PhotoSerial, PhotoFront             string
 	RequiredSW, OtherSW                 []int
 	Label                               string
+	PurchaseDate, LastChecked           string
 }
 
 type PCService struct {
@@ -74,7 +77,8 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 	}
 
 	result, err := s.pcRepo.Create(in.Row, in.Column, in.Status, in.Placement, in.Processor, in.RAM, in.Storage,
-		in.SerialNumber, in.OperatingSystem, in.PCType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label)
+		in.SerialNumber, in.OperatingSystem, in.PCType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label,
+		in.PurchaseDate, in.LastChecked)
 	if err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "pc", 0,
 			map[string]any{"label": in.Label, "serial_number": in.SerialNumber},
@@ -101,8 +105,9 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 	if in.Label == "" {
 		in.Label = label
 	}
-	err := s.pcRepo.Update(label, in.Status, in.Placement, in.PCType, in.SerialNumber, in.BrandModel, in.Accessories,
-		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.PhotoSerial, in.PhotoFront, in.Label)
+	err := s.pcRepo.Update(label, in.Row, in.Column, in.Status, in.Placement, in.PCType, in.SerialNumber, in.BrandModel, in.Accessories,
+		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.PhotoSerial, in.PhotoFront, in.Label,
+		in.PurchaseDate, in.LastChecked)
 	if err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
 			map[string]any{"label": label}, nil, ipAddress, userAgent, err.Error())
