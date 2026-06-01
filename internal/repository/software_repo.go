@@ -57,7 +57,7 @@ func (r *SoftwareRepository) ListPaginated(search, category, sortBy string, page
 }
 
 func (r *SoftwareRepository) listWithQuery(search, category, sortBy string, suffix string, limit, offset int) ([]SoftwareStat, error) {
-	query := `SELECT sc.id, sc.name, sc.category, sc.description, COUNT(ps.software_id), pc.cnt
+	query := `SELECT sc.id, sc.name, sc.category, sc.description, sc.slug, COUNT(ps.software_id), pc.cnt
 		FROM software_catalog sc
 		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE
 		CROSS JOIN (SELECT COUNT(*) AS cnt FROM pcs) pc
@@ -74,7 +74,7 @@ func (r *SoftwareRepository) listWithQuery(search, category, sortBy string, suff
 		args = append(args, category)
 	}
 
-	query += ` GROUP BY sc.id, sc.name, sc.category, sc.description, pc.cnt`
+	query += ` GROUP BY sc.id, sc.name, sc.category, sc.description, sc.slug, pc.cnt`
 	switch sortBy {
 	case "name":
 		query += ` ORDER BY sc.name`
@@ -97,7 +97,7 @@ func (r *SoftwareRepository) listWithQuery(search, category, sortBy string, suff
 	var stats []SoftwareStat
 	for rows.Next() {
 		var st SoftwareStat
-		if rows.Scan(&st.ID, &st.Name, &st.Category, &st.Description, &st.InstalledCount, &st.TotalPCs) == nil {
+		if rows.Scan(&st.ID, &st.Name, &st.Category, &st.Description, &st.Slug, &st.InstalledCount, &st.TotalPCs) == nil {
 			stats = append(stats, st)
 		}
 	}
@@ -220,11 +220,11 @@ func (r *SoftwareRepository) IsDuplicate(name string) bool {
 }
 
 func (r *SoftwareRepository) Export() ([]SoftwareStat, error) {
-	query := `SELECT sc.id, sc.name, sc.category, sc.description, COUNT(ps.software_id), pc.cnt
+	query := `SELECT sc.id, sc.name, sc.category, sc.description, sc.slug, COUNT(ps.software_id), pc.cnt
 		FROM software_catalog sc
 		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE
 		CROSS JOIN (SELECT COUNT(*) AS cnt FROM pcs) pc
-		GROUP BY sc.id, sc.name, sc.category, sc.description, pc.cnt
+		GROUP BY sc.id, sc.name, sc.category, sc.description, sc.slug, pc.cnt
 		ORDER BY sc.category, sc.name`
 
 	rows, err := r.db.Query(query)
@@ -236,7 +236,7 @@ func (r *SoftwareRepository) Export() ([]SoftwareStat, error) {
 	var stats []SoftwareStat
 	for rows.Next() {
 		var st SoftwareStat
-		if rows.Scan(&st.ID, &st.Name, &st.Category, &st.Description, &st.InstalledCount, &st.TotalPCs) == nil {
+		if rows.Scan(&st.ID, &st.Name, &st.Category, &st.Description, &st.Slug, &st.InstalledCount, &st.TotalPCs) == nil {
 			stats = append(stats, st)
 		}
 	}
