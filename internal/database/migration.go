@@ -484,7 +484,49 @@ func runMigrations(db *DB, isPostgres bool) error {
 		if _, err := db.Exec(`ALTER TABLE software_catalog ADD COLUMN slug TEXT NOT NULL DEFAULT ''`); err != nil {
 			return fmt.Errorf("failed to add software_catalog.slug: %w", err)
 		}
-		// Backfill will be done by repository.Create() during seed
+		log.Println("Added slug column to software_catalog")
+	}
+
+	// Populate slug for existing software_catalog entries (if slug is empty)
+	var emptySlugCount int
+	db.QueryRow(`SELECT COUNT(*) FROM software_catalog WHERE slug = '' OR slug IS NULL`).Scan(&emptySlugCount)
+	if emptySlugCount > 0 {
+		rows, err := db.Query(`SELECT id, name FROM software_catalog WHERE slug = '' OR slug IS NULL`)
+		if err != nil {
+			return fmt.Errorf("failed to query software for slug population: %w", err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var id int
+			var name string
+			if err := rows.Scan(&id, &name); err != nil {
+				continue
+			}
+			// Generate slug using same logic as util.Slugify (inline to avoid import cycle)
+			slug := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(name), " ", "-"))
+			slug = strings.Map(func(r rune) rune {
+				if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+					return r
+				}
+				return -1
+			}, slug)
+			// Remove consecutive dashes and trim
+			for strings.Contains(slug, "--") {
+				slug = strings.ReplaceAll(slug, "--", "-")
+			}
+			slug = strings.Trim(slug, "-")
+
+			if _, err := db.Exec(`UPDATE software_catalog SET slug = ? WHERE id = ?`, slug, id); err != nil {
+				log.Printf("WARN: failed to populate slug for software id=%d: %v", id, err)
+			}
+		}
+		log.Printf("Populated slug for %d existing software entries", emptySlugCount)
+	}
+
+	// Create unique index on slug after population
+	if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_software_catalog_slug ON software_catalog(slug)`); err != nil {
+		return fmt.Errorf("failed to create unique index on software_catalog.slug: %w", err)
 	}
 
 	if !isPostgres {
