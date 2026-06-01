@@ -106,3 +106,11 @@ func (s *DeviceTypeService) List(category, search string) ([]models.DeviceType, 
 func (s *DeviceTypeService) ListPaginated(category, search, sortBy string, page, pageSize int) ([]models.DeviceType, int, error) {
 	return s.repo.ListPaginated(category, search, sortBy, page, pageSize)
 }
+
+func (s *DeviceTypeService) GetByCategoryID(categoryID int) ([]models.DeviceType, error) {
+	return s.repo.GetByCategoryID(categoryID)
+}
+
+func (s *DeviceTypeService) CountByCategoryID(categoryID int) (int, error) {
+	return s.repo.CountByCategoryID(categoryID)
+}

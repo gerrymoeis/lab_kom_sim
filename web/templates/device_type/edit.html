@@ -1,72 +1,66 @@
 {{ template "layout/base.html" . }}
 
-<div class="container-fluid mt-4 px-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0"><i class="bi bi-pencil"></i> {{ .title }}</h5>
-        </div>
-        <div class="card-body">
-            {{ template "layout/alert.html" . }}
+<div class="container mt-4">
+    {{ template "layout/card_edit.html" . }}
 
-            <form method="POST" action="/device-types/{{ .deviceType.ID }}/edit">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="name" class="form-label">Nama Tipe *</label>
-                        <input type="text" class="form-control" id="name" name="name" value="{{ .deviceType.Name }}" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="category_id" class="form-label">Kategori *</label>
-                        <select class="form-select" id="category_id" name="category_id" required>
-                            <option value="">Pilih kategori...</option>
-                            {{ range $c := .categories }}
-                            <option value="{{ $c.ID }}" {{ if eq $.deviceType.CategoryID $c.ID }}selected{{ end }}>{{ $c.Name }}</option>
-                            {{ end }}
-                        </select>
-                    </div>
-                </div>
+                    <form method="POST" action="/device-types/{{ .deviceType.ID }}/edit">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Nama Tipe *</label>
+                                <input type="text" class="form-control" id="name" name="name" value="{{ .deviceType.Name }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="category_id" class="form-label">Kategori *</label>
+                                <select class="form-select" id="category_id" name="category_id" required>
+                                    <option value="">Pilih kategori...</option>
+                                    {{ range $c := .categories }}
+                                    <option value="{{ $c.ID }}" {{ if eq $.deviceType.CategoryID $c.ID }}selected{{ end }}>{{ $c.Name }}</option>
+                                    {{ end }}
+                                </select>
+                            </div>
+                        </div>
 
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="brand" class="form-label">Brand</label>
-                        <input type="text" class="form-control" id="brand" name="brand" value="{{ .deviceType.Brand }}">
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="model" class="form-label">Model</label>
-                        <input type="text" class="form-control" id="model" name="model" value="{{ .deviceType.Model }}">
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="asset_code_prefix" class="form-label">Prefix Asset Code</label>
-                        <input type="text" class="form-control" id="asset_code_prefix" name="asset_code_prefix" value="{{ .deviceType.AssetCodePrefix }}">
-                    </div>
-                </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="brand" class="form-label">Brand</label>
+                                <input type="text" class="form-control" id="brand" name="brand" value="{{ .deviceType.Brand }}">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="model" class="form-label">Model</label>
+                                <input type="text" class="form-control" id="model" name="model" value="{{ .deviceType.Model }}">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="asset_code_prefix" class="form-label">Prefix Asset Code</label>
+                                <input type="text" class="form-control" id="asset_code_prefix" name="asset_code_prefix" value="{{ .deviceType.AssetCodePrefix }}">
+                            </div>
+                        </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="usage_type" class="form-label">Tipe Penggunaan *</label>
-                        <select class="form-select" id="usage_type" name="usage_type" required>
-                            <option value="loanable" {{ if eq .deviceType.UsageType "loanable" }}selected{{ end }}>Dipinjamkan</option>
-                            <option value="consumable" {{ if eq .deviceType.UsageType "consumable" }}selected{{ end }}>Habis Pakai</option>
-                            <option value="installable" {{ if eq .deviceType.UsageType "installable" }}selected{{ end }}>Instalasi</option>
-                        </select>
-                        <small class="text-muted">Mengubah ini akan mempengaruhi semua perangkat dengan tipe ini.</small>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="default_location" class="form-label">Lokasi Default</label>
-                        <input type="text" class="form-control" id="default_location" name="default_location" value="{{ .deviceType.DefaultLocation }}">
-                    </div>
-                </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="usage_type" class="form-label">Tipe Penggunaan *</label>
+                                <select class="form-select" id="usage_type" name="usage_type" required>
+                                    <option value="loanable" {{ if eq .deviceType.UsageType "loanable" }}selected{{ end }}>Dipinjamkan</option>
+                                    <option value="consumable" {{ if eq .deviceType.UsageType "consumable" }}selected{{ end }}>Habis Pakai</option>
+                                    <option value="installable" {{ if eq .deviceType.UsageType "installable" }}selected{{ end }}>Instalasi</option>
+                                </select>
+                                <small class="text-muted">Mengubah ini akan mempengaruhi semua perangkat dengan tipe ini.</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="default_location" class="form-label">Lokasi Default</label>
+                                <input type="text" class="form-control" id="default_location" name="default_location" value="{{ .deviceType.DefaultLocation }}">
+                            </div>
+                        </div>
 
-                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
-                    <button type="submit" class="btn btn-warning">
-                        <i class="bi bi-save"></i> Update
-                    </button>
-                    <a href="/devices" class="btn btn-secondary">
-                        <i class="bi bi-x-circle"></i> Batal
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
+                        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-save"></i> Update
+                            </button>
+                            <a href="/devices" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Batal
+                            </a>
+                        </div>
+                    </form>
+    {{ template "layout/card_close.html" . }}
 </div>
 
 {{ template "layout/footer.html" . }}

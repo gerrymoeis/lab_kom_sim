@@ -388,6 +388,20 @@ func (r *DeviceRepository) ExportUsages(pageSize int) ([]DeviceUsageRow, error) 
 	return usages, err
 }
 
+func (r *DeviceRepository) CountByDeviceTypeID(deviceTypeID int) (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM devices WHERE device_type_id = ?", deviceTypeID).Scan(&count)
+	return count, err
+}
+
+func (r *DeviceRepository) CountByCategoryID(categoryID int) (int, error) {
+	var count int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM devices d
+		JOIN device_types dt ON dt.id = d.device_type_id
+		WHERE dt.category_id = ?`, categoryID).Scan(&count)
+	return count, err
+}
+
 func parseDate(s sql.NullString) *time.Time {
 	if s.Valid && s.String != "" {
 		t, err := time.Parse("2006-01-02", s.String)

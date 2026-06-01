@@ -184,6 +184,12 @@ func (r *DeviceTypeRepository) Delete(id int) error {
 	return err
 }
 
+func (r *DeviceTypeRepository) CountByCategoryID(categoryID int) (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM device_types WHERE category_id = ?", categoryID).Scan(&count)
+	return count, err
+}
+
 func (r *DeviceTypeRepository) GetByCategoryID(categoryID int) ([]models.DeviceType, error) {
 	rows, err := r.db.Query(`SELECT id, category_id, name, brand, model, asset_code_prefix, usage_type,
 		COALESCE(default_location,''), COALESCE(photo,'') FROM device_types WHERE category_id = ? ORDER BY name`, categoryID)

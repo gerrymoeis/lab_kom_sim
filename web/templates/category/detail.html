@@ -1,0 +1,101 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/devices">Perangkat</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ .category.Name }}</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-folder"></i> {{ .category.Name }}</h5>
+            <div>
+                <a href="/categories/{{ .category.ID }}/edit" class="btn btn-sm btn-warning me-1">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <form method="POST" action="/categories/{{ .category.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus kategori {{ .category.Name }}?\n\nKategori ini memiliki {{ .typeCount }} tipe perangkat dan {{ .deviceCount }} perangkat. Semua data akan terhapus permanen.')">
+                    <button type="submit" class="btn btn-sm btn-danger" {{ if gt (add .typeCount .deviceCount) 0 }}disabled title="Hapus tipe dan perangkat terlebih dahulu"{{ end }}>
+                        <i class="bi bi-trash"></i> Hapus
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="card-body">
+            <table class="table table-borderless mb-0">
+                <tr>
+                    <th style="width:200px;">Nama Kategori</th>
+                    <td>{{ .category.Name }}</td>
+                </tr>
+                <tr>
+                    <th>Default Prefix</th>
+                    <td><code>{{ .category.DefaultPrefix }}</code></td>
+                </tr>
+                <tr>
+                    <th>Jumlah Tipe</th>
+                    <td><span class="badge bg-secondary">{{ .typeCount }}</span></td>
+                </tr>
+                <tr>
+                    <th>Jumlah Perangkat</th>
+                    <td><span class="badge bg-info">{{ .deviceCount }}</span></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-box"></i> Tipe Perangkat dalam Kategori Ini</h5>
+        </div>
+        <div class="card-body">
+            {{ if gt (len .deviceTypes) 0 }}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nama Tipe</th>
+                            <th>Brand</th>
+                            <th>Model</th>
+                            <th>Prefix</th>
+                            <th>Tipe Penggunaan</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range $t := .deviceTypes }}
+                        <tr>
+                            <td><strong>{{ $t.Name }}</strong></td>
+                            <td>{{ if $t.Brand }}{{ $t.Brand }}{{ else }}-{{ end }}</td>
+                            <td>{{ if $t.Model }}{{ $t.Model }}{{ else }}-{{ end }}</td>
+                            <td><code>{{ $t.AssetCodePrefix }}</code></td>
+                            <td>
+                                {{ if eq $t.UsageType "loanable" }}
+                                <span class="badge bg-primary">Dipinjamkan</span>
+                                {{ else if eq $t.UsageType "consumable" }}
+                                <span class="badge bg-warning">Habis Pakai</span>
+                                {{ else }}
+                                <span class="badge bg-info">Instalasi</span>
+                                {{ end }}
+                            </td>
+                            <td class="text-nowrap">
+                                <a href="/device-types/{{ $t.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/device-types/{{ $t.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+            {{ else }}
+            <p class="text-muted text-center mb-0">Belum ada tipe perangkat dalam kategori ini</p>
+            {{ end }}
+        </div>
+    </div>
+</div>
+
+{{ template "layout/footer.html" . }}

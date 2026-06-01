@@ -175,8 +175,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Auto-collapse if more than 1 unique course
-        if (courseNames.length > 1) {
+        // Default collapsed, only expand today
+        if (day !== today) {
             dayToggle(true);
         }
     });
