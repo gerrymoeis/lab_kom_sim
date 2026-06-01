@@ -42,9 +42,9 @@
                     <label for="condition" class="form-label">Kondisi</label>
                     <select class="form-select" id="condition" name="condition">
                         <option value="">Semua Kondisi</option>
-                        <option value="baik" {{ if eq .filters.condition "baik" }}selected{{ end }}>Baik</option>
+                        <option value="normal" {{ if eq .filters.condition "normal" }}selected{{ end }}>Normal</option>
                         <option value="rusak" {{ if eq .filters.condition "rusak" }}selected{{ end }}>Rusak</option>
-                        <option value="maintenance" {{ if eq .filters.condition "maintenance" }}selected{{ end }}>Maintenance</option>
+                        <option value="warning" {{ if eq .filters.condition "warning" }}selected{{ end }}>Warning</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -86,7 +86,7 @@
                     </thead>
                     <tbody>
                         {{ range $i, $d := .devices }}
-                        <tr class="{{ if eq $d.Condition "rusak" }}table-danger{{ else if eq $d.Condition "maintenance" }}table-warning{{ end }}">
+                        <tr class="{{ if eq $d.Condition "rusak" }}table-danger{{ else if eq $d.Condition "warning" }}table-warning{{ end }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $d.AssetCode }}</code></td>
                             <td>
@@ -97,8 +97,8 @@
                             </td>
                             <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
                             <td>
-                                <span class="badge bg-{{ if eq $d.Condition "baik" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
-                                    {{ if eq $d.Condition "baik" }}Baik{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Maintenance{{ end }}
+                                <span class="badge bg-{{ if eq $d.Condition "normal" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
+                                    {{ if eq $d.Condition "normal" }}Normal{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Warning{{ end }}
                                 </span>
                             </td>
                             <td><small>{{ if $d.Location }}{{ $d.Location }}{{ else }}-{{ end }}</small></td>

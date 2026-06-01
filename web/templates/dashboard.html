@@ -66,7 +66,7 @@
                     <div class="pc-card-wrapper pc-card-wrapper-special">
                         <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLecturer.Status }}"
                              role="button" tabindex="0"
-                             aria-label="{{ .pcLecturer.Label }}, Status {{ .pcLecturer.Status }}"
+                             aria-label="{{ .pcLecturer.Label }}, Status {{ (pcStatusInfo .pcLecturer.Status).VisLabel }}"
                              data-pc-id="{{ .pcLecturer.ID }}"
                              data-pc-label="{{ .pcLecturer.Label }}"
                              data-pc-row="0" data-pc-column="0"
@@ -99,7 +99,7 @@
                             <div class="pc-card status-{{ $pc.Status }} pc-card-clickable" 
                                  role="button"
                                  tabindex="0"
-								 aria-label="PC {{ $pc.Label }}, Status {{ $pc.Status }}, Baris {{ add $barisIndex 1 }}, Kolom {{ add $kolomIndex 1 }}"
+								 aria-label="PC {{ $pc.Label }}, Status {{ (pcStatusInfo $pc.Status).VisLabel }}, Baris {{ add $barisIndex 1 }}, Kolom {{ add $kolomIndex 1 }}"
                                  data-pc-id="{{ $pc.ID }}"
                                  data-pc-label="{{ $pc.Label }}"
                                  data-pc-row="{{ $pc.Row }}"
@@ -150,7 +150,7 @@
                         <div class="pc-card-wrapper pc-card-wrapper-special">
                             <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLaboran.Status }}"
                                  role="button" tabindex="0"
-                                 aria-label="{{ .pcLaboran.Label }}, Status {{ .pcLaboran.Status }}"
+                                 aria-label="{{ .pcLaboran.Label }}, Status {{ (pcStatusInfo .pcLaboran.Status).VisLabel }}"
                                  data-pc-id="{{ .pcLaboran.ID }}"
                                  data-pc-label="{{ .pcLaboran.Label }}"
                                  data-pc-row="0" data-pc-column="0"
@@ -178,7 +178,7 @@
                         <div class="pc-card-wrapper pc-card-wrapper-special">
                             <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcCCTV.Status }}"
                                  role="button" tabindex="0"
-                                 aria-label="{{ .pcCCTV.Label }}, Status {{ .pcCCTV.Status }}"
+                                 aria-label="{{ .pcCCTV.Label }}, Status {{ (pcStatusInfo .pcCCTV.Status).VisLabel }}"
                                  data-pc-id="{{ .pcCCTV.ID }}"
                                  data-pc-label="{{ .pcCCTV.Label }}"
                                  data-pc-row="0" data-pc-column="0"
@@ -401,7 +401,8 @@
         document.getElementById('modal-notes').textContent = pcNotes;
         
         var statusBadge = document.getElementById('modal-status-badge');
-        statusBadge.textContent = pcStatus;
+        var statusLabel = {normal: 'Normal', warning: 'Warning', broken: 'Rusak'}[pcStatus] || pcStatus;
+        statusBadge.textContent = statusLabel;
         statusBadge.className = 'badge';
         if (pcStatus === 'normal') { statusBadge.classList.add('bg-success'); }
         else if (pcStatus === 'warning') { statusBadge.classList.add('bg-warning'); }
