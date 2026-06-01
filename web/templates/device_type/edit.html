@@ -3,7 +3,7 @@
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
 
-                    <form method="POST" action="/device-types/{{ .deviceType.Slug }}/edit">
+                    <form method="POST" action="/device-types/{{ .deviceType.AssetCodePrefix | lower }}/edit">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="name" class="form-label">Nama Tipe *</label>

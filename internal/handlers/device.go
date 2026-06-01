@@ -405,7 +405,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 		return
 	}
 	slug := c.Param("slug")
-	dt, err := h.deviceTypeService.GetBySlug(slug)
+	dt, err := h.deviceTypeService.GetByPrefixSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Tipe perangkat tidak ditemukan")
 		return
@@ -421,7 +421,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	slug := c.Param("slug")
-	dt, err := h.deviceTypeService.GetBySlug(slug)
+	dt, err := h.deviceTypeService.GetByPrefixSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Tipe perangkat tidak ditemukan")
 		return
@@ -451,7 +451,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 
 func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 	slug := c.Param("slug")
-	dt, err := h.deviceTypeService.GetBySlug(slug)
+	dt, err := h.deviceTypeService.GetByPrefixSlug(slug)
 	if err != nil {
 		h.redirectWithError(c, "/devices", "Tipe perangkat tidak ditemukan")
 		return
@@ -470,7 +470,7 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 	slug := c.Param("slug")
-	dt, err := h.deviceTypeService.GetBySlug(slug)
+	dt, err := h.deviceTypeService.GetByPrefixSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Tipe perangkat tidak ditemukan")
 		return

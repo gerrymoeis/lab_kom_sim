@@ -84,6 +84,10 @@ func (s *DeviceTypeService) GetBySlug(slug string) (*models.DeviceType, error) {
 	return s.repo.GetBySlug(slug)
 }
 
+func (s *DeviceTypeService) GetByPrefixSlug(slug string) (*models.DeviceType, error) {
+	return s.repo.GetByPrefixSlug(slug)
+}
+
 func (s *DeviceTypeService) GetAllSimple() ([]models.DeviceType, error) {
 	return s.repo.GetAllSimple()
 }
