@@ -49,7 +49,7 @@ func (h *Handler) DeviceLoanList(c *gin.Context) {
 	totalPages := (total + pageSize - 1) / pageSize
 
 	c.HTML(http.StatusOK, "device_loan/list.html", gin.H{
-		"title": "Peminjaman", "currentPage": "loans",
+		"title": "Peminjaman", "currentPage": "devices",
 		"username": username, "role": role,
 		"loans": loans,
 		"filters": gin.H{"search": search, "status": status, "sort_by": sortBy},
@@ -70,7 +70,7 @@ func (h *Handler) DeviceLoanCreatePage(c *gin.Context) {
 	}
 	deviceID, _ := strconv.Atoi(c.DefaultQuery("device_id", "0"))
 	c.HTML(http.StatusOK, "device_loan/create.html", gin.H{
-		"title": "Tambah Peminjaman", "currentPage": "loans",
+		"title": "Tambah Peminjaman", "currentPage": "devices",
 		"username": username, "role": role,
 		"devices": devices, "preselectDeviceID": deviceID,
 	})
@@ -81,7 +81,7 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 	if err := c.ShouldBind(&req); err != nil {
 		_, username, role, _ := h.user(c)
 		c.HTML(http.StatusBadRequest, "device_loan/create.html", gin.H{
-			"title": "Tambah Peminjaman", "currentPage": "loans",
+			"title": "Tambah Peminjaman", "currentPage": "devices",
 			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
 		})
 		return
@@ -101,7 +101,7 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "device_loan/create.html", gin.H{
-			"title": "Tambah Peminjaman", "currentPage": "loans",
+			"title": "Tambah Peminjaman", "currentPage": "devices",
 			"username": u, "role": r, "error": "Gagal menyimpan peminjaman",
 		})
 		return
@@ -123,7 +123,7 @@ func (h *Handler) DeviceLoanEditPage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "device_loan/edit.html", gin.H{
-		"title": "Edit Peminjaman", "currentPage": "loans",
+		"title": "Edit Peminjaman", "currentPage": "devices",
 		"username": username, "role": role,
 		"loan": loan,
 		"assetCode": loan.DeviceAssetCode,
