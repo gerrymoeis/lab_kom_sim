@@ -154,6 +154,7 @@ func (r *DeviceUsageRepository) GetConsumableDevices() ([]models.Device, error) 
 		FROM devices d
 		JOIN device_types dt ON dt.id = d.device_type_id
 		WHERE dt.usage_type = 'consumable'
+		AND d.condition = 'normal'
 		AND (d.id NOT IN (SELECT device_id FROM device_usages) OR
 			d.id IN (SELECT device_id FROM device_usages WHERE is_available = 'yes'))
 		ORDER BY d.asset_code`)
