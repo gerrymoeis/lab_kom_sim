@@ -1,6 +1,9 @@
 package database
 
-import "fmt"
+import (
+	"fmt"
+	"inventaris-lab-kom/internal/util"
+)
 
 func seedRequiredSoftware(db *DB) error {
 	var count int
@@ -33,7 +36,10 @@ func seedRequiredSoftware(db *DB) error {
 	}
 
 	for _, sw := range required {
-		_, err := db.Exec(`INSERT INTO software_catalog (name, category, description, created_at, updated_at) VALUES (?, 'required', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, sw.Name, sw.Description)
+		// Generate slug using same logic as repository (util.Slugify)
+		slug := util.Slugify(sw.Name)
+		_, err := db.Exec(`INSERT INTO software_catalog (name, category, description, slug, created_at, updated_at) VALUES (?, 'required', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+			sw.Name, sw.Description, slug)
 		if err != nil {
 			return fmt.Errorf("failed to seed software %s: %w", sw.Name, err)
 		}

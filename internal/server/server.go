@@ -109,6 +109,7 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 			for i := 0; i < count; i++ { r[i] = i }
 			return r
 		},
+		"lower":           func(s string) string { return strings.ToLower(s) },
 		"navItems":        func(currentPage, role string) []NavItem { return loadNavItems(currentPage, role) },
 		"allCategories":   func() []Category { return loadCategories() },
 		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },
@@ -219,19 +220,19 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/devices/create", h.DeviceCreatePage)
 		protected.POST("/devices/create", h.DeviceCreate)
 		protected.POST("/devices/batch-create", h.DeviceBatchCreate)
-		protected.GET("/devices/:id", h.DeviceDetail)
-		protected.GET("/devices/:id/edit", h.DeviceEditPage)
-		protected.POST("/devices/:id/edit", h.DeviceEdit)
-		protected.POST("/devices/:id/delete", h.DeviceDelete)
+		protected.GET("/devices/:slug", h.DeviceDetail)
+		protected.GET("/devices/:slug/edit", h.DeviceEditPage)
+		protected.POST("/devices/:slug/edit", h.DeviceEdit)
+		protected.POST("/devices/:slug/delete", h.DeviceDelete)
 
-		protected.GET("/device-types/:id", h.DeviceTypeDetail)
-		protected.GET("/device-types/:id/edit", h.DeviceTypeEditPage)
-		protected.POST("/device-types/:id/edit", h.DeviceTypeEdit)
-		protected.POST("/device-types/:id/delete", h.DeviceTypeDelete)
-		protected.GET("/categories/:id", h.CategoryDetail)
-		protected.GET("/categories/:id/edit", h.CategoryEditPage)
-		protected.POST("/categories/:id/edit", h.CategoryEdit)
-		protected.POST("/categories/:id/delete", h.CategoryDelete)
+		protected.GET("/device-types/:slug", h.DeviceTypeDetail)
+		protected.GET("/device-types/:slug/edit", h.DeviceTypeEditPage)
+		protected.POST("/device-types/:slug/edit", h.DeviceTypeEdit)
+		protected.POST("/device-types/:slug/delete", h.DeviceTypeDelete)
+		protected.GET("/categories/:slug", h.CategoryDetail)
+		protected.GET("/categories/:slug/edit", h.CategoryEditPage)
+		protected.POST("/categories/:slug/edit", h.CategoryEdit)
+		protected.POST("/categories/:slug/delete", h.CategoryDelete)
 
 		protected.GET("/device-loans", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=loans") })
 		protected.GET("/device-loans/create", h.DeviceLoanCreatePage)
@@ -267,10 +268,10 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.POST("/software/create", h.SoftwareCreate)
 		protected.GET("/software/export", h.SoftwareExport)
 		protected.GET("/software/catalog.json", h.GetSoftwareCatalogJSON)
-		protected.GET("/software/:id", h.SoftwareDetail)
-		protected.GET("/software/:id/edit", h.SoftwareEditPage)
-		protected.POST("/software/:id/edit", h.SoftwareEdit)
-		protected.POST("/software/:id/delete", h.SoftwareDelete)
+		protected.GET("/software/:slug", h.SoftwareDetail)
+		protected.GET("/software/:slug/edit", h.SoftwareEditPage)
+		protected.POST("/software/:slug/edit", h.SoftwareEdit)
+		protected.POST("/software/:slug/delete", h.SoftwareDelete)
 
 		protected.GET("/logbook", h.LogbookList)
 		protected.GET("/logbook/upload", h.LogbookUploadPage)
@@ -291,10 +292,10 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 			admin.GET("/users", h.UserList)
 			admin.GET("/users/create", h.UserCreatePage)
 			admin.POST("/users/create", h.UserCreate)
-			admin.GET("/users/:id", h.UserDetail)
-			admin.GET("/users/:id/edit", h.UserEditPage)
-			admin.POST("/users/:id/edit", h.UserEdit)
-			admin.POST("/users/:id/delete", h.UserDelete)
+			admin.GET("/users/:username", h.UserDetail)
+			admin.GET("/users/:username/edit", h.UserEditPage)
+			admin.POST("/users/:username/edit", h.UserEdit)
+			admin.POST("/users/:username/delete", h.UserDelete)
 			admin.GET("/activity-logs", h.ActivityLogList)
 			admin.GET("/activity-logs/export", h.ActivityLogExport)
 		}
@@ -308,7 +309,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	api.Use(middleware.AuthRequired(db))
 	{
 		api.GET("/pc/status", h.PCStatusAPI)
-		api.POST("/pc/:id/status", h.UpdatePCStatusAPI)
+		api.POST("/pc/:label/status", h.UpdatePCStatusAPI)
 		api.GET("/pc/layout", h.PCGetLayout)
 		api.POST("/pc/swap", h.PCSwap)
 		api.POST("/pc/replace", h.PCReplace)

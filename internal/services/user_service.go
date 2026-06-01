@@ -41,6 +41,10 @@ func (s *UserService) GetByID(id int) (*models.User, error) {
 	return s.userRepo.GetByID(id)
 }
 
+func (s *UserService) GetByUsername(username string) (*models.User, error) {
+	return s.userRepo.GetByUsername(username)
+}
+
 func (s *UserService) CreateUser(actorID int, actorUsername, actorRole, username, password, fullName, role, ipAddress, userAgent string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

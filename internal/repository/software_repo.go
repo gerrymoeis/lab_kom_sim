@@ -6,6 +6,7 @@ import (
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/search"
+	"inventaris-lab-kom/internal/util"
 )
 
 type SoftwareRepository struct {
@@ -127,10 +128,20 @@ func (r *SoftwareRepository) GetOtherCatalog() ([]SoftwareItem, error) {
 	return items, nil
 }
 
+func (r *SoftwareRepository) GetBySlug(slug string) (*models.SoftwareCatalog, error) {
+	var sw models.SoftwareCatalog
+	err := r.db.QueryRow(`SELECT id, name, category, COALESCE(description,''), slug FROM software_catalog WHERE slug = ?`, slug).
+		Scan(&sw.ID, &sw.Name, &sw.Category, &sw.Description, &sw.Slug)
+	if err != nil {
+		return nil, err
+	}
+	return &sw, nil
+}
+
 func (r *SoftwareRepository) GetByID(id int) (*models.SoftwareCatalog, error) {
 	var sw models.SoftwareCatalog
-	err := r.db.QueryRow(`SELECT id, name, category, description FROM software_catalog WHERE id = ?`, id).
-		Scan(&sw.ID, &sw.Name, &sw.Category, &sw.Description)
+	err := r.db.QueryRow(`SELECT id, name, category, COALESCE(description,''), slug FROM software_catalog WHERE id = ?`, id).
+		Scan(&sw.ID, &sw.Name, &sw.Category, &sw.Description, &sw.Slug)
 	if err != nil {
 		return nil, err
 	}
@@ -165,8 +176,9 @@ func (r *SoftwareRepository) GetPCInstallStatus(softwareID int) ([]PCInstallStat
 }
 
 func (r *SoftwareRepository) Create(name, category, description string) (sql.Result, error) {
-	return r.db.Exec(`INSERT INTO software_catalog (name, category, description, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-		name, category, description)
+	slug := util.Slugify(name)
+	return r.db.Exec(`INSERT INTO software_catalog (name, category, description, slug, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+		name, category, description, slug)
 }
 
 func (r *SoftwareRepository) UpdateSoftwarePCs(softwareID int, pcIDs []int) error {
@@ -185,8 +197,9 @@ func (r *SoftwareRepository) UpdateSoftwarePCs(softwareID int, pcIDs []int) erro
 }
 
 func (r *SoftwareRepository) UpdateMetadata(id int, name, category, description string) error {
-	_, err := r.db.Exec(`UPDATE software_catalog SET name = ?, category = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		name, category, description, id)
+	slug := util.Slugify(name)
+	_, err := r.db.Exec(`UPDATE software_catalog SET name = ?, category = ?, description = ?, slug = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		name, category, description, slug, id)
 	return err
 }
 
