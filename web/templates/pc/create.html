@@ -6,6 +6,7 @@
                     method="POST"
                     action="/pc/create"
                     enctype="multipart/form-data"
+                    onsubmit="return validatePCForm()"
                 >
                     <div class="row">
                         <div class="col-md-4 mb-3">
@@ -31,28 +32,16 @@
 
                     <div class="row" id="positionFields">
                         <div class="col-md-4 mb-3">
-                            <label for="column" class="form-label">Baris</label>
-                            <input
-                                type="number"
-                                class="form-control"
-                                id="column"
-                                name="column"
-                                min="1"
-                                max="8"
-                            />
-                            <small class="text-muted">1-8</small>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="row" class="form-label">Kolom</label>
-                            <input
-                                type="number"
-                                class="form-control"
-                                id="row"
-                                name="row"
-                                min="1"
-                                max="6"
-                            />
-                            <small class="text-muted">1-6</small>
+                            <label class="form-label">Posisi Meja</label>
+                            <div class="d-flex gap-2">
+                                <input type="hidden" id="row" name="row" value="0">
+                                <input type="hidden" id="column" name="column" value="0">
+                                <div class="form-control bg-light" id="positionDisplay" style="cursor:default;">Belum dipilih</div>
+                                <button type="button" class="btn btn-outline-primary" id="pickPositionBtn" onclick="PCLayoutManager.openPicker(function(r, c) { document.getElementById('row').value = r; document.getElementById('column').value = c; document.getElementById('positionDisplay').textContent = 'Baris ' + r + ', Kolom ' + c; document.getElementById('positionDisplay').className = 'form-control'; })">
+                                    <i class="bi bi-grid-3x3-gap"></i> Pilih
+                                </button>
+                            </div>
+                            <small class="text-muted">Klik "Pilih" untuk memilih posisi meja dari layout</small>
                         </div>
                     </div>
 
@@ -359,6 +348,19 @@
 var nextMahasiswaLabel = '{{ .nextMahasiswaLabel }}';
 var nextCadanganLabel = '{{ .nextCadanganLabel }}';
 
+function validatePCForm() {
+    const placement = document.getElementById('placement').value;
+    if (placement === 'dipakai') {
+        const row = parseInt(document.getElementById('row').value, 10);
+        const col = parseInt(document.getElementById('column').value, 10);
+        if (!row || !col) {
+            alert('Silakan pilih posisi meja terlebih dahulu.');
+            return false;
+        }
+    }
+    return true;
+}
+
 function togglePCCreateFields() {
     const placement = document.getElementById('placement').value;
     const jenisField = document.getElementById('jenisField');
@@ -371,18 +373,14 @@ function togglePCCreateFields() {
         fields.style.display = 'none';
         document.getElementById('row').value = 0;
         document.getElementById('column').value = 0;
-        document.getElementById('row').disabled = true;
-        document.getElementById('column').disabled = true;
+        document.getElementById('positionDisplay').textContent = 'Belum dipilih';
+        document.getElementById('positionDisplay').className = 'form-control bg-light';
         labelInput.value = nextCadanganLabel;
         labelInput.readOnly = true;
         labelHelp.textContent = 'Label otomatis untuk PC Cadangan';
     } else {
         jenisField.style.display = 'block';
         fields.style.display = 'flex';
-        document.getElementById('row').disabled = false;
-        document.getElementById('column').disabled = false;
-        document.getElementById('row').value = '';
-        document.getElementById('column').value = '';
         toggleLabelField();
     }
 }
@@ -411,4 +409,6 @@ window.ANDROID_MODE = {{ .android }};
 <script src="/static/vendor/heic-to.js"></script>
 {{ end }}
 <script src="/static/js/photo-upload.js"></script>
+<script src="/static/js/layout-manager.js"></script>
+{{ template "pc/layout_modal.html" . }}
 {{ template "layout/footer.html" . }}
