@@ -9,6 +9,35 @@ import (
 	"inventaris-lab-kom/internal/repository"
 )
 
+func sanitizeDBError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	msg := err.Error()
+	lower := strings.ToLower(msg)
+
+	if strings.Contains(lower, "unique") || strings.Contains(lower, "duplicate") {
+		if strings.Contains(lower, "name") {
+			return fmt.Errorf("Nama sudah digunakan")
+		}
+		if strings.Contains(lower, "prefix") || strings.Contains(lower, "asset_code_prefix") {
+			return fmt.Errorf("Prefix sudah digunakan")
+		}
+		return fmt.Errorf("Data sudah ada")
+	}
+
+	if strings.Contains(lower, "check") && strings.Contains(lower, "usage_type") {
+		return fmt.Errorf("Tipe penggunaan tidak valid")
+	}
+
+	if strings.Contains(lower, "foreign key") {
+		return fmt.Errorf("Data masih digunakan oleh data lain")
+	}
+
+	return err
+}
+
 type CreateDeviceInput struct {
 	DeviceTypeID int
 	SerialNumber string
