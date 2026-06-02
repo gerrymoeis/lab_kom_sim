@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -214,6 +216,7 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 		"username": username, "role": role,
 		"deviceTypes": h.fetchDeviceTypes(),
 		"categories":  h.fetchCategories(""),
+		"android":     h.cfg.Android,
 	})
 }
 
@@ -283,6 +286,9 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 		catID = id
 	}
 
+	// Process photo ref for inline device type creation
+	photoFile := processDeviceTypePhotoRef(req.NewTypePhotoFileRef)
+
 	// Resolve device type: create inline if needed
 	typeID := req.DeviceTypeID
 	if typeID == 0 && req.NewTypeName != "" {
@@ -302,6 +308,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 			AssetCodePrefix: prefix,
 			UsageType:       req.NewTypeUsageType,
 			DefaultLocation: req.NewTypeDefaultLocation,
+			Photo:           photoFile,
 		}, uid, u, r, ip, ua)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -480,6 +487,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 		"deviceType":  dt,
 		"categories":  h.fetchCategories(""),
 		"deviceTypes": h.fetchDeviceTypes(),
+		"android":     h.cfg.Android,
 	})
 }
 
@@ -498,6 +506,9 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
+	// Process photo ref
+	photoFile := processDeviceTypePhotoRef(req.PhotoFileRef)
+
 	if err := h.deviceTypeService.Update(dt.ID, services.DeviceTypeUpdateInput{
 		CategoryID:      req.CategoryID,
 		Name:            req.Name,
@@ -506,6 +517,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		AssetCodePrefix: req.AssetCodePrefix,
 		UsageType:       req.UsageType,
 		DefaultLocation: req.DefaultLocation,
+		Photo:           photoFile,
 	}, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, err.Error())
 		return
@@ -857,4 +869,21 @@ func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bo
 		curType.Devices = append(curType.Devices, d)
 	}
 	return grouped
+}
+
+func processDeviceTypePhotoRef(fileRef string) string {
+	ref := strings.TrimSpace(fileRef)
+	if ref == "" {
+		return ""
+	}
+	src := filepath.Join("uploads", "temp", ref)
+	dst := filepath.Join("uploads", "device_type", ref)
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return ""
+	}
+	if err := services.CopyFile(src, dst); err != nil {
+		return ""
+	}
+	os.Remove(src)
+	return ref
 }

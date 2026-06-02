@@ -51,6 +51,52 @@
                             </div>
                         </div>
 
+                        <hr class="my-4">
+                        <h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Foto Tipe Perangkat</h6>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold mb-3">Foto</label>
+
+                            {{ if .deviceType.Photo }}
+                            <div class="mb-3">
+                                <img src="/uploads/device_type/{{ .deviceType.Photo }}" alt="Foto tipe perangkat" class="img-thumbnail" style="max-width: 300px;">
+                                <p class="text-muted small mb-0 mt-2">Foto saat ini: {{ .deviceType.Photo }}</p>
+                            </div>
+                            {{ end }}
+
+                            <p class="text-muted mb-3">{{ if .deviceType.Photo }}Upload foto baru untuk mengganti foto lama{{ else }}Upload foto {{ .deviceType.Name }}{{ end }}. Max 5MB, format JPEG/PNG/HEIC</p>
+
+                            <div class="row g-3">
+                                <div class="col-md-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-upload text-primary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Pilih Foto</label>
+                                    </div>
+                                    <input type="file" id="photo_input" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
+                                </div>
+                            </div>
+
+                            <!-- Preview area -->
+                            <div id="photoPreview" class="mt-3 d-none">
+                                <div class="border rounded-3 p-3 bg-light text-center">
+                                    <img id="photoPreviewImage" src="" alt="Preview" class="img-fluid rounded" style="max-height: 400px; object-fit: contain;">
+                                    <div id="photoLoading" class="d-none mt-2">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <small class="text-muted ms-1">Memproses gambar...</small>
+                                    </div>
+                                    <div id="photoError" class="d-none mt-2 text-danger small"></div>
+                                    <div class="mt-3 text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearPhoto()">
+                                            <i class="bi bi-x-circle me-1"></i> Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="photo_file_ref" name="photo_file_ref" value="">
+
                         <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
                             <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
@@ -64,3 +110,113 @@
 </div>
 
 {{ template "layout/footer.html" . }}
+
+<script>
+window.ANDROID_MODE = {{ .android }};
+</script>
+{{ if .android }}
+<script src="/static/vendor/heic-to.js"></script>
+{{ end }}
+<script>
+(function() {
+    const fileInput = document.getElementById('photo_input');
+    const preview = document.getElementById('photoPreview');
+    const previewImg = document.getElementById('photoPreviewImage');
+    const loading = document.getElementById('photoLoading');
+    const errorEl = document.getElementById('photoError');
+    const fileRefInput = document.getElementById('photo_file_ref');
+
+    fileInput.addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            showError('Ukuran file maksimal 5MB');
+            return;
+        }
+        showLoading();
+
+        try {
+            let processedFile = file;
+            const ext = file.name.split('.').pop().toLowerCase();
+            if ((ext === 'heic' || ext === 'heif') && typeof HeicTo !== 'undefined') {
+                const blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
+                processedFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+            }
+
+            if (window.ANDROID_MODE) {
+                const img = await createImageBitmap(processedFile);
+                let w = img.width, h = img.height;
+                const maxDim = 1024;
+                if (w > maxDim || h > maxDim) {
+                    const ratio = Math.min(maxDim / w, maxDim / h);
+                    w = Math.round(w * ratio);
+                    h = Math.round(h * ratio);
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.75));
+                processedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+            }
+
+            // Local preview
+            previewImg.src = URL.createObjectURL(processedFile);
+            preview.classList.remove('d-none');
+            hideError();
+
+            // Upload to server
+            const formData = new FormData();
+            formData.append('image', processedFile);
+            formData.append('type', 'device_type');
+
+            const response = await fetch('/api/upload-image', { method: 'POST', body: formData });
+            const result = await response.json();
+
+            if (result.success) {
+                fileRefInput.value = result.file_ref;
+                loading.classList.add('d-none');
+            } else {
+                showError(result.message || 'Gagal upload');
+            }
+        } catch (err) {
+            showError(err.message || 'Gagal memproses gambar');
+        }
+    });
+
+    window.clearPhoto = function() {
+        fileInput.value = '';
+        preview.classList.add('d-none');
+        previewImg.src = '';
+        fileRefInput.value = '';
+        if (window._lastFileRef) {
+            fetch('/api/delete-temp-file', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_ref: window._lastFileRef })
+            }).catch(function() {});
+            window._lastFileRef = null;
+        }
+        hideError();
+    };
+
+    function showLoading() {
+        loading.classList.remove('d-none');
+        preview.classList.remove('d-none');
+        previewImg.style.display = 'none';
+        hideError();
+    }
+
+    function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.remove('d-none');
+        loading.classList.add('d-none');
+        preview.classList.remove('d-none');
+    }
+
+    function hideError() {
+        errorEl.classList.add('d-none');
+        previewImg.style.display = '';
+    }
+})();
+</script>
