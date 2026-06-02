@@ -700,6 +700,14 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 		return t.Format("02/01/2006")
 	}
 
+	sort.SliceStable(devices, func(i, j int) bool {
+		pi := usageTypePriority(devices[i].UsageType)
+		pj := usageTypePriority(devices[j].UsageType)
+		if pi != pj { return pi < pj }
+		if devices[i].CategoryName != devices[j].CategoryName { return devices[i].CategoryName < devices[j].CategoryName }
+		if devices[i].DeviceTypeName != devices[j].DeviceTypeName { return devices[i].DeviceTypeName < devices[j].DeviceTypeName }
+		return devices[i].AssetCode < devices[j].AssetCode
+	})
 	deviceData := make([][]any, 0, len(devices))
 	for i, d := range devices {
 		deviceData = append(deviceData, []any{

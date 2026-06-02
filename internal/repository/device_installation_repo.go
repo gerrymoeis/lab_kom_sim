@@ -126,7 +126,7 @@ func (r *DeviceInstallationRepository) ExportAll() ([]InstallationRow, error) {
 		JOIN devices d ON d.id = di.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id
-		ORDER BY di.installation_start_date DESC`)
+		ORDER BY CASE WHEN di.installation_start_date IS NULL THEN 0 ELSE 1 END, di.installation_start_date DESC`)
 	if err != nil {
 		return nil, err
 	}
