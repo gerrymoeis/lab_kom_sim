@@ -468,6 +468,10 @@ func parseDate(s sql.NullString) *time.Time {
 		if err == nil {
 			return &t
 		}
+		t, err = time.Parse(time.RFC3339, s.String)
+		if err == nil {
+			return &t
+		}
 	}
 	return nil
 }
