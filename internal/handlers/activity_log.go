@@ -127,13 +127,17 @@ func (h *Handler) ActivityLogExport(c *gin.Context) {
 		}
 	}
 
-	f, _ := svc.GenerateExcel(services.ExcelExportConfig{
+	f, err := svc.GenerateExcel(services.ExcelExportConfig{
 		SheetName: "Activity Logs",
 		Headers:   []string{"No", "Date/Time", "Username", "Role", "Action", "Entity Type", "Entity ID", "Description", "Status", "IP Address"},
 		Data:      data,
 		ColumnWidths: map[string]float64{"A": 5, "B": 18, "C": 15, "D": 10, "E": 10, "F": 15, "G": 10, "H": 40, "I": 10, "J": 15},
 		ConditionalFormats: cf,
 	})
+	if err != nil {
+		h.errHTML(c, "Gagal membuat file excel")
+		return
+	}
 	defer f.Close()
 
 	if totalCount > 1000 {
@@ -147,5 +151,7 @@ func (h *Handler) ActivityLogExport(c *gin.Context) {
 	fn := svc.GenerateFilename("activity_log_export")
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", "attachment; filename="+fn)
-	f.Write(c.Writer)
+	if err := f.Write(c.Writer); err != nil {
+		c.Error(err)
+	}
 }

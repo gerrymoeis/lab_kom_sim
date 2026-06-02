@@ -257,16 +257,20 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 	search := c.Query("search")
 	date := c.Query("date")
 
-	entries, _, _ := h.logbookService.List(repository.LogbookFilters{
+	entries, _, err := h.logbookService.List(repository.LogbookFilters{
 		Search: search, StartDate: date, EndDate: date, PageSize: 10000,
 	})
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data logbook")
+		return
+	}
 
 	svc := services.NewExcelService()
 	data := make([][]any, 0, len(entries))
 	for _, e := range entries {
 		data = append(data, []any{e.Date.Format("2006-01-02"), e.StudentName, e.NIM, e.TimeIn, e.TimeOut, e.Purpose})
 	}
-	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
+	f, err := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
 		{
 			SheetName: "Logbook",
 			Headers:   []string{"Tanggal", "Nama", "NIM", "Jam Masuk", "Jam Keluar", "Keperluan"},
@@ -274,12 +278,18 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 			ColumnWidths: map[string]float64{"A": 14, "B": 28, "C": 18, "D": 12, "E": 12, "F": 36},
 		},
 	})
+	if err != nil {
+		h.errHTML(c, "Gagal membuat file excel")
+		return
+	}
 	defer f.Close()
 
 	fn := svc.GenerateFilename("logbook_export")
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", "attachment; filename="+fn)
-	f.Write(c.Writer)
+	if err := f.Write(c.Writer); err != nil {
+		c.Error(err)
+	}
 }
 
 func (h *Handler) LogbookExportPreview(c *gin.Context) {
@@ -290,9 +300,13 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 	filterDate := c.Query("date")
 	search := c.Query("search")
 
-	entries, total, _ := h.logbookService.List(repository.LogbookFilters{
+	entries, _, err := h.logbookService.List(repository.LogbookFilters{
 		Search: search, StartDate: filterDate, EndDate: filterDate, PageSize: 10000,
 	})
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data logbook")
+		return
+	}
 
 	svc := services.NewExcelService()
 	data := make([][]any, 0, len(entries))
@@ -300,7 +314,7 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 		data = append(data, []any{e.Date.Format("2006-01-02"), e.StudentName, e.NIM, e.TimeIn, e.TimeOut, e.Purpose})
 	}
 
-	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
+	f, err := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
 		{
 			SheetName: "Logbook",
 			Headers:   []string{"Tanggal", "Nama", "NIM", "Jam Masuk", "Jam Keluar", "Keperluan"},
@@ -308,13 +322,18 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 			ColumnWidths: map[string]float64{"A": 14, "B": 28, "C": 18, "D": 12, "E": 12, "F": 36},
 		},
 	})
+	if err != nil {
+		h.errHTML(c, "Gagal membuat file excel")
+		return
+	}
 	defer f.Close()
 
 	fn := svc.GenerateFilename("logbook_export_preview")
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", "attachment; filename="+fn)
-	f.Write(c.Writer)
-	_ = total
+	if err := f.Write(c.Writer); err != nil {
+		c.Error(err)
+	}
 }
 
 func (h *Handler) LogbookCreatePage(c *gin.Context) {

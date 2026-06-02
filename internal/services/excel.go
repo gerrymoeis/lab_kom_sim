@@ -36,11 +36,11 @@ type ConditionalFormat struct {
 // GenerateExcel creates an Excel file based on the provided configuration
 func (s *ExcelService) GenerateExcel(config ExcelExportConfig) (*excelize.File, error) {
 	f := excelize.NewFile()
-	index, err := f.NewSheet(config.SheetName)
-	if err != nil { return nil, fmt.Errorf("failed to create sheet: %w", err) }
+	if err := f.SetSheetName("Sheet1", config.SheetName); err != nil {
+		return nil, fmt.Errorf("failed to rename default sheet: %w", err)
+	}
 	if err := s.populateSheet(f, config); err != nil { return nil, err }
-	f.SetActiveSheet(index)
-	f.DeleteSheet("Sheet1")
+	f.SetActiveSheet(0)
 	return f, nil
 }
 
@@ -125,11 +125,10 @@ func (s *ExcelService) setColumnWidths(f *excelize.File, sheetName string, width
 	return nil
 }
 
-// applyConditionalFormatting applies conditional formatting rules
+// applyConditionalFormatting applies conditional formatting rules using native excelize SetConditionalFormat
 func (s *ExcelService) applyConditionalFormatting(f *excelize.File, sheetName string, formats []ConditionalFormat) error {
 	for _, format := range formats {
-		// Create style for this condition
-		style, err := f.NewStyle(&excelize.Style{
+		styleIdx, err := f.NewConditionalStyle(&excelize.Style{
 			Fill: excelize.Fill{
 				Type:    "pattern",
 				Color:   []string{format.Color},
@@ -139,23 +138,11 @@ func (s *ExcelService) applyConditionalFormatting(f *excelize.File, sheetName st
 		if err != nil {
 			return err
 		}
-
-		// Apply to matching cells
-		for row := format.RowStart; row <= format.RowEnd; row++ {
-			cell := fmt.Sprintf("%s%d", format.Column, row)
-			
-			// Get cell value
-			value, err := f.GetCellValue(sheetName, cell)
-			if err != nil {
-				continue
-			}
-
-			// Apply style if value matches condition
-			if value == format.Condition {
-				if err := f.SetCellStyle(sheetName, cell, cell, style); err != nil {
-					return err
-				}
-			}
+		cellRef := fmt.Sprintf("%s%d:%s%d", format.Column, format.RowStart, format.Column, format.RowEnd)
+		if err := f.SetConditionalFormat(sheetName, cellRef, []excelize.ConditionalFormatOptions{
+			{Type: "cell", Criteria: "==", Value: format.Condition, Format: &styleIdx},
+		}); err != nil {
+			return err
 		}
 	}
 	return nil
