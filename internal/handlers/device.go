@@ -325,10 +325,14 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 		return
 	}
 
+	activeLoanIDs, _ := h.deviceService.GetActiveLoanIDs()
+	_, isActiveLoan := activeLoanIDs[d.ID]
+
 	c.HTML(http.StatusOK, "device/detail.html", gin.H{
 		"title": "Detail Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
-		"device": d,
+		"device":       d,
+		"isActiveLoan": isActiveLoan,
 	})
 }
 
