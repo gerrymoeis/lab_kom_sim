@@ -128,9 +128,23 @@
                         </a>
                         {{ end }}
                         {{ else if eq .device.UsageType "installable" }}
+                        {{ if not .installationHistory }}
                         <a href="/installations/create?device_id={{ .device.ID }}" class="btn btn-success">
                             <i class="bi bi-pc-display"></i> Catat Instalasi
                         </a>
+                        {{ else if .installationHistory.InstallationFinishDate }}
+                        <button type="button" class="btn btn-success" disabled>
+                            <i class="bi bi-check-circle"></i> Instalasi Selesai
+                        </button>
+                        {{ else if .installationHistory.InstallationStartDate }}
+                        <button type="button" class="btn btn-warning" disabled>
+                            <i class="bi bi-hourglass-split"></i> Pemasangan Sedang Berlangsung
+                        </button>
+                        {{ else }}
+                        <button type="button" class="btn btn-secondary" disabled>
+                            <i class="bi bi-info-circle"></i> Instalasi Belum Dimulai
+                        </button>
+                        {{ end }}
                         {{ end }}
                     </div>
                 </div>
