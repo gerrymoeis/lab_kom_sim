@@ -32,7 +32,7 @@
                     <label for="status" class="form-label">Status</label>
                     <select class="form-select" id="status" name="status">
                         <option value="">Semua Status</option>
-                        <option value="active" {{ if eq .filters.status "active" }}selected{{ end }}>Aktif</option>
+                        <option value="active" {{ if eq .filters.status "active" }}selected{{ end }}>Masih Dipinjam</option>
                         <option value="returned" {{ if eq .filters.status "returned" }}selected{{ end }}>Dikembalikan</option>
                         <option value="overdue" {{ if eq .filters.status "overdue" }}selected{{ end }}>Terlambat</option>
                     </select>
@@ -86,7 +86,7 @@
                             <td>{{ (localTime $l.ReturnDate).Format "02/01/2006" }}</td>
                             <td>
                                 {{ if eq $l.ComputedStatus "active" }}
-                                <span class="badge bg-success">Aktif</span>
+                                <span class="badge bg-success">Masih Dipinjam</span>
                                 {{ else if eq $l.ComputedStatus "overdue" }}
                                 <span class="badge bg-danger">Terlambat</span>
                                 {{ else }}
