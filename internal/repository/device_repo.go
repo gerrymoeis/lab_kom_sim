@@ -24,11 +24,12 @@ func (r *DeviceRepository) WithTx(tx *database.Tx) *DeviceRepository {
 }
 
 type DeviceFilters struct {
-	Search    string
-	Category  string
-	Condition string
-	SortBy    string
-	SortOrder string
+	Search       string
+	Category     string
+	Condition    string
+	DeviceTypeID string
+	SortBy       string
+	SortOrder    string
 }
 
 func (r *DeviceRepository) List(filters DeviceFilters) ([]models.Device, error) {
@@ -68,6 +69,10 @@ func (r *DeviceRepository) buildDeviceClause(filters DeviceFilters) (string, []a
 	if filters.Condition != "" {
 		clause += ` AND d.condition = ?`
 		args = append(args, filters.Condition)
+	}
+	if filters.DeviceTypeID != "" {
+		clause += ` AND d.device_type_id = ?`
+		args = append(args, filters.DeviceTypeID)
 	}
 	return clause, args
 }
