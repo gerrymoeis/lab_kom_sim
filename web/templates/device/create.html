@@ -118,7 +118,13 @@
                             <div id="newTypePhotoPreview" class="mt-3 d-none">
                                 <div class="border rounded-3 p-3 bg-light text-center">
                                     <img id="newTypePhotoPreviewImg" src="" alt="Preview" class="img-fluid rounded" style="max-height: 400px; object-fit: contain;">
-                                    <div id="newTypePhotoStatus" class="d-none mt-2 text-danger small"></div>
+                                    <div id="newTypePhotoLoading" class="d-none mt-2">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <small class="text-muted ms-1">Memproses gambar...</small>
+                                    </div>
+                                    <div id="newTypePhotoError" class="d-none mt-2 text-danger small"></div>
                                     <div class="mt-3 text-center">
                                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearNewTypePhoto()">
                                             <i class="bi bi-x-circle me-1"></i> Hapus
@@ -480,12 +486,10 @@
     var newTypePhotoRef = '';
     var newTypePhotoPreviewUrl = null;
 
-    document.addEventListener('DOMContentLoaded', function() {
-        var cam = document.getElementById('newTypePhotoCamera');
-        var gal = document.getElementById('newTypePhotoGallery');
-        if (cam) cam.addEventListener('change', function(e) { handleNewTypePhoto(e.target.files[0], 'camera'); });
-        if (gal) gal.addEventListener('change', function(e) { handleNewTypePhoto(e.target.files[0], 'gallery'); });
-    });
+    var newTypeCam = document.getElementById('newTypePhotoCamera');
+    var newTypeGal = document.getElementById('newTypePhotoGallery');
+    if (newTypeCam) newTypeCam.addEventListener('change', function(e) { handleNewTypePhoto(e.target.files[0], 'camera'); });
+    if (newTypeGal) newTypeGal.addEventListener('change', function(e) { handleNewTypePhoto(e.target.files[0], 'gallery'); });
 
     async function handleNewTypePhoto(file, source) {
         if (!file) return;
@@ -518,7 +522,6 @@
             if (result.success) {
                 newTypePhotoRef = result.file_ref;
                 window.newTypePhotoFileRef = result.file_ref;
-                document.getElementById('newTypePhotoStatus').classList.add('d-none');
             } else {
                 showNewTypeError(result.message || 'Gagal upload');
             }
@@ -529,27 +532,33 @@
 
     function showNewTypeLoading() {
         var area = document.getElementById('newTypePhotoPreview');
+        var loader = document.getElementById('newTypePhotoLoading');
         var img = document.getElementById('newTypePhotoPreviewImg');
-        var status = document.getElementById('newTypePhotoStatus');
+        var err = document.getElementById('newTypePhotoError');
         area.classList.remove('d-none');
+        loader.classList.remove('d-none');
         if (img) img.style.display = 'none';
-        if (status) status.classList.add('d-none');
+        if (err) err.classList.add('d-none');
     }
 
     function showNewTypeLocalPreview(url) {
         var img = document.getElementById('newTypePhotoPreviewImg');
         var area = document.getElementById('newTypePhotoPreview');
-        var status = document.getElementById('newTypePhotoStatus');
+        var loader = document.getElementById('newTypePhotoLoading');
+        var err = document.getElementById('newTypePhotoError');
         if (img) { img.src = url; img.style.display = ''; }
         area.classList.remove('d-none');
-        if (status) status.classList.add('d-none');
+        loader.classList.add('d-none');
+        if (err) err.classList.add('d-none');
     }
 
     function showNewTypeError(message) {
-        var status = document.getElementById('newTypePhotoStatus');
-        var img = document.getElementById('newTypePhotoPreviewImg');
-        if (status) { status.textContent = message; status.classList.remove('d-none'); }
-        if (img) img.style.display = '';
+        var area = document.getElementById('newTypePhotoPreview');
+        var err = document.getElementById('newTypePhotoError');
+        var loader = document.getElementById('newTypePhotoLoading');
+        if (err) { err.textContent = message; err.classList.remove('d-none'); }
+        loader.classList.add('d-none');
+        area.classList.remove('d-none');
     }
 
     function clearNewTypeOtherInput(source) {
@@ -587,6 +596,8 @@
         document.getElementById('newTypePhotoGallery').value = '';
         document.getElementById('newTypePhotoPreview').classList.add('d-none');
         document.getElementById('newTypePhotoPreviewImg').src = '';
+        document.getElementById('newTypePhotoLoading').classList.add('d-none');
+        document.getElementById('newTypePhotoError').classList.add('d-none');
         if (newTypePhotoRef) {
             fetch('/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: newTypePhotoRef }) }).catch(function(){});
             newTypePhotoRef = '';
