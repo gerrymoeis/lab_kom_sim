@@ -1,7 +1,7 @@
 package services
 
 import (
-	"database/sql"
+	"time"
 
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
@@ -53,13 +53,20 @@ func (s *DeviceInstallationService) GetDistinctLocations() ([]string, error) {
 	return s.repo.GetDistinctLocations()
 }
 
-func toNullStr(s string) sql.NullString {
-	return sql.NullString{String: s, Valid: s != ""}
+func parseNullableDate(s string) *time.Time {
+	if s == "" {
+		return nil
+	}
+	t, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return nil
+	}
+	return &t
 }
 
 func (s *DeviceInstallationService) Create(in CreateInstallationInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
 	result, err := s.repo.Create(in.DeviceID, in.LocationInstalled,
-		toNullStr(in.InstallationStartDate), toNullStr(in.InstallationFinishDate),
+		parseNullableDate(in.InstallationStartDate), parseNullableDate(in.InstallationFinishDate),
 		in.Photo, in.Notes)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "device_installation", 0,
@@ -74,7 +81,7 @@ func (s *DeviceInstallationService) Create(in CreateInstallationInput, actorID i
 
 func (s *DeviceInstallationService) Update(id int, in UpdateInstallationInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	err := s.repo.Update(id, in.LocationInstalled,
-		toNullStr(in.InstallationStartDate), toNullStr(in.InstallationFinishDate),
+		parseNullableDate(in.InstallationStartDate), parseNullableDate(in.InstallationFinishDate),
 		in.Photo, in.Notes)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_installation", id,
