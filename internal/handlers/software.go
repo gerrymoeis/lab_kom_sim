@@ -220,16 +220,22 @@ func (h *Handler) SoftwareExport(c *gin.Context) {
 	}
 
 	svc := services.NewExcelService()
-	f, _ := svc.GenerateExcel(services.ExcelExportConfig{
+	f, err := svc.GenerateExcel(services.ExcelExportConfig{
 		SheetName: "Software Catalog",
 		Headers:   []string{"No", "Nama Software", "Kategori", "Deskripsi", "PC Terinstall"},
 		Data:      data,
 		ColumnWidths: map[string]float64{"A": 5, "B": 30, "C": 12, "D": 40, "E": 15},
 	})
+	if err != nil {
+		h.errHTML(c, "Gagal membuat file excel")
+		return
+	}
 	defer f.Close()
 
 	filename := svc.GenerateFilename("software_catalog_export")
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", "attachment; filename="+filename)
-	f.Write(c.Writer)
+	if err := f.Write(c.Writer); err != nil {
+		c.Error(err)
+	}
 }
