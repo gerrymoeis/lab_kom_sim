@@ -78,14 +78,14 @@
                     </thead>
                     <tbody>
                         {{ range $i, $l := .loans }}
-                        <tr class="{{ if eq $l.ComputedStatus "overdue" }}table-danger{{ else if eq $l.ComputedStatus "returned" }}table-light{{ end }}">
+                        <tr{{ if eq $l.ComputedStatus "returned" }} class="table-light"{{ end }}>
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $l.DeviceAssetCode }}</code></td>
                             <td>{{ $l.DeviceTypeName }}</td>
                             <td><strong>{{ $l.BorrowerName }}</strong><br><small class="text-muted">{{ $l.BorrowerType }}</small></td>
-                            <td>{{ (localTime $l.LoanDate).Format "02/01/2006" }}</td>
-                            <td>{{ (localTime $l.ReturnDate).Format "02/01/2006" }}</td>
-                            <td>{{ if $l.ActualReturnDate }}{{ (localTime $l.ActualReturnDate).Format "02/01/2006" }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
+                            <td{{ if eq $l.ComputedStatus "overdue" }} class="table-danger"{{ end }}>{{ (localTime $l.LoanDate).Format "02/01/2006" }}</td>
+                            <td{{ if eq $l.ComputedStatus "overdue" }} class="table-danger"{{ end }}>{{ (localTime $l.ReturnDate).Format "02/01/2006" }}</td>
+                            <td{{ if eq $l.ComputedStatus "overdue" }} class="table-danger"{{ end }}>{{ if $l.ActualReturnDate }}{{ (localTime $l.ActualReturnDate).Format "02/01/2006" }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                             <td>
                                 {{ if eq $l.ComputedStatus "active" }}
                                 <span class="badge bg-success">Masih Dipinjam</span>
@@ -103,7 +103,7 @@
                                 <a href="/device-loans/{{ $l.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                {{ if and (eq $.role "admin") (eq $l.ComputedStatus "active") }}
+                                {{ if and (eq $.role "admin") (ne $l.ComputedStatus "returned") }}
                                 <button type="button" class="btn btn-sm btn-success me-1" title="Perpanjang" onclick="openExtendModal({{ $l.ID }}, '{{ (localTime $l.ReturnDate).Format "2006-01-02" }}', '{{ (localTime $l.ReturnDate).Format "02/01/2006" }}')">
                                     <i class="bi bi-arrow-repeat"></i>
                                 </button>
