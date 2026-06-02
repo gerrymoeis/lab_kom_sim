@@ -119,7 +119,7 @@ var PCLayoutManager = (function() {
     var container = document.getElementById('layoutActions');
     var html = '<button type="button" class="btn btn-sm btn-outline-primary" onclick="PCLayoutManager.addRow()"><i class="bi bi-plus-lg"></i> Tambah Baris</button>';
     if (selectedSlot && selectedSlot.type === 'grid') {
-      html += ' <button type="button" class="btn btn-sm btn-outline-secondary" onclick="PCLayoutManager.moveSelectedToCadangan()"><i class="bi bi-box-arrow-in-down"></i> Pindahkan ke Cadangan</button>';
+      html += ' <button type="button" class="btn btn-sm btn-outline-secondary" onclick="PCLayoutManager.moveSelectedToCadangan()"><i class="bi bi-box-arrow-in-down-right"></i> Pindahkan ke Cadangan</button>';
     }
     container.innerHTML = html;
   }
