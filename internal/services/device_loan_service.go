@@ -48,6 +48,10 @@ func (s *DeviceLoanService) ListPaginated(filters repository.DeviceLoanFilters, 
 	return s.loanRepo.ListPaginated(filters, page, pageSize)
 }
 
+func (s *DeviceLoanService) ListByDeviceID(deviceID int) ([]repository.DeviceLoanRow, error) {
+	return s.loanRepo.ListByDeviceID(deviceID)
+}
+
 func (s *DeviceLoanService) CreateLoan(in CreateLoanInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
 	loanDate := MustParseDate(in.LoanDate)
 	returnDate := MustParseDate(in.ReturnDate)
