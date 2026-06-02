@@ -259,6 +259,7 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 
 	entries, _, err := h.logbookService.List(repository.LogbookFilters{
 		Search: search, StartDate: date, EndDate: date, PageSize: 10000,
+		SortBy: "date", SortOrder: "ASC",
 	})
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data logbook")
@@ -302,6 +303,7 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 
 	entries, _, err := h.logbookService.List(repository.LogbookFilters{
 		Search: search, StartDate: filterDate, EndDate: filterDate, PageSize: 10000,
+		SortBy: "date", SortOrder: "ASC",
 	})
 	if err != nil {
 		h.errHTML(c, "Gagal mengambil data logbook")
