@@ -225,7 +225,7 @@ func (r *SoftwareRepository) Export() ([]SoftwareStat, error) {
 		LEFT JOIN pc_software ps ON sc.id = ps.software_id AND ps.installed = TRUE
 		CROSS JOIN (SELECT COUNT(*) AS cnt FROM pcs) pc
 		GROUP BY sc.id, sc.name, sc.category, sc.description, sc.slug, pc.cnt
-		ORDER BY sc.category, sc.name`
+		ORDER BY CASE WHEN sc.category = 'required' THEN 0 ELSE 1 END, sc.name`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
