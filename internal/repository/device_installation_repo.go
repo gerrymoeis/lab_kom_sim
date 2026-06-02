@@ -51,6 +51,7 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 	}
 
 	query := `SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,
+		c.default_prefix, dt.asset_code_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
 		COALESCE(di.photo,''), COALESCE(di.notes,''), di.created_at, di.updated_at
 		FROM device_installations di
@@ -71,6 +72,7 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 		var ir InstallationRow
 		var startDate, finishDate sql.NullString
 		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceTypeName, &ir.CategoryName,
+			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
 			&ir.LocationInstalled, &startDate, &finishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt); err != nil {
 			return nil, 0, err
@@ -86,6 +88,7 @@ func (r *DeviceInstallationRepository) GetByID(id int) (*InstallationRow, error)
 	var ir InstallationRow
 	var startDate, finishDate sql.NullString
 	err := r.db.QueryRow(`SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,
+		c.default_prefix, dt.asset_code_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
 		COALESCE(di.photo,''), COALESCE(di.notes,''), di.created_at, di.updated_at
 		FROM device_installations di
@@ -93,6 +96,7 @@ func (r *DeviceInstallationRepository) GetByID(id int) (*InstallationRow, error)
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE di.id = ?`, id).
 		Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceTypeName, &ir.CategoryName,
+			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
 			&ir.LocationInstalled, &startDate, &finishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt)
 	if err != nil {
@@ -179,9 +183,11 @@ func (r *DeviceInstallationRepository) Delete(id int) error {
 
 type InstallationRow struct {
 	models.DeviceInstallation
-	DeviceAssetCode string
-	DeviceTypeName  string
-	CategoryName    string
+	DeviceAssetCode  string
+	DeviceTypeName   string
+	CategoryName     string
+	CategoryPrefix   string
+	DeviceTypePrefix string
 }
 
 

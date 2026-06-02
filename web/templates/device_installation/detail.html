@@ -86,17 +86,11 @@
                 <a href="/installations/{{ .installation.ID }}/edit" class="btn btn-warning">
                     <i class="bi bi-pencil"></i> Edit Instalasi
                 </a>
-                <a href="/devices/{{ .installation.DeviceID }}" class="btn btn-info">
+                <a href="/devices/{{ .installation.CategoryPrefix | lower }}/{{ .installation.DeviceTypePrefix | lower }}/{{ .assetCode | lower }}" class="btn btn-info">
                     <i class="bi bi-hdd-rack"></i> Lihat Perangkat
                 </a>
             </div>
 
-            <div class="mt-3">
-                <small class="text-muted">
-                    Dibuat: {{ (localTime .installation.CreatedAt).Format "02/01/2006 15:04" }} {{ tzCode }}<br>
-                    Diupdate: {{ (localTime .installation.UpdatedAt).Format "02/01/2006 15:04" }}
-                </small>
-            </div>
         </div>
     </div>
 </div>
