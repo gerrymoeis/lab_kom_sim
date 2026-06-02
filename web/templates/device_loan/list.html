@@ -78,14 +78,14 @@
                     </thead>
                     <tbody>
                         {{ range $i, $l := .loans }}
-                        <tr{{ if eq $l.ComputedStatus "returned" }} class="table-light"{{ end }}>
+                        <tr class="{{ if eq $l.ComputedStatus "overdue" }}table-danger{{ else if eq $l.ComputedStatus "returned" }}table-light{{ end }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $l.DeviceAssetCode }}</code></td>
                             <td>{{ $l.DeviceTypeName }}</td>
                             <td><strong>{{ $l.BorrowerName }}</strong><br><small class="text-muted">{{ $l.BorrowerType }}</small></td>
-                            <td{{ if eq $l.ComputedStatus "overdue" }} class="table-danger"{{ end }}>{{ (localTime $l.LoanDate).Format "02/01/2006" }}</td>
-                            <td{{ if eq $l.ComputedStatus "overdue" }} class="table-danger"{{ end }}>{{ (localTime $l.ReturnDate).Format "02/01/2006" }}</td>
-                            <td{{ if eq $l.ComputedStatus "overdue" }} class="table-danger"{{ end }}>{{ if $l.ActualReturnDate }}{{ (localTime $l.ActualReturnDate).Format "02/01/2006" }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
+                            <td{{ if $l.IsReturnedLate }} class="table-danger"{{ end }}>{{ (localTime $l.LoanDate).Format "02/01/2006" }}</td>
+                            <td{{ if $l.IsReturnedLate }} class="table-danger"{{ end }}>{{ (localTime $l.ReturnDate).Format "02/01/2006" }}</td>
+                            <td{{ if $l.IsReturnedLate }} class="table-danger"{{ end }}>{{ if $l.ActualReturnDate }}{{ (localTime $l.ActualReturnDate).Format "02/01/2006" }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                             <td>
                                 {{ if eq $l.ComputedStatus "active" }}
                                 <span class="badge bg-success">Masih Dipinjam</span>
