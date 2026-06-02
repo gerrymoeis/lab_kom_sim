@@ -49,12 +49,16 @@ func (h *Handler) DeviceList(c *gin.Context) {
 	case "loans":
 		search := c.Query("search")
 		status := c.Query("status")
+		category := c.Query("category")
 		sortBy := c.Query("sort_by")
+		sortOrder := c.Query("sort_order")
 
 		loans, total, err := h.deviceLoanService.ListPaginated(repository.DeviceLoanFilters{
-			Search: search,
-			Status: status,
-			SortBy: sortBy,
+			Search:    search,
+			Status:    status,
+			Category:  category,
+			SortBy:    sortBy,
+			SortOrder: sortOrder,
 		}, page, pageSize)
 		if err != nil {
 			h.errHTML(c, "Gagal mengambil data peminjaman")
@@ -67,7 +71,8 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"activeTab": "loans",
 			"username": username, "role": role,
 			"loans": loans,
-			"filters":    gin.H{"search": search, "status": status, "sort_by": sortBy},
+			"filters":    gin.H{"search": search, "status": status, "category": category, "sort_by": sortBy, "sort_order": sortOrder},
+			"categories": h.fetchCategories(),
 			"startRow":   (page-1)*pageSize + 1,
 			"page": page, "totalPages": totalPages, "totalItems": total,
 			"query": query,
@@ -75,11 +80,17 @@ func (h *Handler) DeviceList(c *gin.Context) {
 
 	case "usages":
 		search := c.Query("search")
+		isAvailable := c.Query("is_available")
+		category := c.Query("category")
 		sortBy := c.Query("sort_by")
+		sortOrder := c.Query("sort_order")
 
 		usages, total, err := h.deviceUsageService.ListPaginated(repository.DeviceUsageFilters{
-			Search: search,
-			SortBy: sortBy,
+			Search:      search,
+			IsAvailable: isAvailable,
+			Category:    category,
+			SortBy:      sortBy,
+			SortOrder:   sortOrder,
 		}, page, pageSize)
 		if err != nil {
 			h.errHTML(c, "Gagal mengambil data pemakaian")
@@ -92,7 +103,8 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"activeTab": "usages",
 			"username": username, "role": role,
 			"usages": usages,
-			"filters":    gin.H{"search": search, "sort_by": sortBy},
+			"filters":    gin.H{"search": search, "is_available": isAvailable, "category": category, "sort_by": sortBy, "sort_order": sortOrder},
+			"categories": h.fetchCategories(),
 			"startRow":   (page-1)*pageSize + 1,
 			"page": page, "totalPages": totalPages, "totalItems": total,
 			"query": query,
@@ -100,11 +112,17 @@ func (h *Handler) DeviceList(c *gin.Context) {
 
 	case "installations":
 		search := c.Query("search")
+		status := c.Query("status")
+		category := c.Query("category")
 		sortBy := c.Query("sort_by")
+		sortOrder := c.Query("sort_order")
 
 		installations, total, err := h.deviceInstallationService.ListPaginated(repository.InstallationFilters{
-			Search: search,
-			SortBy: sortBy,
+			Search:    search,
+			Status:    status,
+			Category:  category,
+			SortBy:    sortBy,
+			SortOrder: sortOrder,
 		}, page, pageSize)
 		if err != nil {
 			h.errHTML(c, "Gagal mengambil data instalasi")
@@ -117,7 +135,8 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"activeTab": "installations",
 			"username": username, "role": role,
 			"installations": installations,
-			"filters":       gin.H{"search": search, "sort_by": sortBy},
+			"filters":       gin.H{"search": search, "status": status, "category": category, "sort_by": sortBy, "sort_order": sortOrder},
+			"categories":    h.fetchCategories(),
 			"startRow":      (page-1)*pageSize + 1,
 			"page": page, "totalPages": totalPages, "totalItems": total,
 			"query": query,
