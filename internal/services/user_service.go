@@ -11,13 +11,14 @@ import (
 )
 
 var (
-	ErrSelfDelete      = errors.New("tidak dapat menghapus akun sendiri")
-	ErrProtectedDelete = errors.New("tidak dapat menghapus akun admin utama")
-	ErrUserNotFound    = errors.New("user tidak ditemukan")
-	ErrUsernameTaken   = errors.New("username sudah digunakan")
+	ErrSelfDelete       = errors.New("tidak dapat menghapus akun sendiri")
+	ErrProtectedDelete  = errors.New("tidak dapat menghapus akun admin utama")
+	ErrDeleteNotAllowed = errors.New("hanya akun utama yang dapat menghapus user lain")
+	ErrUserNotFound     = errors.New("user tidak ditemukan")
+	ErrUsernameTaken    = errors.New("username sudah digunakan")
 	ErrPasswordMismatch = errors.New("password baru dan konfirmasi tidak cocok")
-	ErrWrongPassword   = errors.New("password lama salah")
-	ErrProtectedUpdate = errors.New("tidak dapat mengubah role user ini")
+	ErrWrongPassword    = errors.New("password lama salah")
+	ErrProtectedUpdate  = errors.New("tidak dapat mengubah role user ini")
 )
 
 type UserService struct {
@@ -71,6 +72,9 @@ func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actor
 	}
 	if u.Username == "admin" || u.Username == "rekan" {
 		return ErrProtectedDelete
+	}
+	if actorUsername != "admin" {
+		return ErrDeleteNotAllowed
 	}
 	if err := s.userRepo.Delete(targetID); err != nil {
 		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", targetID,

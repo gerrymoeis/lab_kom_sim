@@ -170,6 +170,7 @@ func (h *Handler) UserDelete(c *gin.Context) {
 		msg := "Gagal menghapus user"
 		if errors.Is(err, services.ErrSelfDelete) { msg = "Tidak dapat menghapus akun sendiri" }
 		if errors.Is(err, services.ErrProtectedDelete) { msg = "Tidak dapat menghapus akun admin utama" }
+		if errors.Is(err, services.ErrDeleteNotAllowed) { msg = "Hanya akun utama yang dapat menghapus user lain" }
 		if errors.Is(err, services.ErrUserNotFound) { msg = "User tidak ditemukan" }
 		h.redirectWithError(c, "/admin/users", msg)
 		return
