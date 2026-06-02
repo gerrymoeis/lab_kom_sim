@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"time"
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
@@ -70,15 +71,12 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 	var installations []InstallationRow
 	for rows.Next() {
 		var ir InstallationRow
-		var startDate, finishDate sql.NullString
 		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceTypeName, &ir.CategoryName,
 			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
-			&ir.LocationInstalled, &startDate, &finishDate,
+			&ir.LocationInstalled, &ir.InstallationStartDate, &ir.InstallationFinishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt); err != nil {
 			return nil, 0, err
 		}
-		ir.InstallationStartDate = parseDate(startDate)
-		ir.InstallationFinishDate = parseDate(finishDate)
 		installations = append(installations, ir)
 	}
 	return installations, total, nil
@@ -86,7 +84,6 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 
 func (r *DeviceInstallationRepository) GetByID(id int) (*InstallationRow, error) {
 	var ir InstallationRow
-	var startDate, finishDate sql.NullString
 	err := r.db.QueryRow(`SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,
 		c.default_prefix, dt.asset_code_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
@@ -97,29 +94,25 @@ func (r *DeviceInstallationRepository) GetByID(id int) (*InstallationRow, error)
 		JOIN categories c ON c.id = dt.category_id WHERE di.id = ?`, id).
 		Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceTypeName, &ir.CategoryName,
 			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
-			&ir.LocationInstalled, &startDate, &finishDate,
+			&ir.LocationInstalled, &ir.InstallationStartDate, &ir.InstallationFinishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
-	ir.InstallationStartDate = parseDate(startDate)
-	ir.InstallationFinishDate = parseDate(finishDate)
 	return &ir, nil
 }
 
 func (r *DeviceInstallationRepository) GetByDeviceID(deviceID int) (*models.DeviceInstallation, error) {
 	var di models.DeviceInstallation
-	var startDate, finishDate, photo, notes sql.NullString
+	var photo, notes sql.NullString
 	err := r.db.QueryRow(`SELECT id, device_id, location_installed, installation_start_date,
 		installation_finish_date, COALESCE(photo,''), COALESCE(notes,''), created_at, updated_at
 		FROM device_installations WHERE device_id = ?`, deviceID).
-		Scan(&di.ID, &di.DeviceID, &di.LocationInstalled, &startDate, &finishDate,
+		Scan(&di.ID, &di.DeviceID, &di.LocationInstalled, &di.InstallationStartDate, &di.InstallationFinishDate,
 			&photo, &notes, &di.CreatedAt, &di.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
-	di.InstallationStartDate = parseDate(startDate)
-	di.InstallationFinishDate = parseDate(finishDate)
 	di.Photo = valStr(photo)
 	di.Notes = valStr(notes)
 	return &di, nil
@@ -164,12 +157,12 @@ func (r *DeviceInstallationRepository) GetInstallableDevices() ([]models.Device,
 	return devices, nil
 }
 
-func (r *DeviceInstallationRepository) Create(deviceID int, location string, startDate, finishDate sql.NullString, photo, notes string) (sql.Result, error) {
+func (r *DeviceInstallationRepository) Create(deviceID int, location string, startDate, finishDate *time.Time, photo, notes string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO device_installations (device_id, location_installed, installation_start_date, installation_finish_date, photo, notes)
 		VALUES (?, ?, ?, ?, ?, ?)`, deviceID, location, startDate, finishDate, photo, notes)
 }
 
-func (r *DeviceInstallationRepository) Update(id int, location string, startDate, finishDate sql.NullString, photo, notes string) error {
+func (r *DeviceInstallationRepository) Update(id int, location string, startDate, finishDate *time.Time, photo, notes string) error {
 	_, err := r.db.Exec(`UPDATE device_installations SET location_installed=?, installation_start_date=?,
 		installation_finish_date=?, photo=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
 		location, startDate, finishDate, photo, notes, id)
