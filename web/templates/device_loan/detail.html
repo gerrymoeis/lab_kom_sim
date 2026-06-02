@@ -121,7 +121,7 @@
                 <a href="/devices/{{ .loan.CategoryPrefix | lower }}/{{ .loan.DeviceTypePrefix | lower }}/{{ .loan.DeviceAssetCode | lower }}" class="btn btn-info">
                     <i class="bi bi-hdd-rack"></i> Lihat Perangkat
                 </a>
-                {{ if and (eq .loan.ComputedStatus "active") (eq .role "admin") }}
+                {{ if and (ne .loan.ComputedStatus "returned") (eq .role "admin") }}
                 <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#extendModal">
                     <i class="bi bi-arrow-repeat"></i> Perpanjang Pinjaman
                 </button>
@@ -131,7 +131,7 @@
     </div>
 </div>
 
-{{ if and (eq .loan.ComputedStatus "active") (eq .role "admin") }}
+{{ if and (ne .loan.ComputedStatus "returned") (eq .role "admin") }}
 <div class="modal fade" id="extendModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
