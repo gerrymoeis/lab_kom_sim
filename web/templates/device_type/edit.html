@@ -121,69 +121,130 @@
 <script>window.ANDROID_MODE={{ .android }};</script>
 {{ if .android }}<script src="/static/vendor/heic-to.js"></script>{{ end }}
 <script>
-(function(){
-var fileRef='';
-['photo_camera','photo_gallery'].forEach(function(id){
-  var el=document.getElementById(id);
-  if(el) el.addEventListener('change',function(e){handle(e.target.files[0],this);});
+var photoFileRef = '';
+var photoPreviewUrl = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    var cam = document.getElementById('photo_camera');
+    var gal = document.getElementById('photo_gallery');
+    if (cam) cam.addEventListener('change', function(e) { handlePhotoSelect(e.target.files[0], 'camera'); });
+    if (gal) gal.addEventListener('change', function(e) { handlePhotoSelect(e.target.files[0], 'gallery'); });
 });
-async function handle(file,input){
-  if(!file||file.size>5*1024*1024){err('Ukuran file maksimal 5MB');return;}
-  load();
-  if(input.id==='photo_camera') document.getElementById('photo_gallery').value='';
-  else document.getElementById('photo_camera').value='';
-  try{
-    var f=file;
-    var ext=file.name.split('.').pop().toLowerCase();
-    if((ext==='heic'||ext==='heif')&&typeof HeicTo!=='undefined'){
-      var b=await HeicTo({blob:file,type:'image/jpeg',quality:0.88});
-      f=new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'});
+
+async function handlePhotoSelect(file, source) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showError('Ukuran file maksimal 5MB'); return; }
+    showLoadingState();
+
+    try {
+        var ext = file.name.split('.').pop().toLowerCase();
+        if ((ext === 'heic' || ext === 'heif') && typeof HeicTo !== 'undefined') {
+            var blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
+            file = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
+        }
+
+        if (window.ANDROID_MODE) {
+            file = await compressImage(file, 1024);
+        }
+
+        var previewUrl = URL.createObjectURL(file);
+        if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+        photoPreviewUrl = previewUrl;
+        showLocalPreview(previewUrl);
+
+        clearOtherInput(source);
+
+        var formData = new FormData();
+        formData.append('image', file);
+        formData.append('type', 'device_type');
+        var response = await fetch('/api/upload-image', { method: 'POST', body: formData });
+        var result = await response.json();
+        if (result.success) {
+            photoFileRef = result.file_ref;
+            document.getElementById('photo_file_ref').value = result.file_ref;
+            document.getElementById('photo_' + source).value = '';
+        } else {
+            showError(result.message || 'Gagal upload');
+        }
+    } catch (error) {
+        showError(error.message || 'Gagal memproses gambar');
     }
-    if(window.ANDROID_MODE){
-      var img=await createImageBitmap(f);
-      var w=img.width,h=img.height,md=1024;
-      if(w>md||h>md){var r=Math.min(md/w,md/h);w=Math.round(w*r);h=Math.round(h*r);}
-      var c=document.createElement('canvas');c.width=w;c.height=h;
-      c.getContext('2d').drawImage(img,0,0,w,h);
-      var b2=await new Promise(function(r){c.toBlob(r,'image/jpeg',0.75);});
-      f=new File([b2],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'});
-    }
-    document.getElementById('photoPreviewImage').src=URL.createObjectURL(f);
-    document.getElementById('photoPreview').classList.remove('d-none');
-    hErr();
-    var fd=new FormData();fd.append('image',f);fd.append('type','device_type');
-    var j=await(await fetch('/api/upload-image',{method:'POST',body:fd})).json();
-    if(j.success){
-      fileRef=j.file_ref;
-      document.getElementById('photo_file_ref').value=j.file_ref;
-      document.getElementById('photoLoading').classList.add('d-none');
-    }else err(j.message||'Gagal upload');
-  }catch(e){err(e.message||'Gagal memproses gambar');}
 }
-window.clearPhoto=function(){
-  document.getElementById('photo_camera').value='';
-  document.getElementById('photo_gallery').value='';
-  document.getElementById('photoPreview').classList.add('d-none');
-  document.getElementById('photoPreviewImage').src='';
-  document.getElementById('photo_file_ref').value='';
-  hErr();
-  if(fileRef){fetch('/api/delete-temp-file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_ref:fileRef})}).catch(function(){});fileRef='';}
+
+function showLoadingState() {
+    var area = document.getElementById('photoPreview');
+    var loader = document.getElementById('photoLoading');
+    var img = document.getElementById('photoPreviewImage');
+    var err = document.getElementById('photoError');
+    area.classList.remove('d-none');
+    loader.classList.remove('d-none');
+    if (img) img.style.display = 'none';
+    if (err) err.classList.add('d-none');
+}
+
+function showLocalPreview(url) {
+    var img = document.getElementById('photoPreviewImage');
+    var area = document.getElementById('photoPreview');
+    var loader = document.getElementById('photoLoading');
+    var err = document.getElementById('photoError');
+    if (img) { img.src = url; img.style.display = ''; }
+    area.classList.remove('d-none');
+    loader.classList.add('d-none');
+    if (err) err.classList.add('d-none');
+}
+
+function showError(message) {
+    var area = document.getElementById('photoPreview');
+    var err = document.getElementById('photoError');
+    var loader = document.getElementById('photoLoading');
+    if (err) { err.textContent = message; err.classList.remove('d-none'); }
+    loader.classList.add('d-none');
+    area.classList.remove('d-none');
+}
+
+function clearOtherInput(source) {
+    var other = document.getElementById(source === 'camera' ? 'photo_gallery' : 'photo_camera');
+    if (other) other.value = '';
+}
+
+async function compressImage(file, maxDim) {
+    return new Promise(function(resolve, reject) {
+        var img = new Image();
+        img.onload = function() {
+            var width = img.width, height = img.height;
+            if (width > maxDim || height > maxDim) {
+                var ratio = Math.min(maxDim / width, maxDim / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(function(blob) {
+                if (!blob) { reject(new Error('Gagal kompresi gambar')); return; }
+                resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() }));
+            }, 'image/jpeg', 0.75);
+        };
+        img.onerror = function() { reject(new Error('Gagal memuat gambar')); };
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+window.clearPhoto = function() {
+    document.getElementById('photo_camera').value = '';
+    document.getElementById('photo_gallery').value = '';
+    document.getElementById('photoPreview').classList.add('d-none');
+    document.getElementById('photoPreviewImage').src = '';
+    document.getElementById('photo_file_ref').value = '';
+    if (photoFileRef) {
+        fetch('/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: photoFileRef }) }).catch(function(){});
+        photoFileRef = '';
+    }
 };
-function load(){
-  document.getElementById('photoLoading').classList.remove('d-none');
-  document.getElementById('photoPreview').classList.remove('d-none');
-  document.getElementById('photoPreviewImage').style.display='none';
-  hErr();
-}
-function err(m){
-  document.getElementById('photoError').textContent=m;
-  document.getElementById('photoError').classList.remove('d-none');
-  document.getElementById('photoLoading').classList.add('d-none');
-  document.getElementById('photoPreview').classList.remove('d-none');
-}
-function hErr(){
-  document.getElementById('photoError').classList.add('d-none');
-  document.getElementById('photoPreviewImage').style.display='';
-}
-})();
+
+window.addEventListener('beforeunload', function() {
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+});
 </script>
