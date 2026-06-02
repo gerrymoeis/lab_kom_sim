@@ -200,7 +200,7 @@
                             <td>{{ add $i 1 }}</td>
                             <td>{{ $usage.UserName }}</td>
                             <td>{{ (localTime $usage.UsageDate).Format "02/01/2006" }}</td>
-                            <td>{{ if eq $usage.IsAvailable "yes" }}<span class="badge bg-success">Ada</span>{{ else }}<span class="badge bg-danger">Habis</span>{{ end }}</td>
+                            <td>{{ if eq $usage.IsAvailable "yes" }}<span class="badge bg-success">Masih ada</span>{{ else }}<span class="badge bg-danger">Habis</span>{{ end }}</td>
                             <td>{{ if $usage.Purpose }}{{ $usage.Purpose }}{{ else }}-{{ end }}</td>
                             <td>{{ if $usage.Notes }}{{ $usage.Notes }}{{ else }}-{{ end }}</td>
                         </tr>
