@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -616,20 +617,59 @@ func (h *Handler) CategoryDelete(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/devices")
 }
 
+func usageTypePriority(ut string) int {
+	switch ut {
+	case "loanable":
+		return 0
+	case "consumable":
+		return 1
+	case "installable":
+		return 2
+	default:
+		return 3
+	}
+}
+
 func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bool) models.DeviceGroupedData {
+	sorted := make([]models.Device, len(devices))
+	copy(sorted, devices)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		pi := usageTypePriority(sorted[i].UsageType)
+		pj := usageTypePriority(sorted[j].UsageType)
+		if pi != pj {
+			return pi < pj
+		}
+		if sorted[i].CategoryName != sorted[j].CategoryName {
+			return sorted[i].CategoryName < sorted[j].CategoryName
+		}
+		if sorted[i].DeviceTypeName != sorted[j].DeviceTypeName {
+			return sorted[i].DeviceTypeName < sorted[j].DeviceTypeName
+		}
+		return sorted[i].AssetCode < sorted[j].AssetCode
+	})
+
 	grouped := models.DeviceGroupedData{
 		ActiveLoanIDs: activeLoanIDs,
 		DepletedIDs:   depletedIDs,
 	}
+	var curUsage *models.UsageTypeGroup
 	var curCat *models.CategoryGroup
 	var curType *models.DeviceTypeGroup
-	for _, d := range devices {
+	for _, d := range sorted {
+		if curUsage == nil || curUsage.UsageType != d.UsageType {
+			grouped.UsageGroups = append(grouped.UsageGroups, models.UsageTypeGroup{
+				UsageType: d.UsageType,
+			})
+			curUsage = &grouped.UsageGroups[len(grouped.UsageGroups)-1]
+			curCat = nil
+			curType = nil
+		}
 		if curCat == nil || curCat.CategoryName != d.CategoryName {
-			grouped.Categories = append(grouped.Categories, models.CategoryGroup{
+			curUsage.Categories = append(curUsage.Categories, models.CategoryGroup{
 				CategoryName:   d.CategoryName,
 				CategoryPrefix: d.CategoryPrefix,
 			})
-			curCat = &grouped.Categories[len(grouped.Categories)-1]
+			curCat = &curUsage.Categories[len(curUsage.Categories)-1]
 			curType = nil
 		}
 		if curType == nil || curType.TypeName != d.DeviceTypeName {
