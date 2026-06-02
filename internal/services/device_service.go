@@ -68,6 +68,10 @@ func NewDeviceService(deviceRepo *repository.DeviceRepository, deviceTypeRepo *r
 	return &DeviceService{deviceRepo: deviceRepo, deviceTypeRepo: deviceTypeRepo, log: log}
 }
 
+func (s *DeviceService) List(filters repository.DeviceFilters) ([]models.Device, error) {
+	return s.deviceRepo.List(filters)
+}
+
 func (s *DeviceService) ListPaginated(filters repository.DeviceFilters, page, pageSize int) ([]models.Device, int, error) {
 	return s.deviceRepo.ListPaginated(filters, page, pageSize)
 }
