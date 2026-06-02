@@ -24,7 +24,7 @@
 
                         <div class="mb-3">
                             <label for="usage_date" class="form-label">Tanggal Pemakaian *</label>
-                            <input type="date" class="form-control" id="usage_date" name="usage_date" value="{{ .usage.UsageDate }}" required>
+                            <input type="date" class="form-control" id="usage_date" name="usage_date" value="{{ (.usage.UsageDate).Format "2006-01-02" }}" required>
                         </div>
 
                         <div class="row">
