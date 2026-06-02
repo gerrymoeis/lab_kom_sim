@@ -53,6 +53,7 @@ func (r *DeviceUsageRepository) ListPaginated(filters DeviceUsageFilters, page, 
 	}
 
 	query := `SELECT u.id, u.device_id, d.asset_code, dt.name, c.name,
+		c.default_prefix, dt.asset_code_prefix,
 		u.user_name, u.user_type, u.usage_date, u.is_available, COALESCE(u.purpose,''), COALESCE(u.notes,'')
 		FROM device_usages u
 		JOIN devices d ON d.id = u.device_id
@@ -71,6 +72,7 @@ func (r *DeviceUsageRepository) ListPaginated(filters DeviceUsageFilters, page, 
 	for rows.Next() {
 		var u DeviceUsageRow
 		if err := rows.Scan(&u.ID, &u.DeviceID, &u.DeviceAssetCode, &u.DeviceTypeName, &u.CategoryName,
+			&u.CategoryPrefix, &u.DeviceTypePrefix,
 			&u.UserName, &u.UserType, &u.UsageDate, &u.IsAvailable, &u.Purpose, &u.Notes); err != nil {
 			return nil, 0, err
 		}
@@ -97,6 +99,7 @@ func (r *DeviceUsageRepository) buildUsageClause(filters DeviceUsageFilters) (st
 func (r *DeviceUsageRepository) listWithQuery(filters DeviceUsageFilters, suffix string) ([]DeviceUsageRow, error) {
 	usageClause, usageArgs := r.buildUsageClause(filters)
 	query := `SELECT u.id, u.device_id, d.asset_code, dt.name, c.name,
+		c.default_prefix, dt.asset_code_prefix,
 		u.user_name, u.user_type, u.usage_date, u.is_available, COALESCE(u.purpose,''), COALESCE(u.notes,'')
 		FROM device_usages u
 		JOIN devices d ON d.id = u.device_id
@@ -119,6 +122,7 @@ func (r *DeviceUsageRepository) listWithQuery(filters DeviceUsageFilters, suffix
 	for rows.Next() {
 		var u DeviceUsageRow
 		if err := rows.Scan(&u.ID, &u.DeviceID, &u.DeviceAssetCode, &u.DeviceTypeName, &u.CategoryName,
+			&u.CategoryPrefix, &u.DeviceTypePrefix,
 			&u.UserName, &u.UserType, &u.UsageDate, &u.IsAvailable, &u.Purpose, &u.Notes); err != nil {
 			return nil, err
 		}
@@ -129,19 +133,23 @@ func (r *DeviceUsageRepository) listWithQuery(filters DeviceUsageFilters, suffix
 
 type DeviceUsageRow struct {
 	models.DeviceUsage
-	DeviceTypeName string
-	CategoryName   string
+	DeviceTypeName   string
+	CategoryName     string
+	CategoryPrefix   string
+	DeviceTypePrefix string
 }
 
 func (r *DeviceUsageRepository) GetByID(id int) (*DeviceUsageRow, error) {
 	var u DeviceUsageRow
 	err := r.db.QueryRow(`SELECT u.id, u.device_id, d.asset_code, dt.name, c.name,
+		c.default_prefix, dt.asset_code_prefix,
 		u.user_name, u.user_type, u.usage_date, u.is_available, COALESCE(u.purpose,''), COALESCE(u.notes,'')
 		FROM device_usages u
 		JOIN devices d ON d.id = u.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE u.id = ?`, id).
 		Scan(&u.ID, &u.DeviceID, &u.DeviceAssetCode, &u.DeviceTypeName, &u.CategoryName,
+			&u.CategoryPrefix, &u.DeviceTypePrefix,
 			&u.UserName, &u.UserType, &u.UsageDate, &u.IsAvailable, &u.Purpose, &u.Notes)
 	if err != nil {
 		return nil, err
