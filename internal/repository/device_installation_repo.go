@@ -51,6 +51,11 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 		orderBy = "di.installation_start_date"
 	}
 
+	orderPrefix := ""
+	if orderBy == "di.installation_start_date" {
+		orderPrefix = "CASE WHEN di.installation_start_date IS NULL THEN 0 ELSE 1 END, "
+	}
+
 	query := `SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,
 		c.default_prefix, dt.asset_code_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
@@ -59,7 +64,7 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 		JOIN devices d ON d.id = di.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1` + where +
-		` ORDER BY ` + orderBy + ` DESC LIMIT ? OFFSET ?`
+		` ORDER BY ` + orderPrefix + orderBy + ` DESC LIMIT ? OFFSET ?`
 
 	allArgs := append(args, pageSize, (page-1)*pageSize)
 	rows, err := r.db.Query(query, allArgs...)
