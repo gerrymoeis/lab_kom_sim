@@ -25,26 +25,53 @@
         <div class="card-body">
             <form method="GET" action="/devices" class="row g-3 mb-3">
                 <input type="hidden" name="tab" value="usages">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="search" class="form-label">Cari</label>
                     <input type="text" class="form-control" id="search" name="search" placeholder="Cari pengguna atau perangkat..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
-                    <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
-                    <select class="form-select" id="sort_by" name="sort_by">
-                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
-                        <option value="usage_date" {{ if eq .filters.sort_by "usage_date" }}selected{{ end }}>Tanggal Pemakaian</option>
-                        <option value="user_name" {{ if eq .filters.sort_by "user_name" }}selected{{ end }}>Nama Pengguna</option>
+                    <label for="is_available" class="form-label">Status Stok</label>
+                    <select class="form-select" id="is_available" name="is_available">
+                        <option value="">Semua</option>
+                        <option value="yes" {{ if eq .filters.is_available "yes" }}selected{{ end }}>Masih Ada</option>
+                        <option value="no" {{ if eq .filters.is_available "no" }}selected{{ end }}>Habis</option>
                     </select>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
+                <div class="col-md-2">
+                    <label for="category" class="form-label">Kategori</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">Semua Kategori</option>
+                        {{ range .categories }}
+                        <option value="{{ .Name }}" {{ if eq $.filters.category .Name }}selected{{ end }}>{{ .Name }}</option>
+                        {{ end }}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label">Urutkan</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
+                        <option value="usage_date" {{ if eq .filters.sort_by "usage_date" }}selected{{ end }}>Tgl Pemakaian</option>
+                        <option value="user_name" {{ if eq .filters.sort_by "user_name" }}selected{{ end }}>Pengguna</option>
+                        <option value="is_available" {{ if eq .filters.sort_by "is_available" }}selected{{ end }}>Status Stok</option>
+                        <option value="purpose" {{ if eq .filters.sort_by "purpose" }}selected{{ end }}>Keperluan</option>
+                        <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label for="sort_order" class="form-label">Arah</label>
+                    <select class="form-select" id="sort_order" name="sort_order">
+                        <option value="" {{ if eq .filters.sort_order "" }}selected{{ end }}>Turun</option>
+                        <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>Naik</option>
+                    </select>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filter
+                        <i class="bi bi-search"></i>
                     </button>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
+                <div class="col-md-1 d-flex align-items-end">
                     <a href="/devices?tab=usages" class="btn btn-secondary w-100">
-                        <i class="bi bi-x-circle"></i> Reset
+                        <i class="bi bi-x-circle"></i>
                     </a>
                 </div>
             </form>

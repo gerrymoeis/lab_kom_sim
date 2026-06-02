@@ -22,9 +22,12 @@ func (r *DeviceUsageRepository) WithTx(tx *database.Tx) *DeviceUsageRepository {
 }
 
 type DeviceUsageFilters struct {
-	DeviceID string
-	Search   string
-	SortBy   string
+	DeviceID    string
+	Search      string
+	IsAvailable string
+	Category    string
+	SortBy      string
+	SortOrder   string
 }
 
 func (r *DeviceUsageRepository) List(filters DeviceUsageFilters) ([]DeviceUsageRow, error) {
@@ -48,8 +51,17 @@ func (r *DeviceUsageRepository) ListPaginated(filters DeviceUsageFilters, page, 
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1`+usageClause, usageArgs...).Scan(&total)
 
 	sortBy := "u.usage_date"
-	if filters.SortBy == "user_name" {
+	switch filters.SortBy {
+	case "user_name":
 		sortBy = "u.user_name"
+	case "usage_date":
+		sortBy = "u.usage_date"
+	case "is_available":
+		sortBy = "u.is_available"
+	case "purpose":
+		sortBy = "u.purpose"
+	case "category":
+		sortBy = "c.name"
 	}
 
 	query := `SELECT u.id, u.device_id, d.asset_code, dt.name, c.name,
@@ -59,7 +71,11 @@ func (r *DeviceUsageRepository) ListPaginated(filters DeviceUsageFilters, page, 
 		JOIN devices d ON d.id = u.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1` + usageClause
-	query += ` ORDER BY ` + sortBy + ` DESC LIMIT ? OFFSET ?`
+	orderDir := "DESC"
+	if filters.SortOrder == "ASC" {
+		orderDir = "ASC"
+	}
+	query += ` ORDER BY ` + sortBy + ` ` + orderDir + ` LIMIT ? OFFSET ?`
 
 	allArgs := append(usageArgs, pageSize, (page-1)*pageSize)
 	rows, err := r.db.Query(query, allArgs...)
@@ -88,6 +104,14 @@ func (r *DeviceUsageRepository) buildUsageClause(filters DeviceUsageFilters) (st
 		clause += ` AND u.device_id = ?`
 		args = append(args, filters.DeviceID)
 	}
+	if filters.IsAvailable != "" {
+		clause += ` AND u.is_available = ?`
+		args = append(args, filters.IsAvailable)
+	}
+	if filters.Category != "" {
+		clause += ` AND c.name = ?`
+		args = append(args, filters.Category)
+	}
 	if filters.Search != "" {
 		sClause, sArgs := r.search.Where("device_usage", filters.Search)
 		clause += sClause
@@ -107,8 +131,15 @@ func (r *DeviceUsageRepository) listWithQuery(filters DeviceUsageFilters, suffix
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1` + usageClause
 
 	sortBy := "u.usage_date"
-	if filters.SortBy == "user_name" {
+	switch filters.SortBy {
+	case "user_name":
 		sortBy = "u.user_name"
+	case "usage_date":
+		sortBy = "u.usage_date"
+	case "is_available":
+		sortBy = "u.is_available"
+	case "purpose":
+		sortBy = "u.purpose"
 	}
 	query += ` ORDER BY ` + sortBy + ` DESC` + suffix
 
