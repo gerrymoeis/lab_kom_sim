@@ -481,11 +481,12 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 		h.errHTML(c, "Tipe perangkat tidak ditemukan")
 		return
 	}
+	deviceCount, _ := h.deviceService.CountByDeviceTypeID(dt.ID)
 	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
 		"title": "Detail Tipe Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
-		"deviceType": dt,
-		"categories": h.fetchCategories(),
+		"deviceType":  dt,
+		"deviceCount": deviceCount,
 	})
 }
 
