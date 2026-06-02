@@ -61,7 +61,8 @@ type DeviceType struct {
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 	// Joined fields
-	CategoryName string `json:"category_name,omitempty"`
+	CategoryName   string `json:"category_name,omitempty"`
+	CategoryPrefix string `json:"category_prefix,omitempty"`
 }
 
 // Device represents a unique physical device with its own asset code
