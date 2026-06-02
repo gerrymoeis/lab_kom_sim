@@ -1,6 +1,6 @@
 {{ define "device/_tab_nav" }}
 {{ $tab := or .activeTab "types" }}
-<ul class="nav nav-tabs mb-4">
+<ul class="nav nav-tabs">
     <li class="nav-item">
         <a class="nav-link {{ if or (eq $tab "types") (eq $tab "") }}active{{ end }}" href="/devices">
             <i class="bi bi-hdd-rack"></i> Perangkat
