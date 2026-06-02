@@ -30,7 +30,7 @@
                     <input type="text" class="form-control" id="search" name="search" placeholder="Cari asset code, peminjam..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
-                    <label for="status" class="form-label">Status</label>
+                    <label for="status" class="form-label">Status Peminjaman</label>
                     <select class="form-select" id="status" name="status">
                         <option value="">Semua Status</option>
                         <option value="active" {{ if eq .filters.status "active" }}selected{{ end }}>Masih Dipinjam</option>
@@ -58,21 +58,12 @@
                         <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>
                     </select>
                 </div>
-                <div class="col-md-1">
-                    <label for="sort_order" class="form-label">Arah</label>
-                    <select class="form-select" id="sort_order" name="sort_order">
-                        <option value="" {{ if eq .filters.sort_order "" }}selected{{ end }}>Turun</option>
-                        <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>Naik</option>
-                    </select>
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
+                <div class="col-md-3 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i>
+                        <i class="bi bi-search"></i> Filter
                     </button>
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
                     <a href="/devices?tab=loans" class="btn btn-secondary w-100">
-                        <i class="bi bi-x-circle"></i>
+                        <i class="bi bi-x-circle"></i> Reset
                     </a>
                 </div>
             </form>
