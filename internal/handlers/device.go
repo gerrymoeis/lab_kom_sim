@@ -313,9 +313,14 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 		return
 	}
 
-	slug := c.Param("slug")
-	d, err := h.deviceService.GetByAssetCodeSlug(slug)
+	assetCode := c.Param("assetCode")
+	d, err := h.deviceService.GetByAssetCodeSlug(assetCode)
 	if err != nil {
+		h.errHTML(c, "Perangkat tidak ditemukan")
+		return
+	}
+
+	if strings.ToLower(d.CategoryPrefix) != c.Param("slug") || strings.ToLower(d.DeviceTypePrefix) != c.Param("typeSlug") {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
 	}
