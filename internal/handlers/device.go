@@ -513,11 +513,13 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 		return
 	}
 	deviceCount, _ := h.deviceService.CountByDeviceTypeID(dt.ID)
+	devices, _ := h.deviceService.List(repository.DeviceFilters{DeviceTypeID: strconv.Itoa(dt.ID)})
 	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
 		"title": "Detail Tipe Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"deviceType":  dt,
 		"deviceCount": deviceCount,
+		"devices":     devices,
 	})
 }
 
