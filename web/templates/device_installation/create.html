@@ -39,19 +39,42 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Foto Instalasi</label>
-                            <div class="d-flex gap-2 mb-2">
-                                <input type="file" class="form-control" id="photo_camera" accept="image/*" capture="environment">
-                                <input type="file" class="form-control" id="photo_gallery" accept="image/jpeg,image/png,image/heic,image/heif">
-                            </div>
-                            <small class="text-muted">Ambil foto atau pilih dari galeri (opsional, max 5MB, JPEG/PNG/HEIC)</small>
-                            <div id="previewPhoto" class="mt-2 d-none">
-                                <div id="loadingPhoto" class="d-none text-center py-3">
-                                    <div class="spinner-border text-primary" role="status"></div>
-                                    <p class="text-muted mt-1">Memproses foto...</p>
+                            <label class="form-label fw-bold mb-3">Foto Instalasi</label>
+                            <p class="text-muted mb-3">Dokumentasi pemasangan selesai dan berhasil. Max 5MB, format JPEG/PNG/HEIC</p>
+
+                            <div class="row g-3">
+                                <div class="col-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-camera-fill text-primary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
+                                    </div>
+                                    <input type="file" id="photo_camera" name="photo" accept="image/*" capture="environment" class="form-control mt-auto">
                                 </div>
-                                <div id="errorPhoto" class="alert alert-danger d-none py-2"></div>
-                                <img id="imagePreviewPhoto" class="img-fluid rounded" style="max-height:200px">
+                                <div class="col-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-images text-secondary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
+                                    </div>
+                                    <input type="file" id="photo_gallery" name="photo" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
+                                </div>
+                            </div>
+
+                            <div id="previewPhoto" class="mt-3 d-none">
+                                <div class="border rounded-3 p-3 bg-light text-center">
+                                    <img id="imagePreviewPhoto" src="" alt="Preview" class="img-fluid rounded" style="max-height:400px;object-fit:contain;">
+                                    <div id="loadingPhoto" class="d-none mt-2">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <small class="text-muted ms-1">Memproses gambar...</small>
+                                    </div>
+                                    <div id="errorPhoto" class="d-none mt-2 text-danger small"></div>
+                                    <div class="mt-3 text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearPhoto()">
+                                            <i class="bi bi-x-circle me-1"></i> Hapus
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -161,6 +184,18 @@ function storeFileReference(fileRef) {
         if (form) form.appendChild(hiddenInput);
     }
     hiddenInput.value = fileRef;
+}
+
+function clearPhoto() {
+    var cam = document.getElementById('photo_camera');
+    var gal = document.getElementById('photo_gallery');
+    if (cam) cam.value = '';
+    if (gal) gal.value = '';
+    document.getElementById('previewPhoto').classList.add('d-none');
+    if (photoPreviewUrl) { URL.revokeObjectURL(photoPreviewUrl); photoPreviewUrl = null; }
+    photoFileRef = null;
+    var hiddenInput = document.getElementById('photo_file_ref');
+    if (hiddenInput) hiddenInput.value = '';
 }
 
 function clearOtherInput(source) {
