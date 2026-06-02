@@ -66,8 +66,8 @@
                         <thead class="table-light">
                             <tr>
                                 <th>#</th>
-                                <th>Tgl Kembali Sebelumnya</th>
-                                <th>Tgl Kembali Baru</th>
+                                <th>Deadline Sebelumnya</th>
+                                <th>Deadline Baru</th>
                                 <th>Diperpanjang Pada</th>
                             </tr>
                         </thead>
@@ -142,11 +142,11 @@
             <form id="extendForm">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Tanggal Kembali Baru</label>
+                        <label class="form-label">Deadline Baru</label>
                         <input type="date" class="form-control" id="newReturnDate" name="return_date" required min="{{ (localTime .loan.ReturnDate).Format "2006-01-02" }}">
                     </div>
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Tanggal kembali sebelumnya: <strong>{{ (localTime .loan.ReturnDate).Format "02/01/2006" }}</strong>
+                        <i class="bi bi-info-circle"></i> Deadline sebelumnya: <strong>{{ (localTime .loan.ReturnDate).Format "02/01/2006" }}</strong>
                     </div>
                 </div>
                 <div class="modal-footer">
