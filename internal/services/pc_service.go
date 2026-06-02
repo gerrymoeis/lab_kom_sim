@@ -216,6 +216,18 @@ func (s *PCService) PlaceCadangan(label string, row, col int, actorID int, actor
 	return nil
 }
 
+func (s *PCService) MoveToCadangan(label string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	if err := s.pcRepo.MoveToCadangan(label); err != nil {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+			map[string]any{"operation": "move-to-cadangan"}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		map[string]any{"operation": "move-to-cadangan", "label": label},
+		map[string]any{"status": "cadangan"}, ipAddress, userAgent)
+	return nil
+}
+
 func (s *PCService) SyncSoftware(label string, requiredIDs []string, otherNames, otherDescs []string,
 	actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 
