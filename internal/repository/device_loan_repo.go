@@ -56,7 +56,8 @@ func (r *DeviceLoanRepository) ListPaginated(filters DeviceLoanFilters, page, pa
 		(SELECT COUNT(*) FROM loan_extensions WHERE loan_id = l.id),
 		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN CURRENT_DATE > l.return_date THEN 'overdue'
-			ELSE 'active' END as computed_status
+			ELSE 'active' END as computed_status,
+		l.actual_return_date IS NOT NULL AND l.actual_return_date > l.return_date AS is_returned_late
 		FROM device_loans l
 		JOIN devices d ON d.id = l.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
@@ -84,7 +85,7 @@ func (r *DeviceLoanRepository) ListPaginated(filters DeviceLoanFilters, page, pa
 			&l.CategoryPrefix, &l.DeviceTypePrefix,
 			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ReturnDate, &l.ActualReturnDate,
 			&l.Purpose, &l.Notes, &l.CreatedAt, &l.UpdatedAt,
-			&l.ExtensionCount, &l.ComputedStatus); err != nil {
+			&l.ExtensionCount, &l.ComputedStatus, &l.IsReturnedLate); err != nil {
 			return nil, 0, err
 		}
 		loans = append(loans, l)
@@ -119,7 +120,8 @@ func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix s
 		(SELECT COUNT(*) FROM loan_extensions WHERE loan_id = l.id),
 		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN CURRENT_DATE > l.return_date THEN 'overdue'
-			ELSE 'active' END as computed_status
+			ELSE 'active' END as computed_status,
+		l.actual_return_date IS NOT NULL AND l.actual_return_date > l.return_date AS is_returned_late
 		FROM device_loans l
 		JOIN devices d ON d.id = l.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
@@ -148,7 +150,7 @@ func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix s
 			&l.CategoryPrefix, &l.DeviceTypePrefix,
 			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ReturnDate, &l.ActualReturnDate,
 			&l.Purpose, &l.Notes, &l.CreatedAt, &l.UpdatedAt,
-			&l.ExtensionCount, &l.ComputedStatus); err != nil {
+			&l.ExtensionCount, &l.ComputedStatus, &l.IsReturnedLate); err != nil {
 			return nil, err
 		}
 		loans = append(loans, l)
@@ -163,6 +165,7 @@ type DeviceLoanRow struct {
 	ComputedStatus    string
 	CategoryPrefix    string
 	DeviceTypePrefix  string
+	IsReturnedLate    bool
 }
 
 func (r *DeviceLoanRepository) GetByID(id int) (*DeviceLoanRow, error) {
@@ -175,7 +178,8 @@ func (r *DeviceLoanRepository) GetByID(id int) (*DeviceLoanRow, error) {
 		(SELECT COUNT(*) FROM loan_extensions WHERE loan_id = l.id),
 		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN CURRENT_DATE > l.return_date THEN 'overdue'
-			ELSE 'active' END
+			ELSE 'active' END,
+		l.actual_return_date IS NOT NULL AND l.actual_return_date > l.return_date AS is_returned_late
 		FROM device_loans l
 		JOIN devices d ON d.id = l.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
@@ -184,7 +188,7 @@ func (r *DeviceLoanRepository) GetByID(id int) (*DeviceLoanRow, error) {
 			&l.CategoryPrefix, &l.DeviceTypePrefix,
 			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ReturnDate, &l.ActualReturnDate,
 			&l.Purpose, &l.Notes, &l.CreatedAt, &l.UpdatedAt,
-			&l.ExtensionCount, &l.ComputedStatus)
+			&l.ExtensionCount, &l.ComputedStatus, &l.IsReturnedLate)
 	if err != nil {
 		return nil, err
 	}
