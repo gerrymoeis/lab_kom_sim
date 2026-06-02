@@ -133,6 +133,7 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 		"canAccessUser": func(actorUsername, targetUsername string) bool {
 			return handlers.CanAccessProfile(actorUsername, targetUsername)
 		},
+		"currentDateAfter": func(t time.Time) bool { return time.Now().After(t) },
 	})
 	err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil { return err }

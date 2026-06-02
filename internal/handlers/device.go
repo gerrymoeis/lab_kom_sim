@@ -328,11 +328,28 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 	activeLoanIDs, _ := h.deviceService.GetActiveLoanIDs()
 	_, isActiveLoan := activeLoanIDs[d.ID]
 
+	// Fetch usage history based on device type
+	var loanHistory []repository.DeviceLoanRow
+	var usageHistory []repository.DeviceUsageRow
+	var installationHistory *models.DeviceInstallation
+
+	switch d.UsageType {
+	case "loanable":
+		loanHistory, _ = h.deviceLoanService.ListByDeviceID(d.ID)
+	case "consumable":
+		usageHistory, _ = h.deviceUsageService.ListByDeviceID(d.ID)
+	case "installable":
+		installationHistory, _ = h.deviceInstallationService.GetByDeviceID(d.ID)
+	}
+
 	c.HTML(http.StatusOK, "device/detail.html", gin.H{
 		"title": "Detail Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
-		"device":       d,
-		"isActiveLoan": isActiveLoan,
+		"device":              d,
+		"isActiveLoan":        isActiveLoan,
+		"loanHistory":         loanHistory,
+		"usageHistory":        usageHistory,
+		"installationHistory": installationHistory,
 	})
 }
 

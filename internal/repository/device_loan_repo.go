@@ -2,6 +2,7 @@
 
 import (
 	"database/sql"
+	"strconv"
 	"time"
 
 	"inventaris-lab-kom/internal/database"
@@ -23,9 +24,10 @@ func (r *DeviceLoanRepository) WithTx(tx *database.Tx) *DeviceLoanRepository {
 }
 
 type DeviceLoanFilters struct {
-	Status string
-	Search string
-	SortBy string
+	Status   string
+	Search   string
+	SortBy   string
+	DeviceID string
 }
 
 func (r *DeviceLoanRepository) List(filters DeviceLoanFilters) ([]DeviceLoanRow, error) {
@@ -96,6 +98,10 @@ func (r *DeviceLoanRepository) ListPaginated(filters DeviceLoanFilters, page, pa
 func (r *DeviceLoanRepository) buildLoanClause(filters DeviceLoanFilters) (string, []any) {
 	var clause string
 	var args []any
+	if filters.DeviceID != "" {
+		clause += ` AND l.device_id = ?`
+		args = append(args, filters.DeviceID)
+	}
 	if filters.Status != "" {
 		clause += ` AND CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN CURRENT_DATE > l.return_date THEN 'overdue'
@@ -108,6 +114,10 @@ func (r *DeviceLoanRepository) buildLoanClause(filters DeviceLoanFilters) (strin
 		args = append(args, sArgs...)
 	}
 	return clause, args
+}
+
+func (r *DeviceLoanRepository) ListByDeviceID(deviceID int) ([]DeviceLoanRow, error) {
+	return r.listWithQuery(DeviceLoanFilters{DeviceID: strconv.Itoa(deviceID)}, "")
 }
 
 func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix string) ([]DeviceLoanRow, error) {

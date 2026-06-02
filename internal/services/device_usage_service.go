@@ -1,6 +1,8 @@
 ﻿package services
 
 import (
+	"strconv"
+
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
@@ -42,6 +44,10 @@ func (s *DeviceUsageService) GetConsumableDevices() ([]models.Device, error) {
 
 func (s *DeviceUsageService) ListPaginated(filters repository.DeviceUsageFilters, page, pageSize int) ([]repository.DeviceUsageRow, int, error) {
 	return s.repo.ListPaginated(filters, page, pageSize)
+}
+
+func (s *DeviceUsageService) ListByDeviceID(deviceID int) ([]repository.DeviceUsageRow, error) {
+	return s.repo.List(repository.DeviceUsageFilters{DeviceID: strconv.Itoa(deviceID)})
 }
 
 func (s *DeviceUsageService) CreateUsage(in CreateUsageInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
