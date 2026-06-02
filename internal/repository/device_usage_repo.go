@@ -120,6 +120,10 @@ func (r *DeviceUsageRepository) buildUsageClause(filters DeviceUsageFilters) (st
 	return clause, args
 }
 
+func (r *DeviceUsageRepository) ExportAll() ([]DeviceUsageRow, error) {
+	return r.listWithQuery(DeviceUsageFilters{}, "")
+}
+
 func (r *DeviceUsageRepository) listWithQuery(filters DeviceUsageFilters, suffix string) ([]DeviceUsageRow, error) {
 	usageClause, usageArgs := r.buildUsageClause(filters)
 	query := `SELECT u.id, u.device_id, d.asset_code, dt.name, c.name,
