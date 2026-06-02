@@ -49,8 +49,10 @@ func (r *DeviceLoanRepository) ListPaginated(filters DeviceLoanFilters, page, pa
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1`+loanClause, loanArgs...).Scan(&total)
 
 	query := `SELECT l.id, l.device_id, d.asset_code, dt.name, c.name,
+		c.default_prefix, dt.asset_code_prefix,
 		l.borrower_name, l.borrower_type, l.loan_date, l.return_date, l.actual_return_date,
 		COALESCE(l.purpose,''), COALESCE(l.notes,''),
+		l.created_at, l.updated_at,
 		(SELECT COUNT(*) FROM loan_extensions WHERE loan_id = l.id),
 		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN CURRENT_DATE > l.return_date THEN 'overdue'
@@ -79,8 +81,10 @@ func (r *DeviceLoanRepository) ListPaginated(filters DeviceLoanFilters, page, pa
 	for rows.Next() {
 		var l DeviceLoanRow
 		if err := rows.Scan(&l.ID, &l.DeviceID, &l.DeviceAssetCode, &l.DeviceTypeName, &l.CategoryName,
+			&l.CategoryPrefix, &l.DeviceTypePrefix,
 			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ReturnDate, &l.ActualReturnDate,
-			&l.Purpose, &l.Notes, &l.ExtensionCount, &l.ComputedStatus); err != nil {
+			&l.Purpose, &l.Notes, &l.CreatedAt, &l.UpdatedAt,
+			&l.ExtensionCount, &l.ComputedStatus); err != nil {
 			return nil, 0, err
 		}
 		loans = append(loans, l)
@@ -108,8 +112,10 @@ func (r *DeviceLoanRepository) buildLoanClause(filters DeviceLoanFilters) (strin
 func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix string) ([]DeviceLoanRow, error) {
 	_, loanArgs := r.buildLoanClause(filters)
 	query := `SELECT l.id, l.device_id, d.asset_code, dt.name, c.name,
+		c.default_prefix, dt.asset_code_prefix,
 		l.borrower_name, l.borrower_type, l.loan_date, l.return_date, l.actual_return_date,
 		COALESCE(l.purpose,''), COALESCE(l.notes,''),
+		l.created_at, l.updated_at,
 		(SELECT COUNT(*) FROM loan_extensions WHERE loan_id = l.id),
 		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN CURRENT_DATE > l.return_date THEN 'overdue'
@@ -139,8 +145,10 @@ func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix s
 	for rows.Next() {
 		var l DeviceLoanRow
 		if err := rows.Scan(&l.ID, &l.DeviceID, &l.DeviceAssetCode, &l.DeviceTypeName, &l.CategoryName,
+			&l.CategoryPrefix, &l.DeviceTypePrefix,
 			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ReturnDate, &l.ActualReturnDate,
-			&l.Purpose, &l.Notes, &l.ExtensionCount, &l.ComputedStatus); err != nil {
+			&l.Purpose, &l.Notes, &l.CreatedAt, &l.UpdatedAt,
+			&l.ExtensionCount, &l.ComputedStatus); err != nil {
 			return nil, err
 		}
 		loans = append(loans, l)
@@ -150,16 +158,20 @@ func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix s
 
 type DeviceLoanRow struct {
 	models.DeviceLoan
-	DeviceTypeName string
-	CategoryName   string
-	ComputedStatus string
+	DeviceTypeName    string
+	CategoryName      string
+	ComputedStatus    string
+	CategoryPrefix    string
+	DeviceTypePrefix  string
 }
 
 func (r *DeviceLoanRepository) GetByID(id int) (*DeviceLoanRow, error) {
 	var l DeviceLoanRow
 	err := r.db.QueryRow(`SELECT l.id, l.device_id, d.asset_code, dt.name, c.name,
+		c.default_prefix, dt.asset_code_prefix,
 		l.borrower_name, l.borrower_type, l.loan_date, l.return_date, l.actual_return_date,
 		COALESCE(l.purpose,''), COALESCE(l.notes,''),
+		l.created_at, l.updated_at,
 		(SELECT COUNT(*) FROM loan_extensions WHERE loan_id = l.id),
 		CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned'
 			WHEN CURRENT_DATE > l.return_date THEN 'overdue'
@@ -169,8 +181,10 @@ func (r *DeviceLoanRepository) GetByID(id int) (*DeviceLoanRow, error) {
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE l.id = ?`, id).
 		Scan(&l.ID, &l.DeviceID, &l.DeviceAssetCode, &l.DeviceTypeName, &l.CategoryName,
+			&l.CategoryPrefix, &l.DeviceTypePrefix,
 			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ReturnDate, &l.ActualReturnDate,
-			&l.Purpose, &l.Notes, &l.ExtensionCount, &l.ComputedStatus)
+			&l.Purpose, &l.Notes, &l.CreatedAt, &l.UpdatedAt,
+			&l.ExtensionCount, &l.ComputedStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -229,6 +243,12 @@ func (r *DeviceLoanRepository) Update(id int, borrowerName, borrowerType string,
 	_, err := r.db.Exec(`UPDATE device_loans SET borrower_name=?, borrower_type=?, loan_date=?,
 		return_date=?, actual_return_date=?, purpose=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
 		borrowerName, borrowerType, loanDate, returnDate, actualReturnDate, purpose, notes, id)
+	return err
+}
+
+func (r *DeviceLoanRepository) UpdateReturn(id int, actualReturnDate *time.Time, notes string) error {
+	_, err := r.db.Exec("UPDATE device_loans SET actual_return_date=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+		actualReturnDate, notes, id)
 	return err
 }
 

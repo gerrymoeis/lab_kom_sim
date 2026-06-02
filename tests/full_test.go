@@ -454,7 +454,7 @@ func TestFullIntegration(t *testing.T) {
 
 	// Loan edit POST (return the loan)
 	resp, _ = post("/device-loans/"+fmt.Sprint(loanID)+"/edit",
-		"borrower_name=Mahasiswa+Updated&borrower_type=mahasiswa&loan_date=2026-05-16&return_date=2026-05-20&actual_return_date=2026-05-17&purpose=Praktikum")
+		"status=returned&actual_return_date=2026-05-17&notes=")
 	assert(resp.StatusCode == 302, "edit loan: %d", resp.StatusCode)
 	closeResp(resp)
 	var loanReturned string
