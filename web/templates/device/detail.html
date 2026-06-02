@@ -131,6 +131,97 @@
             </div>
         </div>
     </div>
+
+    {{ if .loanHistory }}
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            <i class="bi bi-clock-history"></i> Riwayat Peminjaman
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Peminjam</th>
+                            <th>Tgl Pinjam</th>
+                            <th>Deadline Kembali</th>
+                            <th>Tgl Dikembalikan</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range $i, $loan := .loanHistory }}
+                        <tr>
+                            <td>{{ add $i 1 }}</td>
+                            <td>{{ $loan.BorrowerName }}</td>
+                            <td>{{ $loan.LoanDate.Format "02/01/2006" }}</td>
+                            <td>{{ $loan.ReturnDate.Format "02/01/2006" }}</td>
+                            <td>{{ if $loan.ActualReturnDate }}{{ $loan.ActualReturnDate.Format "02/01/2006" }}{{ else }}–{{ end }}</td>
+                            <td>
+                                {{ if not $loan.ActualReturnDate }}
+                                    {{ if currentDateAfter $loan.ReturnDate }}Terlambat{{ else }}Masih Dipinjam{{ end }}
+                                {{ else }}Dikembalikan{{ end }}
+                            </td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ end }}
+
+    {{ if .usageHistory }}
+    <div class="card mt-4">
+        <div class="card-header bg-warning text-dark">
+            <i class="bi bi-clock-history"></i> Riwayat Pemakaian
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Pengguna</th>
+                            <th>Tgl Pakai</th>
+                            <th>Status</th>
+                            <th>Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range $i, $usage := .usageHistory }}
+                        <tr>
+                            <td>{{ add $i 1 }}</td>
+                            <td>{{ $usage.UserName }}</td>
+                            <td>{{ $usage.UsageDate.Format "02/01/2006" }}</td>
+                            <td>{{ if eq $usage.IsAvailable "yes" }}Tersedia{{ else }}Tidak Tersedia{{ end }}</td>
+                            <td>{{ $usage.Purpose }}{{ if $usage.Notes }} — {{ $usage.Notes }}{{ end }}</td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ end }}
+
+    {{ if .installationHistory }}
+    <div class="card mt-4">
+        <div class="card-header bg-success text-white">
+            <i class="bi bi-clock-history"></i> Riwayat Instalasi
+        </div>
+        <div class="card-body">
+            <table class="table table-sm mb-0">
+                <tr><th style="width:180px">Lokasi</th><td>{{ .installationHistory.LocationInstalled }}</td></tr>
+                <tr><th>Mulai</th><td>{{ if .installationHistory.InstallationStartDate }}{{ .installationHistory.InstallationStartDate.Format "02/01/2006" }}{{ else }}–{{ end }}</td></tr>
+                <tr><th>Selesai</th><td>{{ if .installationHistory.InstallationFinishDate }}{{ .installationHistory.InstallationFinishDate.Format "02/01/2006" }}{{ else }}–{{ end }}</td></tr>
+                <tr><th>Tgl Dicatat</th><td>{{ .installationHistory.CreatedAt.Format "02/01/2006" }}</td></tr>
+                {{ if .installationHistory.Notes }}<tr><th>Catatan</th><td>{{ .installationHistory.Notes }}</td></tr>{{ end }}
+            </table>
+        </div>
+    </div>
+    {{ end }}
 </div>
 
 {{ template "layout/footer.html" . }}
