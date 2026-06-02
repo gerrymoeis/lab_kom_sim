@@ -76,16 +76,23 @@ func getRequestContext(c *gin.Context) (ipAddress, userAgent string) {
 }
 
 func (h *Handler) canAccessProfile(actorUsername, targetUsername string) bool {
-	isActorPrimary := actorUsername == "admin" || actorUsername == "rekan"
-	isTargetPrimary := targetUsername == "admin" || targetUsername == "rekan"
+	mainAdmin := "admin"
+	protected := map[string]bool{"admin": true, "rekan": true}
 
-	if isActorPrimary && isTargetPrimary && actorUsername != targetUsername {
-		return false
+	if protected[targetUsername] {
+		return actorUsername == targetUsername
 	}
-	if !isActorPrimary && actorUsername != targetUsername {
-		return false
+	return actorUsername == targetUsername || actorUsername == mainAdmin
+}
+
+func CanAccessProfile(actorUsername, targetUsername string) bool {
+	mainAdmin := "admin"
+	protected := map[string]bool{"admin": true, "rekan": true}
+
+	if protected[targetUsername] {
+		return actorUsername == targetUsername
 	}
-	return true
+	return actorUsername == targetUsername || actorUsername == mainAdmin
 }
 
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {

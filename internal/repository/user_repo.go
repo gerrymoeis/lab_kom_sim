@@ -102,8 +102,8 @@ func (r *UserRepository) GetByID(id int) (*models.User, error) {
 
 func (r *UserRepository) GetByUsername(username string) (*models.User, error) {
 	var u models.User
-	err := r.db.QueryRow(`SELECT id, password, full_name, role FROM users WHERE username = ?`, username).
-		Scan(&u.ID, &u.Password, &u.FullName, &u.Role)
+	err := r.db.QueryRow(`SELECT id, username, password, full_name, role, created_at, updated_at FROM users WHERE username = ?`, username).
+		Scan(&u.ID, &u.Username, &u.Password, &u.FullName, &u.Role, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
