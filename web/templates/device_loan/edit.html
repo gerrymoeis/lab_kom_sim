@@ -20,7 +20,7 @@
                         <div class="mb-3">
                             <label for="status" class="form-label">Status *</label>
                             <select class="form-select" id="status" name="status" required>
-                                <option value="active" {{ if eq .loan.ComputedStatus "active" }}selected{{ end }}>Aktif (Masih Dipinjam)</option>
+                                <option value="active" {{ if eq .loan.ComputedStatus "active" }}selected{{ end }}>Masih Dipinjam</option>
                                 <option value="returned" {{ if eq .loan.ComputedStatus "returned" }}selected{{ end }}>Dikembalikan</option>
                                 <option value="overdue" {{ if eq .loan.ComputedStatus "overdue" }}selected{{ end }}>Terlambat</option>
                             </select>
@@ -28,7 +28,7 @@
                                 {{ if eq .loan.ComputedStatus "overdue" }}
                                     <span class="text-danger fw-bold">Terlambat</span>
                                 {{ else if eq .loan.ComputedStatus "active" }}
-                                    <span class="text-success">Aktif</span>
+                                    <span class="text-success">Masih Dipinjam</span>
                                 {{ else }}
                                     <span class="text-secondary">Dikembalikan</span>
                                 {{ end }}

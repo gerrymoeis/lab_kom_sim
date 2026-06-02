@@ -112,6 +112,19 @@ func (s *DeviceLoanService) ExtendLoan(loanID int, newReturnDate string, actorID
 	return nil
 }
 
+func (s *DeviceLoanService) UpdateReturn(id int, actualReturnDate *time.Time, notes string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	err := s.loanRepo.UpdateReturn(id, actualReturnDate, notes)
+	if err != nil {
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
+			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
+		map[string]any{"id": id, "actual_return_date": actualReturnDate, "notes": notes},
+		nil, ipAddress, userAgent)
+	return nil
+}
+
 func (s *DeviceLoanService) GetExtensionsByLoanID(loanID int) ([]models.LoanExtension, error) {
 	return s.extensionRepo.ListByLoanID(loanID)
 }

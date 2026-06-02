@@ -166,22 +166,14 @@ func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	var returnDate *time.Time
-	if req.ReturnDate != "" {
-		if t, err := time.Parse("2006-01-02", req.ReturnDate); err == nil {
-			returnDate = &t
+	var actualReturnDate *time.Time
+	if req.Status == "returned" && req.ActualReturnDate != "" {
+		if t, err := time.Parse("2006-01-02", req.ActualReturnDate); err == nil {
+			actualReturnDate = &t
 		}
 	}
 
-	if err := h.deviceLoanService.UpdateLoan(id, services.UpdateLoanInput{
-		BorrowerName:     req.BorrowerName,
-		BorrowerType:     req.BorrowerType,
-		LoanDate:         req.LoanDate,
-		ReturnDate:       returnDate,
-		ActualReturnDate: req.ActualReturnDate,
-		Purpose:          req.Purpose,
-		Notes:            req.Notes,
-	}, uid, u, r, ip, ua); err != nil {
+	if err := h.deviceLoanService.UpdateReturn(id, actualReturnDate, req.Notes, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, "Gagal mengupdate peminjaman")
 		return
 	}
