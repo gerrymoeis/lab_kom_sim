@@ -117,7 +117,11 @@ var PCLayoutManager = (function() {
 
   function renderActions() {
     var container = document.getElementById('layoutActions');
-    container.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary" onclick="PCLayoutManager.addRow()"><i class="bi bi-plus-lg"></i> Tambah Baris</button>';
+    var html = '<button type="button" class="btn btn-sm btn-outline-primary" onclick="PCLayoutManager.addRow()"><i class="bi bi-plus-lg"></i> Tambah Baris</button>';
+    if (selectedSlot && selectedSlot.type === 'grid') {
+      html += ' <button type="button" class="btn btn-sm btn-outline-secondary" onclick="PCLayoutManager.moveSelectedToCadangan()"><i class="bi bi-box-arrow-in-down"></i> Pindahkan ke Cadangan</button>';
+    }
+    container.innerHTML = html;
   }
 
   function updateMessage() {
@@ -283,12 +287,22 @@ var PCLayoutManager = (function() {
     render();
   }
 
+  function moveSelectedToCadangan() {
+    if (!selectedSlot || selectedSlot.type !== 'grid') return;
+    var label = selectedSlot.label;
+    if (!confirm('Pindahkan ' + label + ' ke cadangan?')) return;
+    selectedSlot = null;
+    render();
+    executeOperation('move-to-cadangan', { label: label });
+  }
+
   return {
     openPicker: openPicker,
     openManager: openManager,
     onSlotClick: onSlotClick,
     onCadanganClick: onCadanganClick,
     addRow: addRow,
+    moveSelectedToCadangan: moveSelectedToCadangan,
     init: init
   };
 })();
