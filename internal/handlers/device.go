@@ -235,6 +235,12 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
+	// Validate new device type fields before creating anything
+	if req.NewTypeName != "" && req.NewTypeUsageType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tipe penggunaan harus diisi untuk varian baru"})
+		return
+	}
+
 	// Resolve category: create inline if needed
 	catID := req.CategoryID
 	if catID == 0 && req.NewCategoryName != "" {
