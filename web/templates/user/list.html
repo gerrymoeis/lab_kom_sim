@@ -73,7 +73,7 @@
                         {{ range $i, $u := .users }}
                         <tr>
                             <td>{{ add $i $.startRow }}</td>
-                            <td><strong><a href="/admin/users/{{ .Username }}" class="text-decoration-none">{{ .Username }}</a></strong></td>
+                            <td><strong>{{ if canAccessUser $.username .Username }}<a href="/admin/users/{{ .Username }}" class="text-decoration-none">{{ end }}{{ .Username }}{{ if canAccessUser $.username .Username }}</a>{{ end }}</strong></td>
                             <td>
                                 {{ .FullName }}
                                 {{ if or (eq .Username "admin") (eq .Username "rekan") }}
@@ -87,6 +87,7 @@
                             </td>
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td class="text-nowrap">
+                                {{ if canAccessUser $.username .Username }}
                                 {{ if and (ne .Username "admin") (ne .Username "rekan") }}
                                 <a href="/admin/users/{{ .Username }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
@@ -96,6 +97,9 @@
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
+                                {{ else }}
+                                -
+                                {{ end }}
                                 {{ else }}
                                 -
                                 {{ end }}

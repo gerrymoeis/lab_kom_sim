@@ -130,6 +130,9 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 			return t
 		},
 		"tzCode": func() string { return timeutil.Code() },
+		"canAccessUser": func(actorUsername, targetUsername string) bool {
+			return handlers.CanAccessProfile(actorUsername, targetUsername)
+		},
 	})
 	err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil { return err }
