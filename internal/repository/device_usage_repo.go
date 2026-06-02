@@ -164,7 +164,7 @@ func (r *DeviceUsageRepository) GetConsumableDevices() ([]models.Device, error) 
 		WHERE dt.usage_type = 'consumable'
 		AND d.condition = 'normal'
 		AND (d.id NOT IN (SELECT device_id FROM device_usages) OR
-			d.id IN (SELECT device_id FROM device_usages WHERE is_available = 'yes'))
+			(SELECT is_available FROM device_usages WHERE device_id = d.id ORDER BY usage_date DESC, id DESC LIMIT 1) = 'yes')
 		ORDER BY d.asset_code`)
 	if err != nil {
 		return nil, err
