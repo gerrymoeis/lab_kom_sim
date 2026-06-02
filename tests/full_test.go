@@ -226,15 +226,22 @@ func TestFullIntegration(t *testing.T) {
 	db.QueryRow("SELECT id FROM devices WHERE serial_number='SN-TEST001'").Scan(&devID)
 	assert(devID > 0, "Device ID=%d", devID)
 
-	// Query asset_code for device (no slug column, use LOWER(asset_code) as slug)
-	var devAssetCode string
-	db.QueryRow("SELECT asset_code FROM devices WHERE id=?", devID).Scan(&devAssetCode)
+	// Query device info for nested URL
+	var devAssetCode, devCatPrefix, devTypePrefix string
+	db.QueryRow(`SELECT d.asset_code, COALESCE(c.default_prefix,''), COALESCE(dt.asset_code_prefix,'')
+		FROM devices d
+		JOIN device_types dt ON dt.id = d.device_type_id
+		JOIN categories c ON c.id = dt.category_id
+		WHERE d.id=?`, devID).Scan(&devAssetCode, &devCatPrefix, &devTypePrefix)
 	devSlug := strings.ToLower(devAssetCode)
+	devCatSlug := strings.ToLower(devCatPrefix)
+	devTypeSlug := strings.ToLower(devTypePrefix)
 	assert(devSlug != "", "Device slug=%s", devSlug)
 
-	// Device detail
-	resp, _ = get("/devices/" + devSlug)
-	assert(resp.StatusCode == 200, "/devices/%s: %d", devSlug, resp.StatusCode)
+	// Device detail (nested URL)
+	nestedURL := "/devices/" + devCatSlug + "/" + devTypeSlug + "/" + devSlug
+	resp, _ = get(nestedURL)
+	assert(resp.StatusCode == 200, "%s: %d", nestedURL, resp.StatusCode)
 	closeResp(resp)
 
 	// Device edit page

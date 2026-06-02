@@ -1,21 +1,28 @@
 {{ template "layout/base.html" . }}
 
-<div class="container-fluid mt-4">
+<div class="container mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="/devices">Perangkat</a></li>
+            <li class="breadcrumb-item"><a href="/categories/{{ .device.CategoryPrefix | lower }}">{{ .device.CategoryPrefix }}</a></li>
+            <li class="breadcrumb-item"><a href="/device-types/{{ .device.DeviceTypePrefix | lower }}">{{ .device.DeviceTypeName }}</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ .device.AssetCode }}</li>
         </ol>
     </nav>
 
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informasi Perangkat</h5>
-                </div>
-                <div class="card-body">
-                    <table class="table table-borderless">
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-box"></i> {{ .device.AssetCode }}</h5>
+            <div>
+                <a href="/devices/{{ .device.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <table class="table table-borderless mb-0">
                         <tr>
                             <th style="width:200px;">Asset Code</th>
                             <td><code>{{ .device.AssetCode }}</code></td>
@@ -26,7 +33,11 @@
                         </tr>
                         <tr>
                             <th>Kategori</th>
-                            <td><span class="badge bg-secondary">{{ .device.CategoryName }}</span></td>
+                            <td><a href="/categories/{{ .device.CategoryPrefix | lower }}">{{ .device.CategoryName }}</a></td>
+                        </tr>
+                        <tr>
+                            <th>Tipe Perangkat</th>
+                            <td><a href="/device-types/{{ .device.DeviceTypePrefix | lower }}">{{ .device.DeviceTypeName }}</a></td>
                         </tr>
                         <tr>
                             <th>Tipe Penggunaan</th>
@@ -62,59 +73,55 @@
                         </tr>
                     </table>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            {{ if .device.DeviceTypePhoto }}
-            <div class="card shadow-sm mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-image"></i> Foto</h5>
-                </div>
-                <div class="card-body text-center">
-                    <img src="/uploads/device_types/{{ .device.DeviceTypePhoto }}" class="img-fluid rounded" alt="Foto perangkat">
-                </div>
-            </div>
-            {{ end }}
-
-            <div class="card shadow-sm mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Status</h5>
-                </div>
-                <div class="card-body">
-                    {{ if eq .device.Condition "normal" }}
-                    <div class="alert alert-success mb-0">
-                        <i class="bi bi-check-circle"></i> Perangkat dalam kondisi normal
-                    </div>
-                    {{ else if eq .device.Condition "rusak" }}
-                    <div class="alert alert-danger mb-0">
-                        <i class="bi bi-x-circle"></i> Perangkat rusak
-                    </div>
-                    {{ else }}
-                    <div class="alert alert-warning mb-0">
-                        <i class="bi bi-exclamation-triangle"></i> Perangkat dalam peringatan
+                <div class="col-md-4">
+                    {{ if .device.DeviceTypePhoto }}
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-image"></i> Foto</h6>
+                        </div>
+                        <div class="card-body text-center">
+                            <img src="/uploads/device_types/{{ .device.DeviceTypePhoto }}" class="img-fluid rounded" alt="Foto perangkat">
+                        </div>
                     </div>
                     {{ end }}
-                </div>
-            </div>
 
-            <div class="d-flex flex-column gap-2">
-                <a href="/devices/{{ .device.AssetCode | lower }}/edit" class="btn btn-warning">
-                    <i class="bi bi-pencil"></i> Edit Perangkat
-                </a>
-                {{ if eq .device.UsageType "loanable" }}
-                <a href="/device-loans/create?device_id={{ .device.ID }}" class="btn btn-primary">
-                    <i class="bi bi-journal-arrow-up"></i> Pinjamkan Perangkat
-                </a>
-                {{ else if eq .device.UsageType "consumable" }}
-                <a href="/device-usages/create?device_id={{ .device.ID }}" class="btn btn-info">
-                    <i class="bi bi-clipboard-data"></i> Catat Pemakaian
-                </a>
-                {{ else if eq .device.UsageType "installable" }}
-                <a href="/installations/create?device_id={{ .device.ID }}" class="btn btn-success">
-                    <i class="bi bi-pc-display"></i> Catat Instalasi
-                </a>
-                {{ end }}
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-lightning"></i> Status</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ if eq .device.Condition "normal" }}
+                            <div class="alert alert-success mb-0">
+                                <i class="bi bi-check-circle"></i> Perangkat dalam kondisi normal
+                            </div>
+                            {{ else if eq .device.Condition "rusak" }}
+                            <div class="alert alert-danger mb-0">
+                                <i class="bi bi-x-circle"></i> Perangkat rusak
+                            </div>
+                            {{ else }}
+                            <div class="alert alert-warning mb-0">
+                                <i class="bi bi-exclamation-triangle"></i> Perangkat dalam peringatan
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column gap-2">
+                        {{ if eq .device.UsageType "loanable" }}
+                        <a href="/device-loans/create?device_id={{ .device.ID }}" class="btn btn-primary">
+                            <i class="bi bi-journal-arrow-up"></i> Pinjamkan Perangkat
+                        </a>
+                        {{ else if eq .device.UsageType "consumable" }}
+                        <a href="/device-usages/create?device_id={{ .device.ID }}" class="btn btn-info">
+                            <i class="bi bi-clipboard-data"></i> Catat Pemakaian
+                        </a>
+                        {{ else if eq .device.UsageType "installable" }}
+                        <a href="/installations/create?device_id={{ .device.ID }}" class="btn btn-success">
+                            <i class="bi bi-pc-display"></i> Catat Instalasi
+                        </a>
+                        {{ end }}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
