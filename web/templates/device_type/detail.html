@@ -105,6 +105,16 @@
                                 <a href="/devices/{{ $.deviceType.CategoryPrefix | lower }}/{{ $.deviceType.AssetCodePrefix | lower }}/{{ $d.AssetCode }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                {{ if eq $.role "admin" }}
+                                <a href="/devices/{{ $d.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {{ end }}
                             </td>
                         </tr>
                         {{ end }}
