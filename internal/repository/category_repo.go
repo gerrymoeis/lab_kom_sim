@@ -63,6 +63,28 @@ func (r *CategoryRepository) GetByPrefixSlug(slug string) (*models.Category, err
 	return &c, nil
 }
 
+func (r *CategoryRepository) ListByUsageType(usageType string) ([]models.Category, error) {
+	rows, err := r.db.Query(`SELECT DISTINCT c.id, c.name, c.default_prefix, c.created_at
+		FROM categories c
+		JOIN device_types dt ON dt.category_id = c.id
+		WHERE dt.usage_type = ?
+		ORDER BY c.name`, usageType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var cats []models.Category
+	for rows.Next() {
+		var c models.Category
+		if err := rows.Scan(&c.ID, &c.Name, &c.DefaultPrefix, &c.CreatedAt); err != nil {
+			return nil, err
+		}
+		cats = append(cats, c)
+	}
+	return cats, nil
+}
+
 func (r *CategoryRepository) Create(name, prefix string) (sql.Result, error) {
 	return r.db.Exec("INSERT INTO categories (name, default_prefix) VALUES (?, ?)", name, prefix)
 }

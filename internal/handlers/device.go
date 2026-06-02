@@ -72,7 +72,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"username": username, "role": role,
 			"loans": loans,
 			"filters":    gin.H{"search": search, "status": status, "category": category, "sort_by": sortBy, "sort_order": sortOrder},
-			"categories": h.fetchCategories(),
+			"categories": h.fetchCategories("loanable"),
 			"startRow":   (page-1)*pageSize + 1,
 			"page": page, "totalPages": totalPages, "totalItems": total,
 			"query": query,
@@ -104,7 +104,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"username": username, "role": role,
 			"usages": usages,
 			"filters":    gin.H{"search": search, "is_available": isAvailable, "category": category, "sort_by": sortBy, "sort_order": sortOrder},
-			"categories": h.fetchCategories(),
+			"categories": h.fetchCategories("consumable"),
 			"startRow":   (page-1)*pageSize + 1,
 			"page": page, "totalPages": totalPages, "totalItems": total,
 			"query": query,
@@ -136,7 +136,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"username": username, "role": role,
 			"installations": installations,
 			"filters":       gin.H{"search": search, "status": status, "category": category, "sort_by": sortBy, "sort_order": sortOrder},
-			"categories":    h.fetchCategories(),
+			"categories":    h.fetchCategories("installable"),
 			"startRow":      (page-1)*pageSize + 1,
 			"page": page, "totalPages": totalPages, "totalItems": total,
 			"query": query,
@@ -184,13 +184,19 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"startRow":   (page-1)*pageSize + 1,
 			"page": page, "totalPages": totalPages, "totalItems": total,
 			"query":   query,
-			"categories": h.fetchCategories(),
+			"categories": h.fetchCategories(""),
 		})
 	}
 }
 
-func (h *Handler) fetchCategories() []models.Category {
-	cats, err := h.categoryService.List()
+func (h *Handler) fetchCategories(usageType string) []models.Category {
+	var cats []models.Category
+	var err error
+	if usageType == "" {
+		cats, err = h.categoryService.List()
+	} else {
+		cats, err = h.categoryService.ListByUsageType(usageType)
+	}
 	if err != nil {
 		return nil
 	}
@@ -206,7 +212,7 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 		"title": "Tambah Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"deviceTypes": h.fetchDeviceTypes(),
-		"categories":  h.fetchCategories(),
+		"categories":  h.fetchCategories(""),
 	})
 }
 
@@ -471,7 +477,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 		"title": "Edit Tipe Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"deviceType":  dt,
-		"categories":  h.fetchCategories(),
+		"categories":  h.fetchCategories(""),
 		"deviceTypes": h.fetchDeviceTypes(),
 	})
 }
