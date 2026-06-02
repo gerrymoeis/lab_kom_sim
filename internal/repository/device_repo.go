@@ -409,45 +409,6 @@ func (r *DeviceRepository) ExportAll() ([]DeviceExportRow, error) {
 	return devices, nil
 }
 
-type DeviceTypeExportRow struct {
-	models.DeviceType
-}
-
-func (r *DeviceRepository) ExportDeviceTypes() ([]DeviceTypeExportRow, error) {
-	rows, err := r.db.Query(`SELECT dt.id, dt.category_id, c.name, dt.name,
-		COALESCE(dt.brand,''), COALESCE(dt.model,''), dt.asset_code_prefix, dt.usage_type,
-		COALESCE(dt.default_location,''), COALESCE(dt.photo,'')
-		FROM device_types dt JOIN categories c ON c.id = dt.category_id ORDER BY c.name, dt.name`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var dts []DeviceTypeExportRow
-	for rows.Next() {
-		var dt DeviceTypeExportRow
-		if err := rows.Scan(&dt.ID, &dt.CategoryID, &dt.CategoryName, &dt.Name,
-			&dt.Brand, &dt.Model, &dt.AssetCodePrefix, &dt.UsageType,
-			&dt.DefaultLocation, &dt.Photo); err != nil {
-			return nil, err
-		}
-		dts = append(dts, dt)
-	}
-	return dts, nil
-}
-
-func (r *DeviceRepository) ExportLoans(pageSize int) ([]DeviceLoanRow, error) {
-	loanRepo := &DeviceLoanRepository{db: r.db, search: r.search}
-	loans, _, err := loanRepo.ListPaginated(DeviceLoanFilters{}, 1, pageSize)
-	return loans, err
-}
-
-func (r *DeviceRepository) ExportUsages(pageSize int) ([]DeviceUsageRow, error) {
-	usageRepo := &DeviceUsageRepository{db: r.db, search: r.search}
-	usages, _, err := usageRepo.ListPaginated(DeviceUsageFilters{}, 1, pageSize)
-	return usages, err
-}
-
 func (r *DeviceRepository) CountByDeviceTypeID(deviceTypeID int) (int, error) {
 	var count int
 	err := r.db.QueryRow("SELECT COUNT(*) FROM devices WHERE device_type_id = ?", deviceTypeID).Scan(&count)

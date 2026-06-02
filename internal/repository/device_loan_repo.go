@@ -133,6 +133,10 @@ func (r *DeviceLoanRepository) buildLoanClause(filters DeviceLoanFilters) (strin
 	return clause, args
 }
 
+func (r *DeviceLoanRepository) ExportAll() ([]DeviceLoanRow, error) {
+	return r.listWithQuery(DeviceLoanFilters{}, "")
+}
+
 func (r *DeviceLoanRepository) ListByDeviceID(deviceID int) ([]DeviceLoanRow, error) {
 	return r.listWithQuery(DeviceLoanFilters{DeviceID: strconv.Itoa(deviceID)}, "")
 }

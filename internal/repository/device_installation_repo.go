@@ -117,6 +117,35 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 	return installations, total, nil
 }
 
+func (r *DeviceInstallationRepository) ExportAll() ([]InstallationRow, error) {
+	rows, err := r.db.Query(`SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,
+		c.default_prefix, dt.asset_code_prefix,
+		di.location_installed, di.installation_start_date, di.installation_finish_date,
+		COALESCE(di.photo,''), COALESCE(di.notes,''), di.created_at, di.updated_at
+		FROM device_installations di
+		JOIN devices d ON d.id = di.device_id
+		JOIN device_types dt ON dt.id = d.device_type_id
+		JOIN categories c ON c.id = dt.category_id
+		ORDER BY di.installation_start_date DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var installations []InstallationRow
+	for rows.Next() {
+		var ir InstallationRow
+		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceTypeName, &ir.CategoryName,
+			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
+			&ir.LocationInstalled, &ir.InstallationStartDate, &ir.InstallationFinishDate,
+			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt); err != nil {
+			return nil, err
+		}
+		installations = append(installations, ir)
+	}
+	return installations, nil
+}
+
 func (r *DeviceInstallationRepository) GetByID(id int) (*InstallationRow, error) {
 	var ir InstallationRow
 	err := r.db.QueryRow(`SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,

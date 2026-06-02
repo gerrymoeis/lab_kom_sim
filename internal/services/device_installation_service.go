@@ -53,6 +53,10 @@ func (s *DeviceInstallationService) GetDistinctLocations() ([]string, error) {
 	return s.repo.GetDistinctLocations()
 }
 
+func (s *DeviceInstallationService) ExportAll() ([]repository.InstallationRow, error) {
+	return s.repo.ExportAll()
+}
+
 func parseNullableDate(s string) *time.Time {
 	if s == "" {
 		return nil
