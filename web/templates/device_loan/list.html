@@ -42,7 +42,7 @@
                     <select class="form-select" id="sort_by" name="sort_by">
                         <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
                         <option value="borrower_name" {{ if eq .filters.sort_by "borrower_name" }}selected{{ end }}>Peminjam</option>
-                        <option value="return_date" {{ if eq .filters.sort_by "return_date" }}selected{{ end }}>Tgl Kembali</option>
+                        <option value="return_date" {{ if eq .filters.sort_by "return_date" }}selected{{ end }}>Deadline Kembali</option>
                     </select>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
