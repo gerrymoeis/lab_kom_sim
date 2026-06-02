@@ -190,7 +190,8 @@
                             <th>Pengguna</th>
                             <th>Tgl Pakai</th>
                             <th>Status</th>
-                            <th>Keterangan</th>
+                            <th>Keperluan</th>
+                            <th>Catatan</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -198,9 +199,10 @@
                         <tr>
                             <td>{{ add $i 1 }}</td>
                             <td>{{ $usage.UserName }}</td>
-                            <td>{{ $usage.UsageDate.Format "02/01/2006" }}</td>
-                            <td>{{ if eq $usage.IsAvailable "yes" }}Tersedia{{ else }}Tidak Tersedia{{ end }}</td>
-                            <td>{{ $usage.Purpose }}{{ if $usage.Notes }} — {{ $usage.Notes }}{{ end }}</td>
+                            <td>{{ (localTime $usage.UsageDate).Format "02/01/2006" }}</td>
+                            <td>{{ if eq $usage.IsAvailable "yes" }}<span class="badge bg-success">Ada</span>{{ else }}<span class="badge bg-danger">Habis</span>{{ end }}</td>
+                            <td>{{ if $usage.Purpose }}{{ $usage.Purpose }}{{ else }}-{{ end }}</td>
+                            <td>{{ if $usage.Notes }}{{ $usage.Notes }}{{ else }}-{{ end }}</td>
                         </tr>
                         {{ end }}
                     </tbody>
