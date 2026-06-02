@@ -244,8 +244,13 @@ type CategoryGroup struct {
 	Types          []DeviceTypeGroup
 }
 
+type UsageTypeGroup struct {
+	UsageType  string
+	Categories []CategoryGroup
+}
+
 type DeviceGroupedData struct {
-	Categories    []CategoryGroup
+	UsageGroups   []UsageTypeGroup
 	ActiveLoanIDs map[int]bool
 	DepletedIDs   map[int]bool
 }
