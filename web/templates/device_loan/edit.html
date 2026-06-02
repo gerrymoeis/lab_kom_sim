@@ -5,8 +5,8 @@
                     <div class="alert alert-info">
                         <strong>Perangkat:</strong> {{ .assetCode }}<br>
                         <strong>Peminjam:</strong> {{ .loan.BorrowerName }} ({{ .loan.BorrowerType }})<br>
-                        <strong>Tanggal Pinjam:</strong> {{ (localTime .loan.LoanDate).Format "02/01/2006" }} {{ tzCode }}<br>
-                        <strong>Target Kembali:</strong> {{ (localTime .loan.ReturnDate).Format "02/01/2006" }}<br>
+                        <strong>Tgl Pinjam:</strong> {{ (localTime .loan.LoanDate).Format "02/01/2006" }} {{ tzCode }}<br>
+                        <strong>Deadline Kembali:</strong> {{ (localTime .loan.ReturnDate).Format "02/01/2006" }}<br>
                     </div>
 
                     {{ if eq .loan.ComputedStatus "overdue" }}
@@ -58,16 +58,6 @@
                         </div>
                     </form>
 
-                    {{ if .loan.ExtensionCount }}
-                    <div class="card mt-3">
-                        <div class="card-body">
-                            <details>
-                                <summary class="text-muted">Riwayat Perpanjangan ({{ .loan.ExtensionCount }}x)</summary>
-                                <p class="text-muted mt-2 small">Detail perpanjangan dapat dilihat di halaman detail.</p>
-                            </details>
-                        </div>
-                    </div>
-                    {{ end }}
 {{ template "layout/card_close.html" . }}
 
     <script>
