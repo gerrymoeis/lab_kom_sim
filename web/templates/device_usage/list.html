@@ -63,6 +63,7 @@
                             <th>Tanggal Pemakaian</th>
                             <th>Status Stok</th>
                             <th>Keperluan</th>
+                            <th>Catatan</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -83,6 +84,7 @@
                                 {{ end }}
                             </td>
                             <td>{{ if $u.Purpose }}{{ $u.Purpose }}{{ else }}-{{ end }}</td>
+                            <td>{{ if $u.Notes }}{{ $u.Notes }}{{ else }}-{{ end }}</td>
                             <td class="text-nowrap">
                                 <a href="/device-usages/{{ $u.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
@@ -101,7 +103,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="9" class="text-center text-muted">Belum ada data pemakaian</td>
+                            <td colspan="10" class="text-center text-muted">Belum ada data pemakaian</td>
                         </tr>
                         {{ end }}
                     </tbody>
