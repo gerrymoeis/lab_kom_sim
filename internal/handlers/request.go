@@ -134,12 +134,8 @@ type CreateDeviceLoanRequest struct {
 }
 
 type EditDeviceLoanRequest struct {
-	BorrowerName     string `form:"borrower_name" binding:"required"`
-	BorrowerType     string `form:"borrower_type"`
-	LoanDate         string `form:"loan_date" binding:"required"`
-	ReturnDate       string `form:"return_date"`
+	Status           string `form:"status" binding:"required"`
 	ActualReturnDate string `form:"actual_return_date"`
-	Purpose          string `form:"purpose"`
 	Notes            string `form:"notes"`
 }
 
