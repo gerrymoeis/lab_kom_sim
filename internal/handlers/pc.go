@@ -260,7 +260,11 @@ func (h *Handler) PCExport(c *gin.Context) {
 	if !ok { return }
 	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data"); return }
 
-	pcs, _ := h.pcService.ExportAll()
+	pcs, err := h.pcService.ExportAll()
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data PC")
+		return
+	}
 	svc := services.NewExcelService()
 	data := make([][]any, 0, len(pcs))
 	for _, pc := range pcs {
@@ -269,7 +273,7 @@ func (h *Handler) PCExport(c *gin.Context) {
 		ld := "-"; if pc.LastChecked != nil { ld = pc.LastChecked.Format("2006-01-02") }
 		data = append(data, []any{pc.Label, pos, pc.Status, pc.Placement, pc.PCType, pc.SerialNumber, pc.BrandModel, pc.Processor, pc.RAM, pc.Storage, pc.OperatingSystem, pc.Accessories, pd, ld, pc.Notes})
 	}
-	f, _ := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
+	f, err := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
 		{
 			SheetName: "PC",
 			Headers:   []string{"No PC", "Posisi", "Status", "Penempatan", "Jenis PC", "Serial Number", "Brand/Model", "Processor", "RAM", "Storage", "OS", "Accessories", "Tgl Beli", "Tgl Cek", "Catatan"},
@@ -277,12 +281,18 @@ func (h *Handler) PCExport(c *gin.Context) {
 			ColumnWidths: map[string]float64{"A": 8, "B": 10, "C": 12, "D": 14, "E": 18, "F": 20, "G": 32, "H": 18, "I": 12, "J": 14, "K": 14, "L": 36, "M": 14, "N": 16, "O": 28},
 		},
 	})
+	if err != nil {
+		h.errHTML(c, "Gagal membuat file excel")
+		return
+	}
 	defer f.Close()
 
 	fn := svc.GenerateFilename("pc_export")
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	c.Header("Content-Disposition", "attachment; filename="+fn)
-	f.Write(c.Writer)
+	if err := f.Write(c.Writer); err != nil {
+		c.Error(err)
+	}
 }
 
 type pcLayoutItem struct {
