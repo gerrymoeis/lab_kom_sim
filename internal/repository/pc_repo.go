@@ -146,9 +146,24 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 func (r *PCRepository) NextLabel(placement string, isMahasiswa bool) string {
 	switch {
 	case placement == "cadangan":
-		var max int
-		r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&max)
-		return fmt.Sprintf("pc-cadangan-%d", max)
+		var next int
+		r.db.QueryRow(`WITH RECURSIVE nums(n) AS (
+			SELECT 1
+			UNION ALL
+			SELECT n+1 FROM nums WHERE n < (
+				SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0)
+				FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'
+			)
+		)
+		SELECT COALESCE(
+			(SELECT n FROM nums WHERE n NOT IN (
+				SELECT CAST(SUBSTR(label, 13) AS INTEGER)
+				FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'
+			) LIMIT 1),
+			(SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0) + 1
+			 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*')
+		)`).Scan(&next)
+		return fmt.Sprintf("pc-cadangan-%d", next)
 	case isMahasiswa:
 		var max int
 		r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 4) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-[0-9]*'`).Scan(&max)
@@ -468,18 +483,14 @@ func (r *PCRepository) ReplaceWithSpare(target, spare string) error {
 		return err
 	}
 
-	var next int
-	tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&next)
-	newLabel := fmt.Sprintf("pc-cadangan-%d", next)
-
-	// 3-step temp label swap
+	// Full swap: spare takes target's label, target takes spare's label
 	tx.Exec(`UPDATE pcs SET label = '__SWAP_' || ? WHERE id = ?`, tgtID, tgtID)
 	tx.Exec(`UPDATE pcs SET label = ? WHERE id = ?`, target, sprID)
-	tx.Exec(`UPDATE pcs SET label = ? WHERE id = ?`, newLabel, tgtID)
+	tx.Exec(`UPDATE pcs SET label = ? WHERE id = ?`, spare, tgtID)
 
 	// Spare takes target's position as dipakai
 	tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, tgtRow, tgtCol, sprID)
-	// Target becomes cadangan
+	// Target becomes cadangan with spare's old label
 	tx.Exec(`UPDATE pcs SET "row"=0, "column"=0, placement='cadangan', updated_at=CURRENT_TIMESTAMP WHERE id=?`, tgtID)
 
 	return tx.Commit()
@@ -508,12 +519,8 @@ func (r *PCRepository) MoveRowToCadangan(row int) error {
 		return nil
 	}
 
-	var next int
-	tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'`).Scan(&next)
-
 	for _, id := range ids {
-		label := fmt.Sprintf("pc-cadangan-%d", next)
-		next++
+		label := r.NextLabel("cadangan", false)
 		tx.Exec(`UPDATE pcs SET label=?, "row"=0, "column"=0, placement='cadangan', updated_at=CURRENT_TIMESTAMP WHERE id=?`, label, id)
 	}
 
@@ -570,6 +577,27 @@ func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
 
 	_ = r.SeedRequiredSoftware(id)
 	return nil
+}
+
+func (r *PCRepository) MoveToCadangan(label string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var id int
+	if err := tx.QueryRow(`SELECT id FROM pcs WHERE label=?`, label).Scan(&id); err != nil {
+		return err
+	}
+
+	newLabel := r.NextLabel("cadangan", false)
+
+	if _, err := tx.Exec(`UPDATE pcs SET label=?, "row"=0, "column"=0, placement='cadangan', updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, id); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *PCRepository) GetDistinctOS() ([]string, error) {
