@@ -19,8 +19,11 @@ func NewDeviceInstallationRepository(db *database.DB) *DeviceInstallationReposit
 }
 
 type InstallationFilters struct {
-	Search string
-	SortBy string
+	Search    string
+	Status    string
+	Category  string
+	SortBy    string
+	SortOrder string
 }
 
 func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters, page, pageSize int) ([]InstallationRow, int, error) {
@@ -34,26 +37,53 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 	where := ""
 	var args []any
 	if filters.Search != "" {
-		where, args = r.search.Where("device_installation", filters.Search)
+		sql, sArgs := r.search.Where("device_installation", filters.Search)
+		where += sql
+		args = append(args, sArgs...)
+	}
+	if filters.Status != "" {
+		switch filters.Status {
+		case "selesai":
+			where += ` AND di.installation_finish_date IS NOT NULL`
+		case "berlangsung":
+			where += ` AND di.installation_start_date IS NOT NULL AND di.installation_finish_date IS NULL`
+		case "belum":
+			where += ` AND di.installation_start_date IS NULL`
+		}
+	}
+	if filters.Category != "" {
+		where += ` AND c.name = ?`
+		args = append(args, filters.Category)
 	}
 
 	var total int
 	r.db.QueryRow(`SELECT COUNT(*) FROM device_installations di
 		JOIN devices d ON d.id = di.device_id
-		JOIN device_types dt ON dt.id = d.device_type_id`+where, args...).Scan(&total)
+		JOIN device_types dt ON dt.id = d.device_type_id
+		JOIN categories c ON c.id = dt.category_id WHERE 1=1`+where, args...).Scan(&total)
 
 	orderBy := "di.installation_start_date"
-	if filters.SortBy == "location" {
+	switch filters.SortBy {
+	case "location":
 		orderBy = "di.location_installed"
-	} else if filters.SortBy == "asset_code" {
+	case "asset_code":
 		orderBy = "d.asset_code"
-	} else if filters.SortBy == "start_date" {
+	case "start_date":
 		orderBy = "di.installation_start_date"
+	case "category":
+		orderBy = "c.name"
+	case "status":
+		orderBy = "CASE WHEN di.installation_finish_date IS NOT NULL THEN 2 WHEN di.installation_start_date IS NOT NULL THEN 1 ELSE 0 END"
 	}
 
 	orderPrefix := ""
 	if orderBy == "di.installation_start_date" {
 		orderPrefix = "CASE WHEN di.installation_start_date IS NULL THEN 0 ELSE 1 END, "
+	}
+
+	orderDir := "DESC"
+	if filters.SortOrder == "ASC" {
+		orderDir = "ASC"
 	}
 
 	query := `SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,
@@ -64,7 +94,7 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 		JOIN devices d ON d.id = di.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1` + where +
-		` ORDER BY ` + orderPrefix + orderBy + ` DESC LIMIT ? OFFSET ?`
+		` ORDER BY ` + orderPrefix + orderBy + ` ` + orderDir + ` LIMIT ? OFFSET ?`
 
 	allArgs := append(args, pageSize, (page-1)*pageSize)
 	rows, err := r.db.Query(query, allArgs...)
