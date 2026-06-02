@@ -118,9 +118,15 @@
                         </a>
                         {{ end }}
                         {{ else if eq .device.UsageType "consumable" }}
+                        {{ if .isStockEmpty }}
+                        <button type="button" class="btn btn-secondary" disabled>
+                            <i class="bi bi-x-circle"></i> Stok Sudah Habis
+                        </button>
+                        {{ else }}
                         <a href="/device-usages/create?device_id={{ .device.ID }}" class="btn btn-info">
                             <i class="bi bi-clipboard-data"></i> Catat Pemakaian
                         </a>
+                        {{ end }}
                         {{ else if eq .device.UsageType "installable" }}
                         <a href="/installations/create?device_id={{ .device.ID }}" class="btn btn-success">
                             <i class="bi bi-pc-display"></i> Catat Instalasi

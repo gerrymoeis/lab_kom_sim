@@ -332,12 +332,16 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 	var loanHistory []repository.DeviceLoanRow
 	var usageHistory []repository.DeviceUsageRow
 	var installationHistory *models.DeviceInstallation
+	isStockEmpty := false
 
 	switch d.UsageType {
 	case "loanable":
 		loanHistory, _ = h.deviceLoanService.ListByDeviceID(d.ID)
 	case "consumable":
 		usageHistory, _ = h.deviceUsageService.ListByDeviceID(d.ID)
+		if len(usageHistory) > 0 && usageHistory[0].IsAvailable == "no" {
+			isStockEmpty = true
+		}
 	case "installable":
 		installationHistory, _ = h.deviceInstallationService.GetByDeviceID(d.ID)
 	}
@@ -347,6 +351,7 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 		"username": username, "role": role,
 		"device":              d,
 		"isActiveLoan":        isActiveLoan,
+		"isStockEmpty":        isStockEmpty,
 		"loanHistory":         loanHistory,
 		"usageHistory":        usageHistory,
 		"installationHistory": installationHistory,
