@@ -33,11 +33,11 @@
                             <td><strong>{{ .loan.BorrowerName }}</strong><br><small class="text-muted">{{ .loan.BorrowerType }}</small></td>
                         </tr>
                         <tr>
-                            <th>Tanggal Pinjam</th>
+                            <th>Tgl Pinjam</th>
                             <td>{{ (localTime .loan.LoanDate).Format "02/01/2006" }}</td>
                         </tr>
                         <tr>
-                            <th>Tgl Kembali</th>
+                            <th>Deadline Kembali</th>
                             <td>{{ (localTime .loan.ReturnDate).Format "02/01/2006" }}</td>
                         </tr>
                         <tr>
