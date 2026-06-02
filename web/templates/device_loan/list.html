@@ -69,7 +69,8 @@
                             <th>Tipe Perangkat</th>
                             <th>Peminjam</th>
                             <th>Tgl Pinjam</th>
-                            <th>Tgl Kembali</th>
+                            <th>Deadline Kembali</th>
+                            <th>Tgl Dikembalikan</th>
                             <th>Status</th>
                             <th>Perpanjangan</th>
                             <th>Aksi</th>
@@ -84,6 +85,7 @@
                             <td><strong>{{ $l.BorrowerName }}</strong><br><small class="text-muted">{{ $l.BorrowerType }}</small></td>
                             <td>{{ (localTime $l.LoanDate).Format "02/01/2006" }}</td>
                             <td>{{ (localTime $l.ReturnDate).Format "02/01/2006" }}</td>
+                            <td>{{ if $l.ActualReturnDate }}{{ (localTime $l.ActualReturnDate).Format "02/01/2006" }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
                             <td>
                                 {{ if eq $l.ComputedStatus "active" }}
                                 <span class="badge bg-success">Masih Dipinjam</span>
@@ -114,7 +116,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="9" class="text-center text-muted">Belum ada data peminjaman</td>
+                            <td colspan="10" class="text-center text-muted">Belum ada data peminjaman</td>
                         </tr>
                         {{ end }}
                     </tbody>
@@ -137,11 +139,11 @@
                 <input type="hidden" id="extendLoanId">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Tanggal Kembali Baru</label>
+                        <label class="form-label">Deadline Baru</label>
                         <input type="date" class="form-control" id="newReturnDate" name="return_date" required>
                     </div>
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Tanggal kembali sebelumnya: <strong id="prevReturnDate"></strong>
+                        <i class="bi bi-info-circle"></i> Deadline sebelumnya: <strong id="prevReturnDate"></strong>
                     </div>
                 </div>
                 <div class="modal-footer">
