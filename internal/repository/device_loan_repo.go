@@ -24,10 +24,12 @@ func (r *DeviceLoanRepository) WithTx(tx *database.Tx) *DeviceLoanRepository {
 }
 
 type DeviceLoanFilters struct {
-	Status   string
-	Search   string
-	SortBy   string
-	DeviceID string
+	Status    string
+	Search    string
+	Category  string
+	SortBy    string
+	SortOrder string
+	DeviceID  string
 }
 
 func (r *DeviceLoanRepository) List(filters DeviceLoanFilters) ([]DeviceLoanRow, error) {
@@ -66,12 +68,23 @@ func (r *DeviceLoanRepository) ListPaginated(filters DeviceLoanFilters, page, pa
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1` + loanClause
 
 	orderBy := "l.loan_date"
-	if filters.SortBy == "borrower_name" {
+	switch filters.SortBy {
+	case "borrower_name":
 		orderBy = "l.borrower_name"
-	} else if filters.SortBy == "return_date" {
+	case "return_date":
 		orderBy = "l.return_date"
+	case "loan_date":
+		orderBy = "l.loan_date"
+	case "status":
+		orderBy = "CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned' WHEN CURRENT_DATE > l.return_date THEN 'overdue' ELSE 'active' END"
+	case "category":
+		orderBy = "c.name"
 	}
-	query += ` ORDER BY ` + orderBy + ` DESC LIMIT ? OFFSET ?`
+	orderDir := "DESC"
+	if filters.SortOrder == "ASC" {
+		orderDir = "ASC"
+	}
+	query += ` ORDER BY ` + orderBy + ` ` + orderDir + ` LIMIT ? OFFSET ?`
 
 	allArgs := append(loanArgs, pageSize, (page-1)*pageSize)
 	rows, err := r.db.Query(query, allArgs...)
@@ -108,6 +121,10 @@ func (r *DeviceLoanRepository) buildLoanClause(filters DeviceLoanFilters) (strin
 			ELSE 'active' END = ?`
 		args = append(args, filters.Status)
 	}
+	if filters.Category != "" {
+		clause += ` AND c.name = ?`
+		args = append(args, filters.Category)
+	}
 	if filters.Search != "" {
 		sClause, sArgs := r.search.Where("device_loan", filters.Search)
 		clause += sClause
@@ -140,10 +157,17 @@ func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix s
 	query += clause
 
 	orderBy := "l.loan_date"
-	if filters.SortBy == "borrower_name" {
+	switch filters.SortBy {
+	case "borrower_name":
 		orderBy = "l.borrower_name"
-	} else if filters.SortBy == "return_date" {
+	case "return_date":
 		orderBy = "l.return_date"
+	case "loan_date":
+		orderBy = "l.loan_date"
+	case "status":
+		orderBy = "CASE WHEN l.actual_return_date IS NOT NULL THEN 'returned' WHEN CURRENT_DATE > l.return_date THEN 'overdue' ELSE 'active' END"
+	case "category":
+		orderBy = "c.name"
 	}
 	query += ` ORDER BY ` + orderBy + ` DESC` + suffix
 
