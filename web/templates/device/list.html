@@ -151,7 +151,7 @@
                                                     <th>Kondisi</th>
                                                     <th>Lokasi</th>
                                                     <th>Status</th>
-                                                    <th>Aksi</th>
+                                                    <th class="text-end" style="width:1%;white-space:nowrap">Aksi</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -175,7 +175,7 @@
                                                         <span class="badge bg-success">Tersedia</span>
                                                         {{ end }}
                                                     </td>
-                                                    <td class="text-nowrap">
+                                                     <td class="text-nowrap text-end">
                                                         <a href="/devices/{{ $d.CategoryPrefix | lower }}/{{ $d.DeviceTypePrefix | lower }}/{{ $d.AssetCode | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
                                                             <i class="bi bi-eye"></i>
                                                         </a>
