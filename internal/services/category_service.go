@@ -18,6 +18,10 @@ func (s *CategoryService) List() ([]models.Category, error) {
 	return s.repo.List()
 }
 
+func (s *CategoryService) ListByUsageType(usageType string) ([]models.Category, error) {
+	return s.repo.ListByUsageType(usageType)
+}
+
 func (s *CategoryService) GetByID(id int) (*models.Category, error) {
 	return s.repo.GetByID(id)
 }
