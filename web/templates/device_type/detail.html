@@ -65,6 +65,14 @@
                     <th>Jumlah Perangkat</th>
                     <td><span class="badge bg-info">{{ .deviceCount }}</span></td>
                 </tr>
+                {{ if .deviceType.Photo }}
+                <tr>
+                    <th>Foto</th>
+                    <td>
+                        <img src="/uploads/device_type/{{ .deviceType.Photo }}" class="img-thumbnail" style="max-width: 300px;" alt="Foto tipe perangkat">
+                    </td>
+                </tr>
+                {{ end }}
             </table>
         </div>
     </div>

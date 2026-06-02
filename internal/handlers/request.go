@@ -84,6 +84,7 @@ type BatchCreateDeviceRequest struct {
 	NewTypeAssetCodePrefix string `json:"new_type_asset_code_prefix"`
 	NewTypeUsageType       string `json:"new_type_usage_type"`
 	NewTypeDefaultLocation string `json:"new_type_default_location"`
+	NewTypePhotoFileRef    string `json:"new_type_photo_file_ref"`
 
 	Devices []BatchDeviceItemRequest `json:"devices" binding:"required,min=1,dive"`
 }
@@ -117,6 +118,7 @@ type EditDeviceTypeRequest struct {
 	AssetCodePrefix string `form:"asset_code_prefix"`
 	UsageType       string `form:"usage_type" binding:"required"`
 	DefaultLocation string `form:"default_location"`
+	PhotoFileRef    string `form:"photo_file_ref"`
 }
 
 type EditCategoryRequest struct {

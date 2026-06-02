@@ -74,11 +74,20 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	}
 
 	now := time.Now()
+	var prefix string
+	switch req.Type {
+	case "serial", "front":
+		prefix = "pc"
+	case "device_type":
+		prefix = "device_type"
+	default:
+		prefix = "temp"
+	}
 	var fileBase string
 	if req.Label != "" {
-		fileBase = fmt.Sprintf("pc_%s_%s_%s", req.Label, req.Type, now.Format("150405_02012006"))
+		fileBase = fmt.Sprintf("%s_%s_%s_%s", prefix, req.Label, req.Type, now.Format("150405_02012006"))
 	} else {
-		fileBase = fmt.Sprintf("temp_%s_%s", req.Type, now.Format("150405_02012006"))
+		fileBase = fmt.Sprintf("%s_%s_%s", prefix, req.Type, now.Format("150405_02012006"))
 	}
 	finalFilename := fileBase + ".jpeg"
 	finalPath := filepath.Join("uploads", "temp", finalFilename)
@@ -113,8 +122,11 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		}
 
 		maxDimension := 1280
-		if req.Type == "front" {
+		switch req.Type {
+		case "front":
 			maxDimension = 1920
+		case "device_type":
+			maxDimension = 1024
 		}
 
 		if err := h.imageService.CompressAndSave(tempOriginal, finalPath, maxDimension); err != nil {
