@@ -55,7 +55,7 @@
                         <h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Foto Tipe Perangkat</h6>
 
                         <div class="mb-4">
-                            <label class="form-label fw-bold mb-3">Foto</label>
+                            <label class="form-label fw-bold mb-3">Foto Tipe Perangkat</label>
 
                             {{ if .deviceType.Photo }}
                             <div class="mb-3">
@@ -64,15 +64,22 @@
                             </div>
                             {{ end }}
 
-                            <p class="text-muted mb-3">{{ if .deviceType.Photo }}Upload foto baru untuk mengganti foto lama{{ else }}Upload foto {{ .deviceType.Name }}{{ end }}. Max 5MB, format JPEG/PNG/HEIC</p>
+                            <p class="text-muted mb-3">{{ if .deviceType.Photo }}Upload foto baru untuk mengganti foto lama{{ else }}Foto perangkat, pastikan terlihat jelas{{ end }}. Max 5MB, format JPEG/PNG/HEIC</p>
 
                             <div class="row g-3">
-                                <div class="col-md-6 d-flex flex-column">
+                                <div class="col-6 d-flex flex-column">
                                     <div class="d-flex align-items-center mb-2">
-                                        <i class="bi bi-upload text-primary me-2"></i>
-                                        <label class="form-label mb-0 small fw-medium">Pilih Foto</label>
+                                        <i class="bi bi-camera-fill text-primary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
                                     </div>
-                                    <input type="file" id="photo_input" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
+                                    <input type="file" id="photo_camera" accept="image/*" capture="environment" class="form-control mt-auto">
+                                </div>
+                                <div class="col-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-images text-secondary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
+                                    </div>
+                                    <input type="file" id="photo_gallery" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
                                 </div>
                             </div>
 
@@ -111,112 +118,72 @@
 
 {{ template "layout/footer.html" . }}
 
+<script>window.ANDROID_MODE={{ .android }};</script>
+{{ if .android }}<script src="/static/vendor/heic-to.js"></script>{{ end }}
 <script>
-window.ANDROID_MODE = {{ .android }};
-</script>
-{{ if .android }}
-<script src="/static/vendor/heic-to.js"></script>
-{{ end }}
-<script>
-(function() {
-    const fileInput = document.getElementById('photo_input');
-    const preview = document.getElementById('photoPreview');
-    const previewImg = document.getElementById('photoPreviewImage');
-    const loading = document.getElementById('photoLoading');
-    const errorEl = document.getElementById('photoError');
-    const fileRefInput = document.getElementById('photo_file_ref');
-
-    fileInput.addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (file.size > 5 * 1024 * 1024) {
-            showError('Ukuran file maksimal 5MB');
-            return;
-        }
-        showLoading();
-
-        try {
-            let processedFile = file;
-            const ext = file.name.split('.').pop().toLowerCase();
-            if ((ext === 'heic' || ext === 'heif') && typeof HeicTo !== 'undefined') {
-                const blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
-                processedFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
-            }
-
-            if (window.ANDROID_MODE) {
-                const img = await createImageBitmap(processedFile);
-                let w = img.width, h = img.height;
-                const maxDim = 1024;
-                if (w > maxDim || h > maxDim) {
-                    const ratio = Math.min(maxDim / w, maxDim / h);
-                    w = Math.round(w * ratio);
-                    h = Math.round(h * ratio);
-                }
-                const canvas = document.createElement('canvas');
-                canvas.width = w; canvas.height = h;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, w, h);
-                const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.75));
-                processedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
-            }
-
-            // Local preview
-            previewImg.src = URL.createObjectURL(processedFile);
-            preview.classList.remove('d-none');
-            hideError();
-
-            // Upload to server
-            const formData = new FormData();
-            formData.append('image', processedFile);
-            formData.append('type', 'device_type');
-
-            const response = await fetch('/api/upload-image', { method: 'POST', body: formData });
-            const result = await response.json();
-
-            if (result.success) {
-                fileRefInput.value = result.file_ref;
-                loading.classList.add('d-none');
-            } else {
-                showError(result.message || 'Gagal upload');
-            }
-        } catch (err) {
-            showError(err.message || 'Gagal memproses gambar');
-        }
-    });
-
-    window.clearPhoto = function() {
-        fileInput.value = '';
-        preview.classList.add('d-none');
-        previewImg.src = '';
-        fileRefInput.value = '';
-        if (window._lastFileRef) {
-            fetch('/api/delete-temp-file', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ file_ref: window._lastFileRef })
-            }).catch(function() {});
-            window._lastFileRef = null;
-        }
-        hideError();
-    };
-
-    function showLoading() {
-        loading.classList.remove('d-none');
-        preview.classList.remove('d-none');
-        previewImg.style.display = 'none';
-        hideError();
+(function(){
+var fileRef='';
+['photo_camera','photo_gallery'].forEach(function(id){
+  var el=document.getElementById(id);
+  if(el) el.addEventListener('change',function(e){handle(e.target.files[0],this);});
+});
+async function handle(file,input){
+  if(!file||file.size>5*1024*1024){err('Ukuran file maksimal 5MB');return;}
+  load();
+  if(input.id==='photo_camera') document.getElementById('photo_gallery').value='';
+  else document.getElementById('photo_camera').value='';
+  try{
+    var f=file;
+    var ext=file.name.split('.').pop().toLowerCase();
+    if((ext==='heic'||ext==='heif')&&typeof HeicTo!=='undefined'){
+      var b=await HeicTo({blob:file,type:'image/jpeg',quality:0.88});
+      f=new File([b],file.name.replace(/\.(heic|heif)$/i,'.jpg'),{type:'image/jpeg'});
     }
-
-    function showError(msg) {
-        errorEl.textContent = msg;
-        errorEl.classList.remove('d-none');
-        loading.classList.add('d-none');
-        preview.classList.remove('d-none');
+    if(window.ANDROID_MODE){
+      var img=await createImageBitmap(f);
+      var w=img.width,h=img.height,md=1024;
+      if(w>md||h>md){var r=Math.min(md/w,md/h);w=Math.round(w*r);h=Math.round(h*r);}
+      var c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      var b2=await new Promise(function(r){c.toBlob(r,'image/jpeg',0.75);});
+      f=new File([b2],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'});
     }
-
-    function hideError() {
-        errorEl.classList.add('d-none');
-        previewImg.style.display = '';
-    }
+    document.getElementById('photoPreviewImage').src=URL.createObjectURL(f);
+    document.getElementById('photoPreview').classList.remove('d-none');
+    hErr();
+    var fd=new FormData();fd.append('image',f);fd.append('type','device_type');
+    var j=await(await fetch('/api/upload-image',{method:'POST',body:fd})).json();
+    if(j.success){
+      fileRef=j.file_ref;
+      document.getElementById('photo_file_ref').value=j.file_ref;
+      document.getElementById('photoLoading').classList.add('d-none');
+    }else err(j.message||'Gagal upload');
+  }catch(e){err(e.message||'Gagal memproses gambar');}
+}
+window.clearPhoto=function(){
+  document.getElementById('photo_camera').value='';
+  document.getElementById('photo_gallery').value='';
+  document.getElementById('photoPreview').classList.add('d-none');
+  document.getElementById('photoPreviewImage').src='';
+  document.getElementById('photo_file_ref').value='';
+  hErr();
+  if(fileRef){fetch('/api/delete-temp-file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file_ref:fileRef})}).catch(function(){});fileRef='';}
+};
+function load(){
+  document.getElementById('photoLoading').classList.remove('d-none');
+  document.getElementById('photoPreview').classList.remove('d-none');
+  document.getElementById('photoPreviewImage').style.display='none';
+  hErr();
+}
+function err(m){
+  document.getElementById('photoError').textContent=m;
+  document.getElementById('photoError').classList.remove('d-none');
+  document.getElementById('photoLoading').classList.add('d-none');
+  document.getElementById('photoPreview').classList.remove('d-none');
+}
+function hErr(){
+  document.getElementById('photoError').classList.add('d-none');
+  document.getElementById('photoPreviewImage').style.display='';
+}
 })();
 </script>
