@@ -152,16 +152,20 @@
                     </thead>
                     <tbody>
                         {{ range $i, $loan := .loanHistory }}
-                        <tr>
+                        <tr class="{{ if eq $loan.ComputedStatus "overdue" }}table-danger{{ else if eq $loan.ComputedStatus "returned" }}table-light{{ end }}">
                             <td>{{ add $i 1 }}</td>
                             <td>{{ $loan.BorrowerName }}</td>
-                            <td>{{ $loan.LoanDate.Format "02/01/2006" }}</td>
-                            <td>{{ $loan.ReturnDate.Format "02/01/2006" }}</td>
-                            <td>{{ if $loan.ActualReturnDate }}{{ $loan.ActualReturnDate.Format "02/01/2006" }}{{ else }}–{{ end }}</td>
+                            <td{{ if $loan.IsReturnedLate }} class="table-danger"{{ end }}>{{ (localTime $loan.LoanDate).Format "02/01/2006" }}</td>
+                            <td{{ if $loan.IsReturnedLate }} class="table-danger"{{ end }}>{{ (localTime $loan.ReturnDate).Format "02/01/2006" }}</td>
+                            <td{{ if $loan.IsReturnedLate }} class="table-danger"{{ end }}>{{ if $loan.ActualReturnDate }}{{ (localTime $loan.ActualReturnDate).Format "02/01/2006" }}{{ else }}–{{ end }}</td>
                             <td>
-                                {{ if not $loan.ActualReturnDate }}
-                                    {{ if currentDateAfter $loan.ReturnDate }}Terlambat{{ else }}Masih Dipinjam{{ end }}
-                                {{ else }}Dikembalikan{{ end }}
+                                {{ if eq $loan.ComputedStatus "active" }}
+                                <span class="badge bg-success">Masih Dipinjam</span>
+                                {{ else if eq $loan.ComputedStatus "overdue" }}
+                                <span class="badge bg-danger">Terlambat</span>
+                                {{ else }}
+                                <span class="badge bg-secondary">Dikembalikan</span>
+                                {{ end }}
                             </td>
                         </tr>
                         {{ end }}
