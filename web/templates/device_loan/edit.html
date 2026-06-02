@@ -36,7 +36,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="actual_return_date" class="form-label">Tanggal Pengembalian Aktual</label>
+                            <label for="actual_return_date" class="form-label">Tgl Dikembalikan</label>
                             <input type="date" class="form-control" id="actual_return_date" name="actual_return_date" 
                                 value="{{ if .loan.ActualReturnDate }}{{ (localTime .loan.ActualReturnDate).Format "2006-01-02" }}{{ end }}">
                             <small class="text-muted">Isi jika perangkat sudah dikembalikan</small>
