@@ -141,6 +141,7 @@ func (r *DeviceInstallationRepository) GetInstallableDevices() ([]models.Device,
 		JOIN device_types dt ON dt.id = d.device_type_id
 		WHERE dt.usage_type = 'installable'
 		AND d.condition = 'normal'
+		AND d.id NOT IN (SELECT device_id FROM device_installations)
 		ORDER BY d.asset_code`)
 	if err != nil {
 		return nil, err
