@@ -320,7 +320,7 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 		return
 	}
 
-	if strings.ToLower(d.CategoryPrefix) != c.Param("categoryPfx") || strings.ToLower(d.DeviceTypePrefix) != c.Param("typePfx") {
+	if strings.ToLower(d.CategoryPrefix) != c.Param("slug") || strings.ToLower(d.DeviceTypePrefix) != c.Param("typeSlug") {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
 	}

@@ -223,7 +223,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/devices/create", h.DeviceCreatePage)
 		protected.POST("/devices/create", h.DeviceCreate)
 		protected.POST("/devices/batch-create", h.DeviceBatchCreate)
-		protected.GET("/devices/:categoryPfx/:typePfx/:assetCode", h.DeviceDetail)
+		protected.GET("/devices/:slug/:typeSlug/:assetCode", h.DeviceDetail)
 		protected.GET("/devices/:slug/edit", h.DeviceEditPage)
 		protected.POST("/devices/:slug/edit", h.DeviceEdit)
 		protected.POST("/devices/:slug/delete", h.DeviceDelete)
