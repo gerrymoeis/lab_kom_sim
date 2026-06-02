@@ -242,7 +242,7 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices")
+	c.Redirect(http.StatusFound, "/devices?tab=types")
 }
 
 func (h *Handler) DeviceBatchCreate(c *gin.Context) {
@@ -429,14 +429,14 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate perangkat")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices")
+	c.Redirect(http.StatusFound, "/devices?tab=types")
 }
 
 func (h *Handler) DeviceDelete(c *gin.Context) {
 	slug := c.Param("slug")
 	d, err := h.deviceService.GetByAssetCodeSlug(slug)
 	if err != nil {
-		h.redirectWithError(c, "/devices", "Perangkat tidak ditemukan")
+		h.redirectWithError(c, "/devices?tab=types", "Perangkat tidak ditemukan")
 		return
 	}
 
@@ -444,10 +444,10 @@ func (h *Handler) DeviceDelete(c *gin.Context) {
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceService.DeleteDevice(d.ID, uid, u, r, ip, ua); err != nil {
-		h.redirectWithError(c, "/devices", "Gagal menghapus perangkat")
+		h.redirectWithError(c, "/devices?tab=types", "Gagal menghapus perangkat")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices")
+	c.Redirect(http.StatusFound, "/devices?tab=types")
 }
 
 func (h *Handler) GetNextAssetCode(c *gin.Context) {
@@ -503,24 +503,24 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		h.errHTML(c, err.Error())
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices")
+	c.Redirect(http.StatusFound, "/devices?tab=types")
 }
 
 func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 	slug := c.Param("slug")
 	dt, err := h.deviceTypeService.GetByPrefixSlug(slug)
 	if err != nil {
-		h.redirectWithError(c, "/devices", "Tipe perangkat tidak ditemukan")
+		h.redirectWithError(c, "/devices?tab=types", "Tipe perangkat tidak ditemukan")
 		return
 	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceTypeService.Delete(dt.ID, uid, u, r, ip, ua); err != nil {
-		h.redirectWithError(c, "/devices", err.Error())
+		h.redirectWithError(c, "/devices?tab=types", err.Error())
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices")
+	c.Redirect(http.StatusFound, "/devices?tab=types")
 }
 
 func (h *Handler) DeviceTypeDetail(c *gin.Context) {
@@ -606,14 +606,14 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 		h.errHTML(c, err.Error())
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices")
+	c.Redirect(http.StatusFound, "/devices?tab=types")
 }
 
 func (h *Handler) CategoryDelete(c *gin.Context) {
 	slug := c.Param("slug")
 	cat, err := h.categoryService.GetByPrefixSlug(slug)
 	if err != nil {
-		h.redirectWithError(c, "/devices", "Kategori tidak ditemukan")
+		h.redirectWithError(c, "/devices?tab=types", "Kategori tidak ditemukan")
 		return
 	}
 	uid, u, r, _ := h.user(c)
@@ -624,16 +624,16 @@ func (h *Handler) CategoryDelete(c *gin.Context) {
 	deviceCount, _ := h.deviceService.CountByCategoryID(cat.ID)
 
 	if typeCount > 0 || deviceCount > 0 {
-		h.redirectWithError(c, "/devices",
+		h.redirectWithError(c, "/devices?tab=types",
 			fmt.Sprintf("Tidak dapat menghapus: masih ada %d tipe dan %d perangkat dalam kategori ini", typeCount, deviceCount))
 		return
 	}
 
 	if err := h.categoryService.Delete(cat.ID, uid, u, r, ip, ua); err != nil {
-		h.redirectWithError(c, "/devices", err.Error())
+		h.redirectWithError(c, "/devices?tab=types", err.Error())
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices")
+	c.Redirect(http.StatusFound, "/devices?tab=types")
 }
 
 func usageTypePriority(ut string) int {
