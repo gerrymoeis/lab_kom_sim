@@ -455,6 +455,27 @@ func (h *Handler) PCPlace(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
 }
 
+func (h *Handler) PCMoveToCadangan(c *gin.Context) {
+	var req struct {
+		Label string `json:"label" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
+		return
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+
+	if err := h.pcService.MoveToCadangan(req.Label, uid, u, r, ip, ua); err != nil {
+		h.errJSON(c, http.StatusInternalServerError, "Gagal memindahkan ke cadangan")
+		return
+	}
+
+	pcs, _ := h.pcService.List(repository.PCFilters{})
+	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
+}
+
 func processPhotoRef(photoRef, subDir string) string {
 	ref := strings.TrimSpace(photoRef)
 	if ref == "" {

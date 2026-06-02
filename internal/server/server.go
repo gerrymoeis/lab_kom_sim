@@ -318,6 +318,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		api.POST("/pc/swap", h.PCSwap)
 		api.POST("/pc/replace", h.PCReplace)
 		api.POST("/pc/move-row", h.PCMoveRowToCadangan)
+		api.POST("/pc/move-to-cadangan", h.PCMoveToCadangan)
 		api.POST("/pc/move", h.PCMove)
 		api.POST("/pc/place", h.PCPlace)
 		api.POST("/upload-image", h.UploadImage)
