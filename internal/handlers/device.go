@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
@@ -653,6 +654,145 @@ func usageTypePriority(ut string) int {
 	default:
 		return 3
 	}
+}
+
+func (h *Handler) DeviceExport(c *gin.Context) {
+	_, _, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	if role != "admin" {
+		h.errHTML(c, "Hanya admin yang dapat export data")
+		return
+	}
+
+	devices, err := h.deviceService.List(repository.DeviceFilters{})
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data perangkat")
+		return
+	}
+
+	loans, err := h.deviceLoanService.ExportAll()
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data peminjaman")
+		return
+	}
+
+	usages, err := h.deviceUsageService.ExportAll()
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data pemakaian")
+		return
+	}
+
+	installations, err := h.deviceInstallationService.ExportAll()
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data instalasi")
+		return
+	}
+
+	formatDate := func(t *time.Time) string {
+		if t == nil {
+			return "-"
+		}
+		return t.Format("02/01/2006")
+	}
+	formatTime := func(t time.Time) string {
+		return t.Format("02/01/2006")
+	}
+
+	deviceData := make([][]any, 0, len(devices))
+	for i, d := range devices {
+		deviceData = append(deviceData, []any{
+			i + 1, d.AssetCode, d.SerialNumber, d.DeviceTypeName, d.CategoryName,
+			d.Condition, d.Location, d.UsageType, formatDate(d.PurchaseDate), d.Notes,
+		})
+	}
+
+	loanData := make([][]any, 0, len(loans))
+	for i, l := range loans {
+		status := l.ComputedStatus
+		switch status {
+		case "active":
+			status = "Masih Dipinjam"
+		case "returned":
+			status = "Dikembalikan"
+		case "overdue":
+			status = "Terlambat"
+		}
+		loanData = append(loanData, []any{
+			i + 1, l.DeviceAssetCode, l.DeviceTypeName, l.CategoryName,
+			l.BorrowerName, l.BorrowerType,
+			formatTime(l.LoanDate), formatTime(l.ReturnDate), formatDate(l.ActualReturnDate),
+			status, l.ExtensionCount, l.Purpose, l.Notes,
+		})
+	}
+
+	usageData := make([][]any, 0, len(usages))
+	for i, u := range usages {
+		available := "Habis"
+		if u.IsAvailable == "yes" {
+			available = "Masih Ada"
+		}
+		usageData = append(usageData, []any{
+			i + 1, u.DeviceAssetCode, u.DeviceTypeName, u.CategoryName,
+			u.UserName, u.UserType, formatTime(u.UsageDate), available, u.Purpose, u.Notes,
+		})
+	}
+
+	installData := make([][]any, 0, len(installations))
+	for i, inst := range installations {
+		var status string
+		if inst.InstallationFinishDate != nil {
+			status = "Selesai"
+		} else if inst.InstallationStartDate != nil {
+			status = "Berlangsung"
+		} else {
+			status = "Belum Mulai"
+		}
+		installData = append(installData, []any{
+			i + 1, inst.DeviceAssetCode, inst.DeviceTypeName, inst.CategoryName,
+			inst.LocationInstalled, status,
+			formatDate(inst.InstallationStartDate), formatDate(inst.InstallationFinishDate),
+		})
+	}
+
+	svc := services.NewExcelService()
+	f, err := svc.GenerateMultiSheetExcel([]services.ExcelExportConfig{
+		{
+			SheetName: "Perangkat",
+			Headers:   []string{"No", "Asset Code", "Serial Number", "Tipe Device", "Kategori", "Kondisi", "Lokasi", "Usage Type", "Tgl Beli", "Catatan"},
+			Data:      deviceData,
+			ColumnWidths: map[string]float64{"A": 5, "B": 14, "C": 18, "D": 20, "E": 12, "F": 12, "G": 20, "H": 14, "I": 14, "J": 28},
+		},
+		{
+			SheetName: "Peminjaman",
+			Headers:   []string{"No", "Asset Code", "Tipe Device", "Kategori", "Peminjam", "Tipe Peminjam", "Tgl Pinjam", "Deadline", "Tgl Kembali", "Status", "Perpanjangan(x)", "Keperluan", "Catatan"},
+			Data:      loanData,
+			ColumnWidths: map[string]float64{"A": 5, "B": 14, "C": 18, "D": 12, "E": 24, "F": 14, "G": 14, "H": 14, "I": 14, "J": 16, "K": 16, "L": 20, "M": 28},
+		},
+		{
+			SheetName: "Pemakaian",
+			Headers:   []string{"No", "Asset Code", "Tipe Device", "Kategori", "Pengguna", "Tipe Pengguna", "Tgl Pemakaian", "Status Stok", "Keperluan", "Catatan"},
+			Data:      usageData,
+			ColumnWidths: map[string]float64{"A": 5, "B": 14, "C": 18, "D": 12, "E": 24, "F": 14, "G": 14, "H": 14, "I": 20, "J": 28},
+		},
+		{
+			SheetName: "Instalasi",
+			Headers:   []string{"No", "Asset Code", "Tipe Device", "Kategori", "Lokasi Instalasi", "Status", "Tgl Mulai", "Tgl Selesai"},
+			Data:      installData,
+			ColumnWidths: map[string]float64{"A": 5, "B": 14, "C": 18, "D": 12, "E": 24, "F": 16, "G": 14, "H": 14},
+		},
+	})
+	if err != nil {
+		h.errHTML(c, "Gagal membuat file excel")
+		return
+	}
+	defer f.Close()
+
+	fn := svc.GenerateFilename("devices_export")
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Header("Content-Disposition", "attachment; filename="+fn)
+	f.Write(c.Writer)
 }
 
 func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bool) models.DeviceGroupedData {

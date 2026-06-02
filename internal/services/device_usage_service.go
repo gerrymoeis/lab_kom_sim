@@ -50,6 +50,10 @@ func (s *DeviceUsageService) ListByDeviceID(deviceID int) ([]repository.DeviceUs
 	return s.repo.List(repository.DeviceUsageFilters{DeviceID: strconv.Itoa(deviceID)})
 }
 
+func (s *DeviceUsageService) ExportAll() ([]repository.DeviceUsageRow, error) {
+	return s.repo.ExportAll()
+}
+
 func (s *DeviceUsageService) CreateUsage(in CreateUsageInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
 	if in.IsAvailable != "no" {
 		in.IsAvailable = "yes"

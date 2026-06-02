@@ -221,6 +221,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.POST("/pc/:label/delete", h.PCDelete)
 
 		protected.GET("/devices", h.DeviceList)
+		protected.GET("/devices/export", h.DeviceExport)
 		protected.GET("/devices/create", h.DeviceCreatePage)
 		protected.POST("/devices/create", h.DeviceCreate)
 		protected.POST("/devices/batch-create", h.DeviceBatchCreate)

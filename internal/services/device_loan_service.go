@@ -52,6 +52,10 @@ func (s *DeviceLoanService) ListByDeviceID(deviceID int) ([]repository.DeviceLoa
 	return s.loanRepo.ListByDeviceID(deviceID)
 }
 
+func (s *DeviceLoanService) ExportAll() ([]repository.DeviceLoanRow, error) {
+	return s.loanRepo.ExportAll()
+}
+
 func (s *DeviceLoanService) CreateLoan(in CreateLoanInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
 	loanDate := MustParseDate(in.LoanDate)
 	returnDate := MustParseDate(in.ReturnDate)
