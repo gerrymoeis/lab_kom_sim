@@ -91,19 +91,15 @@
                                 <a href="/admin/users/{{ .Username }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                {{ if and (ne .Username "admin") (ne .Username "rekan") }}
                                 <a href="/admin/users/{{ .Username }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                {{ if eq $.username "admin" }}
+                                {{ if and (ne .Username "admin") (ne .Username "rekan") (eq $.username "admin") }}
                                 <form method="POST" action="/admin/users/{{ .Username }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
-                                {{ end }}
-                                {{ else }}
-                                -
                                 {{ end }}
                                 {{ else }}
                                 -
