@@ -57,12 +57,24 @@ func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
 }
 
 func buildSoftwareGrid(pcList []repository.PCInstallStatus) [][]repository.PCInstallStatus {
-	grid := make([][]repository.PCInstallStatus, 5)
+	maxRow, maxCol := 0, 0
+	for _, p := range pcList {
+		if p.Row > maxRow {
+			maxRow = p.Row
+		}
+		if p.Column > maxCol {
+			maxCol = p.Column
+		}
+	}
+	if maxRow < 1 || maxCol < 1 {
+		return nil
+	}
+	grid := make([][]repository.PCInstallStatus, maxRow)
 	for i := range grid {
-		grid[i] = make([]repository.PCInstallStatus, 8)
+		grid[i] = make([]repository.PCInstallStatus, maxCol)
 	}
 	for _, p := range pcList {
-		if p.Row >= 1 && p.Row <= 5 && p.Column >= 1 && p.Column <= 8 {
+		if p.Row >= 1 && p.Row <= maxRow && p.Column >= 1 && p.Column <= maxCol {
 			grid[p.Row-1][p.Column-1] = p
 		}
 	}
