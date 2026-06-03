@@ -84,32 +84,49 @@
         <div class="card-body">
             {{ if gt (len .devices) 0 }}
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table class="table table-hover table-sm mb-0">
                     <thead class="table-light">
                         <tr>
+                            <th>#</th>
                             <th>Asset Code</th>
                             <th>Serial Number</th>
-                            <th>Lokasi</th>
                             <th>Kondisi</th>
-                            <th>Aksi</th>
+                            <th>Lokasi</th>
+                            <th>Status</th>
+                            <th class="text-end" style="width:1%;white-space:nowrap">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range $d := .devices }}
+                        {{ range $idx, $d := .devices }}
                         <tr>
+                            <td class="text-muted">{{ add $idx 1 }}</td>
                             <td><code>{{ $d.AssetCode }}</code></td>
-                            <td>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
-                            <td>{{ if $d.Location }}{{ $d.Location }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
+                            <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
                             <td>
-                                {{ if eq $d.Condition "normal" }}
-                                <span class="badge bg-success">Normal</span>
-                                {{ else if eq $d.Condition "rusak" }}
-                                <span class="badge bg-danger">Rusak</span>
+                                <span class="badge bg-{{ if eq $d.Condition "normal" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
+                                    {{ if eq $d.Condition "normal" }}Normal{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Warning{{ end }}
+                                </span>
+                            </td>
+                            <td><small>{{ if $d.Location }}{{ $d.Location }}{{ else }}-{{ end }}</small></td>
+                            <td>
+                                {{ if index $.activeLoanIDs $d.ID }}
+                                <span class="badge bg-warning">Dipinjam</span>
+                                {{ else if index $.depletedIDs $d.ID }}
+                                <span class="badge bg-danger">Habis</span>
                                 {{ else }}
-                                <span class="badge bg-warning">Peringatan</span>
+                                {{ $instStatus := index $.installationStatuses $d.ID }}
+                                {{ if eq $instStatus "selesai" }}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Selesai</span>
+                                {{ else if eq $instStatus "berlangsung" }}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Berlangsung</span>
+                                {{ else if eq $instStatus "belum_mulai" }}
+                                <span class="badge bg-secondary"><i class="bi bi-info-circle"></i> Belum Mulai</span>
+                                {{ else }}
+                                <span class="badge bg-success">Tersedia</span>
+                                {{ end }}
                                 {{ end }}
                             </td>
-                            <td class="text-nowrap">
+                            <td class="text-nowrap text-end">
                                 <a href="/devices/{{ $.deviceType.CategoryPrefix | lower }}/{{ $.deviceType.AssetCodePrefix | lower }}/{{ $d.AssetCode }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
