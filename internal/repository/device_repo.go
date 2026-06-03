@@ -354,6 +354,30 @@ func (r *DeviceRepository) GetDepletedDeviceIDs() (map[int]bool, error) {
 	return result, nil
 }
 
+func (r *DeviceRepository) GetInstallationStatuses() (map[int]string, error) {
+	rows, err := r.db.Query(`SELECT device_id,
+		CASE
+			WHEN installation_finish_date IS NOT NULL THEN 'selesai'
+			WHEN installation_start_date IS NOT NULL THEN 'berlangsung'
+			ELSE 'belum_mulai'
+		END
+		FROM device_installations`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int]string)
+	for rows.Next() {
+		var id int
+		var status string
+		if rows.Scan(&id, &status) == nil {
+			result[id] = status
+		}
+	}
+	return result, nil
+}
+
 func (r *DeviceRepository) GetInstalledDeviceIDs() (map[int]bool, error) {
 	rows, err := r.db.Query("SELECT device_id FROM device_installations")
 	if err != nil {
