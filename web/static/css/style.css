@@ -56,14 +56,14 @@
 }
 .login-card { max-width: 400px; width: 100%; }
 
-.pc-grid { display: flex; flex-direction: column; gap: 20px; }
-.pc-row { display: flex; gap: 20px; justify-content: center; }
-.pc-card-wrapper { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.pc-card-wrapper-special { min-width: 140px; }
-.pc-card.pc-card-special { background: linear-gradient(135deg, #f0e6ff, #f8f4ff); border-width: 3px; width: 140px; height: 130px; }
-.pc-card.pc-card-special .pc-number { font-size: 13px; }
+.pc-grid { display: flex; flex-direction: column; gap: clamp(10px, 2vw, 20px); }
+.pc-row { display: flex; gap: clamp(8px, 1.5vw, 20px); flex-wrap: wrap; justify-content: center; }
+.pc-card-wrapper { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0; }
+.pc-card-wrapper-special { min-width: 0; }
+.pc-card.pc-card-special { background: linear-gradient(135deg, #f0e6ff, #f8f4ff); border-width: 3px; min-width: 96px; max-width: 140px; width: 100%; }
 .pc-card {
-    width: 120px; height: 120px;
+    flex: 0 1 auto; min-width: 60px; max-width: 120px;
+    width: 100%; aspect-ratio: 1 / 1;
     border: 2px solid #dee2e6; border-radius: 10px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     position: relative; transition: all 0.3s ease; background: white;
@@ -75,41 +75,19 @@
 .pc-card.placement-cadangan { border-color: #6c757d; background: #f8f9fa; opacity: 0.7; }
 .pc-card.pc-empty { border-style: dashed; background: #f8f9fa; cursor: default; }
 .pc-card.pc-empty:hover { transform: none; box-shadow: none; }
-.pc-number { font-weight: bold; font-size: 14px; margin-bottom: 5px; }
-.pc-icon { font-size: 2rem; }
-.pc-status-badge { position: absolute; top: 5px; right: 5px; font-size: 1.2rem; }
-.pc-windows-badge { position: absolute; top: 5px; left: 5px; font-size: 0.65rem; font-weight: 600; padding: 3px 6px; border-radius: 4px; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2); line-height: 1; }
-.pc-windows-text { font-size: 0.7rem; font-weight: 500; color: #495057; text-align: center; line-height: 1.2; padding: 0 4px; }
+.pc-number { font-weight: bold; font-size: clamp(10px, 2.5vw, 14px); margin-bottom: 5px; }
+.pc-icon { font-size: clamp(1.1rem, 4vw, 2rem); }
+.pc-status-badge { position: absolute; top: clamp(2px, 0.5vw, 5px); right: clamp(2px, 0.5vw, 5px); font-size: clamp(0.7rem, 2vw, 1.2rem); }
+.pc-windows-badge { position: absolute; top: clamp(2px, 0.5vw, 5px); left: clamp(2px, 0.5vw, 5px); font-size: clamp(0.45rem, 1.5vw, 0.65rem); font-weight: 600; padding: clamp(1px, 0.3vw, 3px) clamp(2px, 0.5vw, 6px); border-radius: 4px; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2); line-height: 1; }
+.pc-windows-text { font-size: clamp(0.5rem, 1.5vw, 0.7rem); font-weight: 500; color: #495057; text-align: center; line-height: 1.2; padding: 0 4px; }
 .windows-11-25h2 { background-color: #0066CC; }
 .windows-11-23h2 { background-color: #4DA6FF; }
 .windows-10-22h2 { background-color: #FF9933; }
 .windows-other { background-color: #FFD966; color: #333; text-shadow: none; }
 
-@media (max-width: 1200px) {
-    .pc-card { width: 100px; height: 100px; }
-    .pc-card.pc-card-special { width: 120px; height: 110px; }
-    .pc-icon { font-size: 1.8rem; }
-    .pc-number { font-size: 13px; }
-    .pc-status-badge { font-size: 1rem; }
-    .pc-windows-badge { font-size: 0.6rem; padding: 2px 5px; }
-    .pc-windows-text { font-size: 0.65rem; }
-    .pc-row { gap: 16px; flex-wrap: wrap; }
-    .pc-grid { gap: 18px; }
-}
-
 @media (max-width: 768px) {
     h2 { font-size: 1.5rem; }
     h3 { font-size: 1.3rem; }
-    .pc-card { width: 80px; height: 80px; }
-    .pc-card.pc-card-special { width: 96px; height: 88px; }
-    .pc-icon { font-size: 1.5rem; }
-    .pc-number { font-size: 12px; }
-    .pc-card.pc-card-special .pc-number { font-size: 11px; }
-    .pc-status-badge { font-size: 0.9rem; top: 3px; right: 3px; }
-    .pc-windows-badge { font-size: 0.55rem; padding: 2px 4px; top: 3px; left: 3px; }
-    .pc-windows-text { font-size: 0.6rem; }
-    .pc-row { gap: 12px; flex-wrap: wrap; }
-    .pc-grid { gap: 15px; }
     .row.mb-4 > [class*="col-md-3"] { margin-bottom: 15px; }
     .row.mt-4.mb-4 > [class*="col-md-4"] { margin-bottom: 15px; }
     .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -120,35 +98,16 @@
 @media (max-width: 576px) {
     h2 { font-size: 1.3rem; }
     h3 { font-size: 1.1rem; }
-    .pc-card { width: 70px; height: 70px; }
-    .pc-card.pc-card-special { width: 84px; height: 76px; }
-    .pc-icon { font-size: 1.3rem; }
-    .pc-number { font-size: 11px; }
-    .pc-card.pc-card-special .pc-number { font-size: 10px; }
-    .pc-status-badge { font-size: 0.8rem; top: 2px; right: 2px; }
-    .pc-windows-badge { font-size: 0.5rem; padding: 2px 3px; top: 2px; left: 2px; }
-    .pc-windows-text { font-size: 0.55rem; }
-    .pc-row { gap: 10px; flex-wrap: wrap; }
-    .pc-grid { gap: 12px; }
     .login-card { max-width: 100%; padding: 0 15px; }
     .navbar-brand { font-size: 1.1rem; }
     .card.bg-success h2, .card.bg-warning h2, .card.bg-danger h2, .card.bg-secondary h2 { font-size: 1.8rem; }
     .card.bg-success h5, .card.bg-warning h5, .card.bg-danger h5, .card.bg-secondary h5 { font-size: 1rem; }
     .table { font-size: 0.875rem; }
     .table th, .table td { padding: 0.5rem; }
-
     .form-control, .form-select { font-size: 16px; }
 }
 
 @media (max-width: 375px) {
-    .pc-card { width: 60px; height: 60px; }
-    .pc-icon { font-size: 1.1rem; }
-    .pc-number { font-size: 10px; }
-    .pc-status-badge { font-size: 0.7rem; }
-    .pc-windows-badge { font-size: 0.45rem; padding: 1px 2px; }
-    .pc-windows-text { font-size: 0.5rem; }
-    .pc-row { gap: 8px; }
-    .pc-grid { gap: 10px; }
     .container-fluid { padding-left: 10px; padding-right: 10px; }
     .card-body { padding: 0.75rem; }
 }
