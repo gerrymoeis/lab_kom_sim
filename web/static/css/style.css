@@ -60,7 +60,7 @@
 
 .pc-grid { display: flex; flex-direction: column; gap: clamp(10px, 2.5vw, 20px); }
 .pc-row { display: flex; gap: clamp(8px, 2vw, 20px); flex-wrap: wrap; justify-content: center; }
-.pc-card-wrapper { display: flex; flex-direction: column; align-items: center; gap: 6px; width: clamp(84px, 8vw, 120px); flex: 0 1 auto; }
+.pc-card-wrapper { container-type: inline-size; display: flex; flex-direction: column; align-items: center; gap: 6px; width: clamp(84px, 8vw, 120px); flex: 0 1 auto; }
 .pc-card-wrapper-sm { width: clamp(65px, 7vw, 85px); flex: 0 1 auto; }
 .pc-card-wrapper-special { width: clamp(116px, 8vw, 140px); flex: 0 1 auto; }
 .pc-card.pc-card-special { background: linear-gradient(135deg, #f0e6ff, #f8f4ff); border-width: 3px; }
@@ -78,8 +78,8 @@
 .pc-card.placement-cadangan { border-color: #6c757d; background: #f8f9fa; opacity: 0.7; }
 .pc-card.pc-empty { border-style: dashed; background: #f8f9fa; cursor: default; }
 .pc-card.pc-empty:hover { transform: none; box-shadow: none; }
-.pc-number { font-weight: bold; font-size: clamp(12px, 2.5vw, 14px); margin-bottom: 5px; }
-.pc-icon { font-size: clamp(1.5rem, 4vw, 2rem); }
+.pc-number { font-weight: bold; font-size: clamp(10px, 14cqw, 14px); margin-bottom: 5px; }
+.pc-icon { font-size: clamp(1.3rem, 28cqw, 2rem); }
 .pc-status-badge { position: absolute; top: clamp(2px, 0.5vw, 5px); right: clamp(2px, 0.5vw, 5px); font-size: clamp(0.7rem, 2vw, 1.2rem); }
 .pc-windows-badge { position: absolute; top: clamp(2px, 0.5vw, 5px); left: clamp(2px, 0.5vw, 5px); font-size: clamp(0.45rem, 1.5vw, 0.65rem); font-weight: 600; padding: clamp(1px, 0.3vw, 3px) clamp(2px, 0.5vw, 6px); border-radius: 4px; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.2); line-height: 1; }
 .pc-windows-text { font-size: clamp(0.5rem, 1.5vw, 0.7rem); font-weight: 500; color: #495057; text-align: center; line-height: 1.2; padding: 0 4px; }
