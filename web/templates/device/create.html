@@ -332,7 +332,7 @@
     }
 
     // --- Generate batch table ---
-    generateBtn.addEventListener('click', function() {
+    generateBtn.addEventListener('click', async function() {
         const prefix = getTypePrefix();
         if (!prefix) {
             alert('Pilih atau buat tipe perangkat terlebih dahulu');
@@ -349,12 +349,23 @@
 
         const defaultLoc = getDefaultLocation();
 
+        // Fetch actual next asset code from server
+        let startNum = 1;
+        try {
+            const resp = await fetch('/api/devices/next-asset-code?prefix=' + encodeURIComponent(prefix));
+            const data = await resp.json();
+            if (data.next_code) {
+                const parts = data.next_code.split('-');
+                startNum = parseInt(parts[parts.length - 1]) || 1;
+            }
+        } catch(e) {}
+
         batchBody.innerHTML = '';
-        for (let i = 1; i <= count; i++) {
-            const code = prefix + '-' + String(i).padStart(3, '0');
+        for (let i = 0; i < count; i++) {
+            const code = prefix + '-' + String(startNum + i).padStart(3, '0');
             const tr = document.createElement('tr');
             tr.innerHTML =
-                '<td class="text-center fw-bold">' + i + '</td>' +
+                '<td class="text-center fw-bold">' + (i + 1) + '</td>' +
                 '<td><code class="asset-code">' + code + '</code></td>' +
                 '<td><input type="text" class="form-control form-control-sm sn-input" placeholder="Serial Number"></td>' +
                 '<td><select class="form-select form-select-sm condition-input"><option value="normal">Normal</option><option value="rusak">Rusak</option><option value="warning">Warning</option></select></td>' +
