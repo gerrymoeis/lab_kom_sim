@@ -13,11 +13,12 @@ import (
 type ExecInterceptor func(query string, args ...any) (sql.Result, error)
 
 type DB struct {
-	writer  *sql.DB
-	reader  *sql.DB
-	rewrite bool
-	execInt ExecInterceptor
-	queue   *queue.Queue
+	writer     *sql.DB
+	reader     *sql.DB
+	rewrite    bool
+	execInt    ExecInterceptor
+	queue      *queue.Queue
+	tickerStop chan struct{}
 }
 
 func (db *DB) SetExecInterceptor(int ExecInterceptor) {
@@ -44,15 +45,23 @@ func wrapSQLite(reader, writer *sql.DB) *DB {
 	writer.SetConnMaxLifetime(5 * time.Minute)
 	writer.SetConnMaxIdleTime(1 * time.Minute)
 
+	stopCh := make(chan struct{})
 	go func() {
-		for range time.NewTicker(30 * time.Second).C {
-			if _, err := writer.Exec("PRAGMA wal_checkpoint(PASSIVE)"); err != nil {
-				_ = err
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if _, err := writer.Exec("PRAGMA wal_checkpoint(PASSIVE)"); err != nil {
+					_ = err
+				}
+			case <-stopCh:
+				return
 			}
 		}
 	}()
 
-	return &DB{writer: writer, reader: reader, rewrite: false}
+	return &DB{writer: writer, reader: reader, rewrite: false, tickerStop: stopCh}
 }
 
 func (db *DB) IsPostgres() bool {
@@ -60,6 +69,8 @@ func (db *DB) IsPostgres() bool {
 }
 
 func (db *DB) Close() error {
+	close(db.tickerStop)
+	db.Flush()
 	if db.writer != db.reader {
 		if err := db.reader.Close(); err != nil { return err }
 	}
