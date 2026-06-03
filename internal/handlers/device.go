@@ -173,6 +173,11 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			depletedIDs = make(map[int]bool)
 		}
 
+		installationStatuses, _ := h.deviceService.GetInstallationStatuses()
+		if installationStatuses == nil {
+			installationStatuses = make(map[int]string)
+		}
+
 		groupedData := groupDevices(devices, activeLoanIDs, depletedIDs)
 
 		totalPages := (total + pageSize - 1) / pageSize
@@ -180,9 +185,10 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"title": "Manajemen Perangkat", "currentPage": "devices",
 			"activeTab": "types",
 			"username": username, "role": role,
-			"groupedData":  groupedData,
-			"activeLoanIDs": activeLoanIDs,
-			"depletedIDs":   depletedIDs,
+			"groupedData":         groupedData,
+			"activeLoanIDs":       activeLoanIDs,
+			"depletedIDs":         depletedIDs,
+			"installationStatuses": installationStatuses,
 			"filters":    gin.H{"search": search, "category": category, "condition": condition, "sort_by": sortBy, "sort_order": sortOrder},
 			"startRow":   (page-1)*pageSize + 1,
 			"page": page, "totalPages": totalPages, "totalItems": total,
