@@ -94,6 +94,9 @@ func (s *ActivityLogService) batchLog(batch []*models.ActivityLog) error {
 
 func (s *ActivityLogService) Close() {
 	close(s.close)
+	if s.stmt != nil {
+		s.stmt.Close()
+	}
 }
 
 // enqueueLog sends a log entry to the background writer
