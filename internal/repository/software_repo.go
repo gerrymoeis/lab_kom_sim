@@ -153,13 +153,15 @@ type PCInstallStatus struct {
 	Label     string
 	Row       int
 	Column    int
+	Status    string
 	Installed bool
 }
 
 func (r *SoftwareRepository) GetPCInstallStatus(softwareID int) ([]PCInstallStatus, error) {
-	rows, err := r.db.Query(`SELECT p.id, p.label, p.row, p.column, COALESCE(ps.installed, FALSE) AS installed
+	rows, err := r.db.Query(`SELECT p.id, p.label, p.row, p.column, p.status, COALESCE(ps.installed, FALSE) AS installed
 		FROM pcs p LEFT JOIN pc_software ps ON p.id = ps.pc_id AND ps.software_id = ?
-		ORDER BY p.label`, softwareID)
+		WHERE p.placement = 'dipakai' AND p.row >= 1 AND p.column >= 1
+		ORDER BY p.row, p.column`, softwareID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +170,7 @@ func (r *SoftwareRepository) GetPCInstallStatus(softwareID int) ([]PCInstallStat
 	var pcList []PCInstallStatus
 	for rows.Next() {
 		var p PCInstallStatus
-		if rows.Scan(&p.PCID, &p.Label, &p.Row, &p.Column, &p.Installed) == nil {
+		if rows.Scan(&p.PCID, &p.Label, &p.Row, &p.Column, &p.Status, &p.Installed) == nil {
 			pcList = append(pcList, p)
 		}
 	}
