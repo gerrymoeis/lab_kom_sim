@@ -1,6 +1,6 @@
 {{ template "layout/base.html" . }}
 
-<div class="container mt-4" style="max-width:800px">
+<div class="container mt-4">
     <div class="card shadow-sm">
         <div class="card-header bg-warning text-dark">
             <h5 class="mb-0"><i class="bi bi-pencil"></i> {{ .title }}</h5>
@@ -41,7 +41,7 @@
                                 {{ range $rowIdx, $row := .pcGrid }}
                                 <div class="pc-row mb-3">
                                     {{ range $colIdx, $pc := $row }}
-                                    <div class="pc-card-wrapper">
+                                    <div class="pc-card-wrapper pc-card-wrapper-sm">
                                         {{ if gt $pc.PCID 0 }}
                                         <div class="pc-card pc-toggle status-{{ $pc.Status }}{{ if not $pc.Installed }} border-secondary{{ end }}"
                                              role="button" tabindex="0"
