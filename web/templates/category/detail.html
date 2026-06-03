@@ -15,8 +15,8 @@
                 <a href="/categories/{{ .category.DefaultPrefix | lower }}/edit" class="btn btn-sm btn-warning me-1">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
-                <form method="POST" action="/categories/{{ .category.DefaultPrefix | lower }}/delete" style="display:inline;" onsubmit="return prompt('Ketik &quot;{{ .category.DefaultPrefix }}&quot; untuk mengkonfirmasi penghapusan kategori {{ .category.Name }}') === '{{ .category.DefaultPrefix }}'">
-                    <button type="submit" class="btn btn-sm btn-danger" {{ if gt (add .typeCount .deviceCount) 0 }}disabled title="Hapus tipe dan perangkat terlebih dahulu"{{ end }}>
+                <form method="POST" action="/categories/{{ .category.DefaultPrefix | lower }}/delete" style="display:inline;" onsubmit="return confirm('Hapus kategori &quot;' + {{ .category.Name | js }} + '&quot;? Semua perangkat dalam kategori ini akan terhapus.') && prompt('Ketik &quot;' + {{ .category.DefaultPrefix | js }} + '&quot; untuk mengkonfirmasi penghapusan kategori.') === {{ .category.DefaultPrefix | js }}">
+                    <button type="submit" class="btn btn-sm btn-danger">
                         <i class="bi bi-trash"></i> Hapus
                     </button>
                 </form>
