@@ -63,12 +63,12 @@ var PCLayoutManager = (function() {
         var label = pc && pc.label ? pc.label : '-';
         var status = pc && pc.status ? pc.status : '';
         var filled = pc && pc.label;
-        var cls = 'border rounded text-center flex-shrink-0 small';
+        var cls = 'border rounded text-center small layout-cell';
         cls += ' ' + (selected ? 'border-primary border-2 shadow-sm' : 'border-secondary');
         cls += ' ' + (filled ? 'text-white fw-semibold' : 'text-muted bg-light');
         cls += ' ' + (filled ? (status === 'warning' ? 'bg-warning' : status === 'broken' ? 'bg-danger' : 'bg-success') : '');
         cls += ' cursor-pointer';
-        html += '<div class="' + cls + '" style="width:80px;height:56px;display:flex;align-items:center;justify-content:center" data-row="' + r + '" data-col="' + c + '" data-label="' + (pc ? (pc.label || '') : '') + '" data-status="' + status + '" onclick="PCLayoutManager.onSlotClick(' + r + ',' + c + ')">' + label + '</div>';
+        html += '<div class="' + cls + '" data-row="' + r + '" data-col="' + c + '" data-label="' + (pc ? (pc.label || '') : '') + '" data-status="' + status + '" onclick="PCLayoutManager.onSlotClick(' + r + ',' + c + ')">' + label + '</div>';
       }
       html += '</div>';
     }
