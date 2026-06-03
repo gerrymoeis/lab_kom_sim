@@ -1,6 +1,6 @@
 {{ template "layout/base.html" . }}
 
-<div class="container-fluid mt-4">
+<div class="container mt-4" style="max-width:800px">
     <div class="card shadow-sm">
         <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-eye"></i> {{ .title }}</h5>
@@ -51,7 +51,7 @@
                                 {{ range $colIdx, $pc := $row }}
                                 <div class="pc-card-wrapper">
                                     {{ if gt $pc.PCID 0 }}
-                                    <div class="pc-card status-{{ $pc.Status }}" style="cursor:default;">
+                                     <div class="pc-card status-{{ $pc.Status }}{{ if not $pc.Installed }} border-secondary{{ end }}" style="cursor:default;">
                                         <div class="pc-number">{{ $pc.Label }}</div>
                                         <div class="pc-icon">
                                             {{ if $pc.Installed }}
@@ -74,12 +74,13 @@
                     </div>
 
                     <hr>
+                    {{ $created := (localTime .software.CreatedAt) }}{{ $updated := (localTime .software.UpdatedAt) }}
                     <div class="row">
                         <div class="col-md-6">
-                            <small class="text-muted">Dibuat: {{ (localTime .software.CreatedAt).Format "02/01/2006 15:04" }} {{ tzCode }}</small>
+                            {{ if gt $created.Year 1 }}<small class="text-muted">Dibuat: {{ $created.Format "02/01/2006 15:04" }} {{ tzCode }}</small>{{ end }}
                         </div>
                         <div class="col-md-6 text-end">
-                            <small class="text-muted">Diupdate: {{ (localTime .software.UpdatedAt).Format "02/01/2006 15:04" }}</small>
+                            {{ if gt $updated.Year 1 }}<small class="text-muted">Diupdate: {{ $updated.Format "02/01/2006 15:04" }}</small>{{ end }}
                         </div>
                     </div>
                 </div>
