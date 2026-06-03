@@ -56,14 +56,15 @@
 }
 .login-card { max-width: 400px; width: 100%; }
 
-.pc-grid { display: flex; flex-direction: column; gap: clamp(10px, 2vw, 20px); }
-.pc-row { display: flex; gap: clamp(8px, 1.5vw, 20px); flex-wrap: wrap; justify-content: center; }
+.pc-grid { display: flex; flex-direction: column; gap: clamp(10px, 2.5vw, 20px); }
+.pc-row { display: flex; gap: clamp(8px, 2vw, 20px); flex-wrap: wrap; justify-content: center; }
 .pc-card-wrapper { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0; }
 .pc-card-wrapper-special { min-width: 0; }
 .pc-card.pc-card-special { background: linear-gradient(135deg, #f0e6ff, #f8f4ff); border-width: 3px; min-width: 96px; max-width: 140px; width: 100%; }
 .pc-card {
     flex: 0 1 auto; min-width: 60px; max-width: 120px;
     width: 100%; aspect-ratio: 1 / 1;
+    min-height: 0; overflow: hidden;
     border: 2px solid #dee2e6; border-radius: 10px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     position: relative; transition: all 0.3s ease; background: white;
@@ -155,17 +156,21 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 
 .layout-grid-scroll { overflow-x: auto; }
 
-.layout-row {
-    justify-content: center;
-}
-
 .layout-cell {
     flex: 0 1 auto;
     min-width: 48px;
     max-width: 80px;
     width: 80px;
-    aspect-ratio: 1.4 / 1;
+    aspect-ratio: 1 / 1;
+    min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+@media (max-width: 991px) {
+    #pcLayoutModal .modal-dialog {
+        max-width: calc(100vw - 16px);
+        margin: 0.5rem auto;
+    }
 }
