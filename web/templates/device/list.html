@@ -172,7 +172,16 @@
                                                         {{ else if index $.depletedIDs $d.ID }}
                                                         <span class="badge bg-danger">Habis</span>
                                                         {{ else }}
+                                                        {{ $instStatus := index $.installationStatuses $d.ID }}
+                                                        {{ if eq $instStatus "selesai" }}
+                                                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Selesai</span>
+                                                        {{ else if eq $instStatus "berlangsung" }}
+                                                        <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Berlangsung</span>
+                                                        {{ else if eq $instStatus "belum_mulai" }}
+                                                        <span class="badge bg-secondary"><i class="bi bi-info-circle"></i> Belum Mulai</span>
+                                                        {{ else }}
                                                         <span class="badge bg-success">Tersedia</span>
+                                                        {{ end }}
                                                         {{ end }}
                                                     </td>
                                                      <td class="text-nowrap text-end">

@@ -100,6 +100,10 @@ func (s *DeviceService) GetDepletedIDs() (map[int]bool, error) {
 	return s.deviceRepo.GetDepletedDeviceIDs()
 }
 
+func (s *DeviceService) GetInstallationStatuses() (map[int]string, error) {
+	return s.deviceRepo.GetInstallationStatuses()
+}
+
 func (s *DeviceService) GetNextAssetCode(prefix string) string {
 	return s.deviceRepo.GetNextAssetCode(prefix)
 }
