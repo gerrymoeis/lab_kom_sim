@@ -1,6 +1,6 @@
 {{ template "layout/base.html" . }}
 
-<div class="container-fluid mt-4">
+<div class="container mt-4" style="max-width:800px">
     <div class="card shadow-sm">
         <div class="card-header bg-warning text-dark">
             <h5 class="mb-0"><i class="bi bi-pencil"></i> {{ .title }}</h5>
@@ -43,10 +43,11 @@
                                     {{ range $colIdx, $pc := $row }}
                                     <div class="pc-card-wrapper">
                                         {{ if gt $pc.PCID 0 }}
-                                        <div class="pc-card pc-toggle status-{{ $pc.Status }}"
+                                        <div class="pc-card pc-toggle status-{{ $pc.Status }}{{ if not $pc.Installed }} border-secondary{{ end }}"
                                              role="button" tabindex="0"
                                              data-pc-id="{{ $pc.PCID }}"
-                                             data-installed="{{ $pc.Installed }}">
+                                             data-installed="{{ $pc.Installed }}"
+                                             data-status="{{ $pc.Status }}">
                                             <div class="pc-number">{{ $pc.Label }}</div>
                                             <div class="pc-icon toggle-icon">
                                                 {{ if $pc.Installed }}
@@ -93,6 +94,16 @@ document.addEventListener('DOMContentLoaded', function() {
         countEl.textContent = checked;
     }
 
+    function updateCardBorder(el, installed) {
+        const status = el.dataset.status || 'normal';
+        el.classList.remove('status-normal', 'status-warning', 'status-broken', 'border-secondary');
+        if (installed) {
+            el.classList.add('status-' + status);
+        } else {
+            el.classList.add('border-secondary');
+        }
+    }
+
     function setAll(checked) {
         grid.querySelectorAll('.pc-toggle').forEach(function(el) {
             const cb = el.querySelector('input[name="pc_ids[]"]');
@@ -104,6 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 icon.className = 'bi bi-x-circle-fill text-muted';
             }
+            updateCardBorder(el, checked);
         });
         updateCount();
     }
@@ -120,6 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             icon.className = 'bi bi-x-circle-fill text-muted';
         }
+        updateCardBorder(el, cb.checked);
         updateCount();
     });
 

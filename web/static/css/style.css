@@ -196,8 +196,15 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 
 .layout-grid-scroll { overflow-x: auto; }
 
+.layout-row {
+    justify-content: center;
+}
+
 .layout-cell {
-    width: clamp(48px, 7vw, 80px);
+    flex: 0 1 auto;
+    min-width: 48px;
+    max-width: 80px;
+    width: 80px;
     aspect-ratio: 1.4 / 1;
     display: flex;
     align-items: center;
