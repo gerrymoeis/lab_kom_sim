@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
@@ -21,25 +22,56 @@ import (
 	"github.com/joho/godotenv"
 )
 
+func findProjectRoot(wd string) string {
+	dir := wd
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return wd
+		}
+		dir = parent
+	}
+}
+
 func TestFullIntegration(t *testing.T) {
-	// Change to project root (tests/ project root)
 	wd, _ := os.Getwd()
-	projectRoot := filepath.Dir(wd)
-	os.Chdir(projectRoot)
+	projectRoot := findProjectRoot(wd)
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("Chdir to project root %s: %v", projectRoot, err)
+	}
 	defer os.Chdir(wd)
+	dbPath := filepath.Join(projectRoot, "full_testing.db")
+	// Cleanup any leftover DB files from previous interrupted runs
+	for _, p := range []string{dbPath, dbPath + "-shm", dbPath + "-wal"} {
+		os.Remove(p)
+	}
+	// Cleanup leftover uploads from previous interrupted runs
+	os.RemoveAll(filepath.Join(projectRoot, "uploads", "temp"))
+	os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
+	os.RemoveAll(filepath.Join(projectRoot, "uploads", "logbook"))
 	defer func() {
-		dbPath := "full_testing.db"
-		os.Remove(dbPath)
-		os.Remove(dbPath + "-shm")
-		os.Remove(dbPath + "-wal")
+		paths := []string{dbPath, dbPath + "-shm", dbPath + "-wal"}
+		for _, p := range paths {
+			for i := 0; i < 3; i++ {
+				if err := os.Remove(p); err == nil {
+					break
+				} else if i < 2 {
+					time.Sleep(200 * time.Millisecond)
+				} else {
+					t.Logf("cleanup %s: %v", filepath.Base(p), err)
+				}
+			}
+		}
 	}()
 	defer func() {
-		os.RemoveAll(filepath.Join("uploads", "temp"))
-		os.RemoveAll(filepath.Join("uploads", "pc"))
-		os.RemoveAll(filepath.Join("uploads", "logbook"))
+		os.RemoveAll(filepath.Join(projectRoot, "uploads", "temp"))
+		os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
+		os.RemoveAll(filepath.Join(projectRoot, "uploads", "logbook"))
 	}()
 	// Setup
-	dbPath := "full_testing.db"
 
 	// Load .env for API keys (if available)
 	godotenv.Load()
@@ -603,6 +635,7 @@ func TestFullIntegration(t *testing.T) {
 			}
 		}
 	}
+	db.Flush()
 	db.QueryRow("SELECT COUNT(*) FROM activity_logs").Scan(&logCount)
 	assert(logCount > 0, "Activity logs should exist after full test: %d", logCount)
 	t.Logf("  All tests passed!")
