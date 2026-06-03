@@ -60,7 +60,7 @@ func (s *CategoryService) Delete(id int, actorID int, actorUsername, actorRole, 
 	if err != nil {
 		s.log.LogDelete(actorID, actorUsername, actorRole, "category", id,
 			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
-		return err
+		return sanitizeDBError(err)
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "category", id,
 		map[string]any{"id": id}, ipAddress, userAgent)

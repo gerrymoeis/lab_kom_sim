@@ -95,6 +95,12 @@ func (r *CategoryRepository) Update(id int, name, prefix string) error {
 }
 
 func (r *CategoryRepository) Delete(id int) error {
+	if _, err := r.db.Exec("DELETE FROM devices WHERE device_type_id IN (SELECT id FROM device_types WHERE category_id = ?)", id); err != nil {
+		return err
+	}
+	if _, err := r.db.Exec("DELETE FROM device_types WHERE category_id = ?", id); err != nil {
+		return err
+	}
 	_, err := r.db.Exec("DELETE FROM categories WHERE id = ?", id)
 	return err
 }

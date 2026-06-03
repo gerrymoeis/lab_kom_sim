@@ -1,7 +1,6 @@
 ﻿package handlers
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -658,16 +657,6 @@ func (h *Handler) CategoryDelete(c *gin.Context) {
 	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-
-	// Check cascade
-	typeCount, _ := h.deviceTypeService.CountByCategoryID(cat.ID)
-	deviceCount, _ := h.deviceService.CountByCategoryID(cat.ID)
-
-	if typeCount > 0 || deviceCount > 0 {
-		h.redirectWithError(c, "/devices?tab=types",
-			fmt.Sprintf("Tidak dapat menghapus: masih ada %d tipe dan %d perangkat dalam kategori ini", typeCount, deviceCount))
-		return
-	}
 
 	if err := h.categoryService.Delete(cat.ID, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/devices?tab=types", err.Error())
