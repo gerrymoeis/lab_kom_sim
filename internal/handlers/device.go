@@ -559,12 +559,27 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 	}
 	deviceCount, _ := h.deviceService.CountByDeviceTypeID(dt.ID)
 	devices, _ := h.deviceService.List(repository.DeviceFilters{DeviceTypeID: strconv.Itoa(dt.ID)})
+	activeLoanIDs, _ := h.deviceService.GetActiveLoanIDs()
+	depletedIDs, _ := h.deviceService.GetDepletedIDs()
+	installationStatuses, _ := h.deviceService.GetInstallationStatuses()
+	if activeLoanIDs == nil {
+		activeLoanIDs = make(map[int]bool)
+	}
+	if depletedIDs == nil {
+		depletedIDs = make(map[int]bool)
+	}
+	if installationStatuses == nil {
+		installationStatuses = make(map[int]string)
+	}
 	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
 		"title": "Detail Tipe Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
-		"deviceType":  dt,
-		"deviceCount": deviceCount,
-		"devices":     devices,
+		"deviceType":          dt,
+		"deviceCount":         deviceCount,
+		"devices":             devices,
+		"activeLoanIDs":       activeLoanIDs,
+		"depletedIDs":         depletedIDs,
+		"installationStatuses": installationStatuses,
 	})
 }
 
