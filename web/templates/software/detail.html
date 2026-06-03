@@ -46,28 +46,33 @@
                         <span class="badge bg-secondary fs-6">{{ sub .totalPCs .installedCount }} Belum</span>
                     </p>
 
-                    <div class="d-flex flex-column gap-2">
-                        {{ range $kolomIdx, $kolom := .pcGrid }}
-                        <div class="d-flex gap-2 justify-content-center flex-wrap">
-                            {{ range $barisIdx, $pc := $kolom }}
-                            <div class="border rounded p-2 text-center" style="width:80px; {{ if gt $pc.PCID 0 }}{{ if $pc.Installed }}background:#d4edda;border-color:#28a745;{{ else }}background:#f8f9fa;border-color:#dee2e6;{{ end }}{{ else }}background:white;border-style:dashed;border-color:#dee2e6;{{ end }}">
-                                {{ if gt $pc.PCID 0 }}
-                                <div style="font-size:0.8rem;font-weight:600;">{{ $pc.Label }}</div>
-                                <div style="font-size:1.2rem;">
-                                    {{ if $pc.Installed }}
-                                    <i class="bi bi-check-circle-fill text-success"></i>
+                    <div class="pc-grid-scroll">
+                        <div class="d-flex flex-column align-items-center gap-2">
+                            {{ range $rowIdx, $row := .pcGrid }}
+                            <div class="d-flex gap-2 justify-content-center">
+                                {{ range $colIdx, $pc := $row }}
+                                <div class="pc-card-wrapper">
+                                    {{ if gt $pc.PCID 0 }}
+                                    <div class="pc-card status-{{ $pc.Status }}" style="cursor:default;">
+                                        <div class="pc-number">{{ $pc.Label }}</div>
+                                        <div class="pc-icon">
+                                            {{ if $pc.Installed }}
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                            {{ else }}
+                                            <i class="bi bi-x-circle-fill text-muted"></i>
+                                            {{ end }}
+                                        </div>
+                                    </div>
                                     {{ else }}
-                                    <i class="bi bi-x-circle-fill text-muted"></i>
+                                    <div class="pc-card pc-card-empty" style="cursor:default;">
+                                        <div class="pc-number text-muted">-</div>
+                                    </div>
                                     {{ end }}
                                 </div>
-                                {{ else }}
-                                <div style="font-size:0.8rem;color:#aaa;">-</div>
-                                <div style="font-size:1.2rem;"><i class="bi bi-dash text-muted"></i></div>
                                 {{ end }}
                             </div>
                             {{ end }}
                         </div>
-                        {{ end }}
                     </div>
 
                     <hr>
