@@ -195,4 +195,11 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 .nav-tabs ~ .card.shadow-sm { border-top-left-radius: 0; border-top-right-radius: 0; border-top: none; }
 
 .layout-grid-scroll { overflow-x: auto; }
-.layout-grid-scroll .layout-row { min-width: 760px; }
+
+.layout-cell {
+    width: clamp(48px, 7vw, 80px);
+    aspect-ratio: 1.4 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
