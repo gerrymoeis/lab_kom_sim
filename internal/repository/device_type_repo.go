@@ -224,6 +224,9 @@ func (r *DeviceTypeRepository) Update(id, categoryID int, name, brand, model, pr
 }
 
 func (r *DeviceTypeRepository) Delete(id int) error {
+	if _, err := r.db.Exec("DELETE FROM devices WHERE device_type_id = ?", id); err != nil {
+		return err
+	}
 	_, err := r.db.Exec("DELETE FROM device_types WHERE id = ?", id)
 	return err
 }
