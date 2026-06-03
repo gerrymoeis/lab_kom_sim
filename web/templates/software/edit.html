@@ -31,35 +31,39 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="deselect-all"><i class="bi bi-x"></i> Hapus Semua</button>
                         </div>
 
-                        <div class="d-flex flex-column gap-2" id="pc-grid">
-                            {{ range $kolomIdx, $kolom := .pcGrid }}
-                            <div class="d-flex gap-2 justify-content-center flex-wrap">
-                                {{ range $barisIdx, $pc := $kolom }}
-                                <div class="pc-toggle border rounded p-2 text-center {{ if gt $pc.PCID 0 }}{{ if $pc.Installed }}bg-success text-white border-success{{ else }}bg-light text-muted border-secondary{{ end }}{{ else }}bg-white border-dashed{{ end }}"
-                                     style="width:80px;{{ if not (gt $pc.PCID 0) }}border-style:dashed;cursor:default;{{ end }}"
-                                     role="button" tabindex="0"
-                                     data-pc-id="{{ $pc.PCID }}"
-                                     data-installed="{{ $pc.Installed }}">
-                                    {{ if gt $pc.PCID 0 }}
-                                    <div style="font-size:0.8rem;font-weight:600;">{{ $pc.Label }}</div>
-                                    <div class="toggle-icon" style="font-size:1.2rem;">
-                                        {{ if $pc.Installed }}
-                                        <i class="bi bi-check-circle-fill"></i>
+                        <div class="pc-grid-scroll" id="pc-grid">
+                            <div class="d-flex flex-column align-items-center gap-2">
+                                {{ range $rowIdx, $row := .pcGrid }}
+                                <div class="d-flex gap-2 justify-content-center">
+                                    {{ range $colIdx, $pc := $row }}
+                                    <div class="pc-card-wrapper">
+                                        {{ if gt $pc.PCID 0 }}
+                                        <div class="pc-card pc-toggle status-{{ $pc.Status }}"
+                                             role="button" tabindex="0"
+                                             data-pc-id="{{ $pc.PCID }}"
+                                             data-installed="{{ $pc.Installed }}">
+                                            <div class="pc-number">{{ $pc.Label }}</div>
+                                            <div class="pc-icon toggle-icon">
+                                                {{ if $pc.Installed }}
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                                {{ else }}
+                                                <i class="bi bi-x-circle-fill text-muted"></i>
+                                                {{ end }}
+                                            </div>
+                                            <input type="checkbox" name="pc_ids[]" value="{{ $pc.PCID }}" {{ if $pc.Installed }}checked{{ end }} hidden>
+                                        </div>
                                         {{ else }}
-                                        <i class="bi bi-x-circle-fill"></i>
+                                        <div class="pc-card pc-card-empty" style="cursor:default;">
+                                            <div class="pc-number text-muted">-</div>
+                                        </div>
                                         {{ end }}
                                     </div>
-                                    <input type="checkbox" name="pc_ids[]" value="{{ $pc.PCID }}" {{ if $pc.Installed }}checked{{ end }} hidden>
-                                    {{ else }}
-                                    <div style="font-size:0.8rem;color:#aaa;">-</div>
-                                    <div style="font-size:1.2rem;"><i class="bi bi-dash text-muted"></i></div>
                                     {{ end }}
                                 </div>
+                                {{ else }}
+                                <p class="text-muted">Belum ada data PC</p>
                                 {{ end }}
                             </div>
-                            {{ else }}
-                            <p class="text-muted">Belum ada data PC</p>
-                            {{ end }}
                         </div>
 
                         <hr class="my-4">
@@ -88,14 +92,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const cb = el.querySelector('input[name="pc_ids[]"]');
             if (!cb) return;
             cb.checked = checked;
+            const icon = el.querySelector('.toggle-icon i');
             if (checked) {
-                el.classList.remove('bg-light', 'text-muted', 'border-secondary');
-                el.classList.add('bg-success', 'text-white', 'border-success');
-                el.querySelector('.toggle-icon i').className = 'bi bi-check-circle-fill';
+                icon.className = 'bi bi-check-circle-fill text-success';
             } else {
-                el.classList.remove('bg-success', 'text-white', 'border-success');
-                el.classList.add('bg-light', 'text-muted', 'border-secondary');
-                el.querySelector('.toggle-icon i').className = 'bi bi-x-circle-fill';
+                icon.className = 'bi bi-x-circle-fill text-muted';
             }
         });
         updateCount();
@@ -107,14 +108,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const cb = el.querySelector('input[name="pc_ids[]"]');
         if (!cb) return;
         cb.checked = !cb.checked;
+        const icon = el.querySelector('.toggle-icon i');
         if (cb.checked) {
-            el.classList.remove('bg-light', 'text-muted', 'border-secondary');
-            el.classList.add('bg-success', 'text-white', 'border-success');
-            el.querySelector('.toggle-icon i').className = 'bi bi-check-circle-fill';
+            icon.className = 'bi bi-check-circle-fill text-success';
         } else {
-            el.classList.remove('bg-success', 'text-white', 'border-success');
-            el.classList.add('bg-light', 'text-muted', 'border-secondary');
-            el.querySelector('.toggle-icon i').className = 'bi bi-x-circle-fill';
+            icon.className = 'bi bi-x-circle-fill text-muted';
         }
         updateCount();
     });
