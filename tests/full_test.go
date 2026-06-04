@@ -158,6 +158,7 @@ func TestFullIntegration(t *testing.T) {
 		formData := "_csrf=" + url.QueryEscape(token) + "&username=admin&password=admin123"
 		req, _ = http.NewRequest("POST", ts.URL+"/login", strings.NewReader(formData))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		addCookies(req)
 		resp, err = client.Do(req)
 		if err != nil {
 			return false
