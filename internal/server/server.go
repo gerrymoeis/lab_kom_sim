@@ -201,6 +201,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	})
 
 	public := router.Group("/")
+	public.Use(middleware.CSRF())
 	{
 		public.GET("/", h.Home)
 		public.GET("/login", h.LoginPage)
@@ -209,7 +210,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	}
 
 	protected := router.Group("/")
-	protected.Use(middleware.AuthRequired(db), writeFlushMiddleware())
+	protected.Use(middleware.AuthRequired(db), middleware.CSRF(), writeFlushMiddleware())
 	{
 		protected.GET("/dashboard", h.Dashboard)
 		protected.GET("/pc", h.PCList)
@@ -312,7 +313,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	}
 
 	api := router.Group("/api")
-	api.Use(middleware.AuthRequired(db))
+	api.Use(middleware.AuthRequired(db), middleware.CSRF())
 	{
 		api.GET("/pc/status", h.PCStatusAPI)
 		api.POST("/pc/:label/status", h.UpdatePCStatusAPI)

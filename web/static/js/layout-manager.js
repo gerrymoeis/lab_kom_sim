@@ -227,7 +227,10 @@ var PCLayoutManager = (function() {
 
     fetch('/api/pc/' + op, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+      },
       body: JSON.stringify(body)
     })
     .then(function(r) { return r.json(); })
@@ -267,7 +270,10 @@ var PCLayoutManager = (function() {
   function moveRowToCadangan(row) {
     fetch('/api/pc/move-row', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+      },
       body: JSON.stringify({ row: row })
     }).then(function(r) { return r.json(); }).then(function(data) {
       if (data.success) {

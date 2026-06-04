@@ -1,6 +1,8 @@
 package services
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -40,7 +42,11 @@ func (s *AuthService) Login(username, password, ipAddress, userAgent string) (us
 		s.activityLogService.LogAuth(u.ID, username, u.Role, "login_force", true, ipAddress, userAgent, "Previous session terminated for re-login")
 	}
 
-	token = fmt.Sprintf("%d_%s_%s", u.ID, username, u.Role)
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return 0, "", "", "", fmt.Errorf("failed to generate session token: %w", err)
+	}
+	token = hex.EncodeToString(b)
 	s.userRepo.UpdateSessionToken(u.ID, token)
 
 	s.activityLogService.LogAuth(u.ID, username, u.Role, "login", true, ipAddress, userAgent, "")

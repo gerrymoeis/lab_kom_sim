@@ -67,7 +67,7 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 		"search": keyword, "sort_by": c.Query("sort_by"),
 	}
 
-	c.HTML(http.StatusOK, "activity_log/list.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "activity_log/list.html", gin.H{
 		"title": "Activity Logs", "currentPage": "activity_logs",
 		"username": username, "role": role,
 		"logs":       alogs,
