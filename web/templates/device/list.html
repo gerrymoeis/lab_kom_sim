@@ -106,11 +106,11 @@
                                 <a href="/categories/{{ $cat.CategoryPrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Kategori">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/categories/{{ $cat.CategoryPrefix | lower }}/delete" style="display:inline;" onsubmit="return prompt('Hapus kategori &quot;{{ $cat.CategoryName }}&quot;? Semua perangkat dalam kategori ini akan terhapus. Ketik &quot;{{ $cat.CategoryPrefix }}&quot; untuk mengkonfirmasi penghapusan kategori.') === '{{ $cat.CategoryPrefix }}'">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus Kategori">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus Kategori"
+                                    onclick="confirmDelete({message:'Hapus kategori &quot;{{ $cat.CategoryName }}&quot;? Semua perangkat dalam kategori ini akan terhapus.', requirePrefix:true, prefix:'{{ $cat.CategoryPrefix }}', type:'kategori', formId:'del-cat-{{ $ui }}-{{ $ci }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-cat-{{ $ui }}-{{ $ci }}" method="POST" action="/categories/{{ $cat.CategoryPrefix | lower }}/delete" style="display:none;"></form>
                                 {{ end }}
                             </div>
                         </div>
@@ -132,11 +132,11 @@
                                         <a href="/device-types/{{ $type.TypePrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Tipe">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form method="POST" action="/device-types/{{ $type.TypePrefix | lower }}/delete" style="display:inline;" onsubmit="return prompt('Hapus tipe &quot;{{ $type.TypeName }}&quot;? Semua perangkat dalam tipe ini akan terhapus. Ketik &quot;{{ $type.TypePrefix }}&quot; untuk mengkonfirmasi penghapusan tipe.') === '{{ $type.TypePrefix }}'">
-                                            <button type="submit" class="btn btn-sm btn-danger" title="Hapus Tipe">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-sm btn-danger" title="Hapus Tipe"
+                                            onclick="confirmDelete({message:'Hapus tipe &quot;{{ $type.TypeName }}&quot;? Semua perangkat dalam tipe ini akan terhapus.', requirePrefix:true, prefix:'{{ $type.TypePrefix }}', type:'tipe', formId:'del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}'})">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        <form id="del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}" method="POST" action="/device-types/{{ $type.TypePrefix | lower }}/delete" style="display:none;"></form>
                                         {{ end }}
                                     </div>
                                 </div>
@@ -192,11 +192,11 @@
                                                         <a href="/devices/{{ $d.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                                             <i class="bi bi-pencil"></i>
                                                         </a>
-                                                        <form method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" style="display:inline;" onsubmit="return confirm('Hapus perangkat {{ $d.AssetCode }}?')">
-                                                            <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                                                <i class="bi bi-trash"></i>
-                                                            </button>
-                                                        </form>
+                                                        <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                                            onclick="confirmDelete({message:'Hapus perangkat {{ $d.AssetCode }}?', formId:'del-dev-{{ $d.ID }}'})">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                        <form id="del-dev-{{ $d.ID }}" method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" style="display:none;"></form>
                                                         {{ end }}
                                                     </td>
                                                 </tr>

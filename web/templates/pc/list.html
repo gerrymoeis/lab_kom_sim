@@ -113,11 +113,11 @@
                                 <a href="/pc/{{ .Label }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/pc/{{ .Label }}/delete" style="display: inline;" onsubmit="return confirmDelete()">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Apakah Anda yakin ingin menghapus data ini?', formId:'del-pc-{{ .Label }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-pc-{{ .Label }}" method="POST" action="/pc/{{ .Label }}/delete" style="display:none;"></form>
                                 {{ end }}
                             </td>
                         </tr>
