@@ -196,6 +196,9 @@ function clearPhoto() {
     if (gal) gal.value = '';
     document.getElementById('previewPhoto').classList.add('d-none');
     if (photoPreviewUrl) { URL.revokeObjectURL(photoPreviewUrl); photoPreviewUrl = null; }
+    if (photoFileRef) {
+        fetchWithCSRF('/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: photoFileRef }) }).catch(function(){});
+    }
     photoFileRef = null;
     var hiddenInput = document.getElementById('photo_file_ref');
     if (hiddenInput) hiddenInput.value = '';
@@ -215,7 +218,7 @@ async function uploadForProcessing(file) {
         var opt = devSelect.options[devSelect.selectedIndex];
         if (opt.dataset.assetCode) { formData.append('label', opt.dataset.assetCode); }
     }
-    var response = await fetch('/api/upload-image', { method: 'POST', body: formData });
+    var response = await fetchWithCSRF('/api/upload-image', { method: 'POST', body: formData });
     return await response.json();
 }
 

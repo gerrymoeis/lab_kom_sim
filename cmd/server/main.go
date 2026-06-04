@@ -59,7 +59,7 @@ func main() {
 
 	if cfg.Environment == "production" { gin.SetMode(gin.ReleaseMode) }
 
-	router, cleanup := server.SetupRouter(db, cfg, notifier)
+	router, cleanup, _ := server.SetupRouter(db, cfg, notifier)
 	defer cleanup()
 
 	if err := os.MkdirAll("uploads", 0755); err != nil {

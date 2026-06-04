@@ -530,7 +530,7 @@
             formData.append('type', 'device_type');
             var prefixInput = document.getElementById('newTypePrefix');
             if (prefixInput && prefixInput.value) { formData.append('label', prefixInput.value); }
-            var response = await fetch('/api/upload-image', { method: 'POST', body: formData });
+            var response = await fetchWithCSRF('/api/upload-image', { method: 'POST', body: formData });
             var result = await response.json();
             if (result.success) {
                 newTypePhotoRef = result.file_ref;
@@ -612,7 +612,7 @@
         document.getElementById('newTypePhotoLoading').classList.add('d-none');
         document.getElementById('newTypePhotoError').classList.add('d-none');
         if (newTypePhotoRef) {
-            fetch('/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: newTypePhotoRef }) }).catch(function(){});
+            fetchWithCSRF('/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: newTypePhotoRef }) }).catch(function(){});
             newTypePhotoRef = '';
             window.newTypePhotoFileRef = '';
         }
