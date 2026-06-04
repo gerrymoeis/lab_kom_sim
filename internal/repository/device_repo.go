@@ -3,7 +3,6 @@
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
@@ -147,28 +146,7 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 }
 
 func (r *DeviceRepository) GetByID(id int) (*models.Device, error) {
-	var d models.Device
-	var pDate sql.NullString
-	err := r.db.QueryRow(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
-		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
-		d.created_at, d.updated_at,
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
-		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
-		COALESCE(d.usage_type, '') AS usage_type_override,
-		COALESCE(dt.photo,'')
-		FROM devices d
-		JOIN device_types dt ON d.device_type_id = dt.id
-		JOIN categories c ON c.id = dt.category_id WHERE d.id = ?`, id).
-		Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
-			&d.Condition, &d.Location, &pDate, &d.Notes,
-			&d.CreatedAt, &d.UpdatedAt,
-			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto)
-	if err != nil {
-		return nil, err
-	}
-	d.PurchaseDate = parseDate(pDate)
-	return &d, nil
+	return scanDeviceRow(r.db, "d.id = ?", id)
 }
 
 func (r *DeviceRepository) GetBySlug(slug string) (*models.Device, error) {
@@ -176,79 +154,15 @@ func (r *DeviceRepository) GetBySlug(slug string) (*models.Device, error) {
 }
 
 func (r *DeviceRepository) GetByAssetCodeSlug(slug string) (*models.Device, error) {
-	var d models.Device
-	var pDate sql.NullString
-	err := r.db.QueryRow(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
-		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
-		d.created_at, d.updated_at,
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
-		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
-		COALESCE(d.usage_type, '') AS usage_type_override,
-		COALESCE(dt.photo,'')
-		FROM devices d
-		JOIN device_types dt ON d.device_type_id = dt.id
-		JOIN categories c ON c.id = dt.category_id WHERE LOWER(d.asset_code) = LOWER(?)`, slug).
-		Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
-			&d.Condition, &d.Location, &pDate, &d.Notes,
-			&d.CreatedAt, &d.UpdatedAt,
-			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto)
-	if err != nil {
-		return nil, err
-	}
-	d.PurchaseDate = parseDate(pDate)
-	return &d, nil
+	return scanDeviceRow(r.db, "LOWER(d.asset_code) = LOWER(?)", slug)
 }
 
 func (r *DeviceRepository) getByField(field, value string) (*models.Device, error) {
-	var d models.Device
-	var pDate sql.NullString
-	query := fmt.Sprintf(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
-		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
-		d.created_at, d.updated_at,
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
-		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
-		COALESCE(d.usage_type, '') AS usage_type_override,
-		COALESCE(dt.photo,'')
-		FROM devices d
-		JOIN device_types dt ON d.device_type_id = dt.id
-		JOIN categories c ON c.id = dt.category_id WHERE d.%s = ?`, field)
-	err := r.db.QueryRow(query, value).
-		Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
-			&d.Condition, &d.Location, &pDate, &d.Notes,
-			&d.CreatedAt, &d.UpdatedAt,
-			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto)
-	if err != nil {
-		return nil, err
-	}
-	d.PurchaseDate = parseDate(pDate)
-	return &d, nil
+	return scanDeviceRow(r.db, fmt.Sprintf("d.%s = ?", field), value)
 }
 
 func (r *DeviceRepository) GetByAssetCode(code string) (*models.Device, error) {
-	var d models.Device
-	var pDate sql.NullString
-	err := r.db.QueryRow(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
-		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
-		d.created_at, d.updated_at,
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
-		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
-		COALESCE(d.usage_type, '') AS usage_type_override,
-		COALESCE(dt.photo,'')
-		FROM devices d
-		JOIN device_types dt ON d.device_type_id = dt.id
-		JOIN categories c ON c.id = dt.category_id WHERE d.asset_code = ?`, code).
-		Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
-			&d.Condition, &d.Location, &pDate, &d.Notes,
-			&d.CreatedAt, &d.UpdatedAt,
-			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto)
-	if err != nil {
-		return nil, err
-	}
-	d.PurchaseDate = parseDate(pDate)
-	return &d, nil
+	return scanDeviceRow(r.db, "d.asset_code = ?", code)
 }
 
 func (r *DeviceRepository) GetNextAssetCode(prefix string) string {
@@ -445,18 +359,4 @@ func (r *DeviceRepository) CountByCategoryID(categoryID int) (int, error) {
 		JOIN device_types dt ON dt.id = d.device_type_id
 		WHERE dt.category_id = ?`, categoryID).Scan(&count)
 	return count, err
-}
-
-func parseDate(s sql.NullString) *time.Time {
-	if s.Valid && s.String != "" {
-		t, err := time.Parse("2006-01-02", s.String)
-		if err == nil {
-			return &t
-		}
-		t, err = time.Parse(time.RFC3339, s.String)
-		if err == nil {
-			return &t
-		}
-	}
-	return nil
 }
