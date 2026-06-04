@@ -45,7 +45,7 @@ func (h *Handler) DeviceUsageList(c *gin.Context) {
 
 	totalPages := (total + pageSize - 1) / pageSize
 
-	c.HTML(http.StatusOK, "device_usage/list.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_usage/list.html", gin.H{
 		"title": "Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"usages": usages,
@@ -66,7 +66,7 @@ func (h *Handler) DeviceUsageCreatePage(c *gin.Context) {
 		devices = nil
 	}
 	deviceID, _ := strconv.Atoi(c.DefaultQuery("device_id", "0"))
-	c.HTML(http.StatusOK, "device_usage/create.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_usage/create.html", gin.H{
 		"title": "Tambah Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"devices": devices, "preselectDeviceID": deviceID,
@@ -77,7 +77,7 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	var req CreateDeviceUsageRequest
 	if err := c.ShouldBind(&req); err != nil {
 		_, username, role, _ := h.user(c)
-		c.HTML(http.StatusBadRequest, "device_usage/create.html", gin.H{
+		h.renderTemplate(c, http.StatusBadRequest, "device_usage/create.html", gin.H{
 			"title": "Tambah Pemakaian", "currentPage": "devices",
 			"username": username, "role": role, "error": "Data tidak lengkap",
 		})
@@ -97,7 +97,7 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 		Purpose:     req.Purpose,
 	}, uid, u, r, ip, ua)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "device_usage/create.html", gin.H{
+		h.renderTemplate(c, http.StatusInternalServerError, "device_usage/create.html", gin.H{
 			"title": "Tambah Pemakaian", "currentPage": "devices",
 			"username": u, "role": r, "error": "Gagal menyimpan pemakaian",
 		})
@@ -119,7 +119,7 @@ func (h *Handler) DeviceUsageDetail(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "device_usage/detail.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_usage/detail.html", gin.H{
 		"title": "Detail Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"usage":     usage,
@@ -140,7 +140,7 @@ func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "device_usage/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_usage/edit.html", gin.H{
 		"title": "Edit Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"usage": usage,

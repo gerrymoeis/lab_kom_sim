@@ -13,7 +13,7 @@ import (
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.HTML(http.StatusBadRequest, "login.html", gin.H{
+		h.renderTemplate(c, http.StatusBadRequest, "login.html", gin.H{
 			"title": "Login - Sistem Inventaris Lab",
 			"error": "Username dan password harus diisi",
 		})
@@ -31,7 +31,7 @@ func (h *Handler) Login(c *gin.Context) {
 		if errors.Is(err, services.ErrAlreadyLoggedIn) {
 			status = http.StatusConflict
 		}
-		c.HTML(status, "login.html", gin.H{
+		h.renderTemplate(c, status, "login.html", gin.H{
 			"title": "Login - Sistem Inventaris Lab",
 			"error": msg,
 		})
@@ -45,7 +45,7 @@ func (h *Handler) Login(c *gin.Context) {
 	session.Set("role", role)
 	session.Set("session_token", token)
 	if err := session.Save(); err != nil {
-		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
+		h.renderTemplate(c, http.StatusInternalServerError, "login.html", gin.H{
 			"title": "Login - Sistem Inventaris Lab",
 			"error": "Gagal menyimpan session",
 		})
@@ -60,7 +60,7 @@ func (h *Handler) LoginPage(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/dashboard")
 		return
 	}
-	c.HTML(http.StatusOK, "login.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "login.html", gin.H{
 		"title": "Login - Sistem Inventaris Lab",
 	})
 }

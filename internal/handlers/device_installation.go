@@ -45,7 +45,7 @@ func (h *Handler) DeviceInstallationList(c *gin.Context) {
 
 	totalPages := (total + pageSize - 1) / pageSize
 
-	c.HTML(http.StatusOK, "device_installation/list.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_installation/list.html", gin.H{
 		"title": "Instalasi Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"installations": installations,
@@ -66,7 +66,7 @@ func (h *Handler) DeviceInstallationCreatePage(c *gin.Context) {
 		devices = nil
 	}
 	deviceID, _ := strconv.Atoi(c.DefaultQuery("device_id", "0"))
-	c.HTML(http.StatusOK, "device_installation/create.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_installation/create.html", gin.H{
 		"title": "Tambah Instalasi", "currentPage": "devices",
 		"username": username, "role": role, "android": h.cfg.Android,
 		"devices": devices, "preselectDeviceID": deviceID,
@@ -77,7 +77,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 	var req CreateInstallationRequest
 	if err := c.ShouldBind(&req); err != nil {
 		_, username, role, _ := h.user(c)
-		c.HTML(http.StatusBadRequest, "device_installation/create.html", gin.H{
+		h.renderTemplate(c, http.StatusBadRequest, "device_installation/create.html", gin.H{
 			"title": "Tambah Instalasi", "currentPage": "devices",
 			"username": username, "role": role, "android": h.cfg.Android, "error": "Lengkapi data yang diperlukan",
 		})
@@ -99,7 +99,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 		Notes:                  req.Notes,
 	}, uid, u, r, ip, ua)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "device_installation/create.html", gin.H{
+		h.renderTemplate(c, http.StatusInternalServerError, "device_installation/create.html", gin.H{
 			"title": "Tambah Instalasi", "currentPage": "devices",
 			"username": u, "role": r, "error": "Gagal menyimpan instalasi",
 		})
@@ -121,7 +121,7 @@ func (h *Handler) DeviceInstallationDetail(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "device_installation/detail.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_installation/detail.html", gin.H{
 		"title": "Detail Instalasi", "currentPage": "devices",
 		"username": username, "role": role,
 		"installation": inst,
@@ -142,7 +142,7 @@ func (h *Handler) DeviceInstallationEditPage(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "device_installation/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_installation/edit.html", gin.H{
 		"title": "Edit Instalasi", "currentPage": "devices",
 		"username": username, "role": role, "android": h.cfg.Android,
 		"installation": inst,

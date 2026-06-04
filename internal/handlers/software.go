@@ -40,7 +40,7 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 	totalPages := (total + pageSize - 1) / pageSize
 	startRow := (page-1)*pageSize + 1
 
-	c.HTML(http.StatusOK, "software/list.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "software/list.html", gin.H{
 		"title": "Software Catalog", "currentPage": "software",
 		"username": username, "role": role,
 		"catalog": stats, "filters": gin.H{"search": search, "category": filterCategory, "sort_by": sortBy},
@@ -100,7 +100,7 @@ func (h *Handler) SoftwareDetail(c *gin.Context) {
 		if p.Installed { installedCount++ }
 	}
 
-	c.HTML(http.StatusOK, "software/detail.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "software/detail.html", gin.H{
 		"title": "Detail Software - " + sw.Name, "currentPage": "software",
 		"username": username, "role": role,
 		"software": sw, "pcGrid": buildSoftwareGrid(pcList),
@@ -129,7 +129,7 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 		if p.Installed { installedCount++ }
 	}
 
-	c.HTML(http.StatusOK, "software/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "software/edit.html", gin.H{
 		"title": "Edit Software - " + sw.Name, "currentPage": "software",
 		"username": username, "role": role,
 		"software": sw, "pcGrid": buildSoftwareGrid(pcList),
