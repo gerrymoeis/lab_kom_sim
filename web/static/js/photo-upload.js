@@ -121,9 +121,8 @@ async function uploadForProcessing(file, type) {
     var label = labelInput ? labelInput.value : window.location.pathname.split('/')[2];
     if (label) { formData.append('label', label); }
 
-    var response = await fetch('/api/upload-image', {
+    var response = await fetchWithCSRF('/api/upload-image', {
         method: 'POST',
-        headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
         body: formData
     });
     var json = await response.json();
@@ -212,11 +211,10 @@ async function clearImage(type) {
 
     if (fileRef) {
         try {
-            await fetch('/api/delete-temp-file', {
+            await fetchWithCSRF('/api/delete-temp-file', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ file_ref: fileRef })
             });

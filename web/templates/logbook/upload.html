@@ -184,7 +184,7 @@ async function onFileChange(e) {
         formData.append('image', file);
         formData.append('type', 'logbook');
 
-        var resp = await fetch('/api/upload-image', { method: 'POST', body: formData });
+        var resp = await fetchWithCSRF('/api/upload-image', { method: 'POST', body: formData });
         var data = await resp.json();
         if (data.success) {
             document.getElementById('fileRef').value = data.file_ref;
@@ -213,7 +213,7 @@ function clearOtherInput(activeId) {
 function clearLogbookImage() {
     var ref = document.getElementById('fileRef').value;
     if (ref) {
-        fetch('/api/delete-temp-file', {
+        fetchWithCSRF('/api/delete-temp-file', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ file_ref: ref })
