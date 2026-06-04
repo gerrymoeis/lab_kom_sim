@@ -70,7 +70,7 @@
                 </div>
             </form>
 
-            {{ if gt (len .groupedData.UsageGroups) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow .totalItems) 1 }} dari {{ .totalItems }} perangkat</p>{{ end }}
+            {{ if gt (len .groupedData.UsageGroups) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ .endRow }} dari {{ .totalItems }} perangkat</p>{{ end }}
             {{ template "layout/pagination.html" . }}
 
             {{ range $ui, $ug := .groupedData.UsageGroups }}
