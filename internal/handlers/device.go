@@ -887,7 +887,7 @@ func processDeviceTypePhotoRef(fileRef string) string {
 		return ""
 	}
 	src := filepath.Join("uploads", "temp", ref)
-	dst := filepath.Join("uploads", "device_type", ref)
+	dst := filepath.Join("uploads", "device_types", ref)
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return ""
 	}
