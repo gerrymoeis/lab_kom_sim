@@ -23,9 +23,61 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function confirmDelete(message) {
-    return confirm(message || 'Apakah Anda yakin ingin menghapus data ini?');
-}
+// --- Delete confirmation modal ---
+var deleteState = {};
+
+window.confirmDelete = function(opts) {
+    var message = opts.message || 'Apakah Anda yakin ingin menghapus data ini?';
+    var requirePrefix = opts.requirePrefix || false;
+    var prefix = opts.prefix || '';
+    var type = opts.type || '';
+    var formId = opts.formId || '';
+
+    document.getElementById('deleteConfirmMessage').textContent = message;
+
+    var inputSection = document.getElementById('deleteConfirmInputSection');
+    var input = document.getElementById('deleteConfirmInput');
+    var errEl = document.getElementById('deleteConfirmError');
+    var label = document.getElementById('deleteConfirmLabel');
+
+    if (requirePrefix && prefix) {
+        label.innerHTML = 'Ketik &quot;' + prefix + '&quot; untuk mengkonfirmasi penghapusan ' + type + '.';
+        input.value = '';
+        input.classList.remove('is-invalid');
+        errEl.classList.add('d-none');
+        errEl.textContent = '';
+        inputSection.classList.remove('d-none');
+    } else {
+        inputSection.classList.add('d-none');
+    }
+
+    deleteState = { requirePrefix: requirePrefix, prefix: prefix, formId: formId };
+
+    var modalEl = document.getElementById('deleteConfirmModal');
+    var modal = bootstrap.Modal.getInstance(modalEl);
+    if (!modal) modal = new bootstrap.Modal(modalEl);
+    modal.show();
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('deleteConfirmBtn')?.addEventListener('click', function() {
+        if (!deleteState.formId) return;
+
+        if (deleteState.requirePrefix) {
+            var input = document.getElementById('deleteConfirmInput').value;
+            if (input !== deleteState.prefix) {
+                var inputEl = document.getElementById('deleteConfirmInput');
+                var errEl = document.getElementById('deleteConfirmError');
+                inputEl.classList.add('is-invalid');
+                errEl.innerHTML = 'Ketik &quot;' + deleteState.prefix + '&quot; dengan benar.';
+                errEl.classList.remove('d-none');
+                return;
+            }
+        }
+
+        document.getElementById(deleteState.formId).submit();
+    });
+});
 
 function showLoading(button) {
     const originalText = button.innerHTML;

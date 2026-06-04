@@ -115,7 +115,8 @@
                                 <a href="/installations/{{ $inst.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <button type="button" class="btn btn-sm btn-danger" title="Hapus" onclick="if(confirm('Hapus instalasi ini?')){ document.getElementById('del-{{ $inst.ID }}').submit(); }">
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Hapus instalasi ini?', formId:'del-{{ $inst.ID }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
                                 <form id="del-{{ $inst.ID }}" method="POST" action="/installations/{{ $inst.ID }}/delete" style="display:none;"></form>

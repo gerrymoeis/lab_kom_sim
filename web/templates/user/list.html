@@ -95,11 +95,11 @@
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 {{ if and (ne .Username "admin") (ne .Username "rekan") (eq $.username "admin") }}
-                                <form method="POST" action="/admin/users/{{ .Username }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Hapus user ini?', formId:'del-user-{{ .Username }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-user-{{ .Username }}" method="POST" action="/admin/users/{{ .Username }}/delete" style="display:none;"></form>
                                 {{ end }}
                                 {{ else }}
                                 -

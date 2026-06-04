@@ -28,6 +28,12 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <form method="GET" action="/logbook" class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search"
+                           placeholder="Cari nama, NIM, atau keperluan..."
+                           value="{{ .filters.search }}">
+                </div>
                 <div class="col-md-3">
                     <label for="date_from" class="form-label">Tanggal Dari</label>
                     <input type="date" class="form-control" id="date_from" name="date_from" value="{{ .filters.date_from }}">
@@ -35,12 +41,6 @@
                 <div class="col-md-3">
                     <label for="date_to" class="form-label">Tanggal Sampai</label>
                     <input type="date" class="form-control" id="date_to" name="date_to" value="{{ .filters.date_to }}">
-                </div>
-                <div class="col-md-6">
-                    <label for="search" class="form-label">Cari</label>
-                    <input type="text" class="form-control" id="search" name="search"
-                           placeholder="Cari nama, NIM, atau keperluan..."
-                           value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-3">
                     <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
@@ -127,12 +127,11 @@
                                 <a href="/logbook/{{ $entry.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/logbook/{{ $entry.ID }}/delete" style="display:inline;"
-                                      onsubmit="return confirm('Yakin ingin menghapus entry ini?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Yakin ingin menghapus entry ini?', formId:'del-log-{{ $entry.ID }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-log-{{ $entry.ID }}" method="POST" action="/logbook/{{ $entry.ID }}/delete" style="display:none;"></form>
                             </td>
                             {{ end }}
                         </tr>
