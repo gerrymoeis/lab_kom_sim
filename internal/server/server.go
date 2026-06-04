@@ -139,6 +139,7 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 		if err != nil { return err }
 		if info.IsDir() || filepath.Ext(path) != ".html" { return nil }
 		relPath, _ := filepath.Rel(templatesDir, path)
+		if strings.HasPrefix(filepath.ToSlash(relPath), "public/") { return nil }
 		content, err := os.ReadFile(path)
 		if err != nil { return err }
 		_, err = templ.New(filepath.ToSlash(relPath)).Parse(string(content))
