@@ -256,6 +256,6 @@ type LogbookSaveRequest struct {
 }
 
 type UploadImageRequest struct {
-	Type  string `form:"type" binding:"omitempty,oneof=serial front"`
+	Type  string `form:"type" binding:"omitempty,oneof=serial front device_type installation"`
 	Label string `form:"label"`
 }
