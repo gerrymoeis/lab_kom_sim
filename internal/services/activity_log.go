@@ -19,6 +19,7 @@ type ActivityLogService struct {
 	logChan  chan *models.ActivityLog
 	stmt     *sql.Stmt
 	close    chan struct{}
+	flushReq chan chan struct{}
 	search   *search.Builder
 }
 
@@ -40,6 +41,7 @@ func NewActivityLogService(db *database.DB, notifier CUDNotifier) *ActivityLogSe
 		logChan:  make(chan *models.ActivityLog, 4096),
 		stmt:     stmt,
 		close:    make(chan struct{}),
+		flushReq: make(chan chan struct{}),
 		search:   search.New(db),
 	}
 	go s.logWriter()
@@ -70,6 +72,9 @@ func (s *ActivityLogService) logWriter() {
 			if len(batch) >= batchSize { flush() }
 		case <-ticker.C:
 			flush()
+		case done := <-s.flushReq:
+			flush()
+			close(done)
 		case <-s.close:
 			flush(); return
 		}
@@ -96,6 +101,16 @@ func (s *ActivityLogService) Close() {
 	close(s.close)
 	if s.stmt != nil {
 		s.stmt.Close()
+	}
+}
+
+// Flush blocks until all pending activity log entries are written to the database.
+func (s *ActivityLogService) Flush() {
+	done := make(chan struct{})
+	select {
+	case s.flushReq <- done:
+		<-done
+	case <-s.close:
 	}
 }
 
