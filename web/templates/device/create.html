@@ -528,6 +528,8 @@
             var formData = new FormData();
             formData.append('image', file);
             formData.append('type', 'device_type');
+            var prefixInput = document.getElementById('newTypePrefix');
+            if (prefixInput && prefixInput.value) { formData.append('label', prefixInput.value); }
             var response = await fetch('/api/upload-image', { method: 'POST', body: formData });
             var result = await response.json();
             if (result.success) {
