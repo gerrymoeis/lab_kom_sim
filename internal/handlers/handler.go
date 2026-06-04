@@ -9,6 +9,7 @@ import (
 	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -111,9 +112,16 @@ func (h *Handler) errJSON(c *gin.Context, status int, msg string) {
 	c.JSON(status, gin.H{"error": msg})
 }
 
+func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data gin.H) {
+	if token := sessions.Default(c).Get("csrf_token"); token != nil {
+		data["csrf_token"] = token.(string)
+	}
+	c.HTML(status, tmpl, data)
+}
+
 func (h *Handler) errHTML(c *gin.Context, msg string) {
 	_, username, role, _ := h.user(c)
-	c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+	h.renderTemplate(c, http.StatusInternalServerError, "error.html", gin.H{
 		"title": "Error", "message": msg,
 		"currentPage": "", "username": username, "role": role,
 	})

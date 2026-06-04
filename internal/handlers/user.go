@@ -36,7 +36,7 @@ func (h *Handler) UserList(c *gin.Context) {
 	totalPages := (total + pageSize - 1) / pageSize
 	startRow := (page-1)*pageSize + 1
 
-	c.HTML(http.StatusOK, "user/list.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "user/list.html", gin.H{
 		"title": "Manajemen User", "currentPage": "users",
 		"username": username, "role": role, "users": users,
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
@@ -48,7 +48,7 @@ func (h *Handler) UserList(c *gin.Context) {
 func (h *Handler) UserCreatePage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
-	c.HTML(http.StatusOK, "user/create.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "user/create.html", gin.H{
 		"title": "Tambah User Baru", "currentPage": "users",
 		"username": username, "role": role,
 	})
@@ -57,14 +57,14 @@ func (h *Handler) UserCreatePage(c *gin.Context) {
 func (h *Handler) UserCreate(c *gin.Context) {
 	var req CreateUserRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.HTML(http.StatusBadRequest, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Semua field harus diisi"})
+		h.renderTemplate(c, http.StatusBadRequest, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Semua field harus diisi"})
 		return
 	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
 	if err := h.userService.CreateUser(uid, u, r, req.Username, req.Password, req.FullName, req.Role, ip, ua); err != nil {
-		c.HTML(http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal menyimpan user. Username mungkin sudah digunakan."})
+		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal menyimpan user. Username mungkin sudah digunakan."})
 		return
 	}
 	c.Redirect(http.StatusFound, "/admin/users")
@@ -86,7 +86,7 @@ func (h *Handler) UserDetail(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "user/detail.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "user/detail.html", gin.H{
 		"title": "Detail User", "currentPage": "users",
 		"username": username, "role": role, "user": user,
 		"error": c.Query("error"), "success": c.Query("success"),
@@ -109,7 +109,7 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "user/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "user/edit.html", gin.H{
 		"title": "Edit User", "currentPage": "users",
 		"username": username, "role": role, "user": user,
 		"error": c.Query("error"),
@@ -187,7 +187,7 @@ func (h *Handler) Profile(c *gin.Context) {
 		h.redirectWithError(c, "/profile", "User tidak ditemukan")
 		return
 	}
-	c.HTML(http.StatusOK, "user/profile.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "user/profile.html", gin.H{
 		"title": "Profil", "currentPage": "profile",
 		"username": username, "role": role, "user": user,
 		"success": c.Query("success"), "error": c.Query("error"),

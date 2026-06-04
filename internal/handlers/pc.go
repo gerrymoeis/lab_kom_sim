@@ -45,7 +45,7 @@ func (h *Handler) PCList(c *gin.Context) {
 	totalPages := (total + pageSize - 1) / pageSize
 	startRow := (page-1)*pageSize + 1
 
-	c.HTML(http.StatusOK, "pc/list.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "pc/list.html", gin.H{
 		"title": "Manajemen PC", "currentPage": "pc",
 		"username": username, "role": role, "pcs": pcs,
 		"page": page, "totalPages": totalPages, "totalItems": total,
@@ -67,7 +67,7 @@ func (h *Handler) PCDetail(c *gin.Context) {
 
 	lcFormatted := ""
 	if pc.LastChecked != nil { lcFormatted = pc.LastChecked.Format("02/01/2006 15:04") }
-	c.HTML(http.StatusOK, "pc/detail.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "pc/detail.html", gin.H{
 		"title": "Detail PC", "currentPage": "pc",
 		"username": username, "role": role, "pc": pc,
 		"requiredSW": requiredSW, "otherSW": otherSW,
@@ -79,7 +79,7 @@ func (h *Handler) PCCreatePage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 	operatingSystems, _ := h.pcService.GetDistinctOS()
-	c.HTML(http.StatusOK, "pc/create.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "pc/create.html", gin.H{
 		"title": "Tambah PC Baru", "currentPage": "pc",
 		"username": username, "role": role,
 		"android": h.cfg.Android,
@@ -93,7 +93,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	var req CreatePCRequest
 	if err := c.ShouldBind(&req); err != nil {
 		_, username, role, _ := h.user(c)
-		c.HTML(http.StatusBadRequest, "pc/create.html", gin.H{
+		h.renderTemplate(c, http.StatusBadRequest, "pc/create.html", gin.H{
 			"title": "Tambah PC Baru", "error": "Lengkapi data yang diperlukan",
 			"currentPage": "pc", "username": username, "role": role,
 		})
@@ -117,7 +117,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		Notes: req.Notes,
 	}, uid, u, r, ip, ua)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "pc/create.html", gin.H{
+		h.renderTemplate(c, http.StatusInternalServerError, "pc/create.html", gin.H{
 			"title": "Tambah PC Baru", "error": "Gagal menyimpan. Mungkin label PC sudah digunakan.",
 			"currentPage": "pc", "username": u, "role": r,
 		})
@@ -157,7 +157,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 
 	operatingSystems, _ := h.pcService.GetDistinctOS()
 
-	c.HTML(http.StatusOK, "pc/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "pc/edit.html", gin.H{
 		"title": "Edit PC", "currentPage": "pc",
 		"username": username, "role": role, "pc": pc,
 		"requiredSW": requiredSW, "otherSW": otherSW,

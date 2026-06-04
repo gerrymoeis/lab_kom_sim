@@ -77,7 +77,7 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		query = template.URL("&" + values.Encode())
 	}
 
-	c.HTML(http.StatusOK, "logbook/list.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "logbook/list.html", gin.H{
 		"title": "Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
 		"entries":    entries,
@@ -107,7 +107,7 @@ func (h *Handler) LogbookDetail(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "logbook/detail.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "logbook/detail.html", gin.H{
 		"title": "Detail Logbook", "currentPage": "logbook",
 		"username": username, "role": role, "entry": entry,
 	})
@@ -116,7 +116,7 @@ func (h *Handler) LogbookDetail(c *gin.Context) {
 func (h *Handler) LogbookUploadPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
-	c.HTML(http.StatusOK, "logbook/upload.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "logbook/upload.html", gin.H{
 		"title": "Upload Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
 		"android": h.cfg.Android,
@@ -205,7 +205,7 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "logbook/preview.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "logbook/preview.html", gin.H{
 		"title": "Upload Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
 		"entries": result.Entries, "total": len(result.Entries),
@@ -345,7 +345,7 @@ func (h *Handler) LogbookExportPreview(c *gin.Context) {
 func (h *Handler) LogbookCreatePage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
-	c.HTML(http.StatusOK, "logbook/create.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "logbook/create.html", gin.H{
 		"title": "Tambah Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
 	})
@@ -356,7 +356,7 @@ func (h *Handler) LogbookCreate(c *gin.Context) {
 
 	var req CreateLogbookRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{
+		h.renderTemplate(c, http.StatusBadRequest, "logbook/create.html", gin.H{
 			"title": "Tambah Logbook", "currentPage": "logbook",
 			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
 		})
@@ -371,14 +371,14 @@ func (h *Handler) LogbookCreate(c *gin.Context) {
 		TimeIn: req.TimeIn, TimeOut: req.TimeOut, Purpose: req.Purpose,
 	}, uid, u, r, ip, ua)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "logbook/create.html", gin.H{
+		h.renderTemplate(c, http.StatusInternalServerError, "logbook/create.html", gin.H{
 			"title": "Tambah Logbook", "currentPage": "logbook",
 			"username": u, "role": r, "error": "Gagal menyimpan data",
 		})
 		return
 	}
 	if id == 0 {
-		c.HTML(http.StatusBadRequest, "logbook/create.html", gin.H{
+		h.renderTemplate(c, http.StatusBadRequest, "logbook/create.html", gin.H{
 			"title": "Tambah Logbook", "currentPage": "logbook",
 			"username": u, "role": r, "error": "Data sudah ada (duplikat)",
 		})
@@ -395,7 +395,7 @@ func (h *Handler) LogbookEditPage(c *gin.Context) {
 	entry, err := h.logbookService.GetByID(id)
 	if err != nil { h.errHTML(c, "Data tidak ditemukan"); return }
 
-	c.HTML(http.StatusOK, "logbook/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "logbook/edit.html", gin.H{
 		"title": "Edit Logbook", "currentPage": "logbook",
 		"username": username, "role": role, "entry": entry,
 	})

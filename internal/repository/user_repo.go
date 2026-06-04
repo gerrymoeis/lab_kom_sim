@@ -100,14 +100,10 @@ func (r *UserRepository) GetByID(id int) (*models.User, error) {
 	return &u, nil
 }
 
+var userFullCols = []string{"id", "username", "password", "full_name", "role", "created_at", "updated_at"}
+
 func (r *UserRepository) GetByUsername(username string) (*models.User, error) {
-	var u models.User
-	err := r.db.QueryRow(`SELECT id, username, password, full_name, role, created_at, updated_at FROM users WHERE username = ?`, username).
-		Scan(&u.ID, &u.Username, &u.Password, &u.FullName, &u.Role, &u.CreatedAt, &u.UpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &u, nil
+	return getByField[models.User](r.db, "users", userFullCols, "username", username)
 }
 
 func (r *UserRepository) GetPasswordHash(id int) (string, error) {

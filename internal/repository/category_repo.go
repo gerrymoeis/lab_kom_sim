@@ -33,34 +33,18 @@ func (r *CategoryRepository) List() ([]models.Category, error) {
 	return cats, nil
 }
 
+var categoryCols = []string{"id", "name", "default_prefix", "created_at"}
+
 func (r *CategoryRepository) GetByID(id int) (*models.Category, error) {
-	var c models.Category
-	err := r.db.QueryRow("SELECT id, name, default_prefix, created_at FROM categories WHERE id = ?", id).
-		Scan(&c.ID, &c.Name, &c.DefaultPrefix, &c.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &c, nil
+	return getOne[models.Category](r.db, "categories", categoryCols, "id = ?", id)
 }
 
 func (r *CategoryRepository) GetByName(name string) (*models.Category, error) {
-	var c models.Category
-	err := r.db.QueryRow("SELECT id, name, default_prefix, created_at FROM categories WHERE name = ?", name).
-		Scan(&c.ID, &c.Name, &c.DefaultPrefix, &c.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &c, nil
+	return getByField[models.Category](r.db, "categories", categoryCols, "name", name)
 }
 
 func (r *CategoryRepository) GetByPrefixSlug(slug string) (*models.Category, error) {
-	var c models.Category
-	err := r.db.QueryRow("SELECT id, name, default_prefix, created_at FROM categories WHERE LOWER(default_prefix) = LOWER(?)", slug).
-		Scan(&c.ID, &c.Name, &c.DefaultPrefix, &c.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &c, nil
+	return getOne[models.Category](r.db, "categories", categoryCols, "LOWER(default_prefix) = LOWER(?)", slug)
 }
 
 func (r *CategoryRepository) ListByUsageType(usageType string) ([]models.Category, error) {
