@@ -44,7 +44,7 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 	totalPages := (total + pageSize - 1) / pageSize
 	startRow := (page-1)*pageSize + 1
 
-	c.HTML(http.StatusOK, "schedule/list.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "schedule/list.html", gin.H{
 		"title": "Jadwal Mata Kuliah", "currentPage": "schedules",
 		"username": username, "role": role,
 		"schedules": schedules, "today": dayNames[time.Now().In(timeutil.Location()).Weekday()],
@@ -59,7 +59,7 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 func (h *Handler) ScheduleCreatePage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
-	c.HTML(http.StatusOK, "schedule/create.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "schedule/create.html", gin.H{
 		"title": "Tambah Jadwal", "currentPage": "schedules",
 		"username": username, "role": role,
 		"days": []string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"},
@@ -69,7 +69,7 @@ func (h *Handler) ScheduleCreatePage(c *gin.Context) {
 func (h *Handler) ScheduleCreate(c *gin.Context) {
 	var req CreateScheduleRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.HTML(http.StatusBadRequest, "schedule/create.html", gin.H{
+		h.renderTemplate(c, http.StatusBadRequest, "schedule/create.html", gin.H{
 			"title": "Tambah Jadwal", "error": "Semua field wajib diisi",
 		})
 		return
@@ -82,7 +82,7 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 		Class: req.Class, TimeStart: req.TimeStart, TimeEnd: req.TimeEnd, Notes: req.Notes,
 	}, uid, u, r, ip, ua)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "schedule/create.html", gin.H{
+		h.renderTemplate(c, http.StatusInternalServerError, "schedule/create.html", gin.H{
 			"title": "Tambah Jadwal", "error": "Gagal menyimpan data",
 		})
 		return
@@ -101,7 +101,7 @@ func (h *Handler) ScheduleEditPage(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "schedule/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "schedule/edit.html", gin.H{
 		"title": "Edit Jadwal", "currentPage": "schedules",
 		"username": username, "role": role, "s": s,
 		"days": []string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"},

@@ -124,6 +124,7 @@ function updateAvailability(selectEl) {
 
     fetch('/device-usages/' + usageId + '/availability', {
         method: 'POST',
+        headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
         body: formData
     }).then(r => r.json()).then(d => {
         if (!d.success) alert('Error: ' + (d.error || 'Gagal'));

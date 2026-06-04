@@ -68,7 +68,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		}
 
 		totalPages := (total + pageSize - 1) / pageSize
-		c.HTML(http.StatusOK, "device_loan/list.html", gin.H{
+		h.renderTemplate(c, http.StatusOK, "device_loan/list.html", gin.H{
 			"title": "Peminjaman", "currentPage": "devices",
 			"activeTab": "loans",
 			"username": username, "role": role,
@@ -100,7 +100,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		}
 
 		totalPages := (total + pageSize - 1) / pageSize
-		c.HTML(http.StatusOK, "device_usage/list.html", gin.H{
+		h.renderTemplate(c, http.StatusOK, "device_usage/list.html", gin.H{
 			"title": "Pemakaian Perangkat", "currentPage": "devices",
 			"activeTab": "usages",
 			"username": username, "role": role,
@@ -132,7 +132,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		}
 
 		totalPages := (total + pageSize - 1) / pageSize
-		c.HTML(http.StatusOK, "device_installation/list.html", gin.H{
+		h.renderTemplate(c, http.StatusOK, "device_installation/list.html", gin.H{
 			"title": "Instalasi Perangkat", "currentPage": "devices",
 			"activeTab": "installations",
 			"username": username, "role": role,
@@ -184,7 +184,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		if endRow > total {
 			endRow = total
 		}
-		c.HTML(http.StatusOK, "device/list.html", gin.H{
+		h.renderTemplate(c, http.StatusOK, "device/list.html", gin.H{
 			"title": "Manajemen Perangkat", "currentPage": "devices",
 			"activeTab": "types",
 			"username": username, "role": role,
@@ -221,7 +221,7 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 	if !ok {
 		return
 	}
-	c.HTML(http.StatusOK, "device/create.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device/create.html", gin.H{
 		"title": "Tambah Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"deviceTypes": h.fetchDeviceTypes(),
@@ -235,7 +235,7 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 	_, username, role, _ := h.user(c)
 
 	if err := c.ShouldBind(&req); err != nil {
-		c.HTML(http.StatusBadRequest, "device/create.html", gin.H{
+		h.renderTemplate(c, http.StatusBadRequest, "device/create.html", gin.H{
 			"title": "Tambah Perangkat", "currentPage": "devices",
 			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
 			"deviceTypes": h.fetchDeviceTypes(),
@@ -255,7 +255,7 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 		Notes:        req.Notes,
 	}, uid, u, r, ip, ua)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "device/create.html", gin.H{
+		h.renderTemplate(c, http.StatusInternalServerError, "device/create.html", gin.H{
 			"title": "Tambah Perangkat", "currentPage": "devices",
 			"username": username, "role": role, "error": "Gagal menyimpan perangkat",
 			"deviceTypes": h.fetchDeviceTypes(),
@@ -390,7 +390,7 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 		installationHistory, _ = h.deviceInstallationService.GetByDeviceID(d.ID)
 	}
 
-	c.HTML(http.StatusOK, "device/detail.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device/detail.html", gin.H{
 		"title": "Detail Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"device":              d,
@@ -415,7 +415,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "device/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device/edit.html", gin.H{
 		"title": "Edit Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"device": d,
@@ -491,7 +491,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 		h.errHTML(c, "Tipe perangkat tidak ditemukan")
 		return
 	}
-	c.HTML(http.StatusOK, "device_type/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_type/edit.html", gin.H{
 		"title": "Edit Tipe Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"deviceType":  dt,
@@ -575,7 +575,7 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 	if installationStatuses == nil {
 		installationStatuses = make(map[int]string)
 	}
-	c.HTML(http.StatusOK, "device_type/detail.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "device_type/detail.html", gin.H{
 		"title": "Detail Tipe Perangkat", "currentPage": "devices",
 		"username": username, "role": role,
 		"deviceType":          dt,
@@ -603,7 +603,7 @@ func (h *Handler) CategoryDetail(c *gin.Context) {
 	types, _ := h.deviceTypeService.GetByCategoryID(cat.ID)
 	deviceCount, _ := h.deviceService.CountByCategoryID(cat.ID)
 
-	c.HTML(http.StatusOK, "category/detail.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "category/detail.html", gin.H{
 		"title": cat.Name, "currentPage": "devices",
 		"username": username, "role": role,
 		"category":     cat,
@@ -624,7 +624,7 @@ func (h *Handler) CategoryEditPage(c *gin.Context) {
 		h.errHTML(c, "Kategori tidak ditemukan")
 		return
 	}
-	c.HTML(http.StatusOK, "category/edit.html", gin.H{
+	h.renderTemplate(c, http.StatusOK, "category/edit.html", gin.H{
 		"title": "Edit Kategori", "currentPage": "devices",
 		"username": username, "role": role,
 		"category": cat,

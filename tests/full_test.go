@@ -124,15 +124,48 @@ func TestFullIntegration(t *testing.T) {
 		}
 	}
 
+	var csrfToken string
+
+	extractCSRFToken := func(html string) string {
+		prefix := `<meta name="csrf-token" content="`
+		start := strings.Index(html, prefix)
+		if start == -1 {
+			return ""
+		}
+		start += len(prefix)
+		end := strings.Index(html[start:], `"`)
+		if end == -1 {
+			return ""
+		}
+		return html[start : start+end]
+	}
+
 	login := func() bool {
-		req, _ := http.NewRequest("POST", ts.URL+"/login", strings.NewReader("username=admin&password=admin123"))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req, _ := http.NewRequest("GET", ts.URL+"/login", nil)
 		resp, err := client.Do(req)
+		if err != nil {
+			return false
+		}
+		saveCookies(resp)
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		token := extractCSRFToken(string(body))
+		if token == "" {
+			return false
+		}
+
+		formData := "_csrf=" + url.QueryEscape(token) + "&username=admin&password=admin123"
+		req, _ = http.NewRequest("POST", ts.URL+"/login", strings.NewReader(formData))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		addCookies(req)
+		resp, err = client.Do(req)
 		if err != nil {
 			return false
 		}
 		defer closeResp(resp)
 		saveCookies(resp)
+		csrfToken = token
 		return resp.StatusCode == 302 && len(jar) > 0
 	}
 
@@ -142,6 +175,11 @@ func TestFullIntegration(t *testing.T) {
 		return client.Do(req)
 	}
 	post := func(path, data string) (*http.Response, error) {
+		if data == "" {
+			data = "_csrf=" + url.QueryEscape(csrfToken)
+		} else {
+			data = data + "&_csrf=" + url.QueryEscape(csrfToken)
+		}
 		req, _ := http.NewRequest("POST", ts.URL+path, strings.NewReader(data))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		addCookies(req)
@@ -150,6 +188,7 @@ func TestFullIntegration(t *testing.T) {
 	postJSON := func(path, data string) (*http.Response, error) {
 		req, _ := http.NewRequest("POST", ts.URL+path, strings.NewReader(data))
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-CSRF-Token", csrfToken)
 		addCookies(req)
 		return client.Do(req)
 	}
@@ -197,6 +236,7 @@ func TestFullIntegration(t *testing.T) {
 
 	req, _ := http.NewRequest("POST", ts.URL+"/api/upload-image", &photoBuf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.Header.Set("X-CSRF-Token", csrfToken)
 	addCookies(req)
 	resp, err = client.Do(req)
 	assert(err == nil, "upload image request")
@@ -406,6 +446,7 @@ func TestFullIntegration(t *testing.T) {
 
 	req, _ = http.NewRequest("POST", ts.URL+"/logbook/upload", &photoBuf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.Header.Set("X-CSRF-Token", csrfToken)
 	addCookies(req)
 	resp, err = client.Do(req)
 	assert(err == nil, "logbook upload")
