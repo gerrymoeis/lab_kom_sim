@@ -20,6 +20,17 @@
     <script src="/static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js"></script>
     <script>
+    function fetchWithCSRF(url, options) {
+        if (!options) options = {};
+        if (!options.headers) options.headers = {};
+        if (!options.headers['X-CSRF-Token']) {
+            var token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            options.headers['X-CSRF-Token'] = token;
+        }
+        return fetch(url, options);
+    }
+    </script>
+    <script>
     (function() {
         var token = document.querySelector('meta[name="csrf-token"]');
         if (token) {

@@ -108,6 +108,10 @@ func (h *Handler) Close() {
 	h.activityLogService.Close()
 }
 
+func (h *Handler) FlushActivityLogs() {
+	h.activityLogService.Flush()
+}
+
 func (h *Handler) errJSON(c *gin.Context, status int, msg string) {
 	c.JSON(status, gin.H{"error": msg})
 }
