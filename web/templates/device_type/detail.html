@@ -16,7 +16,7 @@
                 <a href="/device-types/{{ .deviceType.AssetCodePrefix | lower }}/edit" class="btn btn-sm btn-warning me-1">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
-                <form method="POST" action="/device-types/{{ .deviceType.AssetCodePrefix | lower }}/delete" style="display:inline;" onsubmit="return confirm('Hapus tipe &quot;' + {{ .deviceType.Name | js }} + '&quot;? Semua perangkat dalam tipe ini akan terhapus.') && prompt('Ketik &quot;' + {{ .deviceType.AssetCodePrefix | js }} + '&quot; untuk mengkonfirmasi penghapusan tipe.') === {{ .deviceType.AssetCodePrefix | js }}">
+                <form method="POST" action="/device-types/{{ .deviceType.AssetCodePrefix | lower }}/delete" style="display:inline;" onsubmit="return confirm('Hapus tipe &quot;{{ .deviceType.Name }}&quot;? Semua perangkat dalam tipe ini akan terhapus.') && prompt('Ketik &quot;{{ .deviceType.AssetCodePrefix }}&quot; untuk mengkonfirmasi penghapusan tipe.') === '{{ .deviceType.AssetCodePrefix }}'">
                     <button type="submit" class="btn btn-sm btn-danger">
                         <i class="bi bi-trash"></i> Hapus
                     </button>
