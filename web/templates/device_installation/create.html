@@ -134,6 +134,8 @@ async function handlePhotoSelect(file, source) {
         if (result.success) {
             storeFileReference(result.file_ref);
             document.getElementById('photo_' + source).value = '';
+        } else {
+            showError(result.message || 'Gagal upload foto');
         }
     } catch (error) {
         console.error('Photo upload error:', error.message);
