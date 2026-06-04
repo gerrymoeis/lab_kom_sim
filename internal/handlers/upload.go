@@ -76,6 +76,14 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	now := time.Now()
 	dateStr := now.Format("020106") // DDMMYY
 
+	if strings.ContainsAny(req.Label, "/\\") || strings.ContainsAny(req.Type, "/\\") {
+		c.JSON(http.StatusBadRequest, UploadResponse{
+			Success: false,
+			Message: "Parameter tidak valid",
+		})
+		return
+	}
+
 	var fileBase string
 	if req.Label != "" {
 		label := strings.ToLower(req.Label)
@@ -162,8 +170,8 @@ func (h *Handler) DeleteTempFile(c *gin.Context) {
 		return
 	}
 
-	if req.FileRef != "" {
-		tempPath := filepath.Join("uploads", "temp", req.FileRef)
+	if ref := filepath.Base(req.FileRef); ref != "" && ref != "." && ref != "/" && ref != "\\" {
+		tempPath := filepath.Join("uploads", "temp", ref)
 		os.Remove(tempPath)
 	}
 
@@ -180,8 +188,8 @@ func (h *Handler) CleanupTempFiles(c *gin.Context) {
 
 	// Cleanup multiple files
 	for _, fileRef := range req.FileRefs {
-		if fileRef != "" {
-			tempPath := filepath.Join("uploads", "temp", fileRef)
+		if ref := filepath.Base(fileRef); ref != "" && ref != "." && ref != "/" && ref != "\\" {
+			tempPath := filepath.Join("uploads", "temp", ref)
 			os.Remove(tempPath)
 		}
 	}

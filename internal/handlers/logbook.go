@@ -138,7 +138,11 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 	fileRef := strings.TrimSpace(uploadReq.FileRef)
 
 	if fileRef != "" {
-		fn = fileRef
+		fn = filepath.Base(fileRef)
+		if fn == "" || fn == "." || fn == "/" || fn == "\\" {
+			h.errHTML(c, "Nama file tidak valid")
+			return
+		}
 		tempPath := filepath.Join("uploads", "temp", fn)
 		path = filepath.Join("uploads", "logbook", fn)
 		os.MkdirAll(filepath.Dir(path), 0755)
