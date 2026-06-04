@@ -887,8 +887,8 @@ func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bo
 }
 
 func processDeviceTypePhotoRef(fileRef string) string {
-	ref := strings.TrimSpace(fileRef)
-	if ref == "" {
+	ref := filepath.Base(strings.TrimSpace(fileRef))
+	if ref == "" || ref == "." || ref == "/" || ref == "\\" {
 		return ""
 	}
 	src := filepath.Join("uploads", "temp", ref)

@@ -487,8 +487,8 @@ func (h *Handler) PCMoveToCadangan(c *gin.Context) {
 }
 
 func processPhotoRef(photoRef, subDir string) string {
-	ref := strings.TrimSpace(photoRef)
-	if ref == "" {
+	ref := filepath.Base(strings.TrimSpace(photoRef))
+	if ref == "" || ref == "." || ref == "/" || ref == "\\" {
 		return ""
 	}
 	src := filepath.Join("uploads", "temp", ref)
@@ -507,8 +507,8 @@ func processPhotoRefs(serialRef, frontRef string) (serial, front string) {
 	for _, p := range []struct{ ref string; result *string }{
 		{serialRef, &serial}, {frontRef, &front},
 	} {
-		ref := strings.TrimSpace(p.ref)
-		if ref == "" {
+		ref := filepath.Base(strings.TrimSpace(p.ref))
+		if ref == "" || ref == "." || ref == "/" || ref == "\\" {
 			continue
 		}
 		src := filepath.Join("uploads", "temp", ref)
