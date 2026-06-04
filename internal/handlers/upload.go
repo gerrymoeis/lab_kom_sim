@@ -86,6 +86,8 @@ func (h *Handler) UploadImage(c *gin.Context) {
 			fileBase = fmt.Sprintf("%s_front_%s", label, dateStr)
 		case "device_type":
 			fileBase = fmt.Sprintf("%s_%s", label, dateStr)
+		case "installation":
+			fileBase = fmt.Sprintf("instalasi_%s_%s", label, dateStr)
 		default:
 			fileBase = fmt.Sprintf("temp_%s_%s", req.Type, dateStr)
 		}
