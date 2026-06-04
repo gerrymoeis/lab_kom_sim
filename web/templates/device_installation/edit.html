@@ -191,11 +191,23 @@ function clearOtherInput(source) {
     if (other) other.value = '';
 }
 
+function clearPhoto() {
+    var cam = document.getElementById('photo_camera');
+    var gal = document.getElementById('photo_gallery');
+    if (cam) cam.value = '';
+    if (gal) gal.value = '';
+    document.getElementById('previewPhoto').classList.add('d-none');
+    if (photoPreviewUrl) { URL.revokeObjectURL(photoPreviewUrl); photoPreviewUrl = null; }
+    photoFileRef = null;
+    var hiddenInput = document.getElementById('photo_file_ref');
+    if (hiddenInput) hiddenInput.value = '';
+}
+
 async function uploadForProcessing(file) {
     var formData = new FormData();
     formData.append('image', file);
     formData.append('type', 'installation');
-    var response = await fetch('/api/upload-image', { method: 'POST', body: formData });
+    var response = await fetch('/api/upload-image', { method: 'POST', headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' }, body: formData });
     return await response.json();
 }
 
