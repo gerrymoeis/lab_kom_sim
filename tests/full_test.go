@@ -98,7 +98,7 @@ func TestFullIntegration(t *testing.T) {
 	}
 	db.Exec("UPDATE users SET session_token = NULL")
 
-	router, cleanup := server.SetupRouter(db, cfg, nil)
+	router, cleanup, flushLogs := server.SetupRouter(db, cfg, nil)
 	defer cleanup()
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -677,6 +677,7 @@ func TestFullIntegration(t *testing.T) {
 		}
 	}
 	db.Flush()
+	flushLogs()
 	db.QueryRow("SELECT COUNT(*) FROM activity_logs").Scan(&logCount)
 	assert(logCount > 0, "Activity logs should exist after full test: %d", logCount)
 	t.Logf("  All tests passed!")
