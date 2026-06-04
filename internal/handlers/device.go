@@ -139,7 +139,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"installations": installations,
 			"filters":       gin.H{"search": search, "status": status, "category": category, "sort_by": sortBy, "sort_order": sortOrder},
 			"categories":    h.fetchCategories("installable"),
-			"startRow":      (page-1)*pageSize + 1,
+			"startRow":   (page-1)*pageSize + 1,
 			"page": page, "totalPages": totalPages, "totalItems": total,
 			"query": query,
 		})
@@ -180,6 +180,10 @@ func (h *Handler) DeviceList(c *gin.Context) {
 		groupedData := groupDevices(devices, activeLoanIDs, depletedIDs)
 
 		totalPages := (total + pageSize - 1) / pageSize
+		endRow := page * pageSize
+		if endRow > total {
+			endRow = total
+		}
 		c.HTML(http.StatusOK, "device/list.html", gin.H{
 			"title": "Manajemen Perangkat", "currentPage": "devices",
 			"activeTab": "types",
@@ -190,6 +194,7 @@ func (h *Handler) DeviceList(c *gin.Context) {
 			"installationStatuses": installationStatuses,
 			"filters":    gin.H{"search": search, "category": category, "condition": condition, "sort_by": sortBy, "sort_order": sortOrder},
 			"startRow":   (page-1)*pageSize + 1,
+			"endRow":     endRow,
 			"page": page, "totalPages": totalPages, "totalItems": total,
 			"query":   query,
 			"categories": h.fetchCategories(""),
