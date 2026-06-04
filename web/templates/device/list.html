@@ -106,7 +106,7 @@
                                 <a href="/categories/{{ $cat.CategoryPrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Kategori">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/categories/{{ $cat.CategoryPrefix | lower }}/delete" style="display:inline;" onsubmit="return confirm('Hapus kategori &quot;{{ $cat.CategoryName }}&quot;? Semua perangkat dalam kategori ini akan terhapus.') && prompt('Ketik &quot;{{ $cat.CategoryPrefix }}&quot; untuk mengkonfirmasi penghapusan kategori.') === '{{ $cat.CategoryPrefix }}'">
+                                <form method="POST" action="/categories/{{ $cat.CategoryPrefix | lower }}/delete" style="display:inline;" onsubmit="return prompt('Hapus kategori &quot;{{ $cat.CategoryName }}&quot;? Semua perangkat dalam kategori ini akan terhapus. Ketik &quot;{{ $cat.CategoryPrefix }}&quot; untuk mengkonfirmasi penghapusan kategori.') === '{{ $cat.CategoryPrefix }}'">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Hapus Kategori">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -132,7 +132,7 @@
                                         <a href="/device-types/{{ $type.TypePrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Tipe">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form method="POST" action="/device-types/{{ $type.TypePrefix | lower }}/delete" style="display:inline;" onsubmit="return confirm('Hapus tipe &quot;{{ $type.TypeName }}&quot;? Semua perangkat dalam tipe ini akan terhapus.') && prompt('Ketik &quot;{{ $type.TypePrefix }}&quot; untuk mengkonfirmasi penghapusan tipe.') === '{{ $type.TypePrefix }}'">
+                                        <form method="POST" action="/device-types/{{ $type.TypePrefix | lower }}/delete" style="display:inline;" onsubmit="return prompt('Hapus tipe &quot;{{ $type.TypeName }}&quot;? Semua perangkat dalam tipe ini akan terhapus. Ketik &quot;{{ $type.TypePrefix }}&quot; untuk mengkonfirmasi penghapusan tipe.') === '{{ $type.TypePrefix }}'">
                                             <button type="submit" class="btn btn-sm btn-danger" title="Hapus Tipe">
                                                 <i class="bi bi-trash"></i>
                                             </button>
