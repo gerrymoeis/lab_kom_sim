@@ -15,11 +15,11 @@
                 <a href="/categories/{{ .category.DefaultPrefix | lower }}/edit" class="btn btn-sm btn-warning me-1">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
-                <form method="POST" action="/categories/{{ .category.DefaultPrefix | lower }}/delete" style="display:inline;" onsubmit="return prompt('Hapus kategori &quot;{{ .category.Name }}&quot;? Semua perangkat dalam kategori ini akan terhapus. Ketik &quot;{{ .category.DefaultPrefix }}&quot; untuk mengkonfirmasi penghapusan kategori.') === '{{ .category.DefaultPrefix }}'">
-                    <button type="submit" class="btn btn-sm btn-danger">
-                        <i class="bi bi-trash"></i> Hapus
-                    </button>
-                </form>
+                <button type="button" class="btn btn-sm btn-danger"
+                    onclick="confirmDelete({message:'Hapus kategori &quot;{{ .category.Name }}&quot;? Semua perangkat dalam kategori ini akan terhapus.', requirePrefix:true, prefix:'{{ .category.DefaultPrefix }}', type:'kategori', formId:'del-cat'})">
+                    <i class="bi bi-trash"></i> Hapus
+                </button>
+                <form id="del-cat" method="POST" action="/categories/{{ .category.DefaultPrefix | lower }}/delete" style="display:none;"></form>
             </div>
         </div>
         <div class="card-body">
@@ -85,11 +85,11 @@
                                 <a href="/device-types/{{ $t.AssetCodePrefix | lower }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/device-types/{{ $t.AssetCodePrefix | lower }}/delete" style="display:inline;" onsubmit="return prompt('Ketik &quot;{{ $t.AssetCodePrefix }}&quot; untuk mengkonfirmasi penghapusan tipe {{ $t.Name }}') === '{{ $t.AssetCodePrefix }}'">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Hapus tipe &quot;{{ $t.Name }}&quot;? Semua perangkat dalam tipe ini akan terhapus.', requirePrefix:true, prefix:'{{ $t.AssetCodePrefix }}', type:'tipe', formId:'del-type-{{ $t.ID }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-type-{{ $t.ID }}" method="POST" action="/device-types/{{ $t.AssetCodePrefix | lower }}/delete" style="display:none;"></form>
                             </td>
                         </tr>
                         {{ end }}

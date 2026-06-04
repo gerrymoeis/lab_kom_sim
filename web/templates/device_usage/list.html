@@ -115,11 +115,11 @@
                                 <a href="/device-usages/{{ $u.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/device-usages/{{ $u.ID }}/delete" style="display:inline;" onsubmit="return confirm('Hapus data pemakaian ini?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Hapus data pemakaian ini?', formId:'del-usage-{{ $u.ID }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-usage-{{ $u.ID }}" method="POST" action="/device-usages/{{ $u.ID }}/delete" style="display:none;"></form>
                                 {{ end }}
                             </td>
                         </tr>
