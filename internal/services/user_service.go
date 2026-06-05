@@ -52,12 +52,14 @@ func (s *UserService) CreateUser(actorID int, actorUsername, actorRole, username
 			map[string]any{"username": username}, ipAddress, userAgent, err.Error())
 		return err
 	}
-	if _, err := s.userRepo.Create(username, string(hash), fullName, role); err != nil {
+	result, err := s.userRepo.Create(username, string(hash), fullName, role)
+	if err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", 0,
 			map[string]any{"username": username, "full_name": fullName, "role": role}, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", 0, map[string]any{"username": username, "full_name": fullName, "role": role}, ipAddress, userAgent)
+	id, _ := result.LastInsertId()
+	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", int(id), map[string]any{"username": username, "full_name": fullName, "role": role}, ipAddress, userAgent)
 	return nil
 }
 

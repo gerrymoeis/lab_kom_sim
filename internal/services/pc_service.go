@@ -136,7 +136,10 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 			map[string]any{"label": label}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+	pc, _ := s.pcRepo.GetByLabel(in.Label)
+	pcID := 0
+	if pc != nil { pcID = pc.ID }
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 		map[string]any{"label": label},
 		map[string]any{"status": in.Status, "placement": in.Placement, "operating_system": in.OperatingSystem},
 		ipAddress, userAgent)
@@ -144,12 +147,15 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 }
 
 func (s *PCService) DeletePC(label string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	pc, _ := s.pcRepo.GetByLabel(label)
+	pcID := 0
+	if pc != nil { pcID = pc.ID }
 	if err := s.pcRepo.DeleteByLabel(label); err != nil {
-		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", 0,
+		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", pcID,
 			map[string]any{"label": label}, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", 0,
+	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", pcID,
 		map[string]any{"label": label}, ipAddress, userAgent)
 	return nil
 }
@@ -171,28 +177,35 @@ func (s *PCService) UpdateStatus(id int, status string, actorID int, actorUserna
 }
 
 func (s *PCService) SwapPCs(labelA, labelB string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	pcA, _ := s.pcRepo.GetByLabel(labelA)
+	pcID := 0
+	if pcA != nil { pcID = pcA.ID }
 	if err := s.pcRepo.SwapLabels(labelA, labelB); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 			map[string]any{"operation": "swap"}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 		map[string]any{"operation": "swap", "a": labelA, "b": labelB},
 		map[string]any{"status": "swapped"}, ipAddress, userAgent)
 	return nil
 }
 
 func (s *PCService) ReplacePC(target, spare string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	pc, _ := s.pcRepo.GetByLabel(target)
+	pcID := 0
+	if pc != nil { pcID = pc.ID }
 	if err := s.pcRepo.ReplaceWithSpare(target, spare); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 			map[string]any{"operation": "replace"}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	// Seed required software for the newly placed PC
 	if pc, _ := s.pcRepo.GetByLabel(target); pc != nil {
 		_ = s.pcRepo.SeedRequiredSoftware(pc.ID)
+		pcID = pc.ID
 	}
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 		map[string]any{"operation": "replace", "target": target, "spare": spare},
 		map[string]any{"status": "replaced"}, ipAddress, userAgent)
 	return nil
@@ -211,36 +224,45 @@ func (s *PCService) MoveRowToCadangan(row int, actorID int, actorUsername, actor
 }
 
 func (s *PCService) MovePC(label string, row, col int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	pc, _ := s.pcRepo.GetByLabel(label)
+	pcID := 0
+	if pc != nil { pcID = pc.ID }
 	if err := s.pcRepo.MoveToPosition(label, row, col); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 			map[string]any{"operation": "move"}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 		map[string]any{"operation": "move", "label": label, "row": row, "col": col},
 		map[string]any{"status": "moved"}, ipAddress, userAgent)
 	return nil
 }
 
 func (s *PCService) PlaceCadangan(label string, row, col int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	pc, _ := s.pcRepo.GetByLabel(label)
+	pcID := 0
+	if pc != nil { pcID = pc.ID }
 	if err := s.pcRepo.PlaceCadangan(label, row, col); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 			map[string]any{"operation": "place"}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 		map[string]any{"operation": "place", "label": label, "row": row, "col": col},
 		map[string]any{"status": "placed"}, ipAddress, userAgent)
 	return nil
 }
 
 func (s *PCService) MoveToCadangan(label string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	pc, _ := s.pcRepo.GetByLabel(label)
+	pcID := 0
+	if pc != nil { pcID = pc.ID }
 	if err := s.pcRepo.MoveToCadangan(label); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 			map[string]any{"operation": "move-to-cadangan"}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 		map[string]any{"operation": "move-to-cadangan", "label": label},
 		map[string]any{"status": "cadangan"}, ipAddress, userAgent)
 	return nil
@@ -254,12 +276,12 @@ func (s *PCService) SyncSoftware(label string, requiredIDs []string, otherNames,
 	if pc != nil { pcID = pc.ID }
 
 	if err := s.pcRepo.SyncSoftware(pcID, requiredIDs, otherNames, otherDescs); err != nil {
-		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "software", pcID,
 			map[string]any{"label": label}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "software", pcID,
 		map[string]any{"label": label},
 		map[string]any{"required_ids": requiredIDs, "other_names": otherNames},
 		ipAddress, userAgent)
