@@ -55,14 +55,15 @@ func (s *SoftwareService) Create(in SoftwareCreateInput, actorID int, actorUsern
 		in.Category = "other"
 	}
 
-	_, err := s.repo.Create(in.Name, in.Category, in.Description)
+	result, err := s.repo.Create(in.Name, in.Category, in.Description)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "software", 0,
 			map[string]any{"name": in.Name, "category": in.Category},
 			ipAddress, userAgent, err.Error())
 		return sanitizeDBError(err)
 	}
-	s.log.LogCreate(actorID, actorUsername, actorRole, "software", 0,
+	id, _ := result.LastInsertId()
+	s.log.LogCreate(actorID, actorUsername, actorRole, "software", int(id),
 		map[string]any{"name": in.Name, "category": in.Category, "description": in.Description},
 		ipAddress, userAgent)
 	return nil
@@ -77,11 +78,11 @@ func (s *SoftwareService) Update(id int, name, category, description string, pcI
 
 	if err := s.repo.UpdateMetadata(id, name, category, description); err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
-			s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+			s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
 				map[string]any{"software_id": id}, nil, ipAddress, userAgent, "Duplicate: "+name)
 			return err
 		}
-		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
 			map[string]any{"software_id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
@@ -99,11 +100,11 @@ func (s *SoftwareService) Update(id int, name, category, description string, pcI
 		}
 	}
 	if err := s.repo.UpdateSoftwarePCs(id, ids); err != nil {
-		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
 			map[string]any{"name": name, "category": category}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.log.LogUpdate(actorID, actorUsername, actorRole, "software", 0,
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
 		map[string]any{"name": name, "category": category},
 		map[string]any{"pc_ids": pcIDs}, ipAddress, userAgent)
 	return nil
@@ -113,11 +114,11 @@ func (s *SoftwareService) Delete(id int, actorID int, actorUsername, actorRole, 
 	name, _ := s.repo.GetName(id)
 
 	if err := s.repo.Delete(id); err != nil {
-		s.log.LogDelete(actorID, actorUsername, actorRole, "software", 0,
+		s.log.LogDelete(actorID, actorUsername, actorRole, "software", id,
 			map[string]any{"name": name}, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.log.LogDelete(actorID, actorUsername, actorRole, "software", 0,
+	s.log.LogDelete(actorID, actorUsername, actorRole, "software", id,
 		map[string]any{"name": name}, ipAddress, userAgent)
 	return nil
 }
