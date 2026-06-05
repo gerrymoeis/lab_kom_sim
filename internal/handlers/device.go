@@ -510,10 +510,13 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	}
 	var req EditDeviceTypeRequest
 	if err := c.ShouldBind(&req); err != nil {
-		h.errHTML(c, "Data tidak valid")
+		h.renderEditPageWithError(c, dt, "Data tidak valid")
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok {
+		return
+	}
 	ip, ua := getRequestContext(c)
 
 	// Process photo ref
@@ -529,10 +532,23 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		DefaultLocation: req.DefaultLocation,
 		Photo:           photoFile,
 	}, uid, u, r, ip, ua); err != nil {
-		h.errHTML(c, err.Error())
+		h.renderEditPageWithError(c, dt, err.Error())
 		return
 	}
 	c.Redirect(http.StatusFound, "/devices?tab=types")
+}
+
+func (h *Handler) renderEditPageWithError(c *gin.Context, dt *models.DeviceType, errMsg string) {
+	_, username, role, _ := h.user(c)
+	h.renderTemplate(c, http.StatusBadRequest, "device_type/edit.html", gin.H{
+		"title": "Edit Tipe Perangkat", "currentPage": "devices",
+		"username": username, "role": role,
+		"error":       errMsg,
+		"deviceType":  dt,
+		"categories":  h.fetchCategories(""),
+		"deviceTypes": h.fetchDeviceTypes(),
+		"android":     h.cfg.Android,
+	})
 }
 
 func (h *Handler) DeviceTypeDelete(c *gin.Context) {
