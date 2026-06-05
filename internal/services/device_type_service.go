@@ -63,11 +63,11 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 	in.DefaultLocation = ToTitleCaseWithAbbr(in.DefaultLocation)
 	err := s.repo.Update(id, in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
-		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", 0,
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return sanitizeDBError(err)
 	}
-	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", 0,
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", id,
 		map[string]any{"id": id},
 		map[string]any{"name": in.Name, "category_id": in.CategoryID},
 		ipAddress, userAgent)
@@ -77,11 +77,11 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 func (s *DeviceTypeService) Delete(id int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	err := s.repo.Delete(id)
 	if err != nil {
-		s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", 0,
+		s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", id,
 			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
 		return sanitizeDBError(err)
 	}
-	s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", 0,
+	s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", id,
 		map[string]any{"id": id}, ipAddress, userAgent)
 	return nil
 }

@@ -27,13 +27,14 @@ func (s *ScheduleService) Create(in ScheduleCreateInput, actorID int, actorUsern
 	in.Lecturer = ToTitleCaseWithAbbr(in.Lecturer)
 	in.Class = ToTitleCaseWithAbbr(in.Class)
 	in.Notes = SanitizeText(in.Notes)
-	_, err := s.repo.Create(in.CourseName, in.Lecturer, in.Day, in.Class, in.TimeStart, in.TimeEnd, in.Notes)
+	result, err := s.repo.Create(in.CourseName, in.Lecturer, in.Day, in.Class, in.TimeStart, in.TimeEnd, in.Notes)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "schedule", 0,
 			map[string]any{"course_name": in.CourseName}, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.log.LogCreate(actorID, actorUsername, actorRole, "schedule", 0,
+	id, _ := result.LastInsertId()
+	s.log.LogCreate(actorID, actorUsername, actorRole, "schedule", int(id),
 		map[string]any{
 			"course_name": in.CourseName, "lecturer": in.Lecturer, "day": in.Day, "class": in.Class,
 			"time": in.TimeStart + "-" + in.TimeEnd,
@@ -48,11 +49,11 @@ func (s *ScheduleService) Update(id int, in ScheduleUpdateInput, actorID int, ac
 	in.Notes = SanitizeText(in.Notes)
 	err := s.repo.Update(id, in.CourseName, in.Lecturer, in.Day, in.Class, in.TimeStart, in.TimeEnd, in.Notes)
 	if err != nil {
-		s.log.LogUpdate(actorID, actorUsername, actorRole, "schedule", 0,
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "schedule", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.log.LogUpdate(actorID, actorUsername, actorRole, "schedule", 0,
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "schedule", id,
 		map[string]any{"id": id, "course_name": in.CourseName},
 		map[string]any{"course_name": in.CourseName, "lecturer": in.Lecturer, "day": in.Day, "class": in.Class},
 		ipAddress, userAgent)
@@ -64,11 +65,11 @@ func (s *ScheduleService) Delete(id int, actorID int, actorUsername, actorRole, 
 
 	err := s.repo.Delete(id)
 	if err != nil {
-		s.log.LogDelete(actorID, actorUsername, actorRole, "schedule", 0,
+		s.log.LogDelete(actorID, actorUsername, actorRole, "schedule", id,
 			map[string]any{"course_name": courseName}, ipAddress, userAgent, err.Error())
 		return err
 	}
-	s.log.LogDelete(actorID, actorUsername, actorRole, "schedule", 0,
+	s.log.LogDelete(actorID, actorUsername, actorRole, "schedule", id,
 		map[string]any{"course_name": courseName}, ipAddress, userAgent)
 	return nil
 }
