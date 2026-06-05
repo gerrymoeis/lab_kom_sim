@@ -152,7 +152,10 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 		Description string   `form:"description"`
 		PCIDs       []string `form:"pc_ids[]"`
 	}
-	c.ShouldBind(&req)
+	if err := c.ShouldBind(&req); err != nil {
+		h.redirectWithError(c, "/software/"+slug+"/edit", "Data tidak valid")
+		return
+	}
 
 	if req.Name == "" {
 		req.Name = sw.Name
