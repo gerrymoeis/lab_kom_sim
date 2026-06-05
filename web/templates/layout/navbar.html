@@ -25,7 +25,7 @@
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                         <li><a class="dropdown-item {{ if eq $.currentPage "profile" }}active{{ end }}" href="/profile"><i class="bi bi-person" aria-hidden="true"></i> Profil</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</a></li>
+                        <li><form method="POST" action="/logout" style="display:inline"><button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</button></form></li>
                     </ul>
                 </li>
             </ul>
