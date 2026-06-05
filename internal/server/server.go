@@ -206,7 +206,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		public.GET("/", h.Home)
 		public.GET("/login", h.LoginPage)
 		public.POST("/login", h.Login)
-		public.GET("/logout", h.Logout)
+		public.POST("/logout", h.Logout)
 	}
 
 	protected := router.Group("/")
