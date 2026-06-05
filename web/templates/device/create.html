@@ -469,7 +469,7 @@
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
         errorDiv.style.display = 'none';
 
-        fetch('/devices/batch-create', {
+        fetchWithCSRF('/devices/batch-create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
