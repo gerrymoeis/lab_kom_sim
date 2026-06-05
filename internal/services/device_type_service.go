@@ -63,13 +63,16 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 	in.DefaultLocation = ToTitleCaseWithAbbr(in.DefaultLocation)
 
 	oldDT, _ := s.repo.GetByID(id)
-	oldVals := map[string]any{"id": id}
-	newVals := map[string]any{"id": id}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
 	if oldDT != nil {
 		if oldDT.Name != in.Name { oldVals["name"] = oldDT.Name; newVals["name"] = in.Name }
+		if oldDT.Brand != in.Brand { oldVals["brand"] = oldDT.Brand; newVals["brand"] = in.Brand }
+		if oldDT.Model != in.Model { oldVals["model"] = oldDT.Model; newVals["model"] = in.Model }
 		if oldDT.CategoryID != in.CategoryID { oldVals["category_id"] = oldDT.CategoryID; newVals["category_id"] = in.CategoryID }
 		if oldDT.AssetCodePrefix != in.AssetCodePrefix { oldVals["asset_code_prefix"] = oldDT.AssetCodePrefix; newVals["asset_code_prefix"] = in.AssetCodePrefix }
 		if oldDT.UsageType != in.UsageType { oldVals["usage_type"] = oldDT.UsageType; newVals["usage_type"] = in.UsageType }
+		if oldDT.DefaultLocation != in.DefaultLocation { oldVals["default_location"] = oldDT.DefaultLocation; newVals["default_location"] = in.DefaultLocation }
 	}
 
 	err := s.repo.Update(id, in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)

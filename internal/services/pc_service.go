@@ -138,10 +138,11 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 	}
 	pcData, _ := s.pcRepo.GetByLabel(label)
 	pcID := 0
-	oldVals := map[string]any{"label": label}
-	newVals := map[string]any{"label": in.Label}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
 	if pcData != nil {
 		pcID = pcData.ID
+		if label != in.Label { oldVals["label"] = label; newVals["label"] = in.Label }
 		if pcData.Status != in.Status { oldVals["status"] = pcData.Status; newVals["status"] = in.Status }
 		if pcData.Placement != in.Placement { oldVals["placement"] = pcData.Placement; newVals["placement"] = in.Placement }
 		if pcData.Processor != in.Processor { oldVals["processor"] = pcData.Processor; newVals["processor"] = in.Processor }
@@ -152,6 +153,9 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 		if pcData.PCType != in.PCType { oldVals["pc_type"] = pcData.PCType; newVals["pc_type"] = in.PCType }
 		if pcData.BrandModel != in.BrandModel { oldVals["brand_model"] = pcData.BrandModel; newVals["brand_model"] = in.BrandModel }
 		if pcData.Accessories != in.Accessories { oldVals["accessories"] = pcData.Accessories; newVals["accessories"] = in.Accessories }
+		if pcData.Row != in.Row { oldVals["row"] = pcData.Row; newVals["row"] = in.Row }
+		if pcData.Column != in.Column { oldVals["column"] = pcData.Column; newVals["column"] = in.Column }
+		if pcData.Notes != in.Notes { oldVals["notes"] = pcData.Notes; newVals["notes"] = in.Notes }
 	}
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 		oldVals, newVals,
