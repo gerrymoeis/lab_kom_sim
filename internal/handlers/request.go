@@ -75,13 +75,13 @@ type BatchCreateDeviceRequest struct {
 
 	// Inline category creation (used when CategoryID == 0)
 	NewCategoryName   string `json:"new_category_name" binding:"omitempty,max=100"`
-	NewCategoryPrefix string `json:"new_category_prefix" binding:"omitempty,max=10"`
+	NewCategoryPrefix string `json:"new_category_prefix" binding:"omitempty,max=50"`
 
 	// Inline device type creation (used when DeviceTypeID == 0)
 	NewTypeName            string `json:"new_type_name" binding:"omitempty,max=100"`
 	NewTypeBrand           string `json:"new_type_brand" binding:"omitempty,max=100"`
 	NewTypeModel           string `json:"new_type_model" binding:"omitempty,max=100"`
-	NewTypeAssetCodePrefix string `json:"new_type_asset_code_prefix" binding:"omitempty,max=10"`
+	NewTypeAssetCodePrefix string `json:"new_type_asset_code_prefix" binding:"omitempty,max=50"`
 	NewTypeUsageType       string `json:"new_type_usage_type" binding:"omitempty,oneof=loanable consumable installable"`
 	NewTypeDefaultLocation string `json:"new_type_default_location" binding:"omitempty,max=100"`
 	NewTypePhotoFileRef    string `json:"new_type_photo_file_ref"`
@@ -105,7 +105,7 @@ type CreateDeviceTypeRequest struct {
 	Name            string `form:"name" binding:"required,max=100"`
 	Brand           string `form:"brand" binding:"omitempty,max=100"`
 	Model           string `form:"model" binding:"omitempty,max=100"`
-	AssetCodePrefix string `form:"asset_code_prefix" binding:"omitempty,max=10"`
+	AssetCodePrefix string `form:"asset_code_prefix" binding:"omitempty,max=50"`
 	UsageType       string `form:"usage_type" binding:"required,oneof=loanable consumable installable"`
 	DefaultLocation string `form:"default_location" binding:"omitempty,max=100"`
 }
@@ -115,7 +115,7 @@ type EditDeviceTypeRequest struct {
 	Name            string `form:"name" binding:"required,max=100"`
 	Brand           string `form:"brand" binding:"omitempty,max=100"`
 	Model           string `form:"model" binding:"omitempty,max=100"`
-	AssetCodePrefix string `form:"asset_code_prefix" binding:"omitempty,max=10"`
+	AssetCodePrefix string `form:"asset_code_prefix" binding:"omitempty,max=50"`
 	UsageType       string `form:"usage_type" binding:"required,oneof=loanable consumable installable"`
 	DefaultLocation string `form:"default_location" binding:"omitempty,max=100"`
 	PhotoFileRef    string `form:"photo_file_ref"`
@@ -123,7 +123,7 @@ type EditDeviceTypeRequest struct {
 
 type EditCategoryRequest struct {
 	Name          string `form:"name" binding:"required,max=100"`
-	DefaultPrefix string `form:"default_prefix" binding:"required,max=10"`
+	DefaultPrefix string `form:"default_prefix" binding:"required,max=50"`
 }
 
 type CreateDeviceLoanRequest struct {
