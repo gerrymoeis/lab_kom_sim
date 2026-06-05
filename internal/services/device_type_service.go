@@ -37,6 +37,11 @@ func NewDeviceTypeService(repo *repository.DeviceTypeRepository, log *ActivityLo
 }
 
 func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
+	in.Name = ToTitleCaseWithAbbr(in.Name)
+	in.Brand = ToTitleCaseWithAbbr(in.Brand)
+	in.Model = ToTitleCaseWithAbbr(in.Model)
+	in.AssetCodePrefix = ToUpperTrim(in.AssetCodePrefix)
+	in.DefaultLocation = ToTitleCaseWithAbbr(in.DefaultLocation)
 	result, err := s.repo.Create(in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "device_type", 0,
@@ -51,6 +56,11 @@ func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorU
 }
 
 func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	in.Name = ToTitleCaseWithAbbr(in.Name)
+	in.Brand = ToTitleCaseWithAbbr(in.Brand)
+	in.Model = ToTitleCaseWithAbbr(in.Model)
+	in.AssetCodePrefix = ToUpperTrim(in.AssetCodePrefix)
+	in.DefaultLocation = ToTitleCaseWithAbbr(in.DefaultLocation)
 	err := s.repo.Update(id, in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", 0,
