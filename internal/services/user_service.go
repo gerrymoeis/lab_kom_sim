@@ -104,9 +104,16 @@ func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actor
 		return ErrUsernameTaken
 	}
 
+	oldVals := map[string]any{
+		"id": targetID, "username": target.Username, "full_name": target.FullName, "role": target.Role,
+	}
+	newVals := map[string]any{
+		"id": targetID, "username": username, "full_name": fullName, "role": role, "password_changed": newPassword != "",
+	}
+
 	if err := s.userRepo.UpdateUser(targetID, username, fullName, role); err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
-			map[string]any{"target_username": target.Username}, nil, ipAddress, userAgent, err.Error())
+			oldVals, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 
@@ -114,25 +121,32 @@ func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actor
 		hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 		if err != nil {
 			s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
-				map[string]any{"target_username": target.Username}, nil, ipAddress, userAgent, err.Error())
+				oldVals, nil, ipAddress, userAgent, err.Error())
 			return err
 		}
 		if err := s.userRepo.UpdatePassword(targetID, string(hash)); err != nil {
 			s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
-				map[string]any{"target_username": target.Username}, nil, ipAddress, userAgent, err.Error())
+				oldVals, nil, ipAddress, userAgent, err.Error())
 			return err
 		}
 	}
 
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
-		map[string]any{"id": targetID, "target_username": target.Username},
-		map[string]any{"username": username, "full_name": fullName, "role": role, "password_changed": newPassword != ""}, ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 
 func (s *UserService) UpdateProfile(userID int, username, fullName, actorUsername, actorRole, ipAddress, userAgent string) (string, string, error) {
 	username = SanitizeText(username)
 	fullName = ToTitleCaseWithAbbr(fullName)
+
+	user, _ := s.userRepo.GetByID(userID)
+	oldVals := map[string]any{"id": userID}
+	newVals := map[string]any{"id": userID}
+	if user != nil {
+		oldVals["username"] = user.Username; oldVals["full_name"] = user.FullName
+	}
+	newVals["username"] = username; newVals["full_name"] = fullName
 
 	exists, _ := s.userRepo.ExistsUsername(username, userID)
 	if exists {
@@ -142,8 +156,7 @@ func (s *UserService) UpdateProfile(userID int, username, fullName, actorUsernam
 		return "", "", err
 	}
 	s.activityLogService.LogUpdate(userID, actorUsername, actorRole, "user", userID,
-		map[string]any{"id": userID},
-		map[string]any{"username": username, "full_name": fullName}, ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return username, fullName, nil
 }
 
