@@ -23,9 +23,11 @@ type Config struct {
 	Android          bool
 	WriteMode        string
 	Timezone         string
-	DefaultPageSize  int
-	Backup           BackupConfig
-	PublicBuild      PublicBuildConfig
+	DefaultPageSize   int
+	LogRetentionDays  int
+	LogCleanupInterval int
+	Backup            BackupConfig
+	PublicBuild       PublicBuildConfig
 }
 
 // BackupConfig holds SQLite auto-backup configuration
@@ -69,7 +71,9 @@ func Load() *Config {
 		Android:          getEnv("ANDROID", "false") == "true",
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
 		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
-		DefaultPageSize:  getEnvInt("DEFAULT_PAGE_SIZE", 25),
+		DefaultPageSize:    getEnvInt("DEFAULT_PAGE_SIZE", 25),
+		LogRetentionDays:   getEnvInt("LOG_RETENTION_DAYS", 90),
+		LogCleanupInterval: getEnvInt("LOG_CLEANUP_INTERVAL", 24),
 		PublicBuild: PublicBuildConfig{
 			Enabled:     getEnv("PUBLIC_BUILD_ENABLED", "false") == "true",
 			Interval:    getEnvInt("PUBLIC_BUILD_INTERVAL", 30),
