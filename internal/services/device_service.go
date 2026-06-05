@@ -174,17 +174,15 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 	}
 
 	if err := s.deviceRepo.BatchCreate(inputs); err != nil {
-		for _, code := range codes {
-			s.log.LogCreate(actorID, actorUsername, actorRole, "device", 0,
-				map[string]any{"asset_code": code}, ipAddress, userAgent, err.Error())
-		}
+		s.log.LogCreate(actorID, actorUsername, actorRole, "device", 0,
+			map[string]any{"action": "batch_create", "count": len(codes), "codes": codes},
+			ipAddress, userAgent, err.Error())
 		return nil, err
 	}
 
-	for _, code := range codes {
-		s.log.LogCreate(actorID, actorUsername, actorRole, "device", 0,
-			map[string]any{"asset_code": code}, ipAddress, userAgent)
-	}
+	s.log.LogCreate(actorID, actorUsername, actorRole, "device", 0,
+		map[string]any{"action": "batch_create", "count": len(codes), "codes": codes},
+		ipAddress, userAgent)
 	return codes, nil
 }
 
