@@ -23,6 +23,10 @@ func NewScheduleService(repo *repository.ScheduleRepository, log *ActivityLogSer
 }
 
 func (s *ScheduleService) Create(in ScheduleCreateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	in.CourseName = ToTitleCaseWithAbbr(in.CourseName)
+	in.Lecturer = ToTitleCaseWithAbbr(in.Lecturer)
+	in.Class = ToTitleCaseWithAbbr(in.Class)
+	in.Notes = SanitizeText(in.Notes)
 	_, err := s.repo.Create(in.CourseName, in.Lecturer, in.Day, in.Class, in.TimeStart, in.TimeEnd, in.Notes)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "schedule", 0,
@@ -38,6 +42,10 @@ func (s *ScheduleService) Create(in ScheduleCreateInput, actorID int, actorUsern
 }
 
 func (s *ScheduleService) Update(id int, in ScheduleUpdateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	in.CourseName = ToTitleCaseWithAbbr(in.CourseName)
+	in.Lecturer = ToTitleCaseWithAbbr(in.Lecturer)
+	in.Class = ToTitleCaseWithAbbr(in.Class)
+	in.Notes = SanitizeText(in.Notes)
 	err := s.repo.Update(id, in.CourseName, in.Lecturer, in.Day, in.Class, in.TimeStart, in.TimeEnd, in.Notes)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "schedule", 0,

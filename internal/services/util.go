@@ -36,3 +36,13 @@ func ToTitleCaseWithAbbr(text string) string {
 	r = regexp.MustCompile(`\b([A-Z])([A-Z])\b`).ReplaceAllString(r, "$1.$2")
 	return strings.TrimSuffix(r, ".")
 }
+
+func SanitizeText(s string) string {
+	s = strings.TrimSpace(s)
+	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")
+	return s
+}
+
+func ToUpperTrim(s string) string {
+	return strings.ToUpper(strings.TrimSpace(s))
+}
