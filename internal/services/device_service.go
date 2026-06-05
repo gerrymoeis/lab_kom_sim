@@ -190,14 +190,23 @@ func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, 
 	in.Location = ToTitleCaseWithAbbr(in.Location)
 	in.Notes = SanitizeText(in.Notes)
 	in.SerialNumber = SanitizeText(in.SerialNumber)
+	old, _ := s.deviceRepo.GetByID(id)
 	err := s.deviceRepo.Update(id, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes, in.UsageType)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
+	oldVals := map[string]any{"id": id, "asset_code": in.AssetCode}
+	newVals := map[string]any{"id": id, "asset_code": in.AssetCode}
+	if old != nil {
+		if old.SerialNumber != in.SerialNumber { oldVals["serial_number"] = old.SerialNumber; newVals["serial_number"] = in.SerialNumber }
+		if old.Condition != in.Condition { oldVals["condition"] = old.Condition; newVals["condition"] = in.Condition }
+		if old.Location != in.Location { oldVals["location"] = old.Location; newVals["location"] = in.Location }
+		if old.DeviceTypeID != in.DeviceTypeID { oldVals["device_type_id"] = old.DeviceTypeID; newVals["device_type_id"] = in.DeviceTypeID }
+	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device", id,
-		map[string]any{"id": id}, map[string]any{"asset_code": in.AssetCode}, ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 
@@ -210,12 +219,18 @@ func (s *DeviceService) CountByCategoryID(categoryID int) (int, error) {
 }
 
 func (s *DeviceService) DeleteDevice(id int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	d, _ := s.deviceRepo.GetByID(id)
+	oldVals := map[string]any{"id": id}
+	if d != nil {
+		oldVals["asset_code"] = d.AssetCode
+		oldVals["serial_number"] = d.SerialNumber
+	}
 	if err := s.deviceRepo.Delete(id); err != nil {
 		s.log.LogDelete(actorID, actorUsername, actorRole, "device", id,
-			map[string]any{"id": id}, ipAddress, userAgent, err.Error())
+			oldVals, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "device", id,
-		map[string]any{"id": id}, ipAddress, userAgent)
+		oldVals, ipAddress, userAgent)
 	return nil
 }
