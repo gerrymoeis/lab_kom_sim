@@ -1,6 +1,7 @@
 ﻿package handlers
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -297,7 +298,11 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 	}
 
 	// Process photo ref for inline device type creation
-	photoFile := processDeviceTypePhotoRef(req.NewTypePhotoFileRef)
+	photoFile, err := processDeviceTypePhotoRef(req.NewTypePhotoFileRef)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	// Resolve device type: create inline if needed
 	typeID := req.DeviceTypeID
@@ -520,7 +525,11 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	ip, ua := getRequestContext(c)
 
 	// Process photo ref
-	photoFile := processDeviceTypePhotoRef(req.PhotoFileRef)
+	photoFile, err := processDeviceTypePhotoRef(req.PhotoFileRef)
+	if err != nil {
+		h.renderEditPageWithError(c, dt, err.Error())
+		return
+	}
 
 	if err := h.deviceTypeService.Update(dt.ID, services.DeviceTypeUpdateInput{
 		CategoryID:      req.CategoryID,
@@ -902,19 +911,19 @@ func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bo
 	return grouped
 }
 
-func processDeviceTypePhotoRef(fileRef string) string {
+func processDeviceTypePhotoRef(fileRef string) (string, error) {
 	ref := filepath.Base(strings.TrimSpace(fileRef))
 	if ref == "" || ref == "." || ref == "/" || ref == "\\" {
-		return ""
+		return "", nil
 	}
 	src := filepath.Join("uploads", "temp", ref)
 	dst := filepath.Join("uploads", "device_types", ref)
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-		return ""
+		return "", fmt.Errorf("gagal membuat direktori foto: %w", err)
 	}
 	if err := services.CopyFile(src, dst); err != nil {
-		return ""
+		return "", fmt.Errorf("gagal menyalin foto: %w", err)
 	}
 	os.Remove(src)
-	return ref
+	return ref, nil
 }
