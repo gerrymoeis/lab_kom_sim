@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 )
 
@@ -529,6 +530,10 @@ func runMigrations(db *DB, isPostgres bool) error {
 		return fmt.Errorf("failed to create unique index on software_catalog.slug: %w", err)
 	}
 
+	if err := normalizeExistingData(db); err != nil {
+		return fmt.Errorf("failed to normalize existing data: %w", err)
+	}
+
 	if !isPostgres {
 		if _, err := db.Exec("ANALYZE"); err != nil {
 			return fmt.Errorf("failed to run ANALYZE: %w", err)
@@ -536,4 +541,407 @@ func runMigrations(db *DB, isPostgres bool) error {
 	}
 
 	return SeedSchedules(db)
+}
+
+func toTitleCaseWithAbbr(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	re := regexp.MustCompile(`\s+`)
+	s = re.ReplaceAllString(s, " ")
+	words := strings.Fields(s)
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(string(w[0])) + strings.ToLower(w[1:])
+		}
+	}
+	r := strings.Join(words, " ")
+	r = regexp.MustCompile(`\b([A-Z])([A-Z])\b`).ReplaceAllString(r, "$1.$2")
+	return strings.TrimSuffix(r, ".")
+}
+
+func sanitizeText(s string) string {
+	s = strings.TrimSpace(s)
+	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")
+	return s
+}
+
+func toUpperTrim(s string) string {
+	return strings.ToUpper(strings.TrimSpace(s))
+}
+
+func generateSlug(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			return r
+		}
+		return -1
+	}, s)
+	for strings.Contains(s, "--") {
+		s = strings.ReplaceAll(s, "--", "-")
+	}
+	s = strings.Trim(s, "-")
+	if s == "" {
+		s = "item"
+	}
+	return s
+}
+
+func normalizeExistingData(db *DB) error {
+	log.Println("Normalizing existing data...")
+	if err := normalizeCategories(db); err != nil {
+		return err
+	}
+	if err := normalizeDeviceTypes(db); err != nil {
+		return err
+	}
+	if err := normalizeDevices(db); err != nil {
+		return err
+	}
+	if err := normalizeDeviceLoans(db); err != nil {
+		return err
+	}
+	if err := normalizeDeviceUsages(db); err != nil {
+		return err
+	}
+	if err := normalizeDeviceInstallations(db); err != nil {
+		return err
+	}
+	if err := normalizeSchedules(db); err != nil {
+		return err
+	}
+	if err := normalizeSoftwareCatalogs(db); err != nil {
+		return err
+	}
+	if err := normalizeUsers(db); err != nil {
+		return err
+	}
+	if err := normalizePCs(db); err != nil {
+		return err
+	}
+	if err := normalizeLogbookEntries(db); err != nil {
+		return err
+	}
+	return nil
+}
+
+func normalizeCategories(db *DB) error {
+	rows, err := db.Query("SELECT id, name, default_prefix FROM categories")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var name, prefix string
+		if rows.Scan(&id, &name, &prefix) != nil {
+			continue
+		}
+		newName := toTitleCaseWithAbbr(name)
+		newPrefix := toUpperTrim(prefix)
+		if newName != name || newPrefix != prefix {
+			db.Exec("UPDATE categories SET name = ?, default_prefix = ? WHERE id = ?", newName, newPrefix, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d categories", count)
+	}
+	return nil
+}
+
+func normalizeDeviceTypes(db *DB) error {
+	rows, err := db.Query("SELECT id, name, COALESCE(brand,''), COALESCE(model,''), asset_code_prefix, COALESCE(default_location,'') FROM device_types")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var name, brand, model, prefix, loc string
+		if rows.Scan(&id, &name, &brand, &model, &prefix, &loc) != nil {
+			continue
+		}
+		newName := toTitleCaseWithAbbr(name)
+		newBrand := toTitleCaseWithAbbr(brand)
+		newModel := toTitleCaseWithAbbr(model)
+		newPrefix := toUpperTrim(prefix)
+		newLoc := toTitleCaseWithAbbr(loc)
+		if newName != name || newBrand != brand || newModel != model || newPrefix != prefix || newLoc != loc {
+			db.Exec("UPDATE device_types SET name = ?, brand = ?, model = ?, asset_code_prefix = ?, default_location = ? WHERE id = ?",
+				newName, newBrand, newModel, newPrefix, newLoc, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d device_types", count)
+	}
+	return nil
+}
+
+func normalizeDevices(db *DB) error {
+	rows, err := db.Query("SELECT id, COALESCE(location,''), COALESCE(notes,''), COALESCE(serial_number,'') FROM devices")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var loc, notes, serial string
+		if rows.Scan(&id, &loc, &notes, &serial) != nil {
+			continue
+		}
+		newLoc := toTitleCaseWithAbbr(loc)
+		newNotes := sanitizeText(notes)
+		newSerial := sanitizeText(serial)
+		if newLoc != loc || newNotes != notes || newSerial != serial {
+			db.Exec("UPDATE devices SET location = ?, notes = ?, serial_number = ? WHERE id = ?",
+				newLoc, newNotes, newSerial, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d devices", count)
+	}
+	return nil
+}
+
+func normalizeDeviceLoans(db *DB) error {
+	rows, err := db.Query("SELECT id, COALESCE(borrower_name,''), COALESCE(purpose,''), COALESCE(notes,'') FROM device_loans")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var name, purpose, notes string
+		if rows.Scan(&id, &name, &purpose, &notes) != nil {
+			continue
+		}
+		newName := toTitleCaseWithAbbr(name)
+		newPurpose := sanitizeText(purpose)
+		newNotes := sanitizeText(notes)
+		if newName != name || newPurpose != purpose || newNotes != notes {
+			db.Exec("UPDATE device_loans SET borrower_name = ?, purpose = ?, notes = ? WHERE id = ?",
+				newName, newPurpose, newNotes, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d device_loans", count)
+	}
+	return nil
+}
+
+func normalizeDeviceUsages(db *DB) error {
+	rows, err := db.Query("SELECT id, COALESCE(user_name,''), COALESCE(purpose,''), COALESCE(notes,'') FROM device_usages")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var name, purpose, notes string
+		if rows.Scan(&id, &name, &purpose, &notes) != nil {
+			continue
+		}
+		newName := toTitleCaseWithAbbr(name)
+		newPurpose := sanitizeText(purpose)
+		newNotes := sanitizeText(notes)
+		if newName != name || newPurpose != purpose || newNotes != notes {
+			db.Exec("UPDATE device_usages SET user_name = ?, purpose = ?, notes = ? WHERE id = ?",
+				newName, newPurpose, newNotes, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d device_usages", count)
+	}
+	return nil
+}
+
+func normalizeDeviceInstallations(db *DB) error {
+	rows, err := db.Query("SELECT id, COALESCE(location_installed,''), COALESCE(notes,'') FROM device_installations")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var loc, notes string
+		if rows.Scan(&id, &loc, &notes) != nil {
+			continue
+		}
+		newLoc := toTitleCaseWithAbbr(loc)
+		newNotes := sanitizeText(notes)
+		if newLoc != loc || newNotes != notes {
+			db.Exec("UPDATE device_installations SET location_installed = ?, notes = ? WHERE id = ?",
+				newLoc, newNotes, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d device_installations", count)
+	}
+	return nil
+}
+
+func normalizeSchedules(db *DB) error {
+	rows, err := db.Query("SELECT id, COALESCE(course_name,''), COALESCE(lecturer,''), COALESCE(class,''), COALESCE(notes,'') FROM course_schedules")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var course, lecturer, class, notes string
+		if rows.Scan(&id, &course, &lecturer, &class, &notes) != nil {
+			continue
+		}
+		newCourse := toTitleCaseWithAbbr(course)
+		newLecturer := toTitleCaseWithAbbr(lecturer)
+		newClass := toTitleCaseWithAbbr(class)
+		newNotes := sanitizeText(notes)
+		if newCourse != course || newLecturer != lecturer || newClass != class || newNotes != notes {
+			db.Exec("UPDATE course_schedules SET course_name = ?, lecturer = ?, class = ?, notes = ? WHERE id = ?",
+				newCourse, newLecturer, newClass, newNotes, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d course_schedules", count)
+	}
+	return nil
+}
+
+func normalizeSoftwareCatalogs(db *DB) error {
+	rows, err := db.Query("SELECT id, COALESCE(name,''), COALESCE(description,''), slug FROM software_catalog")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var name, desc, oldSlug string
+		if rows.Scan(&id, &name, &desc, &oldSlug) != nil {
+			continue
+		}
+		newName := toTitleCaseWithAbbr(name)
+		newDesc := sanitizeText(desc)
+		newSlug := generateSlug(newName)
+		if newName != name || newDesc != desc || newSlug != oldSlug {
+			_, err := db.Exec("UPDATE software_catalog SET name = ?, description = ?, slug = ? WHERE id = ?",
+				newName, newDesc, newSlug, id)
+			if err != nil {
+				log.Printf("WARN: failed to update software id=%d (slug conflict?): %v", id, err)
+			}
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d software_catalogs", count)
+	}
+	return nil
+}
+
+func normalizeUsers(db *DB) error {
+	rows, err := db.Query("SELECT id, COALESCE(full_name,''), COALESCE(username,'') FROM users")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var fullName, username string
+		if rows.Scan(&id, &fullName, &username) != nil {
+			continue
+		}
+		newFullName := toTitleCaseWithAbbr(fullName)
+		newUsername := sanitizeText(username)
+		if newFullName != fullName || newUsername != username {
+			db.Exec("UPDATE users SET full_name = ?, username = ? WHERE id = ?",
+				newFullName, newUsername, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d users", count)
+	}
+	return nil
+}
+
+func normalizePCs(db *DB) error {
+	rows, err := db.Query(`SELECT id, COALESCE(processor,''), COALESCE(ram,''), COALESCE(storage,''),
+		COALESCE(serial_number,''), COALESCE(operating_system,''), COALESCE(pc_type,''),
+		COALESCE(brand_model,''), COALESCE(accessories,''), COALESCE(notes,'') FROM pcs`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var cpu, ram, storage, serial, os, pct, brand, acc, notes string
+		if rows.Scan(&id, &cpu, &ram, &storage, &serial, &os, &pct, &brand, &acc, &notes) != nil {
+			continue
+		}
+		newCPU := sanitizeText(cpu)
+		newRAM := sanitizeText(ram)
+		newStorage := sanitizeText(storage)
+		newSerial := sanitizeText(serial)
+		newOS := sanitizeText(os)
+		newPCT := sanitizeText(pct)
+		newBrand := sanitizeText(brand)
+		newAcc := sanitizeText(acc)
+		newNotes := sanitizeText(notes)
+		if newCPU != cpu || newRAM != ram || newStorage != storage || newSerial != serial ||
+			newOS != os || newPCT != pct || newBrand != brand || newAcc != acc || newNotes != notes {
+			db.Exec("UPDATE pcs SET processor = ?, ram = ?, storage = ?, serial_number = ?, operating_system = ?, pc_type = ?, brand_model = ?, accessories = ?, notes = ? WHERE id = ?",
+				newCPU, newRAM, newStorage, newSerial, newOS, newPCT, newBrand, newAcc, newNotes, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d pcs", count)
+	}
+	return nil
+}
+
+func normalizeLogbookEntries(db *DB) error {
+	rows, err := db.Query("SELECT id, COALESCE(student_name,''), COALESCE(nim,''), COALESCE(purpose,'') FROM logbook_entries")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var count int
+	for rows.Next() {
+		var id int
+		var name, nim, purpose string
+		if rows.Scan(&id, &name, &nim, &purpose) != nil {
+			continue
+		}
+		newName := toTitleCaseWithAbbr(name)
+		newNIM := strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(nim, " ", "")))
+		newPurpose := toTitleCaseWithAbbr(purpose)
+		if newName != name || newNIM != nim || newPurpose != purpose {
+			db.Exec("UPDATE logbook_entries SET student_name = ?, nim = ?, purpose = ? WHERE id = ?",
+				newName, newNIM, newPurpose, id)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("  Normalized %d logbook_entries", count)
+	}
+	return nil
 }
