@@ -48,14 +48,23 @@ func (s *CategoryService) Create(name, prefix string, actorID int, actorUsername
 func (s *CategoryService) Update(id int, name, prefix string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	name = ToTitleCaseWithAbbr(name)
 	prefix = ToUpperTrim(prefix)
+
+	oldCat, _ := s.repo.GetByID(id)
+	oldVals := map[string]any{"id": id}
+	newVals := map[string]any{"id": id}
+	if oldCat != nil {
+		if oldCat.Name != name { oldVals["name"] = oldCat.Name; newVals["name"] = name }
+		if oldCat.DefaultPrefix != prefix { oldVals["prefix"] = oldCat.DefaultPrefix; newVals["prefix"] = prefix }
+	}
+
 	err := s.repo.Update(id, name, prefix)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "category", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
+			oldVals, nil, ipAddress, userAgent, err.Error())
 		return sanitizeDBError(err)
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "category", id,
-		map[string]any{"id": id}, map[string]any{"name": name, "prefix": prefix}, ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 
