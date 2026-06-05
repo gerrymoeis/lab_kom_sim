@@ -59,6 +59,8 @@ func (s *DeviceUsageService) CreateUsage(in CreateUsageInput, actorID int, actor
 		in.IsAvailable = "yes"
 	}
 	usageDate := MustParseDate(in.UsageDate)
+	in.UserName = ToTitleCaseWithAbbr(in.UserName)
+	in.Purpose = SanitizeText(in.Purpose)
 
 	id, err := s.repo.Create(in.DeviceID, in.UserName, in.UserType, usageDate, in.IsAvailable, in.Purpose)
 	if err != nil {
@@ -77,6 +79,9 @@ func (s *DeviceUsageService) UpdateUsage(id int, in UpdateUsageInput, actorID in
 		in.IsAvailable = "yes"
 	}
 	usageDate := MustParseDate(in.UsageDate)
+	in.UserName = ToTitleCaseWithAbbr(in.UserName)
+	in.Purpose = SanitizeText(in.Purpose)
+	in.Notes = SanitizeText(in.Notes)
 
 	if err := s.repo.Update(id, in.UserName, in.UserType, usageDate, in.IsAvailable, in.Purpose, in.Notes); err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,

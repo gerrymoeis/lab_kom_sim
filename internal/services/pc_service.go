@@ -77,6 +77,15 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 	if in.Processor == "" { in.Processor = "Intel Core i7" }
 	if in.RAM == "" { in.RAM = "16GB DDR4" }
 	if in.Storage == "" { in.Storage = "1TB NVMe" }
+	in.Processor = SanitizeText(in.Processor)
+	in.RAM = SanitizeText(in.RAM)
+	in.Storage = SanitizeText(in.Storage)
+	in.SerialNumber = SanitizeText(in.SerialNumber)
+	in.OperatingSystem = SanitizeText(in.OperatingSystem)
+	in.PCType = SanitizeText(in.PCType)
+	in.BrandModel = SanitizeText(in.BrandModel)
+	in.Accessories = SanitizeText(in.Accessories)
+	in.Notes = SanitizeText(in.Notes)
 	if in.Label == "" {
 		in.Label = s.pcRepo.NextLabel(in.Placement, in.IsMahasiswa)
 	}
@@ -110,6 +119,15 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 	if in.Label == "" {
 		in.Label = label
 	}
+	in.Processor = SanitizeText(in.Processor)
+	in.RAM = SanitizeText(in.RAM)
+	in.Storage = SanitizeText(in.Storage)
+	in.SerialNumber = SanitizeText(in.SerialNumber)
+	in.OperatingSystem = SanitizeText(in.OperatingSystem)
+	in.PCType = SanitizeText(in.PCType)
+	in.BrandModel = SanitizeText(in.BrandModel)
+	in.Accessories = SanitizeText(in.Accessories)
+	in.Notes = SanitizeText(in.Notes)
 	err := s.pcRepo.Update(label, in.Row, in.Column, in.Status, in.Placement, in.PCType, in.SerialNumber, in.BrandModel, in.Accessories,
 		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.PhotoSerial, in.PhotoFront, in.Label,
 		in.PurchaseDate, in.LastChecked)

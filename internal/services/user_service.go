@@ -2,7 +2,6 @@
 
 import (
 	"errors"
-	"strings"
 
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
@@ -86,8 +85,8 @@ func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actor
 }
 
 func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actorRole, ipAddress, userAgent, username, fullName, role, newPassword string) error {
-	username = strings.TrimSpace(username)
-	fullName = strings.TrimSpace(fullName)
+	username = SanitizeText(username)
+	fullName = ToTitleCaseWithAbbr(fullName)
 
 	target, err := s.userRepo.GetByID(targetID)
 	if err != nil {
@@ -130,8 +129,8 @@ func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actor
 }
 
 func (s *UserService) UpdateProfile(userID int, username, fullName, actorUsername, actorRole, ipAddress, userAgent string) (string, string, error) {
-	username = strings.TrimSpace(username)
-	fullName = strings.TrimSpace(fullName)
+	username = SanitizeText(username)
+	fullName = ToTitleCaseWithAbbr(fullName)
 
 	exists, _ := s.userRepo.ExistsUsername(username, userID)
 	if exists {

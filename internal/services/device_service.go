@@ -109,6 +109,9 @@ func (s *DeviceService) GetNextAssetCode(prefix string) string {
 }
 
 func (s *DeviceService) CreateDevice(in CreateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, string, error) {
+	in.Location = ToTitleCaseWithAbbr(in.Location)
+	in.Notes = SanitizeText(in.Notes)
+	in.SerialNumber = SanitizeText(in.SerialNumber)
 	prefix, err := s.deviceTypeRepo.GetPrefix(in.DeviceTypeID)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "device", 0,
@@ -154,6 +157,9 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 	var inputs []repository.BatchCreateInput
 	var codes []string
 	for i, dev := range devices {
+		dev.Location = ToTitleCaseWithAbbr(dev.Location)
+		dev.Notes = SanitizeText(dev.Notes)
+		dev.SerialNumber = SanitizeText(dev.SerialNumber)
 		code := fmt.Sprintf("%s-%03d", prefix, startNum+i)
 		inputs = append(inputs, repository.BatchCreateInput{
 			DeviceTypeID: deviceTypeID,
@@ -183,6 +189,9 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 }
 
 func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	in.Location = ToTitleCaseWithAbbr(in.Location)
+	in.Notes = SanitizeText(in.Notes)
+	in.SerialNumber = SanitizeText(in.SerialNumber)
 	err := s.deviceRepo.Update(id, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes, in.UsageType)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device", id,
