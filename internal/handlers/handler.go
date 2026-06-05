@@ -34,7 +34,7 @@ type Handler struct {
 }
 
 func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifier) *Handler {
-	activityLogService := services.NewActivityLogService(db, notifier)
+	activityLogService := services.NewActivityLogService(db, notifier, cfg.LogRetentionDays, cfg.LogCleanupInterval)
 	deviceRepo := repository.NewDeviceRepository(db)
 	deviceTypeRepo := repository.NewDeviceTypeRepository(db)
 	deviceLoanRepo := repository.NewDeviceLoanRepository(db)
