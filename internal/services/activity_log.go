@@ -14,17 +14,18 @@ import (
 
 // ActivityLogService handles activity logging operations
 type ActivityLogService struct {
-	db       *database.DB
-	notifier CUDNotifier
-	logChan  chan *models.ActivityLog
-	stmt     *sql.Stmt
-	close    chan struct{}
-	flushReq chan chan struct{}
-	search   *search.Builder
+	db             *database.DB
+	notifier       CUDNotifier
+	logChan        chan *models.ActivityLog
+	stmt           *sql.Stmt
+	close          chan struct{}
+	flushReq       chan chan struct{}
+	search         *search.Builder
+	retentionDays  int
 }
 
 // NewActivityLogService creates a new activity log service
-func NewActivityLogService(db *database.DB, notifier CUDNotifier) *ActivityLogService {
+func NewActivityLogService(db *database.DB, notifier CUDNotifier, retentionDays, cleanupInterval int) *ActivityLogService {
 	stmt, err := db.Prepare(`
 		INSERT INTO activity_logs (
 			user_id, username, user_role, action, entity_type, entity_id,
@@ -36,15 +37,19 @@ func NewActivityLogService(db *database.DB, notifier CUDNotifier) *ActivityLogSe
 		log.Printf("failed to prepare activity log stmt: %v", err)
 	}
 	s := &ActivityLogService{
-		db:       db,
-		notifier: notifier,
-		logChan:  make(chan *models.ActivityLog, 4096),
-		stmt:     stmt,
-		close:    make(chan struct{}),
-		flushReq: make(chan chan struct{}),
-		search:   search.New(db),
+		db:            db,
+		notifier:      notifier,
+		logChan:       make(chan *models.ActivityLog, 4096),
+		stmt:          stmt,
+		close:         make(chan struct{}),
+		flushReq:      make(chan chan struct{}),
+		search:        search.New(db),
+		retentionDays: retentionDays,
 	}
 	go s.logWriter()
+	if retentionDays > 0 {
+		go s.cleanupLoop(cleanupInterval)
+	}
 	return s
 }
 
@@ -111,6 +116,33 @@ func (s *ActivityLogService) Flush() {
 	case s.flushReq <- done:
 		<-done
 	case <-s.close:
+	}
+}
+
+func (s *ActivityLogService) cleanupLoop(intervalHours int) {
+	if intervalHours < 1 { intervalHours = 24 }
+	ticker := time.NewTicker(time.Duration(intervalHours) * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			s.purgeOldLogs()
+		case <-s.close:
+			return
+		}
+	}
+}
+
+func (s *ActivityLogService) purgeOldLogs() {
+	cutoff := time.Now().UTC().AddDate(0, 0, -s.retentionDays)
+	result, err := s.db.Exec("DELETE FROM activity_logs WHERE created_at < ?", cutoff)
+	if err != nil {
+		log.Printf("activity log cleanup: %v", err)
+		return
+	}
+	n, _ := result.RowsAffected()
+	if n > 0 {
+		log.Printf("activity log cleanup: purged %d entries older than %d days", n, s.retentionDays)
 	}
 }
 
