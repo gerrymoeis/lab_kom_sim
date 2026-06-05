@@ -49,13 +49,16 @@ func (s *ScheduleService) Update(id int, in ScheduleUpdateInput, actorID int, ac
 	in.Notes = SanitizeText(in.Notes)
 
 	oldSchedule, _ := s.repo.GetByID(id)
-	oldVals := map[string]any{"id": id}
-	newVals := map[string]any{"id": id}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
 	if oldSchedule != nil {
 		if oldSchedule.CourseName != in.CourseName { oldVals["course_name"] = oldSchedule.CourseName; newVals["course_name"] = in.CourseName }
 		if oldSchedule.Lecturer != in.Lecturer { oldVals["lecturer"] = oldSchedule.Lecturer; newVals["lecturer"] = in.Lecturer }
 		if oldSchedule.Day != in.Day { oldVals["day"] = oldSchedule.Day; newVals["day"] = in.Day }
 		if oldSchedule.Class != in.Class { oldVals["class"] = oldSchedule.Class; newVals["class"] = in.Class }
+		if oldSchedule.TimeStart != in.TimeStart { oldVals["time_start"] = oldSchedule.TimeStart; newVals["time_start"] = in.TimeStart }
+		if oldSchedule.TimeEnd != in.TimeEnd { oldVals["time_end"] = oldSchedule.TimeEnd; newVals["time_end"] = in.TimeEnd }
+		if oldSchedule.Notes != in.Notes { oldVals["notes"] = oldSchedule.Notes; newVals["notes"] = in.Notes }
 	}
 
 	err := s.repo.Update(id, in.CourseName, in.Lecturer, in.Day, in.Class, in.TimeStart, in.TimeEnd, in.Notes)

@@ -87,12 +87,13 @@ func (s *DeviceLoanService) UpdateLoan(id int, in UpdateLoanInput, actorID int, 
 	in.Notes = SanitizeText(in.Notes)
 
 	oldRow, _ := s.loanRepo.GetByID(id)
-	oldVals := map[string]any{"id": id}
-	newVals := map[string]any{"id": id}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
 	if oldRow != nil {
 		if oldRow.BorrowerName != in.BorrowerName { oldVals["borrower_name"] = oldRow.BorrowerName; newVals["borrower_name"] = in.BorrowerName }
 		if oldRow.BorrowerType != in.BorrowerType { oldVals["borrower_type"] = oldRow.BorrowerType; newVals["borrower_type"] = in.BorrowerType }
 		if oldRow.Purpose != in.Purpose { oldVals["purpose"] = oldRow.Purpose; newVals["purpose"] = in.Purpose }
+		if oldRow.Notes != in.Notes { oldVals["notes"] = oldRow.Notes; newVals["notes"] = in.Notes }
 	}
 
 	err := s.loanRepo.Update(id, in.BorrowerName, in.BorrowerType, loanDate, in.ReturnDate, actualReturnDate, in.Purpose, in.Notes)
