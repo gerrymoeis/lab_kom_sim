@@ -269,7 +269,7 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 	var req BatchCreateDeviceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Data batch tidak valid"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data batch tidak valid: " + err.Error()})
 		return
 	}
 
