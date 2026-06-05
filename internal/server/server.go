@@ -313,7 +313,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	}
 
 	api := router.Group("/api")
-	api.Use(middleware.AuthRequired(db), middleware.CSRF())
+	api.Use(middleware.AuthRequired(db), middleware.CSRF(), writeFlushMiddleware())
 	{
 		api.GET("/pc/status", h.PCStatusAPI)
 		api.POST("/pc/:label/status", h.UpdatePCStatusAPI)
