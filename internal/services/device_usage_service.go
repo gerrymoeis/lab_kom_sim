@@ -84,12 +84,14 @@ func (s *DeviceUsageService) UpdateUsage(id int, in UpdateUsageInput, actorID in
 	in.Notes = SanitizeText(in.Notes)
 
 	oldRow, _ := s.repo.GetByID(id)
-	oldVals := map[string]any{"id": id}
-	newVals := map[string]any{"id": id}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
 	if oldRow != nil {
 		if oldRow.UserName != in.UserName { oldVals["user_name"] = oldRow.UserName; newVals["user_name"] = in.UserName }
 		if oldRow.UserType != in.UserType { oldVals["user_type"] = oldRow.UserType; newVals["user_type"] = in.UserType }
 		if oldRow.Purpose != in.Purpose { oldVals["purpose"] = oldRow.Purpose; newVals["purpose"] = in.Purpose }
+		if oldRow.IsAvailable != in.IsAvailable { oldVals["is_available"] = oldRow.IsAvailable; newVals["is_available"] = in.IsAvailable }
+		if oldRow.Notes != in.Notes { oldVals["notes"] = oldRow.Notes; newVals["notes"] = in.Notes }
 	}
 
 	if err := s.repo.Update(id, in.UserName, in.UserType, usageDate, in.IsAvailable, in.Purpose, in.Notes); err != nil {

@@ -104,12 +104,12 @@ func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actor
 		return ErrUsernameTaken
 	}
 
-	oldVals := map[string]any{
-		"id": targetID, "username": target.Username, "full_name": target.FullName, "role": target.Role,
-	}
-	newVals := map[string]any{
-		"id": targetID, "username": username, "full_name": fullName, "role": role, "password_changed": newPassword != "",
-	}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
+	if target.Username != username { oldVals["username"] = target.Username; newVals["username"] = username }
+	if target.FullName != fullName { oldVals["full_name"] = target.FullName; newVals["full_name"] = fullName }
+	if target.Role != role { oldVals["role"] = target.Role; newVals["role"] = role }
+	if newPassword != "" { oldVals["password_changed"] = false; newVals["password_changed"] = true }
 
 	if err := s.userRepo.UpdateUser(targetID, username, fullName, role); err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
@@ -140,18 +140,19 @@ func (s *UserService) UpdateProfile(userID int, username, fullName, actorUsernam
 	username = SanitizeText(username)
 	fullName = ToTitleCaseWithAbbr(fullName)
 
-	user, _ := s.userRepo.GetByID(userID)
-	oldVals := map[string]any{"id": userID}
-	newVals := map[string]any{"id": userID}
-	if user != nil {
-		oldVals["username"] = user.Username; oldVals["full_name"] = user.FullName
-	}
-	newVals["username"] = username; newVals["full_name"] = fullName
-
 	exists, _ := s.userRepo.ExistsUsername(username, userID)
 	if exists {
 		return "", "", ErrUsernameTaken
 	}
+
+	user, _ := s.userRepo.GetByID(userID)
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
+	if user != nil {
+		if user.Username != username { oldVals["username"] = user.Username; newVals["username"] = username }
+		if user.FullName != fullName { oldVals["full_name"] = user.FullName; newVals["full_name"] = fullName }
+	}
+
 	if err := s.userRepo.UpdateProfile(userID, username, fullName); err != nil {
 		return "", "", err
 	}

@@ -197,12 +197,14 @@ func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, 
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	oldVals := map[string]any{"id": id, "asset_code": in.AssetCode}
-	newVals := map[string]any{"id": id, "asset_code": in.AssetCode}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
 	if old != nil {
+		if old.AssetCode != in.AssetCode { oldVals["asset_code"] = old.AssetCode; newVals["asset_code"] = in.AssetCode }
 		if old.SerialNumber != in.SerialNumber { oldVals["serial_number"] = old.SerialNumber; newVals["serial_number"] = in.SerialNumber }
 		if old.Condition != in.Condition { oldVals["condition"] = old.Condition; newVals["condition"] = in.Condition }
 		if old.Location != in.Location { oldVals["location"] = old.Location; newVals["location"] = in.Location }
+		if old.Notes != in.Notes { oldVals["notes"] = old.Notes; newVals["notes"] = in.Notes }
 		if old.DeviceTypeID != in.DeviceTypeID { oldVals["device_type_id"] = old.DeviceTypeID; newVals["device_type_id"] = in.DeviceTypeID }
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device", id,

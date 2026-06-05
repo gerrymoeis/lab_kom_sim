@@ -90,10 +90,11 @@ func (s *DeviceInstallationService) Update(id int, in UpdateInstallationInput, a
 	in.Notes = SanitizeText(in.Notes)
 
 	oldRow, _ := s.repo.GetByID(id)
-	oldVals := map[string]any{"id": id}
-	newVals := map[string]any{"id": id}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
 	if oldRow != nil {
 		if oldRow.LocationInstalled != in.LocationInstalled { oldVals["location"] = oldRow.LocationInstalled; newVals["location"] = in.LocationInstalled }
+		if oldRow.Notes != in.Notes { oldVals["notes"] = oldRow.Notes; newVals["notes"] = in.Notes }
 	}
 
 	err := s.repo.Update(id, in.LocationInstalled,
