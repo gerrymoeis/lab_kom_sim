@@ -85,14 +85,24 @@ func (s *DeviceLoanService) UpdateLoan(id int, in UpdateLoanInput, actorID int, 
 	in.BorrowerName = ToTitleCaseWithAbbr(in.BorrowerName)
 	in.Purpose = SanitizeText(in.Purpose)
 	in.Notes = SanitizeText(in.Notes)
+
+	oldRow, _ := s.loanRepo.GetByID(id)
+	oldVals := map[string]any{"id": id}
+	newVals := map[string]any{"id": id}
+	if oldRow != nil {
+		if oldRow.BorrowerName != in.BorrowerName { oldVals["borrower_name"] = oldRow.BorrowerName; newVals["borrower_name"] = in.BorrowerName }
+		if oldRow.BorrowerType != in.BorrowerType { oldVals["borrower_type"] = oldRow.BorrowerType; newVals["borrower_type"] = in.BorrowerType }
+		if oldRow.Purpose != in.Purpose { oldVals["purpose"] = oldRow.Purpose; newVals["purpose"] = in.Purpose }
+	}
+
 	err := s.loanRepo.Update(id, in.BorrowerName, in.BorrowerType, loanDate, in.ReturnDate, actualReturnDate, in.Purpose, in.Notes)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
+			oldVals, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
-		map[string]any{"id": id}, nil, ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 
@@ -119,22 +129,29 @@ func (s *DeviceLoanService) ExtendLoan(loanID int, newReturnDate string, actorID
 	}
 
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", loanID,
-		map[string]any{"id": loanID},
-		map[string]any{"old_return_date": oldReturnDate, "new_return_date": newReturnDate},
+		map[string]any{"id": loanID, "return_date": oldReturnDate},
+		map[string]any{"id": loanID, "return_date": newReturnDate},
 		ipAddress, userAgent)
 	return nil
 }
 
 func (s *DeviceLoanService) UpdateReturn(id int, actualReturnDate *time.Time, notes string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	oldRow, _ := s.loanRepo.GetByID(id)
+	oldVals := map[string]any{"id": id}
+	if oldRow != nil {
+		oldVals["borrower_name"] = oldRow.BorrowerName
+		oldVals["actual_return_date"] = oldRow.ActualReturnDate
+		oldVals["notes"] = oldRow.Notes
+	}
 	err := s.loanRepo.UpdateReturn(id, actualReturnDate, notes)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
+			oldVals, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
-		map[string]any{"id": id, "actual_return_date": actualReturnDate, "notes": notes},
-		nil, ipAddress, userAgent)
+		oldVals, map[string]any{"id": id, "actual_return_date": actualReturnDate, "notes": notes},
+		ipAddress, userAgent)
 	return nil
 }
 

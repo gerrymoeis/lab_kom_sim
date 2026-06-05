@@ -83,14 +83,23 @@ func (s *DeviceUsageService) UpdateUsage(id int, in UpdateUsageInput, actorID in
 	in.Purpose = SanitizeText(in.Purpose)
 	in.Notes = SanitizeText(in.Notes)
 
+	oldRow, _ := s.repo.GetByID(id)
+	oldVals := map[string]any{"id": id}
+	newVals := map[string]any{"id": id}
+	if oldRow != nil {
+		if oldRow.UserName != in.UserName { oldVals["user_name"] = oldRow.UserName; newVals["user_name"] = in.UserName }
+		if oldRow.UserType != in.UserType { oldVals["user_type"] = oldRow.UserType; newVals["user_type"] = in.UserType }
+		if oldRow.Purpose != in.Purpose { oldVals["purpose"] = oldRow.Purpose; newVals["purpose"] = in.Purpose }
+	}
+
 	if err := s.repo.Update(id, in.UserName, in.UserType, usageDate, in.IsAvailable, in.Purpose, in.Notes); err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
+			oldVals, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_usage", id,
-		map[string]any{"id": id}, nil, ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 

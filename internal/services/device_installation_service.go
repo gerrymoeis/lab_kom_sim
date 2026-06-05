@@ -88,16 +88,24 @@ func (s *DeviceInstallationService) Create(in CreateInstallationInput, actorID i
 func (s *DeviceInstallationService) Update(id int, in UpdateInstallationInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	in.LocationInstalled = ToTitleCaseWithAbbr(in.LocationInstalled)
 	in.Notes = SanitizeText(in.Notes)
+
+	oldRow, _ := s.repo.GetByID(id)
+	oldVals := map[string]any{"id": id}
+	newVals := map[string]any{"id": id}
+	if oldRow != nil {
+		if oldRow.LocationInstalled != in.LocationInstalled { oldVals["location"] = oldRow.LocationInstalled; newVals["location"] = in.LocationInstalled }
+	}
+
 	err := s.repo.Update(id, in.LocationInstalled,
 		parseNullableDate(in.InstallationStartDate), parseNullableDate(in.InstallationFinishDate),
 		in.Photo, in.Notes)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_installation", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
+			oldVals, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_installation", id,
-		map[string]any{"id": id}, map[string]any{"location": in.LocationInstalled}, ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 

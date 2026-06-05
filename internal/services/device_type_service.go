@@ -61,16 +61,25 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 	in.Model = ToTitleCaseWithAbbr(in.Model)
 	in.AssetCodePrefix = ToUpperTrim(in.AssetCodePrefix)
 	in.DefaultLocation = ToTitleCaseWithAbbr(in.DefaultLocation)
+
+	oldDT, _ := s.repo.GetByID(id)
+	oldVals := map[string]any{"id": id}
+	newVals := map[string]any{"id": id}
+	if oldDT != nil {
+		if oldDT.Name != in.Name { oldVals["name"] = oldDT.Name; newVals["name"] = in.Name }
+		if oldDT.CategoryID != in.CategoryID { oldVals["category_id"] = oldDT.CategoryID; newVals["category_id"] = in.CategoryID }
+		if oldDT.AssetCodePrefix != in.AssetCodePrefix { oldVals["asset_code_prefix"] = oldDT.AssetCodePrefix; newVals["asset_code_prefix"] = in.AssetCodePrefix }
+		if oldDT.UsageType != in.UsageType { oldVals["usage_type"] = oldDT.UsageType; newVals["usage_type"] = in.UsageType }
+	}
+
 	err := s.repo.Update(id, in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
+			oldVals, nil, ipAddress, userAgent, err.Error())
 		return sanitizeDBError(err)
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", id,
-		map[string]any{"id": id},
-		map[string]any{"name": in.Name, "category_id": in.CategoryID},
-		ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 

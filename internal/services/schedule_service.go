@@ -47,16 +47,25 @@ func (s *ScheduleService) Update(id int, in ScheduleUpdateInput, actorID int, ac
 	in.Lecturer = ToTitleCaseWithAbbr(in.Lecturer)
 	in.Class = ToTitleCaseWithAbbr(in.Class)
 	in.Notes = SanitizeText(in.Notes)
+
+	oldSchedule, _ := s.repo.GetByID(id)
+	oldVals := map[string]any{"id": id}
+	newVals := map[string]any{"id": id}
+	if oldSchedule != nil {
+		if oldSchedule.CourseName != in.CourseName { oldVals["course_name"] = oldSchedule.CourseName; newVals["course_name"] = in.CourseName }
+		if oldSchedule.Lecturer != in.Lecturer { oldVals["lecturer"] = oldSchedule.Lecturer; newVals["lecturer"] = in.Lecturer }
+		if oldSchedule.Day != in.Day { oldVals["day"] = oldSchedule.Day; newVals["day"] = in.Day }
+		if oldSchedule.Class != in.Class { oldVals["class"] = oldSchedule.Class; newVals["class"] = in.Class }
+	}
+
 	err := s.repo.Update(id, in.CourseName, in.Lecturer, in.Day, in.Class, in.TimeStart, in.TimeEnd, in.Notes)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "schedule", id,
-			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
+			oldVals, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "schedule", id,
-		map[string]any{"id": id, "course_name": in.CourseName},
-		map[string]any{"course_name": in.CourseName, "lecturer": in.Lecturer, "day": in.Day, "class": in.Class},
-		ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 
