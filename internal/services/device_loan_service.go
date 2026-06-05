@@ -59,6 +59,8 @@ func (s *DeviceLoanService) ExportAll() ([]repository.DeviceLoanRow, error) {
 func (s *DeviceLoanService) CreateLoan(in CreateLoanInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
 	loanDate := MustParseDate(in.LoanDate)
 	returnDate := MustParseDate(in.ReturnDate)
+	in.BorrowerName = ToTitleCaseWithAbbr(in.BorrowerName)
+	in.Purpose = SanitizeText(in.Purpose)
 
 	loanID, err := s.loanRepo.Create(in.DeviceID, in.BorrowerName, in.BorrowerType, loanDate, returnDate, in.Purpose)
 	if err != nil {
@@ -80,6 +82,9 @@ func (s *DeviceLoanService) UpdateLoan(id int, in UpdateLoanInput, actorID int, 
 			actualReturnDate = &t
 		}
 	}
+	in.BorrowerName = ToTitleCaseWithAbbr(in.BorrowerName)
+	in.Purpose = SanitizeText(in.Purpose)
+	in.Notes = SanitizeText(in.Notes)
 	err := s.loanRepo.Update(id, in.BorrowerName, in.BorrowerType, loanDate, in.ReturnDate, actualReturnDate, in.Purpose, in.Notes)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,

@@ -360,7 +360,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 302, "create software: %d", resp.StatusCode)
 	closeResp(resp)
 	var swID int
-	db.QueryRow("SELECT id FROM software_catalog WHERE name='TestSW'").Scan(&swID)
+	db.QueryRow("SELECT id FROM software_catalog WHERE name='Testsw'").Scan(&swID)
 	assert(swID > 0, "Software ID=%d", swID)
 
 	// Query slug for software
@@ -377,7 +377,7 @@ func TestFullIntegration(t *testing.T) {
 	closeResp(resp)
 	var swName string
 	db.QueryRow("SELECT name FROM software_catalog WHERE id=?", swID).Scan(&swName)
-	assert(swName == "TestSW2", "Software name updated: %s", swName)
+	assert(swName == "Testsw2", "Software name updated: %s", swName)
 
 	// Query updated slug after name change
 	db.QueryRow("SELECT slug FROM software_catalog WHERE id=?", swID).Scan(&swSlug)

@@ -49,8 +49,8 @@ func (s *SoftwareService) Export() ([]repository.SoftwareStat, error) {
 }
 
 func (s *SoftwareService) Create(in SoftwareCreateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	in.Name = strings.TrimSpace(in.Name)
-	in.Description = strings.TrimSpace(in.Description)
+	in.Name = ToTitleCaseWithAbbr(in.Name)
+	in.Description = SanitizeText(in.Description)
 	if in.Category != "required" {
 		in.Category = "other"
 	}
@@ -69,8 +69,8 @@ func (s *SoftwareService) Create(in SoftwareCreateInput, actorID int, actorUsern
 }
 
 func (s *SoftwareService) Update(id int, name, category, description string, pcIDs []string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	name = strings.TrimSpace(name)
-	description = strings.TrimSpace(description)
+	name = ToTitleCaseWithAbbr(name)
+	description = SanitizeText(description)
 	if category != "required" {
 		category = "other"
 	}
