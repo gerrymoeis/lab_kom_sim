@@ -4,7 +4,7 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="/devices">Perangkat</a></li>
-            <li class="breadcrumb-item"><a href="/categories/{{ .device.CategoryPrefix | lower }}">{{ .device.CategoryPrefix }}</a></li>
+            <li class="breadcrumb-item"><a href="/categories/{{ .device.CategoryPrefix | lower }}">{{ .device.CategoryName }}</a></li>
             <li class="breadcrumb-item"><a href="/device-types/{{ .device.DeviceTypePrefix | lower }}">{{ .device.DeviceTypeName }}</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ .device.AssetCode }}</li>
         </ol>
