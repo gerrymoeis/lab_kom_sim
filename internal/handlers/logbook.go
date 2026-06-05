@@ -134,7 +134,10 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 	var uploadReq struct {
 		FileRef string `form:"file_ref"`
 	}
-	c.ShouldBind(&uploadReq)
+	if err := c.ShouldBind(&uploadReq); err != nil {
+		h.errHTML(c, "Data tidak valid")
+		return
+	}
 	fileRef := strings.TrimSpace(uploadReq.FileRef)
 
 	if fileRef != "" {
@@ -220,7 +223,10 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	if role != "admin" { h.errJSON(c, http.StatusForbidden, "Hanya admin"); return }
 
 	var req LogbookSaveRequest
-	c.ShouldBind(&req)
+	if err := c.ShouldBind(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
+		return
+	}
 
 	bulk := make([]repository.BulkEntry, 0, len(req.Date))
 	for i := 0; i < len(req.Date) && i < len(req.StudentName); i++ {

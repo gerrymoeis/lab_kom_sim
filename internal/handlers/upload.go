@@ -39,7 +39,13 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	}
 
 	var req UploadImageRequest
-	c.ShouldBind(&req)
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(http.StatusBadRequest, UploadResponse{
+			Success: false,
+			Message: "Parameter tidak valid",
+		})
+		return
+	}
 
 	// Validate file size (max 5MB)
 	if file.Size > 5*1024*1024 {
