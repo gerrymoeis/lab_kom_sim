@@ -110,8 +110,12 @@
                             <td>{{ if $entry.TimeOut }}{{ $entry.TimeOut }}{{ else }}-{{ end }}</td>
                             <td class="text-center">
                                 {{ if index $.dupFlags $entry.ID }}
-                                <span class="badge bg-warning text-dark" title="Terindikasi duplikat dengan entry lain" style="cursor:help;">
+                                <span class="badge dup-badge-list bg-warning text-dark"
+                                      data-entry-id="{{ $entry.ID }}"
+                                      style="cursor:default; display:inline-flex; align-items:center; gap:4px;">
                                     🟡 Potensi Duplikat
+                                    <button type="button" class="btn-close ms-1 dismiss-dup-list"
+                                            aria-label="Bukan duplikat" title="Bukan duplikat"></button>
                                 </span>
                                 {{ else }}
                                 <span class="text-muted small">-</span>
@@ -150,7 +154,22 @@
     </div>
 </div>
 
+<style>
+.dup-badge-list { font-size: 0.75em; }
+.dismiss-dup-list { cursor: pointer; padding: 0.25em; opacity: 0.7; font-size: 1.2em; margin: auto; }
+.dismiss-dup-list:hover { opacity: 1; }
+</style>
+
 <script>
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('dismiss-dup-list')) {
+        const badge = e.target.closest('.badge');
+        const cell = badge.closest('td');
+        badge.remove();
+        cell.innerHTML = '<span class="text-muted small">-</span>';
+    }
+});
+
 function exportLogbook() {
     const params = new URLSearchParams();
     const dateFrom = document.getElementById('date_from').value;
