@@ -113,15 +113,15 @@
                                                          data-type="{{ $info.Type }}"
                                                          data-state="visible">
                                                         <span class="badge d-inline-flex align-items-center gap-1 small dup-badge
-                                                                    {{ if eq $info.Type "intra-batch" }}bg-warning text-dark{{ else }}bg-danger{{ end }}">
+                                                                     {{ if eq $info.Type "intra-batch" }}bg-warning text-dark{{ else }}bg-danger text-white{{ end }}">
                                                             <i class="bi {{ if eq $info.Type "intra-batch" }}bi-exclamation-triangle-fill{{ else }}bi-x-circle-fill{{ end }}"></i>
                                                             {{ if eq $info.Type "intra-batch" }}Group {{ $info.GroupID }}{{ else }}Duplikat DB{{ end }}
-                                                            <button type="button" class="btn-close ms-1" data-dismiss-dup
-                                                                    aria-label="Bukan duplikat" title="Bukan duplikat"></button>
+                                                             <button type="button" class="btn-close ms-1 {{ if eq $info.Type "intra-batch" }}{{ else }}btn-close-white{{ end }}" data-dismiss-dup
+                                                                     aria-label="Bukan duplikat" title="Bukan duplikat"></button>
                                                         </span>
-                                                        <span class="badge d-inline-flex align-items-center gap-1 small bg-info text-white d-none dup-restore">
+                                                        <span class="badge d-inline-flex align-items-center gap-1 small bg-info text-white cursor-pointer d-none dup-restore" role="button" tabindex="0">
                                                             <i class="bi bi-arrow-counterclockwise"></i>
-                                                            <a href="#" class="restore-dup-link text-white text-decoration-none" tabindex="0">Pulihkan</a>
+                                                            Pulihkan
                                                         </span>
                                                     </div>
                                                     {{ else }}
@@ -272,7 +272,7 @@
     document.addEventListener('click', function(e) {
         const target = e.target;
         const dismissBtn = target.closest('[data-dismiss-dup]');
-        const restoreLink = target.closest('.restore-dup-link');
+        const restoreLink = target.closest('.dup-restore');
 
         if (dismissBtn) {
             const wrapper = dismissBtn.closest('.dup-wrapper');
@@ -297,7 +297,6 @@
         }
 
         if (restoreLink) {
-            e.preventDefault();
             const wrapper = restoreLink.closest('.dup-wrapper');
             const row = wrapper.closest('tr');
             const group = wrapper.dataset.group;
@@ -370,9 +369,9 @@
                                 Duplikat (JS)
                                 <button type="button" class="btn-close ms-1" data-dismiss-dup aria-label="Bukan duplikat"></button>
                             </span>
-                            <span class="badge d-inline-flex align-items-center gap-1 small bg-info text-white d-none dup-restore">
+                            <span class="badge d-inline-flex align-items-center gap-1 small bg-info text-white cursor-pointer d-none dup-restore" role="button" tabindex="0">
                                 <i class="bi bi-arrow-counterclockwise"></i>
-                                <a href="#" class="restore-dup-link text-white text-decoration-none" tabindex="0">Pulihkan</a>
+                                Pulihkan
                             </span>
                         </div>`;
                         hasDuplicate = true;
