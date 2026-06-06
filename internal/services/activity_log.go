@@ -173,16 +173,24 @@ func (s *ActivityLogService) logAction(p logParams) error {
 	if p.newValues != nil { if b, e := json.Marshal(p.newValues); e == nil { newJSON = string(b) } }
 	if p.fileNewValues != nil { if b, e := json.Marshal(p.fileNewValues); e == nil { newJSON = string(b) } }
 
-	actionLabel := map[string]string{"create": "Created", "update": "Updated", "delete": "Deleted", "upload": "Uploaded"}
-	desc := fmt.Sprintf("%s %s #%d", actionLabel[p.action], p.entityType, p.entityID)
-	if p.action == "upload" && p.fileNewValues != nil {
-		if ft, ok := p.fileNewValues["file_type"]; ok { desc = fmt.Sprintf("Uploaded %s for %s #%d: %s", ft, p.entityType, p.entityID, p.fileNewValues["filename"]) }
+	entityLabel := p.entityType
+	if p.entityID != 0 {
+		entityLabel = fmt.Sprintf("%s #%d", p.entityType, p.entityID)
 	}
-	if errText != "" { desc = fmt.Sprintf("Failed to %s %s #%d: %s", p.action, p.entityType, p.entityID, errText) }
+	actionLabel := map[string]string{"create": "Created", "update": "Updated", "delete": "Deleted", "upload": "Uploaded"}
+	desc := fmt.Sprintf("%s %s", actionLabel[p.action], entityLabel)
+	if p.action == "upload" && p.fileNewValues != nil {
+		if ft, ok := p.fileNewValues["file_type"]; ok { desc = fmt.Sprintf("Uploaded %s for %s: %s", ft, entityLabel, p.fileNewValues["filename"]) }
+	}
+	if errText != "" { desc = fmt.Sprintf("Failed to %s %s: %s", p.action, entityLabel, errText) }
 
+	var entityID *int
+	if p.entityID != 0 {
+		entityID = &p.entityID
+	}
 	s.enqueueLog(&models.ActivityLog{
 		UserID: p.userID, Username: p.username, UserRole: p.role,
-		Action: p.action, EntityType: p.entityType, EntityID: &p.entityID,
+		Action: p.action, EntityType: p.entityType, EntityID: entityID,
 		Description: desc, OldValues: oldJSON, NewValues: newJSON,
 		CreatedAt: time.Now().UTC(), IPAddress: p.ipAddress, UserAgent: p.userAgent,
 		Status: status, ErrorMessage: errText,
