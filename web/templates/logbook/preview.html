@@ -52,7 +52,7 @@
                             </div>
                             <div class="card-body p-2 text-center photo-container">
                                 <img id="previewPhoto" src="/uploads/logbook/{{ .source_file }}"
-                                     alt="Foto logbook" onerror="this.closest('.card').style.display='none'">
+                                     alt="Foto logbook" onerror="this.closest('.card').classList.add('d-none')">
                             </div>
                         </div>
 
@@ -63,15 +63,15 @@
                                 <table class="table table-bordered table-hover" id="previewTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width: 50px;">No</th>
+                                            <th class="th-w-50">No</th>
                                             <th>Tanggal <span class="text-danger">*</span></th>
                                             <th>Nama Mahasiswa <span class="text-danger">*</span></th>
                                             <th>NIM <span class="text-danger">*</span></th>
                                             <th>Keperluan</th>
                                             <th>Jam Masuk <span class="text-danger">*</span></th>
                                             <th>Jam Keluar</th>
-                                            <th style="width: 180px;">Indikasi</th>
-                                            <th style="width: 80px;">Aksi</th>
+                                            <th class="th-w-180">Indikasi</th>
+                                            <th class="th-w-80">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="entriesTableBody">
@@ -79,7 +79,7 @@
                                             {{ range $i, $entry := .entries }}
                                             {{ $info := index $.dupInfo $i }}
                                             <tr data-index="{{ $i }}" data-dup-group="{{ with $info }}{{ .GroupID }}{{ end }}" data-dup-type="{{ with $info }}{{ .Type }}{{ end }}"
-                                                class="{{ if $info }}{{ if eq $info.Type "intra-batch" }}table-dup-batch{{ else }}table-dup-db{{ end }}{{ end }}">
+                                                class="{{ if $info }}{{ if eq $info.Type "intra-batch" }}table-warning{{ else }}table-danger{{ end }}{{ end }}">
                                                 <td class="text-center">{{ add $i 1 }}</td>
                                                 <td>
                                                     <input type="date" class="form-control form-control-sm" name="date[]"
@@ -107,19 +107,23 @@
                                                 </td>
                                                 <td class="text-center dup-cell">
                                                     {{ if $info }}
-                                                    <span class="badge dup-badge rounded-pill"
-                                                        data-index="{{ $i }}"
-                                                        data-group="{{ $info.GroupID }}"
-                                                        data-type="{{ $info.Type }}">
-                                                        {{ if eq $info.Type "intra-batch" }}
-                                                        🟠 Group {{ $info.GroupID }}
-                                                        {{ else }}
-                                                        🔴 Duplikat DB
-                                                        {{ end }}
-                                                        <button type="button" class="btn-close ms-1 dismiss-dup"
-                                                            aria-label="Bukan duplikat"
-                                                            title="Bukan duplikat"></button>
-                                                    </span>
+                                                    <div class="d-inline-flex align-items-center gap-1 dup-wrapper"
+                                                         data-index="{{ $i }}"
+                                                         data-group="{{ $info.GroupID }}"
+                                                         data-type="{{ $info.Type }}"
+                                                         data-state="visible">
+                                                        <span class="badge d-inline-flex align-items-center gap-1 small dup-badge
+                                                                    {{ if eq $info.Type "intra-batch" }}bg-warning text-dark{{ else }}bg-danger{{ end }}">
+                                                            <i class="bi {{ if eq $info.Type "intra-batch" }}bi-exclamation-triangle-fill{{ else }}bi-x-circle-fill{{ end }}"></i>
+                                                            {{ if eq $info.Type "intra-batch" }}Group {{ $info.GroupID }}{{ else }}Duplikat DB{{ end }}
+                                                            <button type="button" class="btn-close ms-1" data-dismiss-dup
+                                                                    aria-label="Bukan duplikat" title="Bukan duplikat"></button>
+                                                        </span>
+                                                        <span class="small text-muted d-none dup-restore">
+                                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                                            <a href="#" class="restore-dup-link" tabindex="0">Pulihkan</a>
+                                                        </span>
+                                                    </div>
                                                     {{ else }}
                                                     <span class="text-muted small">-</span>
                                                     {{ end }}
@@ -133,7 +137,7 @@
                                             </tr>
                                             {{ if $info }}{{ if eq $info.Type "existing-db" }}
                                             {{ range $ref := $info.Refs }}
-                                            <tr class="table-dup-db-ref">
+                                            <tr class="table-danger table-dup-db-ref">
                                                 <td class="text-center text-muted small">↳</td>
                                                 <td class="small">{{ $ref.Date }}</td>
                                                 <td class="small">{{ $ref.StudentName }}</td>
@@ -210,23 +214,6 @@
         </div>
     </div>
 
-    <style>
-    .table-dup-batch { background-color: #fff3cd !important; }
-    .table-dup-batch td { border-color: #ffc107; }
-    .table-dup-db { background-color: #f8d7da !important; }
-    .table-dup-db td { border-color: #f5c6cb; }
-    .table-dup-db-ref { background-color: #fce4e4 !important; }
-    .table-dup-db-ref td { border-color: #f5c6cb; color: #666; }
-    .table-dup-db-ref td:first-child { text-align: center; }
-    .dup-badge { font-size: 0.75em; cursor: default; display: inline-flex; align-items: center; gap: 4px; }
-    .dup-badge[data-type="intra-batch"] { background-color: #e6a817; }
-    .dup-badge[data-type="existing-db"] { background-color: #dc3545; }
-    .dismiss-dup { cursor: pointer; padding: 0.25em; opacity: 0.7; font-size: 1.2em; margin: auto; }
-    .dismiss-dup:hover { opacity: 1; }
-    .photo-container { overflow: auto; max-height: 70vh; background: #f8f9fa; border-radius: 4px; }
-    #previewPhoto { width: 100%; max-width: none; height: auto; transition: width 0.15s ease; display: block; }
-    </style>
-
     <script>
     let currentZoom = 100;
     function zoomIn() { currentZoom = Math.min(currentZoom * 1.25, 500); applyZoom(); }
@@ -237,56 +224,39 @@
         document.getElementById('zoomLevel').textContent = Math.round(currentZoom) + '%';
     }
 
-    let rowCounter = {{ if .entries }}{{ len .entries }}{{ else }}1{{ end }};
+    let rowCounter = document.querySelectorAll('#entriesTableBody > tr:not(.table-dup-db-ref)').length;
 
     document.addEventListener('DOMContentLoaded', function() {
         updateSaveButton();
         updateDupWarning();
     });
 
-    function isBadgeVisible(badge) {
-        return badge && badge.style.display !== 'none';
-    }
-
-    function visibleBadgeCount() {
-        return document.querySelectorAll('.dup-badge').length > 0
-            ? document.querySelectorAll('.dup-badge').length -
-              document.querySelectorAll('.dup-badge[style*="display: none"]').length
-            : 0;
+    function visibleDupCount() {
+        return document.querySelectorAll('.dup-wrapper[data-state="visible"]').length;
     }
 
     function updateSaveButton() {
         const saveBtn = document.getElementById('saveBtn');
-        const active = visibleBadgeCount() === 0;
+        const active = visibleDupCount() === 0;
         saveBtn.disabled = !active;
         saveBtn.title = active ? '' : 'Verifikasi semua indikasi duplikat terlebih dahulu';
     }
 
     function updateDupWarning() {
         const warning = document.getElementById('duplicateWarning');
-        if (visibleBadgeCount() > 0) {
-            warning.classList.remove('d-none');
-        } else {
-            warning.classList.add('d-none');
-        }
+        warning.classList.toggle('d-none', visibleDupCount() === 0);
     }
 
-    function addRestoreEl(cell, group, dupType) {
-        const existing = cell.querySelector('.restore-dup');
-        if (existing) return;
-        const restoreEl = document.createElement('span');
-        restoreEl.className = 'badge rounded-pill restore-dup text-white';
-        restoreEl.style.cssText = 'cursor:pointer; display:inline-flex; align-items:center; gap:4px; background-color:#6c757d; font-size:0.75em;';
-        restoreEl.dataset.group = group;
-        restoreEl.dataset.type = dupType;
-        restoreEl.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Pulihkan';
-        cell.appendChild(restoreEl);
+    function setDismissed(wrapper, dismissed) {
+        wrapper.dataset.state = dismissed ? 'dismissed' : 'visible';
+        wrapper.querySelector('.dup-badge').classList.toggle('d-none', dismissed);
+        wrapper.querySelector('.dup-restore').classList.toggle('d-none', !dismissed);
     }
 
     function hideRefRows(row) {
         let next = row.nextElementSibling;
         while (next && next.classList.contains('table-dup-db-ref')) {
-            next.style.display = 'none';
+            next.classList.add('d-none');
             next = next.nextElementSibling;
         }
     }
@@ -294,32 +264,31 @@
     function showRefRows(row) {
         let next = row.nextElementSibling;
         while (next && next.classList.contains('table-dup-db-ref')) {
-            next.style.display = '';
+            next.classList.remove('d-none');
             next = next.nextElementSibling;
         }
     }
 
     document.addEventListener('click', function(e) {
         const target = e.target;
-        if (target.classList.contains('dismiss-dup')) {
-            const badge = target.closest('.dup-badge');
-            const row = badge.closest('tr');
-            const cell = badge.closest('.dup-cell');
-            const group = badge.dataset.group;
-            const dupType = badge.dataset.type;
+        const dismissBtn = target.closest('[data-dismiss-dup]');
+        const restoreLink = target.closest('.restore-dup-link');
+
+        if (dismissBtn) {
+            const wrapper = dismissBtn.closest('.dup-wrapper');
+            const row = wrapper.closest('tr');
+            const group = wrapper.dataset.group;
+            const dupType = wrapper.dataset.type;
 
             if (dupType === 'intra-batch') {
-                document.querySelectorAll(`tr[data-dup-group="${group}"]`).forEach(function(r) {
-                    r.classList.remove('table-dup-batch');
-                    const b = r.querySelector('.dup-badge');
-                    if (b) b.style.display = 'none';
-                    addRestoreEl(r.querySelector('.dup-cell'), group, 'intra-batch');
-                    r.dataset.dismissed = 'true';
+                document.querySelectorAll(`.dup-wrapper[data-group="${group}"]`).forEach(function(w) {
+                    setDismissed(w, true);
+                    w.closest('tr').classList.remove('table-warning');
+                    w.closest('tr').dataset.dismissed = 'true';
                 });
             } else {
-                badge.style.display = 'none';
-                row.classList.remove('table-dup-db');
-                addRestoreEl(cell, group, dupType);
+                setDismissed(wrapper, true);
+                row.classList.remove('table-danger');
                 row.dataset.dismissed = 'true';
                 hideRefRows(row);
             }
@@ -327,28 +296,21 @@
             updateSaveButton();
         }
 
-        if (target.classList.contains('restore-dup') || target.closest('.restore-dup')) {
-            const restoreEl = target.classList.contains('restore-dup') ? target : target.closest('.restore-dup');
-            const cell = restoreEl.closest('.dup-cell');
-            const row = restoreEl.closest('tr');
-            const group = restoreEl.dataset.group;
-            const dupType = restoreEl.dataset.type;
+        if (restoreLink) {
+            const wrapper = restoreLink.closest('.dup-wrapper');
+            const row = wrapper.closest('tr');
+            const group = wrapper.dataset.group;
+            const dupType = wrapper.dataset.type;
 
             if (dupType === 'intra-batch') {
-                document.querySelectorAll(`tr[data-dup-group="${group}"]`).forEach(function(r) {
-                    const c = r.querySelector('.dup-cell');
-                    const res = c.querySelector('.restore-dup');
-                    if (res) res.remove();
-                    const b = r.querySelector('.dup-badge');
-                    if (b) b.style.display = '';
-                    r.classList.add('table-dup-batch');
-                    r.dataset.dismissed = 'false';
+                document.querySelectorAll(`.dup-wrapper[data-group="${group}"]`).forEach(function(w) {
+                    setDismissed(w, false);
+                    w.closest('tr').classList.add('table-warning');
+                    w.closest('tr').dataset.dismissed = 'false';
                 });
             } else {
-                restoreEl.remove();
-                const b = row.querySelector('.dup-badge');
-                if (b) b.style.display = '';
-                row.classList.add('table-dup-db');
+                setDismissed(wrapper, false);
+                row.classList.add('table-danger');
                 row.dataset.dismissed = 'false';
                 showRefRows(row);
             }
@@ -368,30 +330,25 @@
         const entries = [];
         let hasDuplicate = false;
 
-        rows.forEach((row, index) => {
+        rows.forEach((row) => {
             if (row.classList.contains('table-dup-db-ref')) return;
             if (row.dataset.dismissed === 'true') return;
             const name = row.querySelector('input[name="student_name[]"]').value.trim();
             const nim = row.querySelector('input[name="nim[]"]').value.trim();
             const date = row.querySelector('input[name="date[]"]').value;
             const timeIn = row.querySelector('input[name="time_in[]"]').value;
-            entries.push({ index, name, nim, date, timeIn, row });
+            entries.push({ name, nim, date, timeIn, row });
         });
 
         rows.forEach(row => {
             if (row.classList.contains('table-dup-db-ref')) return;
             if (row.dataset.dismissed === 'true') return;
-            const existingBadge = row.querySelector('.dup-badge');
-            if (!existingBadge || existingBadge.dataset.type !== 'js') {
-                return;
-            }
-            if (!isBadgeVisible(existingBadge)) return;
-            existingBadge.remove();
-            const cell = row.querySelector('.dup-cell');
-            const restoreEl = cell.querySelector('.restore-dup');
-            if (restoreEl) restoreEl.remove();
-            cell.innerHTML = '<span class="text-muted small">-</span>';
-            row.classList.remove('table-dup-batch', 'table-dup-db');
+            const wrapper = row.querySelector('.dup-wrapper');
+            if (!wrapper || wrapper.dataset.type !== 'js') return;
+            if (wrapper.dataset.state !== 'visible') return;
+            wrapper.remove();
+            row.querySelector('.dup-cell').innerHTML = '<span class="text-muted small">-</span>';
+            row.classList.remove('table-warning', 'table-danger');
         });
 
         for (let i = 0; i < entries.length; i++) {
@@ -403,14 +360,20 @@
                 if (nameSim || nimSim) {
                     [entries[i], entries[j]].forEach(function(entry) {
                         const row = entry.row;
-                        if (row.querySelector('.dup-badge')) return;
-                        row.classList.add('table-dup-batch');
+                        if (row.querySelector('.dup-wrapper')) return;
+                        row.classList.add('table-warning');
                         const cell = row.querySelector('.dup-cell');
-                            cell.innerHTML = `<span class="badge dup-badge rounded-pill" data-type="js" data-group="js">
-                            🟠 Duplikat (JS)
-                            <button type="button" class="btn-close ms-1 dismiss-dup"
-                                aria-label="Bukan duplikat"></button>
-                        </span>`;
+                        cell.innerHTML = `<div class="d-inline-flex align-items-center gap-1 dup-wrapper" data-type="js" data-state="visible">
+                            <span class="badge d-inline-flex align-items-center gap-1 small bg-warning text-dark dup-badge">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                Duplikat (JS)
+                                <button type="button" class="btn-close ms-1" data-dismiss-dup aria-label="Bukan duplikat"></button>
+                            </span>
+                            <span class="small text-muted d-none dup-restore">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                                <a href="#" class="restore-dup-link" tabindex="0">Pulihkan</a>
+                            </span>
+                        </div>`;
                         hasDuplicate = true;
                     });
                 }

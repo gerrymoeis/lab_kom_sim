@@ -126,7 +126,7 @@
                                     onclick="confirmDelete({message:'Hapus peminjaman ini?', formId:'del-{{ $l.ID }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                <form id="del-{{ $l.ID }}" method="POST" action="/device-loans/{{ $l.ID }}/delete" style="display:none;"></form>
+                                <form id="del-{{ $l.ID }}" method="POST" action="/device-loans/{{ $l.ID }}/delete" class="d-none"></form>
                             </td>
                         </tr>
                         {{ else }}

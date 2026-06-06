@@ -259,10 +259,10 @@
                             <table class="table table-sm table-bordered mb-2">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:40px">#</th>
+                                        <th class="th-w-40">#</th>
                                         <th>Nama Software</th>
-                                        <th style="width:250px">Deskripsi</th>
-                                        <th style="width:50px"></th>
+                                        <th class="th-w-250">Deskripsi</th>
+                                        <th class="th-w-50"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="othersTableBody">
@@ -307,7 +307,7 @@
                                             </button>
                                         </div>
                                     </div>
-                                    <div id="otherAutocomplete" class="list-group mt-1" style="max-height:150px;overflow-y:auto;display:none;"></div>
+                                    <div id="otherAutocomplete" class="list-group mt-1 d-none" style="max-height:150px;overflow-y:auto;"></div>
                                 </div>
                             </div>
                             <small class="text-muted">Ketik nama software untuk mencari dari daftar yang sudah ada. Klik "Tambah" atau Enter untuk menambah baris baru.</small>
@@ -342,10 +342,10 @@ function renderAutocomplete(val) {
     const box = document.getElementById('otherAutocomplete');
     box.innerHTML = '';
     autocompleteIndex = -1;
-    if (!val) { box.style.display = 'none'; return; }
+    if (!val) { box.classList.add('d-none'); return; }
 
     const matches = catalogData.filter(item => item.name.toLowerCase().includes(val));
-    if (matches.length === 0) { box.style.display = 'none'; return; }
+    if (matches.length === 0) { box.classList.add('d-none'); return; }
 
     matches.forEach(item => {
         const a = document.createElement('button');
@@ -356,13 +356,13 @@ function renderAutocomplete(val) {
         a.onclick = () => selectAutocomplete(item.name, item.description || '');
         box.appendChild(a);
     });
-    box.style.display = 'block';
+    box.classList.remove('d-none');
 }
 
 function selectAutocomplete(name, desc) {
     document.getElementById('newOtherName').value = name;
     document.getElementById('newOtherDesc').value = desc || '-';
-    document.getElementById('otherAutocomplete').style.display = 'none';
+    document.getElementById('otherAutocomplete').classList.add('d-none');
     addOtherRow();
 }
 
@@ -392,7 +392,7 @@ document.getElementById('newOtherName').addEventListener('keydown', function(e) 
 
 document.addEventListener('click', function(e) {
     const box = document.getElementById('otherAutocomplete');
-    if (box && !e.target.closest('.card')) box.style.display = 'none';
+    if (box && !e.target.closest('.card')) box.classList.add('d-none');
 });
 
 function addOtherRow() {
@@ -418,7 +418,7 @@ function addOtherRow() {
 
     document.getElementById('newOtherName').value = '';
     document.getElementById('newOtherDesc').value = '';
-    document.getElementById('otherAutocomplete').style.display = 'none';
+    document.getElementById('otherAutocomplete').classList.add('d-none');
     document.getElementById('newOtherName').focus();
 }
 

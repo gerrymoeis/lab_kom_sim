@@ -179,7 +179,7 @@ function showLoadingState() {
     var err = document.getElementById('photoError');
     area.classList.remove('d-none');
     loader.classList.remove('d-none');
-    if (img) img.style.display = 'none';
+    if (img) img.classList.add('d-none');
     if (err) err.classList.add('d-none');
 }
 
@@ -188,7 +188,7 @@ function showLocalPreview(url) {
     var area = document.getElementById('photoPreview');
     var loader = document.getElementById('photoLoading');
     var err = document.getElementById('photoError');
-    if (img) { img.src = url; img.style.display = ''; }
+    if (img) { img.src = url; img.classList.remove('d-none'); }
     area.classList.remove('d-none');
     loader.classList.add('d-none');
     if (err) err.classList.add('d-none');
