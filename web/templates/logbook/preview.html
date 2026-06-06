@@ -119,9 +119,9 @@
                                                             <button type="button" class="btn-close ms-1" data-dismiss-dup
                                                                     aria-label="Bukan duplikat" title="Bukan duplikat"></button>
                                                         </span>
-                                                        <span class="small text-muted d-none dup-restore">
+                                                        <span class="badge d-inline-flex align-items-center gap-1 small bg-info text-white d-none dup-restore">
                                                             <i class="bi bi-arrow-counterclockwise"></i>
-                                                            <a href="#" class="restore-dup-link" tabindex="0">Pulihkan</a>
+                                                            <a href="#" class="restore-dup-link text-white text-decoration-none" tabindex="0">Pulihkan</a>
                                                         </span>
                                                     </div>
                                                     {{ else }}
@@ -137,7 +137,7 @@
                                             </tr>
                                             {{ if $info }}{{ if eq $info.Type "existing-db" }}
                                             {{ range $ref := $info.Refs }}
-                                            <tr class="table-danger table-dup-db-ref">
+                                            <tr class="table-dup-db-ref">
                                                 <td class="text-center text-muted small">↳</td>
                                                 <td class="small">{{ $ref.Date }}</td>
                                                 <td class="small">{{ $ref.StudentName }}</td>
@@ -297,6 +297,7 @@
         }
 
         if (restoreLink) {
+            e.preventDefault();
             const wrapper = restoreLink.closest('.dup-wrapper');
             const row = wrapper.closest('tr');
             const group = wrapper.dataset.group;
@@ -369,9 +370,9 @@
                                 Duplikat (JS)
                                 <button type="button" class="btn-close ms-1" data-dismiss-dup aria-label="Bukan duplikat"></button>
                             </span>
-                            <span class="small text-muted d-none dup-restore">
+                            <span class="badge d-inline-flex align-items-center gap-1 small bg-info text-white d-none dup-restore">
                                 <i class="bi bi-arrow-counterclockwise"></i>
-                                <a href="#" class="restore-dup-link" tabindex="0">Pulihkan</a>
+                                <a href="#" class="restore-dup-link text-white text-decoration-none" tabindex="0">Pulihkan</a>
                             </span>
                         </div>`;
                         hasDuplicate = true;
