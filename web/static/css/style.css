@@ -181,5 +181,14 @@ table.table-hover tbody tr.group-header-course:hover { background-color: #f0f1f3
 
 body { padding-top: 56px; }
 
+.dup-wrapper .badge { min-width: 110px; font-size: 0.82rem; }
+.dup-wrapper .badge .bi { font-size: 0.95rem; }
+.dup-close-btn {
+    background: none; border: none; padding: 0; line-height: 1;
+    opacity: 0.7; cursor: pointer; display: inline-flex; align-items: center;
+}
+.dup-close-btn:hover { opacity: 1; }
+.dup-close-btn .bi-x-lg { font-size: 1.25em; }
+
 .photo-container { overflow: auto; max-height: 70vh; background: #f8f9fa; border-radius: 4px; }
 #previewPhoto { width: 100%; max-width: none; height: auto; transition: width 0.15s ease; display: block; }
