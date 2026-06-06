@@ -266,9 +266,16 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal menyimpan data")
 		return
 	}
+	if saved == 0 {
+		h.errJSON(c, http.StatusConflict, fmt.Sprintf("Semua data sudah ada di database (%d duplikat). Tidak ada yang perlu disimpan.", dups))
+		return
+	}
+	message := fmt.Sprintf("Berhasil menyimpan %d data.", saved)
+	if dups > 0 {
+		message = fmt.Sprintf("Berhasil menyimpan %d data. %d data dilewati karena sudah ada di database.", saved, dups)
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"success": true, "saved": saved, "duplicates": dups,
-		"message": fmt.Sprintf("Berhasil menyimpan %d data.", saved),
+		"success": true, "saved": saved, "duplicates": dups, "message": message,
 	})
 }
 
