@@ -183,6 +183,31 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 					}
 				}
 			}
+		} else {
+			// Verified entries: still check exact match against DB UNIQUE constraint
+			// (date + LOWER(TRIM(student_name)) + time_in)
+			for _, c := range clean {
+				if e.Date.Equal(c.Date) && strings.EqualFold(strings.TrimSpace(e.StudentName), strings.TrimSpace(c.StudentName)) && e.TimeIn == c.TimeIn {
+					dup = true
+					dups++
+					break
+				}
+			}
+			if !dup {
+				dateKey := e.Date.Format("2006-01-02")
+				existing, ok := dupCache[dateKey]
+				if !ok {
+					existing, _ = s.logbookRepo.GetDuplicateCheck(e.Date)
+					dupCache[dateKey] = existing
+				}
+				for _, ex := range existing {
+					if e.Date.Equal(ex.Date) && strings.EqualFold(strings.TrimSpace(e.StudentName), strings.TrimSpace(ex.StudentName)) && e.TimeIn == ex.TimeIn {
+						dup = true
+						dups++
+						break
+					}
+				}
+			}
 		}
 
 		if !dup {
