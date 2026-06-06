@@ -94,8 +94,8 @@
                                                         {{ else }}
                                                         🔴 Duplikat DB
                                                         {{ end }}
-                                                        <button type="button" class="btn-close btn-close-white ms-1 dismiss-dup"
-                                                            style="font-size: 0.6em;" aria-label="Bukan duplikat"
+                                                        <button type="button" class="btn-close ms-1 dismiss-dup"
+                                                            aria-label="Bukan duplikat"
                                                             title="Bukan duplikat"></button>
                                                     </span>
                                                     {{ else }}
@@ -199,7 +199,7 @@
     .dup-badge { font-size: 0.75em; cursor: default; display: inline-flex; align-items: center; gap: 4px; }
     .dup-badge[data-type="intra-batch"] { background-color: #e6a817; }
     .dup-badge[data-type="existing-db"] { background-color: #dc3545; }
-    .dismiss-dup { cursor: pointer; padding: 0; border: none; background: none; opacity: 0.8; }
+    .dismiss-dup { cursor: pointer; padding: 0; border: none; background: none; opacity: 0.7; font-size: 1.1em; margin-left: 6px; }
     .dismiss-dup:hover { opacity: 1; }
     </style>
 
@@ -237,11 +237,13 @@
                     const b = r.querySelector('.dup-badge');
                     if (b) b.remove();
                     r.querySelector('.dup-cell').innerHTML = '<span class="text-muted small">-</span>';
+                    r.dataset.dismissed = 'true';
                 });
             } else {
                 row.classList.remove('table-dup-db');
                 if (badge) badge.remove();
                 cell.innerHTML = '<span class="text-muted small">-</span>';
+                row.dataset.dismissed = 'true';
                 let next = row.nextElementSibling;
                 while (next && next.classList.contains('table-dup-db-ref')) {
                     const toRemove = next;
@@ -304,10 +306,10 @@
                         if (row.querySelector('.dup-badge')) return;
                         row.classList.add('table-dup-batch');
                         const cell = row.querySelector('.dup-cell');
-                        cell.innerHTML = `<span class="badge dup-badge rounded-pill" data-type="js" data-group="js">
+                            cell.innerHTML = `<span class="badge dup-badge rounded-pill" data-type="js" data-group="js">
                             🟠 Duplikat (JS)
-                            <button type="button" class="btn-close btn-close-white ms-1 dismiss-dup"
-                                style="font-size: 0.6em;" aria-label="Bukan duplikat"></button>
+                            <button type="button" class="btn-close ms-1 dismiss-dup"
+                                aria-label="Bukan duplikat"></button>
                         </span>`;
                         hasDuplicate = true;
                     });
@@ -472,6 +474,9 @@
     document.getElementById('previewForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
+        document.querySelectorAll('#entriesTableBody tr[data-dismissed="true"]').forEach(function(row) {
+            formData.append('verified[]', row.dataset.index);
+        });
         const submitBtn = this.querySelector('button[type="submit"]');
         if (submitBtn.disabled) return;
         const originalText = submitBtn.innerHTML;
