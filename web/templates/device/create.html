@@ -29,7 +29,7 @@
                         {{ end }}
                     </select>
                 </div>
-                <div id="catNewSection" style="display:none;">
+                <div id="catNewSection" class="d-none">
                     <div class="row g-2">
                         <div class="col-md-6">
                             <label class="form-label">Nama Kategori *</label>
@@ -60,13 +60,13 @@
                     <select class="form-select" id="typeSelect">
                         <option value="">Pilih kategori terlebih dahulu...</option>
                         {{ range $t := .deviceTypes }}
-                        <option value="{{ $t.ID }}" data-category="{{ $t.CategoryID }}" data-prefix="{{ $t.AssetCodePrefix }}" data-usage="{{ $t.UsageType }}" data-default-location="{{ $t.DefaultLocation }}" style="display:none;">
+                        <option value="{{ $t.ID }}" data-category="{{ $t.CategoryID }}" data-prefix="{{ $t.AssetCodePrefix }}" data-usage="{{ $t.UsageType }}" data-default-location="{{ $t.DefaultLocation }}" class="d-none">
                             {{ $t.Name }} ({{ $t.AssetCodePrefix }})
                         </option>
                         {{ end }}
                     </select>
                 </div>
-                <div id="typeNewSection" style="display:none;">
+                <div id="typeNewSection" class="d-none">
                     <div class="row g-2">
                         <div class="col-md-4">
                             <label class="form-label">Nama Varian *</label>
@@ -153,17 +153,17 @@
                     </div>
                 </div>
 
-                <div id="batchTableContainer" style="display:none;">
+                <div id="batchTableContainer" class="d-none">
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover align-middle" id="batchTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="text-center" style="width:50px;">#</th>
-                                    <th style="width:200px;">Asset Code (auto)</th>
-                                    <th style="width:180px;">Serial Number</th>
-                                    <th style="width:140px;">Kondisi</th>
-                                    <th style="width:180px;">Lokasi</th>
-                                    <th style="width:150px;">Tgl Beli</th>
+                                    <th class="text-center th-w-50">#</th>
+                                    <th class="th-w-200">Asset Code (auto)</th>
+                                    <th class="th-w-180">Serial Number</th>
+                                    <th class="th-w-140">Kondisi</th>
+                                    <th class="th-w-180">Lokasi</th>
+                                    <th class="th-w-150">Tgl Beli</th>
                                     <th>Catatan</th>
                                 </tr>
                             </thead>
@@ -179,7 +179,7 @@
                             <i class="bi bi-x-circle"></i> Batal
                         </a>
                     </div>
-                    <div id="batchError" class="alert alert-danger mt-2" style="display:none;"></div>
+                    <div id="batchError" class="alert alert-danger mt-2 d-none"></div>
                 </div>
             </div>
         </div>
@@ -218,13 +218,13 @@
 
     // --- Category mode toggle ---
     catExisting.addEventListener('change', function() {
-        catExistingSection.style.display = 'block';
-        catNewSection.style.display = 'none';
+        catExistingSection.classList.remove('d-none');
+        catNewSection.classList.add('d-none');
         filterTypes();
     });
     catNew.addEventListener('change', function() {
-        catExistingSection.style.display = 'none';
-        catNewSection.style.display = 'block';
+        catExistingSection.classList.add('d-none');
+        catNewSection.classList.remove('d-none');
         filterTypes();
         updateNewTypePrefix();
     });
@@ -278,15 +278,15 @@
         const options = typeSelect.querySelectorAll('option[data-category]');
         options.forEach(function(opt) {
             if (catID > 0 && parseInt(opt.dataset.category) === catID) {
-                opt.style.display = '';
+                opt.classList.remove('d-none');
             } else {
-                opt.style.display = 'none';
+                opt.classList.add('d-none');
             }
         });
         // reset selection if hidden
         if (typeSelect.selectedIndex > 0) {
             const sel = typeSelect.options[typeSelect.selectedIndex];
-            if (sel.style.display === 'none') typeSelect.value = '';
+            if (sel.classList.contains('d-none')) typeSelect.value = '';
         }
         updateTypePlaceholder();
     }
@@ -302,12 +302,12 @@
 
     // --- Device Type mode toggle ---
     typeExisting.addEventListener('change', function() {
-        typeExistingSection.style.display = 'block';
-        typeNewSection.style.display = 'none';
+        typeExistingSection.classList.remove('d-none');
+        typeNewSection.classList.add('d-none');
     });
     typeNew.addEventListener('change', function() {
-        typeExistingSection.style.display = 'none';
-        typeNewSection.style.display = 'block';
+        typeExistingSection.classList.add('d-none');
+        typeNewSection.classList.remove('d-none');
     });
 
     // --- Get type prefix for batch generation ---
@@ -376,7 +376,7 @@
         }
 
         addApplyAllButtons();
-        batchContainer.style.display = 'block';
+        batchContainer.classList.remove('d-none');
     });
 
     function addApplyAllButtons() {
@@ -467,7 +467,7 @@
 
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
-        errorDiv.style.display = 'none';
+        errorDiv.classList.add('d-none');
 
         fetchWithCSRF('/devices/batch-create', {
             method: 'POST',
@@ -480,14 +480,14 @@
                 window.location.href = '/devices';
             } else {
                 errorDiv.textContent = data.error || 'Gagal menyimpan batch';
-                errorDiv.style.display = 'block';
+                errorDiv.classList.remove('d-none');
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = '<i class="bi bi-save"></i> Simpan Batch';
             }
         })
         .catch(function() {
             errorDiv.textContent = 'Terjadi kesalahan koneksi';
-            errorDiv.style.display = 'block';
+            errorDiv.classList.remove('d-none');
             saveBtn.disabled = false;
             saveBtn.innerHTML = '<i class="bi bi-save"></i> Simpan Batch';
         });
@@ -550,7 +550,7 @@
         var err = document.getElementById('newTypePhotoError');
         area.classList.remove('d-none');
         loader.classList.remove('d-none');
-        if (img) img.style.display = 'none';
+        if (img) img.classList.add('d-none');
         if (err) err.classList.add('d-none');
     }
 
@@ -559,7 +559,7 @@
         var area = document.getElementById('newTypePhotoPreview');
         var loader = document.getElementById('newTypePhotoLoading');
         var err = document.getElementById('newTypePhotoError');
-        if (img) { img.src = url; img.style.display = ''; }
+        if (img) { img.src = url; img.classList.remove('d-none'); }
         area.classList.remove('d-none');
         loader.classList.add('d-none');
         if (err) err.classList.add('d-none');

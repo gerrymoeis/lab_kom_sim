@@ -375,7 +375,7 @@
             var winInfo = parseWindowsVersion(os);
             var badge = document.getElementById('win-badge-' + label);
             if (badge && winInfo.shortText !== '-') { badge.textContent = winInfo.shortText; badge.className = 'pc-windows-badge ' + winInfo.badgeClass; }
-            else if (badge) { badge.style.display = 'none'; }
+            else if (badge) { badge.classList.add('d-none'); }
             var text = document.getElementById('win-text-' + label);
             if (text && winInfo.fullText !== '-') { text.textContent = winInfo.fullText; }
         });

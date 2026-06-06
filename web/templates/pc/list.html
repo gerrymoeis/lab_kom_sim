@@ -117,7 +117,7 @@
                                     onclick="confirmDelete({message:'Apakah Anda yakin ingin menghapus data ini?', formId:'del-pc-{{ .Label }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                <form id="del-pc-{{ .Label }}" method="POST" action="/pc/{{ .Label }}/delete" style="display:none;"></form>
+                                <form id="del-pc-{{ .Label }}" method="POST" action="/pc/{{ .Label }}/delete" class="d-none"></form>
                                 {{ end }}
                             </td>
                         </tr>

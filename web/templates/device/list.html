@@ -110,11 +110,11 @@
                                     onclick="confirmDelete({message:'Hapus kategori &quot;{{ $cat.CategoryName }}&quot;? Semua perangkat dalam kategori ini akan terhapus.', requirePrefix:true, prefix:'{{ $cat.CategoryPrefix }}', type:'kategori', formId:'del-cat-{{ $ui }}-{{ $ci }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                <form id="del-cat-{{ $ui }}-{{ $ci }}" method="POST" action="/categories/{{ $cat.CategoryPrefix | lower }}/delete" style="display:none;"></form>
+                                <form id="del-cat-{{ $ui }}-{{ $ci }}" method="POST" action="/categories/{{ $cat.CategoryPrefix | lower }}/delete" class="d-none"></form>
                                 {{ end }}
                             </div>
                         </div>
-                        <div id="ug-{{ $ui }}-cat-{{ $ci }}-body" style="display:none" class="p-2">
+                        <div id="ug-{{ $ui }}-cat-{{ $ci }}-body" class="p-2 d-none">
                             {{ $typeCount := len $cat.Types }}
                             {{ range $ti, $type := $cat.Types }}
                             <div class="device-type-group mb-2 border-bottom pb-2">
@@ -136,11 +136,11 @@
                                             onclick="confirmDelete({message:'Hapus tipe &quot;{{ $type.TypeName }}&quot;? Semua perangkat dalam tipe ini akan terhapus.', requirePrefix:true, prefix:'{{ $type.TypePrefix }}', type:'tipe', formId:'del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}'})">
                                             <i class="bi bi-trash"></i>
                                         </button>
-                                        <form id="del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}" method="POST" action="/device-types/{{ $type.TypePrefix | lower }}/delete" style="display:none;"></form>
+                                        <form id="del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}" method="POST" action="/device-types/{{ $type.TypePrefix | lower }}/delete" class="d-none"></form>
                                         {{ end }}
                                     </div>
                                 </div>
-                                <div id="ug-{{ $ui }}-cat-{{ $ci }}-type-{{ $ti }}-body" class="px-2" {{ if gt $typeCount 1 }}style="display:none"{{ end }}>
+                                <div id="ug-{{ $ui }}-cat-{{ $ci }}-type-{{ $ti }}-body" class="px-2{{ if gt $typeCount 1 }} d-none{{ end }}">
                                     <div class="table-responsive">
                                         <table class="table table-hover table-sm mb-0">
                                             <thead class="table-light">
@@ -196,7 +196,7 @@
                                                             onclick="confirmDelete({message:'Hapus perangkat {{ $d.AssetCode }}?', formId:'del-dev-{{ $d.ID }}'})">
                                                             <i class="bi bi-trash"></i>
                                                         </button>
-                                                        <form id="del-dev-{{ $d.ID }}" method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" style="display:none;"></form>
+                                                        <form id="del-dev-{{ $d.ID }}" method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" class="d-none"></form>
                                                         {{ end }}
                                                     </td>
                                                 </tr>
@@ -232,11 +232,11 @@
                 var body = document.querySelector(targetId);
                 if (!body) return;
                 var chevron = el.querySelector('.chevron');
-                if (body.style.display === 'none') {
-                    body.style.display = '';
+                if (body.classList.contains('d-none')) {
+                    body.classList.remove('d-none');
                     if (chevron) chevron.className = 'bi bi-chevron-down me-2 chevron fs-6';
                 } else {
-                    body.style.display = 'none';
+                    body.classList.add('d-none');
                     if (chevron) chevron.className = 'bi bi-chevron-right me-2 chevron fs-6';
                 }
             }

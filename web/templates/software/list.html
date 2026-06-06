@@ -65,7 +65,7 @@
                             <a href="/software/{{ .Slug }}/edit" class="btn btn-sm btn-warning me-1" title="Edit"><i class="bi bi-pencil"></i></a>
                             <button type="button" class="btn btn-sm btn-danger" title="Hapus"
                                 onclick="confirmDelete({message:'Hapus {{ .Name }}?', formId:'del-{{ .ID }}'})"><i class="bi bi-trash"></i></button>
-                            <form id="del-{{ .ID }}" method="POST" action="/software/{{ .Slug }}/delete" style="display:none;"></form>
+                            <form id="del-{{ .ID }}" method="POST" action="/software/{{ .Slug }}/delete" class="d-none"></form>
                         </td>
                     </tr>
                     {{ else }}
