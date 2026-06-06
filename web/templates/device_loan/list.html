@@ -188,7 +188,7 @@ document.getElementById('extendForm')?.addEventListener('submit', function(e) {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
 
-    fetch('/device-loans/' + loanId + '/extend', {
+    fetchWithCSRF('/device-loans/' + loanId + '/extend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'return_date=' + encodeURIComponent(returnDate)
@@ -196,7 +196,9 @@ document.getElementById('extendForm')?.addEventListener('submit', function(e) {
         if (r.ok) {
             window.location.reload();
         } else {
-            return r.json().then(function(d) { throw new Error(d.error || 'Gagal memperpanjang'); });
+            return r.json().then(function(d) { throw new Error(d.error || 'Gagal memperpanjang'); }).catch(function() {
+                throw new Error('Gagal memperpanjang peminjaman');
+            });
         }
     }).catch(function(err) {
         alert(err.message);
