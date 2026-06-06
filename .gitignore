@@ -66,3 +66,5 @@ dist/
 
 # Docs & backups (moved to root docs_and_backup/)
 docs_and_backup/
+
+local_logbook_*
