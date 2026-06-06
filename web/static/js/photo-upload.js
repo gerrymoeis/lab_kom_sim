@@ -162,6 +162,9 @@ function storeFileReference(fileRef, type) {
         if (form) form.appendChild(hiddenInput);
     }
     hiddenInput.value = fileRef;
+
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = false;
 }
 
 function showLoadingState(type) {
@@ -211,6 +214,9 @@ async function clearImage(type) {
     if (previewArea) previewArea.classList.add('d-none');
     if (loader) loader.classList.add('d-none');
     if (errEl) errEl.classList.add('d-none');
+
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = true;
 
     if (fileRef) {
         try {
