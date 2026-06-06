@@ -169,10 +169,16 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		if err := c.SaveUploadedFile(file, tempPath); err != nil {
 			h.errHTML(c, "Gagal menyimpan file"); return
 		}
+		logbookPath := filepath.Join("uploads", "logbook", fn)
+		os.MkdirAll(filepath.Dir(logbookPath), 0755)
+		if err := services.CopyFile(tempPath, logbookPath); err != nil {
+			os.Remove(tempPath)
+			h.errHTML(c, "Gagal menyimpan file"); return
+		}
 		path = tempPath
 	}
 
-	// Ensure temp file cleanup after OCR processing
+	// Clean up temp file (logbook copy persists for preview)
 	if fileRef == "" {
 		defer os.Remove(path)
 	}

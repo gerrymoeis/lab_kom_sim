@@ -34,6 +34,28 @@
                             Tombol simpan akan aktif setelah semua indikasi selesai diverifikasi.
                         </div>
 
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                                <span><i class="bi bi-image"></i> Foto Logbook</span>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="zoomOut()" title="Perkecil">
+                                        <i class="bi bi-zoom-out"></i>
+                                    </button>
+                                    <span class="btn btn-outline-secondary disabled" id="zoomLevel">100%</span>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="zoomIn()" title="Perbesar">
+                                        <i class="bi bi-zoom-in"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="zoomReset()" title="Reset">
+                                        <i class="bi bi-arrows-angle-expand"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-2 text-center photo-container">
+                                <img id="previewPhoto" src="/uploads/logbook/{{ .source_file }}"
+                                     alt="Foto logbook" onerror="this.closest('.card').style.display='none'">
+                            </div>
+                        </div>
+
                         <form id="previewForm" action="/logbook/save" method="POST">
                             <input type="hidden" name="source_file" value="{{ .source_file }}">
 
@@ -201,9 +223,20 @@
     .dup-badge[data-type="existing-db"] { background-color: #dc3545; }
     .dismiss-dup { cursor: pointer; padding: 0.25em; opacity: 0.7; font-size: 1.2em; margin: auto; }
     .dismiss-dup:hover { opacity: 1; }
+    .photo-container { overflow: auto; max-height: 70vh; background: #f8f9fa; border-radius: 4px; }
+    #previewPhoto { width: 100%; max-width: none; height: auto; transition: width 0.15s ease; display: block; }
     </style>
 
     <script>
+    let currentZoom = 100;
+    function zoomIn() { currentZoom = Math.min(currentZoom * 1.25, 500); applyZoom(); }
+    function zoomOut() { currentZoom = Math.max(currentZoom / 1.25, 25); applyZoom(); }
+    function zoomReset() { currentZoom = 100; applyZoom(); }
+    function applyZoom() {
+        document.getElementById('previewPhoto').style.width = currentZoom + '%';
+        document.getElementById('zoomLevel').textContent = Math.round(currentZoom) + '%';
+    }
+
     let rowCounter = {{ if .entries }}{{ len .entries }}{{ else }}1{{ end }};
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -242,8 +275,8 @@
         const existing = cell.querySelector('.restore-dup');
         if (existing) return;
         const restoreEl = document.createElement('span');
-        restoreEl.className = 'text-muted small restore-dup';
-        restoreEl.style.cursor = 'pointer';
+        restoreEl.className = 'badge rounded-pill restore-dup text-white';
+        restoreEl.style.cssText = 'cursor:pointer; display:inline-flex; align-items:center; gap:4px; background-color:#6c757d; font-size:0.75em;';
         restoreEl.dataset.group = group;
         restoreEl.dataset.type = dupType;
         restoreEl.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Pulihkan';
