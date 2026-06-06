@@ -168,8 +168,8 @@ document.addEventListener('click', function(e) {
         const cell = badge.closest('td');
         badge.style.display = 'none';
         const restoreEl = document.createElement('span');
-        restoreEl.className = 'text-muted small restore-dup-list';
-        restoreEl.style.cursor = 'pointer';
+        restoreEl.className = 'badge rounded-pill restore-dup-list text-white';
+        restoreEl.style.cssText = 'cursor:pointer; display:inline-flex; align-items:center; gap:4px; background-color:#6c757d; font-size:0.75em;';
         restoreEl.dataset.entryId = badge.dataset.entryId;
         restoreEl.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Pulihkan';
         cell.appendChild(restoreEl);
