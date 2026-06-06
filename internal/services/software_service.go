@@ -1,6 +1,7 @@
 ﻿package services
 
 import (
+	"strconv"
 	"strings"
 
 	"inventaris-lab-kom/internal/models"
@@ -76,18 +77,17 @@ func (s *SoftwareService) Update(id int, name, category, description string, pcI
 		category = "other"
 	}
 
-	if err := s.repo.UpdateMetadata(id, name, category, description); err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
-			s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
-				map[string]any{"software_id": id}, nil, ipAddress, userAgent, "Duplicate: "+name)
-			return err
-		}
-		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
-			map[string]any{"software_id": id}, nil, ipAddress, userAgent, err.Error())
-		return err
+	old, _ := s.repo.GetByID(id)
+	oldPCIDs, _ := s.repo.GetPCIDs(id)
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
+	if old != nil {
+		if old.Name != name { oldVals["name"] = old.Name; newVals["name"] = name }
+		if old.Category != category { oldVals["category"] = old.Category; newVals["category"] = category }
+		if old.Description != description { oldVals["description"] = old.Description; newVals["description"] = description }
 	}
 
-	var ids []int
+	var newIDs []int
 	for _, pidStr := range pcIDs {
 		pid := 0
 		for _, c := range pidStr {
@@ -96,17 +96,46 @@ func (s *SoftwareService) Update(id int, name, category, description string, pcI
 			}
 		}
 		if pid > 0 {
-			ids = append(ids, pid)
+			newIDs = append(newIDs, pid)
 		}
 	}
-	if err := s.repo.UpdateSoftwarePCs(id, ids); err != nil {
+	pcIDsChanged := len(oldPCIDs) != len(newIDs)
+	if !pcIDsChanged {
+		for i := range oldPCIDs {
+			if oldPCIDs[i] != newIDs[i] {
+				pcIDsChanged = true
+				break
+			}
+		}
+	}
+	if pcIDsChanged {
+		oldPCStrs := make([]string, len(oldPCIDs))
+		for i, pid := range oldPCIDs {
+			oldPCStrs[i] = strconv.Itoa(pid)
+		}
+		oldVals["pc_ids"] = oldPCStrs
+		newVals["pc_ids"] = pcIDs
+	}
+
+	if err := s.repo.UpdateMetadata(id, name, category, description); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "unique") {
+			s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
+				oldVals, nil, ipAddress, userAgent, "Duplicate: "+name)
+			return err
+		}
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
-			map[string]any{"name": name, "category": category}, nil, ipAddress, userAgent, err.Error())
+			oldVals, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
+
+	if err := s.repo.UpdateSoftwarePCs(id, newIDs); err != nil {
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
+			oldVals, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "software", id,
-		map[string]any{"name": name, "category": category},
-		map[string]any{"pc_ids": pcIDs}, ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 
@@ -122,3 +151,4 @@ func (s *SoftwareService) Delete(id int, actorID int, actorUsername, actorRole, 
 		map[string]any{"name": name}, ipAddress, userAgent)
 	return nil
 }
+

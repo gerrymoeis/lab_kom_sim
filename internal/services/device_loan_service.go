@@ -138,11 +138,20 @@ func (s *DeviceLoanService) ExtendLoan(loanID int, newReturnDate string, actorID
 
 func (s *DeviceLoanService) UpdateReturn(id int, actualReturnDate *time.Time, notes string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	oldRow, _ := s.loanRepo.GetByID(id)
-	oldVals := map[string]any{"id": id}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
 	if oldRow != nil {
-		oldVals["borrower_name"] = oldRow.BorrowerName
-		oldVals["actual_return_date"] = oldRow.ActualReturnDate
-		oldVals["notes"] = oldRow.Notes
+		if oldRow.ActualReturnDate == nil && actualReturnDate != nil {
+			oldVals["actual_return_date"] = nil
+			newVals["actual_return_date"] = actualReturnDate
+		} else if oldRow.ActualReturnDate != nil && actualReturnDate == nil {
+			oldVals["actual_return_date"] = oldRow.ActualReturnDate
+			newVals["actual_return_date"] = nil
+		} else if oldRow.ActualReturnDate != nil && actualReturnDate != nil && !oldRow.ActualReturnDate.Equal(*actualReturnDate) {
+			oldVals["actual_return_date"] = oldRow.ActualReturnDate
+			newVals["actual_return_date"] = actualReturnDate
+		}
+		if oldRow.Notes != notes { oldVals["notes"] = oldRow.Notes; newVals["notes"] = notes }
 	}
 	err := s.loanRepo.UpdateReturn(id, actualReturnDate, notes)
 	if err != nil {
@@ -151,8 +160,7 @@ func (s *DeviceLoanService) UpdateReturn(id int, actualReturnDate *time.Time, no
 		return err
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_loan", id,
-		oldVals, map[string]any{"id": id, "actual_return_date": actualReturnDate, "notes": notes},
-		ipAddress, userAgent)
+		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
 
