@@ -24,7 +24,7 @@
                 <div class="col-md-8">
                     <table class="table table-borderless mb-0">
                         <tr>
-                            <th style="width:200px;">Asset Code</th>
+                            <th class="th-w-200">Asset Code</th>
                             <td><code>{{ .device.AssetCode }}</code></td>
                         </tr>
                         <tr>
@@ -255,7 +255,7 @@
         </div>
         <div class="card-body">
             <table class="table table-sm mb-0">
-                <tr><th style="width:180px">Lokasi</th><td>{{ .installationHistory.LocationInstalled }}</td></tr>
+                <tr><th class="th-w-180">Lokasi</th><td>{{ .installationHistory.LocationInstalled }}</td></tr>
                 <tr><th>Mulai</th><td>{{ if .installationHistory.InstallationStartDate }}{{ .installationHistory.InstallationStartDate.Format "02/01/2006" }}{{ else }}–{{ end }}</td></tr>
                 <tr><th>Selesai</th><td>{{ if .installationHistory.InstallationFinishDate }}{{ .installationHistory.InstallationFinishDate.Format "02/01/2006" }}{{ else }}–{{ end }}</td></tr>
                 <tr><th>Tgl Dicatat</th><td>{{ .installationHistory.CreatedAt.Format "02/01/2006" }}</td></tr>

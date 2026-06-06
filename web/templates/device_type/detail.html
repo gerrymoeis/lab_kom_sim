@@ -20,13 +20,13 @@
                     onclick="confirmDelete({message:'Hapus tipe &quot;{{ .deviceType.Name }}&quot;? Semua perangkat dalam tipe ini akan terhapus.', requirePrefix:true, prefix:'{{ .deviceType.AssetCodePrefix }}', type:'tipe', formId:'del-type'})">
                     <i class="bi bi-trash"></i> Hapus
                 </button>
-                <form id="del-type" method="POST" action="/device-types/{{ .deviceType.AssetCodePrefix | lower }}/delete" style="display:none;"></form>
+                <form id="del-type" method="POST" action="/device-types/{{ .deviceType.AssetCodePrefix | lower }}/delete" class="d-none"></form>
             </div>
         </div>
         <div class="card-body">
             <table class="table table-borderless mb-0">
                 <tr>
-                    <th style="width:200px;">Nama Tipe</th>
+                    <th class="th-w-200">Nama Tipe</th>
                     <td><strong>{{ .deviceType.Name }}</strong></td>
                 </tr>
                 <tr>
@@ -138,7 +138,7 @@
                                     onclick="confirmDelete({message:'Hapus perangkat {{ $d.AssetCode }}?', formId:'del-dev-{{ $d.ID }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                <form id="del-dev-{{ $d.ID }}" method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" style="display:none;"></form>
+                                <form id="del-dev-{{ $d.ID }}" method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" class="d-none"></form>
                                 {{ end }}
                             </td>
                         </tr>

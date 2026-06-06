@@ -124,17 +124,17 @@
                                 </td>
                                 <td>
                                     {{ if eq .Action "create" }}
-                                    <span class="badge badge-create">CREATE</span>
+                                    <span class="badge bg-success">CREATE</span>
                                     {{ else if eq .Action "update" }}
-                                    <span class="badge badge-update">UPDATE</span>
+                                    <span class="badge bg-primary">UPDATE</span>
                                     {{ else if eq .Action "delete" }}
-                                    <span class="badge badge-delete">DELETE</span>
+                                    <span class="badge bg-danger">DELETE</span>
                                     {{ else if eq .Action "upload" }}
-                                    <span class="badge badge-upload">UPLOAD</span>
+                                    <span class="badge bg-warning text-dark">UPLOAD</span>
                                     {{ else if eq .Action "login" }}
-                                    <span class="badge badge-login">LOGIN</span>
+                                    <span class="badge bg-info text-dark">LOGIN</span>
                                     {{ else if eq .Action "logout" }}
-                                    <span class="badge badge-logout">LOGOUT</span>
+                                    <span class="badge bg-secondary">LOGOUT</span>
                                     {{ else }}
                                     <span class="badge bg-secondary">{{ .Action }}</span>
                                     {{ end }}
@@ -150,9 +150,9 @@
                                 </td>
                                 <td>
                                     {{ if eq .Status "success" }}
-                                    <span class="badge badge-success">Success</span>
+                                    <span class="badge bg-success">Success</span>
                                     {{ else if eq .Status "failed" }}
-                                    <span class="badge badge-failed">Failed</span>
+                                    <span class="badge bg-danger">Failed</span>
                                     {{ else }}
                                     <span class="badge bg-secondary">{{ .Status }}</span>
                                     {{ end }}
@@ -246,7 +246,7 @@
                     </div>
                     
                     <!-- Error Message (if failed) -->
-                    <div id="error-section" class="row mb-3" style="display: none;">
+                    <div id="error-section" class="row mb-3 d-none">
                         <div class="col-12">
                             <strong class="text-danger">Error Message:</strong>
                             <div class="alert alert-danger" id="detail-error"></div>
@@ -254,7 +254,7 @@
                     </div>
 
                     <!-- Old/New Values Diff -->
-                    <div id="diff-section" style="display: none;">
+                    <div id="diff-section" class="d-none">
                         <h6 class="mb-3">Changes:</h6>
                         <div class="diff-view">
                             <div>
@@ -269,13 +269,13 @@
                     </div>
 
                     <!-- Only Old Values (for delete) -->
-                    <div id="old-only-section" style="display: none;">
+                    <div id="old-only-section" class="d-none">
                         <h6 class="mb-3">Deleted Data:</h6>
                         <div class="json-viewer" id="detail-old-only"></div>
                     </div>
 
                     <!-- Only New Values (for create/upload) -->
-                    <div id="new-only-section" style="display: none;">
+                    <div id="new-only-section" class="d-none">
                         <h6 class="mb-3">Created Data:</h6>
                         <div class="json-viewer" id="detail-new-only"></div>
                     </div>
@@ -319,30 +319,30 @@
 
                     // Show error message if failed
                     if (status === 'failed' && errorMessage) {
-                        document.getElementById('error-section').style.display = 'block';
+                        document.getElementById('error-section').classList.remove('d-none');
                         document.getElementById('detail-error').textContent = errorMessage;
                     } else {
-                        document.getElementById('error-section').style.display = 'none';
+                        document.getElementById('error-section').classList.add('d-none');
                     }
 
                     // Hide all value sections first
-                    document.getElementById('diff-section').style.display = 'none';
-                    document.getElementById('old-only-section').style.display = 'none';
-                    document.getElementById('new-only-section').style.display = 'none';
+                    document.getElementById('diff-section').classList.add('d-none');
+                    document.getElementById('old-only-section').classList.add('d-none');
+                    document.getElementById('new-only-section').classList.add('d-none');
 
                     // Show appropriate value section
                     if (oldValues && newValues) {
                         // Update action - show diff
-                        document.getElementById('diff-section').style.display = 'block';
+                        document.getElementById('diff-section').classList.remove('d-none');
                         document.getElementById('detail-old-values').textContent = formatJSON(oldValues);
                         document.getElementById('detail-new-values').textContent = formatJSON(newValues);
                     } else if (oldValues && !newValues) {
                         // Delete action - show old values only
-                        document.getElementById('old-only-section').style.display = 'block';
+                        document.getElementById('old-only-section').classList.remove('d-none');
                         document.getElementById('detail-old-only').textContent = formatJSON(oldValues);
                     } else if (!oldValues && newValues) {
                         // Create/Upload action - show new values only
-                        document.getElementById('new-only-section').style.display = 'block';
+                        document.getElementById('new-only-section').classList.remove('d-none');
                         document.getElementById('detail-new-only').textContent = formatJSON(newValues);
                     }
                 });

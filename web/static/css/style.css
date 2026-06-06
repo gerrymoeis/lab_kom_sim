@@ -128,14 +128,6 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 .modal-backdrop { position: fixed; }
 .modal { overflow-y: auto; }
 
-.badge-create { background-color: #28a745; }
-.badge-update { background-color: #007bff; }
-.badge-delete { background-color: #dc3545; }
-.badge-upload { background-color: #ffc107; color: #000; }
-.badge-login { background-color: #17a2b8; }
-.badge-logout { background-color: #6c757d; }
-.badge-success { background-color: #28a745; }
-.badge-failed { background-color: #dc3545; }
 .table { margin-top: 1rem; margin-bottom: 1rem; }
 .activity-log-table { font-size: 0.9rem; }
 .activity-log-table td { vertical-align: middle; }
@@ -145,13 +137,23 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 .diff-old { background-color: #ffebee; padding: 10px; border-radius: 4px; }
 .diff-new { background-color: #e8f5e9; padding: 10px; border-radius: 4px; }
 
+.th-w-50 { width: 50px; }
+.th-w-80 { width: 80px; }
+.th-w-120 { width: 120px; }
+.th-w-140 { width: 140px; }
+.th-w-150 { width: 150px; }
+.th-w-180 { width: 180px; }
+.th-w-200 { width: 200px; }
+.th-w-250 { width: 250px; }
+.th-w-40 { width: 40px; }
+
 .cursor-pointer { cursor: pointer; }
 .cursor-pointer:hover { opacity: 0.85; }
 
-.group-header-day { background-color: #f0f4ff !important; }
-.group-header-day:hover { background-color: #e8eeff !important; }
-.group-header-course { background-color: #f8f9fa !important; }
-.group-header-course:hover { background-color: #f0f1f3 !important; }
+table.table-hover tbody tr.group-header-day { background-color: #f0f4ff; }
+table.table-hover tbody tr.group-header-day:hover { background-color: #e8eeff; }
+table.table-hover tbody tr.group-header-course { background-color: #f8f9fa; }
+table.table-hover tbody tr.group-header-course:hover { background-color: #f0f1f3; }
 
 .nav-tabs { border-bottom: 1px solid #dee2e6; }
 .nav-tabs ~ .card.shadow-sm { border-top-left-radius: 0; border-top-right-radius: 0; border-top: none; }
@@ -176,3 +178,8 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
         margin: 0.5rem auto;
     }
 }
+
+body { padding-top: 56px; }
+
+.photo-container { overflow: auto; max-height: 70vh; background: #f8f9fa; border-radius: 4px; }
+#previewPhoto { width: 100%; max-width: none; height: auto; transition: width 0.15s ease; display: block; }
