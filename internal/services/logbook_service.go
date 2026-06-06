@@ -145,12 +145,12 @@ func (s *LogbookService) DeleteEntry(id, actorID int, actorUsername, actorRole, 
 	return nil
 }
 
-func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (saved, dups int, err error) {
+func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile string, verifiedIdx map[int]bool, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (saved, dups int, err error) {
 	cfg := config.DefaultDuplicateConfig
 	var clean []repository.BulkEntry
 	dupCache := make(map[string][]models.LogbookEntry)
 
-	for _, e := range entries {
+	for i, e := range entries {
 		e.StudentName = ToTitleCaseWithAbbr(e.StudentName)
 		e.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(e.NIM, " ", "")))
 		e.Purpose = ToTitleCaseWithAbbr(e.Purpose)
@@ -160,25 +160,27 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 		}
 
 		dup := false
-		for _, c := range clean {
-			if IsDuplicateEntry(e.Date, c.Date, e.TimeIn, c.TimeIn, e.StudentName, c.StudentName, e.NIM, c.NIM, cfg) {
-				dup = true
-				dups++
-				break
-			}
-		}
-		if !dup {
-			dateKey := e.Date.Format("2006-01-02")
-			existing, ok := dupCache[dateKey]
-			if !ok {
-				existing, _ = s.logbookRepo.GetDuplicateCheck(e.Date)
-				dupCache[dateKey] = existing
-			}
-			for _, ex := range existing {
-				if IsDuplicateEntry(e.Date, ex.Date, e.TimeIn, ex.TimeIn, e.StudentName, ex.StudentName, e.NIM, ex.NIM, cfg) {
+		if !verifiedIdx[i] {
+			for _, c := range clean {
+				if IsDuplicateEntry(e.Date, c.Date, e.TimeIn, c.TimeIn, e.StudentName, c.StudentName, e.NIM, c.NIM, cfg) {
 					dup = true
 					dups++
 					break
+				}
+			}
+			if !dup {
+				dateKey := e.Date.Format("2006-01-02")
+				existing, ok := dupCache[dateKey]
+				if !ok {
+					existing, _ = s.logbookRepo.GetDuplicateCheck(e.Date)
+					dupCache[dateKey] = existing
+				}
+				for _, ex := range existing {
+					if IsDuplicateEntry(e.Date, ex.Date, e.TimeIn, ex.TimeIn, e.StudentName, ex.StudentName, e.NIM, ex.NIM, cfg) {
+						dup = true
+						dups++
+						break
+					}
 				}
 			}
 		}
