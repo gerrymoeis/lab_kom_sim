@@ -216,6 +216,11 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 		}
 	}
 
+	savedEntries := make([]map[string]string, 0, len(clean))
+	for _, e := range clean {
+		savedEntries = append(savedEntries, map[string]string{"name": e.StudentName, "nim": e.NIM})
+	}
+
 	if len(clean) == 0 {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
 			map[string]any{"duplicates": dups, "note": "all_duplicates"}, ipAddress, userAgent)
@@ -223,11 +228,11 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 	}
 	if err := s.logbookRepo.BulkImport(clean, sourceFile); err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
-			map[string]any{"saved": saved, "duplicates": dups}, ipAddress, userAgent, err.Error())
+			map[string]any{"saved": savedEntries, "duplicates": dups, "count": saved}, ipAddress, userAgent, err.Error())
 		return saved, dups, err
 	}
 	s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "logbook", 0,
-		map[string]any{"saved": saved, "duplicates": dups}, ipAddress, userAgent)
+		map[string]any{"saved": savedEntries, "duplicates": dups, "count": saved}, ipAddress, userAgent)
 	return saved, dups, nil
 }
 
