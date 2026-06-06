@@ -148,6 +148,23 @@ func (r *SoftwareRepository) GetByID(id int) (*models.SoftwareCatalog, error) {
 	return &sw, nil
 }
 
+// New method to fetch associated PC IDs for a software
+func (r *SoftwareRepository) GetPCIDs(softwareID int) ([]int, error) {
+	rows, err := r.db.Query(`SELECT pc_id FROM pc_software WHERE software_id = ?`, softwareID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int
+	for rows.Next() {
+		var id int
+		if rows.Scan(&id) == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids, nil
+}
+
 type PCInstallStatus struct {
 	PCID      int
 	Label     string
