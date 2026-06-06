@@ -97,7 +97,7 @@
                                     onclick="confirmDelete({message:'Hapus user ini?', formId:'del-user-{{ .Username }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                <form id="del-user-{{ .Username }}" method="POST" action="/admin/users/{{ .Username }}/delete" style="display:none;"></form>
+                                <form id="del-user-{{ .Username }}" method="POST" action="/admin/users/{{ .Username }}/delete" class="d-none"></form>
                                 {{ end }}
                                 {{ else }}
                                 -

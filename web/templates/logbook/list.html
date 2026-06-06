@@ -85,14 +85,14 @@
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
-                            <th style="width:50px;">#</th>
+                            <th class="th-w-50">#</th>
                             <th>Tanggal</th>
                             <th>Nama Mahasiswa</th>
                             <th>NIM</th>
                             <th>Keperluan</th>
                             <th>Jam Masuk</th>
                             <th>Jam Keluar</th>
-                            <th style="width:120px;">Indikasi</th>
+                            <th class="th-w-120">Indikasi</th>
                             {{ if eq .role "admin" }}
                             <th>Aksi</th>
                             {{ end }}
@@ -110,13 +110,20 @@
                             <td>{{ if $entry.TimeOut }}{{ $entry.TimeOut }}{{ else }}-{{ end }}</td>
                             <td class="text-center">
                                 {{ if index $.dupFlags $entry.ID }}
-                                <span class="badge dup-badge-list bg-warning text-dark"
-                                      data-entry-id="{{ $entry.ID }}"
-                                      style="cursor:default; display:inline-flex; align-items:center; gap:4px;">
-                                    🟡 Potensi Duplikat
-                                    <button type="button" class="btn-close ms-1 dismiss-dup-list"
-                                            aria-label="Bukan duplikat" title="Bukan duplikat"></button>
-                                </span>
+                                <div class="d-inline-flex align-items-center gap-1 dup-wrapper"
+                                     data-entry-id="{{ $entry.ID }}"
+                                     data-state="visible">
+                                    <span class="badge d-inline-flex align-items-center gap-1 small bg-warning text-dark dup-badge">
+                                        <i class="bi bi-exclamation-triangle-fill"></i>
+                                        Potensi Duplikat
+                                        <button type="button" class="btn-close ms-1" data-dismiss-dup
+                                                aria-label="Bukan duplikat" title="Bukan duplikat"></button>
+                                    </span>
+                                    <span class="small text-muted d-none dup-restore">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                        <a href="#" class="restore-dup-link" tabindex="0">Pulihkan</a>
+                                    </span>
+                                </div>
                                 {{ else }}
                                 <span class="text-muted small">-</span>
                                 {{ end }}
@@ -133,7 +140,7 @@
                                     onclick="confirmDelete({message:'Yakin ingin menghapus entry ini?', formId:'del-log-{{ $entry.ID }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                <form id="del-log-{{ $entry.ID }}" method="POST" action="/logbook/{{ $entry.ID }}/delete" style="display:none;"></form>
+                                <form id="del-log-{{ $entry.ID }}" method="POST" action="/logbook/{{ $entry.ID }}/delete" class="d-none"></form>
                             </td>
                             {{ end }}
                         </tr>
@@ -154,32 +161,25 @@
     </div>
 </div>
 
-<style>
-.dup-badge-list { font-size: 0.75em; }
-.dismiss-dup-list { cursor: pointer; padding: 0.25em; opacity: 0.7; font-size: 1.2em; margin: auto; }
-.dismiss-dup-list:hover { opacity: 1; }
-</style>
-
 <script>
 document.addEventListener('click', function(e) {
-    const target = e.target;
-    if (target.classList.contains('dismiss-dup-list')) {
-        const badge = target.closest('.badge');
-        const cell = badge.closest('td');
-        badge.style.display = 'none';
-        const restoreEl = document.createElement('span');
-        restoreEl.className = 'badge rounded-pill restore-dup-list text-white';
-        restoreEl.style.cssText = 'cursor:pointer; display:inline-flex; align-items:center; gap:4px; background-color:#6c757d; font-size:0.75em;';
-        restoreEl.dataset.entryId = badge.dataset.entryId;
-        restoreEl.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Pulihkan';
-        cell.appendChild(restoreEl);
+    function setDismissed(wrapper, dismissed) {
+        wrapper.dataset.state = dismissed ? 'dismissed' : 'visible';
+        wrapper.querySelector('.dup-badge').classList.toggle('d-none', dismissed);
+        wrapper.querySelector('.dup-restore').classList.toggle('d-none', !dismissed);
     }
-    if (target.classList.contains('restore-dup-list') || target.closest('.restore-dup-list')) {
-        const restoreEl = target.classList.contains('restore-dup-list') ? target : target.closest('.restore-dup-list');
-        const cell = restoreEl.closest('td');
-        const badge = cell.querySelector('.badge');
-        if (badge) badge.style.display = '';
-        restoreEl.remove();
+    function visibleDupCount() {
+        return document.querySelectorAll('.dup-wrapper[data-state="visible"]').length;
+    }
+    const target = e.target;
+    const wrapper = target.closest('.dup-wrapper');
+    if (!wrapper) return;
+    if (target.matches('[data-dismiss-dup]')) {
+        setDismissed(wrapper, true);
+    }
+    if (target.matches('.restore-dup-link')) {
+        e.preventDefault();
+        setDismissed(wrapper, false);
     }
 });
 

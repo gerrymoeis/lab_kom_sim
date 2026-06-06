@@ -19,13 +19,13 @@
                     onclick="confirmDelete({message:'Hapus kategori &quot;{{ .category.Name }}&quot;? Semua perangkat dalam kategori ini akan terhapus.', requirePrefix:true, prefix:'{{ .category.DefaultPrefix }}', type:'kategori', formId:'del-cat'})">
                     <i class="bi bi-trash"></i> Hapus
                 </button>
-                <form id="del-cat" method="POST" action="/categories/{{ .category.DefaultPrefix | lower }}/delete" style="display:none;"></form>
+                <form id="del-cat" method="POST" action="/categories/{{ .category.DefaultPrefix | lower }}/delete" class="d-none"></form>
             </div>
         </div>
         <div class="card-body">
             <table class="table table-borderless mb-0">
                 <tr>
-                    <th style="width:200px;">Nama Kategori</th>
+                    <th class="th-w-200">Nama Kategori</th>
                     <td>{{ .category.Name }}</td>
                 </tr>
                 <tr>
@@ -89,7 +89,7 @@
                                     onclick="confirmDelete({message:'Hapus tipe &quot;{{ $t.Name }}&quot;? Semua perangkat dalam tipe ini akan terhapus.', requirePrefix:true, prefix:'{{ $t.AssetCodePrefix }}', type:'tipe', formId:'del-type-{{ $t.ID }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                <form id="del-type-{{ $t.ID }}" method="POST" action="/device-types/{{ $t.AssetCodePrefix | lower }}/delete" style="display:none;"></form>
+                                <form id="del-type-{{ $t.ID }}" method="POST" action="/device-types/{{ $t.AssetCodePrefix | lower }}/delete" class="d-none"></form>
                             </td>
                         </tr>
                         {{ end }}
