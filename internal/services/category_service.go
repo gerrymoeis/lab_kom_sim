@@ -50,8 +50,8 @@ func (s *CategoryService) Update(id int, name, prefix string, actorID int, actor
 	prefix = ToUpperTrim(prefix)
 
 	oldCat, _ := s.repo.GetByID(id)
-	oldVals := map[string]any{"id": id}
-	newVals := map[string]any{"id": id}
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
 	if oldCat != nil {
 		if oldCat.Name != name { oldVals["name"] = oldCat.Name; newVals["name"] = name }
 		if oldCat.DefaultPrefix != prefix { oldVals["prefix"] = oldCat.DefaultPrefix; newVals["prefix"] = prefix }
