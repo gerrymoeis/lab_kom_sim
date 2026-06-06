@@ -248,7 +248,14 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	saved, dups, err := h.logbookService.BulkSave(bulk, req.SourceFile, uid, u, r, ip, ua)
+	verifiedIdx := make(map[int]bool, len(req.Verified))
+	for _, v := range req.Verified {
+		if idx, err := strconv.Atoi(v); err == nil {
+			verifiedIdx[idx] = true
+		}
+	}
+
+	saved, dups, err := h.logbookService.BulkSave(bulk, req.SourceFile, verifiedIdx, uid, u, r, ip, ua)
 	if err != nil {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal menyimpan data")
 		return

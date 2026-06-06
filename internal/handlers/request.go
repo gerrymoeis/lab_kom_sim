@@ -253,6 +253,7 @@ type LogbookSaveRequest struct {
 	StudentName []string `form:"student_name[]"`
 	NIM         []string `form:"nim[]"`
 	Purpose     []string `form:"purpose[]"`
+	Verified    []string `form:"verified[]"`
 }
 
 type UploadImageRequest struct {
