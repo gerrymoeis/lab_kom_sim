@@ -119,9 +119,9 @@
                                         <button type="button" class="btn-close ms-1" data-dismiss-dup
                                                 aria-label="Bukan duplikat" title="Bukan duplikat"></button>
                                     </span>
-                                    <span class="badge d-inline-flex align-items-center gap-1 small bg-info text-white d-none dup-restore">
+                                    <span class="badge d-inline-flex align-items-center gap-1 small bg-info text-white cursor-pointer d-none dup-restore" role="button" tabindex="0">
                                         <i class="bi bi-arrow-counterclockwise"></i>
-                                        <a href="#" class="restore-dup-link text-white text-decoration-none" tabindex="0">Pulihkan</a>
+                                        Pulihkan
                                     </span>
                                 </div>
                                 {{ else }}
@@ -177,8 +177,7 @@ document.addEventListener('click', function(e) {
     if (target.matches('[data-dismiss-dup]')) {
         setDismissed(wrapper, true);
     }
-    if (target.matches('.restore-dup-link')) {
-        e.preventDefault();
+    if (target.closest('.dup-restore')) {
         setDismissed(wrapper, false);
     }
 });
