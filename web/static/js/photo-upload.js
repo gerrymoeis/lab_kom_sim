@@ -61,7 +61,8 @@ document.addEventListener('DOMContentLoaded', function () {
 function setupFileHandlers() {
     var pairs = [
         { camera: 'photo_serial_camera', gallery: 'photo_serial_gallery', type: 'serial' },
-        { camera: 'photo_front_camera', gallery: 'photo_front_gallery', type: 'front' }
+        { camera: 'photo_front_camera', gallery: 'photo_front_gallery', type: 'front' },
+        { camera: 'photo_logbook_camera', gallery: 'photo_logbook_gallery', type: 'logbook' }
     ];
     for (var i = 0; i < pairs.length; i++) {
         var p = pairs[i];
@@ -129,18 +130,27 @@ async function uploadForProcessing(file, type) {
     return json;
 }
 
+function resolveSuffix(type) {
+    if (type === 'serial') return 'Serial';
+    if (type === 'front') return 'Front';
+    return 'Logbook';
+}
+
 function showLocalPreview(url, type) {
-    var img = document.getElementById(type === 'serial' ? 'imagePreviewSerial' : 'imagePreviewFront');
-    var area = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
-    var loader = document.getElementById('loading' + (type === 'serial' ? 'Serial' : 'Front'));
+    var sfx = resolveSuffix(type);
+    var img = document.getElementById('imagePreview' + sfx);
+    var area = document.getElementById('preview' + sfx);
+    var loader = document.getElementById('loading' + sfx);
     if (img) { img.src = url; img.style.display = ''; }
     if (area) area.classList.remove('d-none');
     if (loader) loader.classList.add('d-none');
 }
 
 function storeFileReference(fileRef, type) {
-    var id = type === 'serial' ? 'serial_file_ref' : 'front_file_ref';
-    if (type === 'serial') serialFileRef = fileRef; else frontFileRef = fileRef;
+    var sfx = resolveSuffix(type);
+    var id = (type === 'serial' ? 'serial_file_ref' : type === 'front' ? 'front_file_ref' : 'logbook_file_ref');
+    if (type === 'serial') serialFileRef = fileRef;
+    else if (type === 'front') frontFileRef = fileRef;
 
     var hiddenInput = document.getElementById(id);
     if (!hiddenInput) {
@@ -155,52 +165,45 @@ function storeFileReference(fileRef, type) {
 }
 
 function showLoadingState(type) {
-    var area = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
-    var loader = document.getElementById('loading' + (type === 'serial' ? 'Serial' : 'Front'));
-    var img = document.getElementById(type === 'serial' ? 'imagePreviewSerial' : 'imagePreviewFront');
+    var sfx = resolveSuffix(type);
+    var area = document.getElementById('preview' + sfx);
+    var loader = document.getElementById('loading' + sfx);
+    var img = document.getElementById('imagePreview' + sfx);
     if (area) area.classList.remove('d-none');
     if (loader) loader.classList.remove('d-none');
     if (img) img.style.display = 'none';
 }
 
 function showError(type, message) {
-    var area = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
-    var errEl = document.getElementById('error' + (type === 'serial' ? 'Serial' : 'Front'));
-    var loader = document.getElementById('loading' + (type === 'serial' ? 'Serial' : 'Front'));
+    var sfx = resolveSuffix(type);
+    var area = document.getElementById('preview' + sfx);
+    var errEl = document.getElementById('error' + sfx);
+    var loader = document.getElementById('loading' + sfx);
     if (errEl) { errEl.textContent = message; errEl.classList.remove('d-none'); }
     if (loader) loader.classList.add('d-none');
     if (area) area.classList.remove('d-none');
 }
 
 function clearOtherInput(type, source) {
-    if (type === 'serial') {
-        var other = document.getElementById(source === 'camera' ? 'photo_serial_gallery' : 'photo_serial_camera');
-        if (other) other.value = '';
-    } else {
-        var other = document.getElementById(source === 'camera' ? 'photo_front_gallery' : 'photo_front_camera');
-        if (other) other.value = '';
-    }
+    var other = document.getElementById('photo_' + type + '_' + (source === 'camera' ? 'gallery' : 'camera'));
+    if (other) other.value = '';
 }
 
 async function clearImage(type) {
-    var fileRef = type === 'serial' ? serialFileRef : frontFileRef;
-    if (type === 'serial') {
-        serialFileRef = null;
-        if (serialPreviewUrl) { URL.revokeObjectURL(serialPreviewUrl); serialPreviewUrl = null; }
-    } else {
-        frontFileRef = null;
-        if (frontPreviewUrl) { URL.revokeObjectURL(frontPreviewUrl); frontPreviewUrl = null; }
-    }
+    var fileRef = type === 'serial' ? serialFileRef : type === 'front' ? frontFileRef : null;
+    if (type === 'serial') { serialFileRef = null; if (serialPreviewUrl) { URL.revokeObjectURL(serialPreviewUrl); serialPreviewUrl = null; } }
+    else if (type === 'front') { frontFileRef = null; if (frontPreviewUrl) { URL.revokeObjectURL(frontPreviewUrl); frontPreviewUrl = null; } }
 
-    var h = document.getElementById(type === 'serial' ? 'serial_file_ref' : 'front_file_ref');
+    var h = document.getElementById(type === 'serial' ? 'serial_file_ref' : type === 'front' ? 'front_file_ref' : 'logbook_file_ref');
     if (h) h.remove();
 
     var cameraInput = document.getElementById('photo_' + type + '_camera');
     var galleryInput = document.getElementById('photo_' + type + '_gallery');
-    var previewArea = document.getElementById('preview' + (type === 'serial' ? 'Serial' : 'Front'));
-    var img = document.getElementById(type === 'serial' ? 'imagePreviewSerial' : 'imagePreviewFront');
-    var loader = document.getElementById('loading' + (type === 'serial' ? 'Serial' : 'Front'));
-    var errEl = document.getElementById('error' + (type === 'serial' ? 'Serial' : 'Front'));
+    var sfx = resolveSuffix(type);
+    var previewArea = document.getElementById('preview' + sfx);
+    var img = document.getElementById('imagePreview' + sfx);
+    var loader = document.getElementById('loading' + sfx);
+    var errEl = document.getElementById('error' + sfx);
 
     if (cameraInput) cameraInput.value = '';
     if (galleryInput) galleryInput.value = '';
