@@ -162,11 +162,24 @@
 
 <script>
 document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('dismiss-dup-list')) {
-        const badge = e.target.closest('.badge');
+    const target = e.target;
+    if (target.classList.contains('dismiss-dup-list')) {
+        const badge = target.closest('.badge');
         const cell = badge.closest('td');
-        badge.remove();
-        cell.innerHTML = '<span class="text-muted small">-</span>';
+        badge.style.display = 'none';
+        const restoreEl = document.createElement('span');
+        restoreEl.className = 'text-muted small restore-dup-list';
+        restoreEl.style.cursor = 'pointer';
+        restoreEl.dataset.entryId = badge.dataset.entryId;
+        restoreEl.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i> Pulihkan';
+        cell.appendChild(restoreEl);
+    }
+    if (target.classList.contains('restore-dup-list') || target.closest('.restore-dup-list')) {
+        const restoreEl = target.classList.contains('restore-dup-list') ? target : target.closest('.restore-dup-list');
+        const cell = restoreEl.closest('td');
+        const badge = cell.querySelector('.badge');
+        if (badge) badge.style.display = '';
+        restoreEl.remove();
     }
 });
 
