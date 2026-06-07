@@ -212,15 +212,20 @@ func (h *Handler) DeviceLoanExtend(c *gin.Context) {
 
 func (h *Handler) DeviceLoanBatchDelete(c *gin.Context) {
 	var req struct {
-		IDs []int `json:"ids"`
+		IDs []string `json:"ids"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || len(req.IDs) == 0 {
 		h.errJSON(c, http.StatusBadRequest, "Tidak ada item yang dipilih")
 		return
 	}
+	intIDs, err := parseInt64IDs(req.IDs)
+	if err != nil {
+		h.errJSON(c, http.StatusBadRequest, err.Error())
+		return
+	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	if err := h.deviceLoanService.BatchDelete(req.IDs, uid, u, r, ip, ua); err != nil {
+	if err := h.deviceLoanService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
