@@ -355,13 +355,13 @@ const FormValidator = {
 
 FormValidator.init();
 
-const BatchSelector = {
+var BatchSelector = {
     activeTables: [],
     isGroupMode: false,
     options: {},
 
     _storageKey: function() {
-        return 'batch_' + window.location.pathname.replace(/[^a-zA-Z0-9]/g, '_');
+        return 'batch_' + (window.location.pathname + window.location.search).replace(/[^a-zA-Z0-9]/g, '_');
     },
 
     _saveState: function() {
