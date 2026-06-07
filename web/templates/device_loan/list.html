@@ -87,7 +87,7 @@
                             <th>Tgl Dikembalikan</th>
                             <th>Status</th>
                             <th>Perpanjangan</th>
-                            <th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th>
+                            <th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th><th class="batch-action-col text-end" style="width:1%;white-space:nowrap">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -110,7 +110,8 @@
                                 {{ end }}
                             </td>
                             <td class="text-center">{{ if $l.ExtensionCount }}<span class="badge bg-info">{{ $l.ExtensionCount }}x</span>{{ else }}-{{ end }}</td>
-                            <td class="batch-action-col text-nowrap">
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $l.ID }}"></span></td>
+                            <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                     <a href="/device-loans/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
                                         <i class="bi bi-eye"></i>
@@ -129,14 +130,11 @@
                                     </button>
                                     <form id="del-{{ $l.ID }}" method="POST" action="/device-loans/{{ $l.ID }}/delete" class="d-none"></form>
                                 </span>
-                                <span class="batch-mode-on d-none">
-                                    <input type="checkbox" class="batch-check form-check-input" value="{{ $l.ID }}">
-                                </span>
                             </td>
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="11" class="text-center text-muted">Belum ada data peminjaman</td>
+                            <td colspan="12" class="text-center text-muted">Belum ada data peminjaman</td>
                         </tr>
                         {{ end }}
                     </tbody>
