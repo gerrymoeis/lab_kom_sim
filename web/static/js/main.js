@@ -366,24 +366,27 @@ const BatchSelector = {
     _saveState: function() {
         if (this.activeTables.length === 0) return;
         var currentIds = [];
-        var checkedIds = [];
+        var checkedItems = [];
         this.activeTables.forEach(function(table) {
             table.querySelectorAll('.batch-check').forEach(function(cb) {
                 var tr = cb.closest('tr');
                 var id = tr ? tr.getAttribute('data-batch-id') : cb.value;
                 if (id && currentIds.indexOf(id) === -1) {
                     currentIds.push(id);
-                    if (cb.checked) checkedIds.push(id);
+                    if (cb.checked) {
+                        var label = tr ? tr.getAttribute('data-batch-label') || id : id;
+                        checkedItems.push({ id: id, label: label });
+                    }
                 }
             });
         });
-        var savedIds = this._loadState();
+        var savedItems = this._loadState();
         var merged = [];
-        savedIds.forEach(function(id) {
-            if (currentIds.indexOf(id) === -1) merged.push(id);
+        savedItems.forEach(function(item) {
+            if (currentIds.indexOf(item.id) === -1) merged.push(item);
         });
-        checkedIds.forEach(function(id) {
-            if (merged.indexOf(id) === -1) merged.push(id);
+        checkedItems.forEach(function(item) {
+            if (merged.indexOf(item) === -1) merged.push(item);
         });
         try { sessionStorage.setItem(this._storageKey(), JSON.stringify(merged)); } catch(e) {}
     },
@@ -391,7 +394,12 @@ const BatchSelector = {
     _loadState: function() {
         try {
             var data = sessionStorage.getItem(this._storageKey());
-            return data ? JSON.parse(data) : [];
+            if (!data) return [];
+            var parsed = JSON.parse(data);
+            if (parsed.length > 0 && typeof parsed[0] === 'string') {
+                parsed = parsed.map(function(id) { return { id: id, label: id }; });
+            }
+            return parsed;
         } catch(e) { return []; }
     },
 
@@ -427,7 +435,7 @@ const BatchSelector = {
                 t.querySelectorAll('.batch-check').forEach(function(cb) {
                     var tr = cb.closest('tr');
                     var id = tr ? tr.getAttribute('data-batch-id') : cb.value;
-                    if (savedIds.indexOf(id) !== -1) cb.checked = true;
+                    if (savedIds.some(function(item) { return item.id === id; })) cb.checked = true;
                 });
             });
         }
@@ -457,7 +465,7 @@ const BatchSelector = {
                 t.querySelectorAll('.batch-check').forEach(function(cb) {
                     var tr = cb.closest('tr');
                     var id = tr ? tr.getAttribute('data-batch-id') : cb.value;
-                    if (savedIds.indexOf(id) !== -1) cb.checked = true;
+                    if (savedIds.some(function(item) { return item.id === id; })) cb.checked = true;
                 });
             });
         }
@@ -550,8 +558,8 @@ const BatchSelector = {
         });
         var savedIds = this._loadState();
         var otherCount = 0;
-        savedIds.forEach(function(id) {
-            if (currentIds.indexOf(id) === -1) otherCount++;
+        savedIds.forEach(function(item) {
+            if (currentIds.indexOf(item.id) === -1) otherCount++;
         });
         var total = visibleChecked + otherCount;
         var toolbar = document.getElementById('batchToolbar');
@@ -641,11 +649,17 @@ const BatchSelector = {
         });
 
         var savedIds = this._loadState();
-        savedIds.forEach(function(id) {
-            if (seenIds.indexOf(id) === -1) {
-                seenIds.push(id);
-                items.push({ id: id, label: id });
+        savedIds.forEach(function(item) {
+            if (seenIds.indexOf(item.id) === -1) {
+                seenIds.push(item.id);
+                items.push(item);
             }
+        });
+
+        items.sort(function(a, b) {
+            var la = a.label.toLowerCase();
+            var lb = b.label.toLowerCase();
+            return la < lb ? -1 : la > lb ? 1 : 0;
         });
 
         if (items.length === 0) {
