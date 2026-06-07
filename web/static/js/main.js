@@ -361,7 +361,7 @@ var BatchSelector = {
     options: {},
 
     _storageKey: function() {
-        return 'batch_' + (window.location.pathname + window.location.search).replace(/[^a-zA-Z0-9]/g, '_');
+        return 'batch_' + window.location.pathname.replace(/[^a-zA-Z0-9]/g, '_');
     },
 
     _saveState: function() {
@@ -699,13 +699,15 @@ var BatchSelector = {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    var currentPath = window.location.pathname;
-    var lastPath = sessionStorage.getItem('batch_last_path');
-    if (lastPath && lastPath !== currentPath) {
-        var key = 'batch_' + currentPath.replace(/[^a-zA-Z0-9]/g, '_');
+    var pageId = window.location.pathname;
+    var tab = new URLSearchParams(window.location.search).get('tab') || '';
+    if (tab) pageId += '?tab=' + tab;
+    var lastPageId = sessionStorage.getItem('batch_last_page');
+    if (lastPageId && lastPageId !== pageId) {
+        var key = 'batch_' + window.location.pathname.replace(/[^a-zA-Z0-9]/g, '_');
         sessionStorage.removeItem(key);
     }
-    sessionStorage.setItem('batch_last_path', currentPath);
+    sessionStorage.setItem('batch_last_page', pageId);
 
     if (BatchSelector.isActive()) {
         var groupContainer = document.getElementById('deviceBatchContainer');
