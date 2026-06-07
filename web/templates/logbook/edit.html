@@ -2,7 +2,8 @@
 
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
-        <form method="POST" action="/logbook/{{ .entry.ID }}/edit">
+        {{ template "layout/alert.html" . }}
+        <form method="POST" action="/logbook/{{ .entry.ID }}/edit" data-validate="true">
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="date" class="form-label">Tanggal <span class="text-danger">*</span></label>
@@ -12,15 +13,18 @@
                 <div class="col-md-6 mb-3">
                     <label for="nim" class="form-label">NIM <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="nim" name="nim"
-                           value="{{ .entry.NIM }}" placeholder="Contoh: 24091397012" required>
-                    <small class="text-muted">Akan otomatis diformat uppercase tanpa spasi</small>
+                           value="{{ .entry.NIM }}" placeholder="Contoh: 24091397012" required
+                           minlength="11" maxlength="11"
+                           pattern="[0-9]{11}"
+                           data-pattern-message="NIM harus tepat 11 digit angka">
+                    <small class="text-muted">Tepat 11 digit angka, akan otomatis uppercase tanpa spasi</small>
                 </div>
             </div>
 
             <div class="mb-3">
                 <label for="student_name" class="form-label">Nama Mahasiswa <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="student_name" name="student_name"
-                       value="{{ .entry.StudentName }}" placeholder="Contoh: Rian Dwi Hermawan" required>
+                       value="{{ .entry.StudentName }}" placeholder="Contoh: Rian Dwi Hermawan" required maxlength="100">
                 <small class="text-muted">Akan otomatis diformat Title Case dengan singkatan yang benar</small>
             </div>
 
@@ -41,7 +45,7 @@
             <div class="mb-3">
                 <label for="purpose" class="form-label">Keperluan</label>
                 <input type="text" class="form-control" id="purpose" name="purpose"
-                       value="{{ .entry.Purpose }}" placeholder="Contoh: Pemrograman Web Lanjut">
+                       value="{{ .entry.Purpose }}" placeholder="Contoh: Pemrograman Web Lanjut" maxlength="500">
                 <small class="text-muted">Akan otomatis diformat Title Case</small>
             </div>
 
