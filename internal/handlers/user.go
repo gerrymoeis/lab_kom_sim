@@ -145,12 +145,18 @@ func (h *Handler) UserEdit(c *gin.Context) {
 	if err := h.userService.UpdateUser(uid, target.ID, u, r, ip, ua, req.Username, req.FullName, req.Role, req.NewPassword); err != nil {
 		msg := "Gagal mengupdate user"
 		if errors.Is(err, services.ErrUsernameTaken) { msg = "Username sudah digunakan" }
-		if errors.Is(err, services.ErrProtectedUpdate) { msg = "Tidak dapat mengubah role user ini" }
+		if errors.Is(err, services.ErrProtectedUpdate) { msg = "Tidak dapat mengubah username atau role user ini" }
 		c.Redirect(http.StatusFound, "/admin/users/"+targetUsername+"/edit?error="+msg)
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/admin/users/"+targetUsername+"?success=User berhasil diupdate")
+	if u == targetUsername {
+		sess := sessions.Default(c)
+		sess.Set("username", req.Username)
+		sess.Save()
+	}
+
+	c.Redirect(http.StatusFound, "/admin/users/"+req.Username+"?success=User berhasil diupdate")
 }
 
 func (h *Handler) UserDelete(c *gin.Context) {

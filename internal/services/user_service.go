@@ -96,6 +96,10 @@ func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actor
 		return ErrUserNotFound
 	}
 
+	if (target.Username == "admin" || target.Username == "rekan") && username != target.Username {
+		return ErrProtectedUpdate
+	}
+
 	if (target.Username == "admin" || target.Username == "rekan") && role != target.Role {
 		return ErrProtectedUpdate
 	}
