@@ -71,7 +71,7 @@
                         {{ range $i, $u := .users }}
                         <tr data-batch-id="{{ .Username }}" data-batch-label="{{ .Username }} - {{ .FullName }}">
                             <td>{{ add $i $.startRow }}</td>
-                            <td><strong>{{ if canAccessUser $.username .Username }}<a href="/admin/users/{{ .Username }}" class="text-decoration-none">{{ end }}{{ .Username }}{{ if canAccessUser $.username .Username }}</a>{{ end }}</strong></td>
+                            <td><strong>{{ if eq $.username .Username }}<a href="/admin/users/{{ .Username }}" class="text-decoration-none fw-bold text-primary">{{ end }}{{ .Username }}{{ if eq $.username .Username }}</a>{{ end }}</strong></td>
                             <td>
                                 {{ .FullName }}
                                 {{ if or (eq .Username "admin") (eq .Username "rekan") }}
