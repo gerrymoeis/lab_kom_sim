@@ -128,6 +128,9 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 	in.BrandModel = SanitizeText(in.BrandModel)
 	in.Accessories = SanitizeText(in.Accessories)
 	in.Notes = SanitizeText(in.Notes)
+
+	pcData, _ := s.pcRepo.GetByLabel(label)
+
 	err := s.pcRepo.Update(label, in.Row, in.Column, in.Status, in.Placement, in.PCType, in.SerialNumber, in.BrandModel, in.Accessories,
 		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.PhotoSerial, in.PhotoFront, in.Label,
 		in.PurchaseDate, in.LastChecked)
@@ -136,7 +139,7 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 			map[string]any{"label": label}, nil, ipAddress, userAgent, err.Error())
 		return err
 	}
-	pcData, _ := s.pcRepo.GetByLabel(label)
+
 	pcID := 0
 	oldVals := map[string]any{}
 	newVals := map[string]any{}
@@ -157,9 +160,10 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 		if pcData.Column != in.Column { oldVals["column"] = pcData.Column; newVals["column"] = in.Column }
 		if pcData.Notes != in.Notes { oldVals["notes"] = pcData.Notes; newVals["notes"] = in.Notes }
 	}
-	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
-		oldVals, newVals,
-		ipAddress, userAgent)
+	if len(oldVals) > 0 || len(newVals) > 0 {
+		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
+			oldVals, newVals, ipAddress, userAgent)
+	}
 	return nil
 }
 
@@ -236,7 +240,7 @@ func (s *PCService) ReplacePC(target, spare string, actorID int, actorUsername, 
 	}
 	// Seed required software for the newly placed PC
 	if pcT, _ := s.pcRepo.GetByLabel(target); pcT != nil {
-		_ = s.pcRepo.SeedRequiredSoftware(pcT.ID)
+		s.pcRepo.SeedMissingRequiredSoftware(pcT.ID)
 		pcID = pcT.ID
 	}
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,

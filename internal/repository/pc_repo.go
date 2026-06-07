@@ -383,6 +383,11 @@ func (r *PCRepository) SeedRequiredSoftware(pcID int) error {
 	return err
 }
 
+func (r *PCRepository) SeedMissingRequiredSoftware(pcID int) {
+	r.db.Exec(`INSERT OR IGNORE INTO pc_software (pc_id, software_id, installed)
+		SELECT ?, id, FALSE FROM software_catalog WHERE category = 'required'`, pcID)
+}
+
 func (r *PCRepository) SyncSoftware(pcID int, requiredIDs []string, otherNames, otherDescs []string) error {
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -570,12 +575,12 @@ func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
 	tx.QueryRow(`SELECT id FROM pcs WHERE label=? AND id!=?`, newLabel, id).Scan(&clash)
 
 	tx.Exec(`UPDATE pcs SET label=?, "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, row, col, id)
-	tx.Exec(`DELETE FROM pc_software WHERE pc_id=?`, id)
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 
-	_ = r.SeedRequiredSoftware(id)
+	r.db.Exec(`INSERT OR IGNORE INTO pc_software (pc_id, software_id, installed)
+		SELECT ?, id, FALSE FROM software_catalog WHERE category = 'required'`, id)
 	return nil
 }
 
