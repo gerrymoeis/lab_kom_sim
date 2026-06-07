@@ -317,16 +317,23 @@ func (s *LogbookService) GetDeleteInfo(id int) (*LogbookDeleteInfo, error) {
 }
 
 func (s *LogbookService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	items := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
+		info := map[string]any{"id": id}
+		if entry, err := s.GetDeleteInfo(id); err == nil {
+			info["student_name"] = entry.StudentName
+			info["nim"] = entry.NIM
+		}
 		if err := s.logbookRepo.Delete(id); err != nil {
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "logbook", 0,
-				map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+				map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 				ipAddress, userAgent, err.Error())
 			return err
 		}
+		items = append(items, info)
 	}
 	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "logbook", 0,
-		map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+		map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 		ipAddress, userAgent)
 	return nil
 }
