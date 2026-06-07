@@ -46,9 +46,9 @@ type EditPCRequest struct {
 	LastChecked     string   `form:"last_checked"`
 	SerialFileRef   string   `form:"serial_file_ref"`
 	FrontFileRef    string   `form:"front_file_ref"`
-	RequiredSw      []string `form:"required_sw"`
-	OtherName       []string `form:"other_name"`
-	OtherDesc       []string `form:"other_desc"`
+	RequiredSw      []string `form:"required_sw[]"`
+	OtherName       []string `form:"other_name[]"`
+	OtherDesc       []string `form:"other_desc[]"`
 }
 
 type CreateDeviceRequest struct {
