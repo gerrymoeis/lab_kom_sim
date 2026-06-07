@@ -519,8 +519,25 @@ func processPhotoRefs(serialRef, frontRef string) (serial, front string) {
 		if err := services.CopyFile(src, dst); err != nil {
 			continue
 		}
-		os.Remove(src)
-		*p.result = ref
+	os.Remove(src)
+	*p.result = ref
 	}
 	return
+}
+
+func (h *Handler) PCBatchDelete(c *gin.Context) {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.IDs) == 0 {
+		h.errJSON(c, http.StatusBadRequest, "Tidak ada item yang dipilih")
+		return
+	}
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	if err := h.pcService.BatchDeletePC(req.IDs, uid, u, r, ip, ua); err != nil {
+		h.errJSON(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
