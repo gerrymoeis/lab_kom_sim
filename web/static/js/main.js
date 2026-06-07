@@ -427,6 +427,11 @@ const BatchSelector = {
             t.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.remove('d-none'); });
         });
 
+        if (this.options.container) {
+            this.options.container.querySelectorAll('.batch-mode-off').forEach(function(el) { el.classList.add('d-none'); });
+            this.options.container.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.remove('d-none'); });
+        }
+
         this._showToolbar();
         this._attachListeners();
 
@@ -457,6 +462,11 @@ const BatchSelector = {
             t.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.remove('d-none'); });
         });
 
+        if (this.options.container) {
+            this.options.container.querySelectorAll('.batch-mode-off').forEach(function(el) { el.classList.add('d-none'); });
+            this.options.container.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.remove('d-none'); });
+        }
+
         this._showToolbar();
         this._attachListeners();
 
@@ -486,6 +496,11 @@ const BatchSelector = {
             t.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.add('d-none'); });
             t.querySelectorAll('.batch-check, .batch-select-all').forEach(function(cb) { cb.checked = false; });
         });
+        var container = document.getElementById('deviceBatchContainer');
+        if (container) {
+            container.querySelectorAll('.batch-mode-off').forEach(function(el) { el.classList.remove('d-none'); });
+            container.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.add('d-none'); });
+        }
         this._hideToolbar();
         this.activeTables = [];
         this.isGroupMode = false;
@@ -510,7 +525,7 @@ const BatchSelector = {
     toggleAll: function() {
         var container = document.getElementById('deviceBatchContainer');
         if (!container) return;
-        this.toggleGroup(container, { container: container });
+        this.toggleGroup(container, { container: container, batchUrl: '/devices/batch-delete' });
     },
 
     _attachListeners: function() {
