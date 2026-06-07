@@ -399,6 +399,13 @@ const BatchSelector = {
         try { sessionStorage.removeItem(this._storageKey()); } catch(e) {}
     },
 
+    isActive: function() {
+        try {
+            var data = sessionStorage.getItem(this._storageKey());
+            return data && JSON.parse(data).length > 0;
+        } catch(e) { return false; }
+    },
+
     enable: function(table, opts) {
         if (this.activeTables.length > 0) this.disable();
         this.activeTables = [table];
@@ -660,6 +667,26 @@ const BatchSelector = {
         confirmBatchDelete({ items: items, url: url });
     }
 };
+
+document.addEventListener('DOMContentLoaded', function() {
+    var currentPath = window.location.pathname;
+    var lastPath = sessionStorage.getItem('batch_last_path');
+    if (lastPath && lastPath !== currentPath) {
+        var key = 'batch_' + currentPath.replace(/[^a-zA-Z0-9]/g, '_');
+        sessionStorage.removeItem(key);
+    }
+    sessionStorage.setItem('batch_last_path', currentPath);
+
+    if (BatchSelector.isActive()) {
+        var groupContainer = document.getElementById('deviceBatchContainer');
+        if (groupContainer) {
+            BatchSelector.enableGroup(groupContainer, { container: groupContainer, batchUrl: '/devices/batch-delete' });
+        } else {
+            var table = document.querySelector('table[data-batch-url]');
+            if (table) BatchSelector.enable(table);
+        }
+    }
+});
 
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toastContainer');
