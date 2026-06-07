@@ -159,7 +159,7 @@
                                                     <th>Kondisi</th>
                                                     <th>Lokasi</th>
                                                     <th>Status</th>
-                                                    <th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th><th class="text-end batch-action-col" style="width:1%;white-space:nowrap">Aksi</th>
+                                                    <th class="text-end batch-action-col" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -192,7 +192,6 @@
                                                         {{ end }}
                                                         {{ end }}
                                                     </td>
-                                                    <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $d.ID }}"></span></td>
                                                     <td class="text-nowrap text-end batch-action-col">
                                                         <span class="batch-mode-off">
                                                         <a href="/devices/{{ $d.CategoryPrefix | lower }}/{{ $d.DeviceTypePrefix | lower }}/{{ $d.AssetCode | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
@@ -210,6 +209,7 @@
                                                         {{ end }}
                                                         </span>
                                                     </td>
+                                                    <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $d.ID }}"></span></td>
                                                 </tr>
                                                 {{ else }}
                                                 <tr>

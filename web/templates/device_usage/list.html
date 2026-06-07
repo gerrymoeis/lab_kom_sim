@@ -107,7 +107,6 @@
                             </td>
                             <td>{{ if $l.Purpose }}{{ $l.Purpose }}{{ else }}-{{ end }}</td>
                             <td>{{ if $l.Notes }}{{ $l.Notes }}{{ else }}-{{ end }}</td>
-                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $l.ID }}"></span></td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                     <a href="/device-usages/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
@@ -125,6 +124,7 @@
                                     {{ end }}
                                 </span>
                             </td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $l.ID }}"></span></td>
                         </tr>
                         {{ else }}
                         <tr>
