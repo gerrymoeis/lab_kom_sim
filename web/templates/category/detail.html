@@ -60,7 +60,7 @@
                             <th>Model</th>
                             <th>Prefix</th>
                             <th>Tipe Penggunaan</th>
-                            <th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th><th class="batch-action-col text-end" style="width:1%;white-space:nowrap">Aksi</th>
+                            <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -79,7 +79,6 @@
                                 <span class="badge bg-info">Instalasi</span>
                                 {{ end }}
                             </td>
-                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $t.ID }}"></span></td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                 <a href="/device-types/{{ $t.AssetCodePrefix | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
@@ -95,6 +94,7 @@
                                 <form id="del-type-{{ $t.ID }}" method="POST" action="/device-types/{{ $t.AssetCodePrefix | lower }}/delete" class="d-none"></form>
                                 </span>
                             </td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $t.ID }}"></span></td>
                         </tr>
                         {{ end }}
                     </tbody>

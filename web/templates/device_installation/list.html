@@ -86,7 +86,7 @@
                             <th>Status</th>
                             <th>Tgl Mulai</th>
                             <th>Tgl Selesai</th>
-                            <th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th><th class="batch-action-col text-end" style="width:1%;white-space:nowrap">Aksi</th>
+                            <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -108,7 +108,6 @@
                             </td>
                             <td>{{ if $inst.InstallationStartDate }}{{ (localTime $inst.InstallationStartDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
                             <td>{{ if $inst.InstallationFinishDate }}{{ (localTime $inst.InstallationFinishDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
-                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $inst.ID }}"></span></td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                     <a href="/installations/{{ $inst.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
@@ -124,6 +123,7 @@
                                     <form id="del-{{ $inst.ID }}" method="POST" action="/installations/{{ $inst.ID }}/delete" class="d-none"></form>
                                 </span>
                             </td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $inst.ID }}"></span></td>
                         </tr>
                         {{ else }}
                         <tr>
