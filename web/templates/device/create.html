@@ -535,6 +535,7 @@
             if (result.success) {
                 newTypePhotoRef = result.file_ref;
                 window.newTypePhotoFileRef = result.file_ref;
+                saveBtn.disabled = false;
             } else {
                 showNewTypeError(result.message || 'Gagal upload');
             }
@@ -552,6 +553,7 @@
         loader.classList.remove('d-none');
         if (img) img.classList.add('d-none');
         if (err) err.classList.add('d-none');
+        saveBtn.disabled = true;
     }
 
     function showNewTypeLocalPreview(url) {
@@ -572,6 +574,7 @@
         if (err) { err.textContent = message; err.classList.remove('d-none'); }
         loader.classList.add('d-none');
         area.classList.remove('d-none');
+        saveBtn.disabled = false;
     }
 
     function clearNewTypeOtherInput(source) {
