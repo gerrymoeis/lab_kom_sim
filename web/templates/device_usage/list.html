@@ -91,7 +91,7 @@
                     </thead>
                     <tbody>
                         {{ range $i, $l := .usages }}
-                        <tr data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceAssetCode }} - {{ $l.BorrowerName }}">
+                        <tr data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceAssetCode }} - {{ $l.UserName }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $l.DeviceAssetCode }}</code></td>
                             <td><strong>{{ $l.DeviceTypeName }}</strong></td>
