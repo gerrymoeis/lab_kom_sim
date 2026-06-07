@@ -341,9 +341,15 @@ func (s *PCService) SyncSoftware(label string, requiredIDs []string, otherNames,
 
 func (s *PCService) BatchDeletePC(labels []string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	for _, label := range labels {
-		if err := s.DeletePC(label, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+		if err := s.pcRepo.DeleteByLabel(label); err != nil {
+			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", 0,
+				map[string]any{"action": "batch_delete", "count": len(labels), "labels": labels},
+				ipAddress, userAgent, err.Error())
 			return err
 		}
 	}
+	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", 0,
+		map[string]any{"action": "batch_delete", "count": len(labels), "labels": labels},
+		ipAddress, userAgent)
 	return nil
 }
