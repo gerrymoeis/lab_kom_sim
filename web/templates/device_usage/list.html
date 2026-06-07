@@ -93,38 +93,38 @@
                         {{ range $i, $l := .usages }}
                         <tr data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceAssetCode }} - {{ $l.BorrowerName }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
-                            <td><code>{{ $u.DeviceAssetCode }}</code></td>
-                            <td><strong>{{ $u.DeviceTypeName }}</strong></td>
-                            <td>{{ $u.UserName }}<br><small class="text-muted">{{ $u.UserType }}</small></td>
-                            <td><span class="badge bg-secondary">{{ $u.CategoryName }}</span></td>
-                            <td>{{ (localTime $u.UsageDate).Format "02/01/2006" }}</td>
+                            <td><code>{{ $l.DeviceAssetCode }}</code></td>
+                            <td><strong>{{ $l.DeviceTypeName }}</strong></td>
+                            <td>{{ $l.UserName }}<br><small class="text-muted">{{ $l.UserType }}</small></td>
+                            <td><span class="badge bg-secondary">{{ $l.CategoryName }}</span></td>
+                            <td>{{ (localTime $l.UsageDate).Format "02/01/2006" }}</td>
                             <td>
-                                {{ if eq $u.IsAvailable "yes" }}
+                                {{ if eq $l.IsAvailable "yes" }}
                                 <span class="badge bg-success">Masih ada</span>
                                 {{ else }}
                                 <span class="badge bg-danger">Habis</span>
                                 {{ end }}
                             </td>
-                            <td>{{ if $u.Purpose }}{{ $u.Purpose }}{{ else }}-{{ end }}</td>
-                            <td>{{ if $u.Notes }}{{ $u.Notes }}{{ else }}-{{ end }}</td>
+                            <td>{{ if $l.Purpose }}{{ $l.Purpose }}{{ else }}-{{ end }}</td>
+                            <td>{{ if $l.Notes }}{{ $l.Notes }}{{ else }}-{{ end }}</td>
                             <td class="batch-action-col text-nowrap">
                                 <span class="batch-mode-off">
-                                    <a href="/device-usages/{{ $u.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
+                                    <a href="/device-usages/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     {{ if eq $.role "admin" }}
-                                    <a href="/device-usages/{{ $u.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                    <a href="/device-usages/{{ $l.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <button type="button" class="btn btn-sm btn-danger" title="Hapus"
-                                        onclick="confirmDelete({message:'Hapus data pemakaian ini?', formId:'del-usage-{{ $u.ID }}'})">
+                                        onclick="confirmDelete({message:'Hapus data pemakaian ini?', formId:'del-usage-{{ $l.ID }}'})">
                                         <i class="bi bi-trash"></i>
                                     </button>
-                                    <form id="del-usage-{{ $u.ID }}" method="POST" action="/device-usages/{{ $u.ID }}/delete" class="d-none"></form>
+                                    <form id="del-usage-{{ $l.ID }}" method="POST" action="/device-usages/{{ $l.ID }}/delete" class="d-none"></form>
                                     {{ end }}
                                 </span>
                                 <span class="batch-mode-on d-none">
-                                    <input type="checkbox" class="batch-check form-check-input" value="{{ $u.ID }}">
+                                    <input type="checkbox" class="batch-check form-check-input" value="{{ $l.ID }}">
                                 </span>
                             </td>
                         </tr>
