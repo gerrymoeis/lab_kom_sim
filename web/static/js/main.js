@@ -365,15 +365,27 @@ const BatchSelector = {
 
     _saveState: function() {
         if (this.activeTables.length === 0) return;
-        var ids = [];
+        var currentIds = [];
+        var checkedIds = [];
         this.activeTables.forEach(function(table) {
-            table.querySelectorAll('.batch-check:checked').forEach(function(cb) {
+            table.querySelectorAll('.batch-check').forEach(function(cb) {
                 var tr = cb.closest('tr');
                 var id = tr ? tr.getAttribute('data-batch-id') : cb.value;
-                if (id && ids.indexOf(id) === -1) ids.push(id);
+                if (id && currentIds.indexOf(id) === -1) {
+                    currentIds.push(id);
+                    if (cb.checked) checkedIds.push(id);
+                }
             });
         });
-        try { sessionStorage.setItem(this._storageKey(), JSON.stringify(ids)); } catch(e) {}
+        var savedIds = this._loadState();
+        var merged = [];
+        savedIds.forEach(function(id) {
+            if (currentIds.indexOf(id) === -1) merged.push(id);
+        });
+        checkedIds.forEach(function(id) {
+            if (merged.indexOf(id) === -1) merged.push(id);
+        });
+        try { sessionStorage.setItem(this._storageKey(), JSON.stringify(merged)); } catch(e) {}
     },
 
     _loadState: function() {
@@ -446,6 +458,11 @@ const BatchSelector = {
         this._updateToolbar();
     },
 
+    cancel: function() {
+        this._clearState();
+        this.disable();
+    },
+
     disable: function() {
         if (this.activeTables.length === 0) return;
         this.activeTables.forEach(function(t) {
@@ -454,7 +471,6 @@ const BatchSelector = {
             t.querySelectorAll('.batch-check, .batch-select-all').forEach(function(cb) { cb.checked = false; });
         });
         this._hideToolbar();
-        this._clearState();
         this.activeTables = [];
         this.isGroupMode = false;
     },
@@ -512,17 +528,30 @@ const BatchSelector = {
 
     _updateToolbar: function() {
         if (this.activeTables.length === 0) return;
-        var selected = 0, total = 0;
+        var visibleChecked = 0;
+        var currentIds = [];
         this.activeTables.forEach(function(t) {
-            selected += t.querySelectorAll('.batch-check:checked').length;
-            total += t.querySelectorAll('.batch-check').length;
+            t.querySelectorAll('.batch-check').forEach(function(cb) {
+                var tr = cb.closest('tr');
+                var id = tr ? tr.getAttribute('data-batch-id') : cb.value;
+                if (id) {
+                    currentIds.push(id);
+                    if (cb.checked) visibleChecked++;
+                }
+            });
         });
+        var savedIds = this._loadState();
+        var otherCount = 0;
+        savedIds.forEach(function(id) {
+            if (currentIds.indexOf(id) === -1) otherCount++;
+        });
+        var total = visibleChecked + otherCount;
         var toolbar = document.getElementById('batchToolbar');
         if (!toolbar) return;
         var countEl = toolbar.querySelector('.batch-selected-count');
-        if (countEl) countEl.textContent = selected;
+        if (countEl) countEl.textContent = total;
         var deleteBtn = toolbar.querySelector('.batch-delete-btn');
-        if (deleteBtn) deleteBtn.disabled = selected === 0;
+        if (deleteBtn) deleteBtn.disabled = total === 0;
         this.activeTables.forEach(function(t) {
             var sa = t.querySelector('.batch-select-all');
             if (sa) {
@@ -577,7 +606,7 @@ const BatchSelector = {
             self._deleteSelected();
         });
         toolbar.querySelector('.batch-cancel-btn').addEventListener('click', function() {
-            self.disable();
+            self.cancel();
         });
     },
 
