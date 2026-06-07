@@ -136,9 +136,15 @@ func (s *DeviceTypeService) CountByCategoryID(categoryID int) (int, error) {
 
 func (s *DeviceTypeService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	for _, id := range ids {
-		if err := s.Delete(id, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
-			return err
+		if err := s.repo.Delete(id); err != nil {
+			s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", 0,
+				map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+				ipAddress, userAgent, err.Error())
+			return sanitizeDBError(err)
 		}
 	}
+	s.log.LogDelete(actorID, actorUsername, actorRole, "device_type", 0,
+		map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+		ipAddress, userAgent)
 	return nil
 }
