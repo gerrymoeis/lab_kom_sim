@@ -2,6 +2,7 @@
 
 import (
 	"errors"
+	"fmt"
 
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
@@ -194,5 +195,18 @@ func (s *UserService) ChangePassword(userID int, oldPassword, newPassword, confi
 	s.activityLogService.LogAction(userID, actorUsername, actorRole, "update", "user", userID,
 		map[string]any{"password_changed": true}, map[string]any{"password_changed": true},
 		ipAddress, userAgent)
+	return nil
+}
+
+func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, username := range targetUsernames {
+		target, err := s.GetByUsername(username)
+		if err != nil {
+			return fmt.Errorf("user %s tidak ditemukan", username)
+		}
+		if err := s.DeleteUser(actorID, target.ID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+			return err
+		}
+	}
 	return nil
 }

@@ -97,3 +97,12 @@ func (s *ScheduleService) List(search, dayFilter string) ([]models.CourseSchedul
 func (s *ScheduleService) ListPaginated(search, dayFilter, sortBy string, page, pageSize int) ([]models.CourseSchedule, int, error) {
 	return s.repo.ListPaginated(search, dayFilter, sortBy, page, pageSize)
 }
+
+func (s *ScheduleService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, id := range ids {
+		if err := s.Delete(id, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+			return err
+		}
+	}
+	return nil
+}

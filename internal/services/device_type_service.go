@@ -133,3 +133,12 @@ func (s *DeviceTypeService) GetByCategoryID(categoryID int) ([]models.DeviceType
 func (s *DeviceTypeService) CountByCategoryID(categoryID int) (int, error) {
 	return s.repo.CountByCategoryID(categoryID)
 }
+
+func (s *DeviceTypeService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, id := range ids {
+		if err := s.Delete(id, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -178,3 +178,12 @@ func (s *DeviceLoanService) DeleteLoan(id, actorID int, actorUsername, actorRole
 		map[string]any{"id": id}, ipAddress, userAgent)
 	return nil
 }
+
+func (s *DeviceLoanService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, id := range ids {
+		if err := s.DeleteLoan(id, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+			return err
+		}
+	}
+	return nil
+}

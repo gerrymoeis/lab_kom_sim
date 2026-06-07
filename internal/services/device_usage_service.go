@@ -115,3 +115,12 @@ func (s *DeviceUsageService) DeleteUsage(id, actorID int, actorUsername, actorRo
 		map[string]any{"id": id}, ipAddress, userAgent)
 	return nil
 }
+
+func (s *DeviceUsageService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, id := range ids {
+		if err := s.DeleteUsage(id, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+			return err
+		}
+	}
+	return nil
+}

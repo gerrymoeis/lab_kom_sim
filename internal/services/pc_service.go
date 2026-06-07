@@ -338,3 +338,12 @@ func (s *PCService) SyncSoftware(label string, requiredIDs []string, otherNames,
 		oldVals, newVals, ipAddress, userAgent)
 	return nil
 }
+
+func (s *PCService) BatchDeletePC(labels []string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, label := range labels {
+		if err := s.DeletePC(label, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+			return err
+		}
+	}
+	return nil
+}

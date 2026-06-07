@@ -315,3 +315,12 @@ func (s *LogbookService) GetDeleteInfo(id int) (*LogbookDeleteInfo, error) {
 	}
 	return &LogbookDeleteInfo{ID: eid, Date: d, StudentName: sn, NIM: nim}, nil
 }
+
+func (s *LogbookService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, id := range ids {
+		if err := s.DeleteEntry(id, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+			return err
+		}
+	}
+	return nil
+}
