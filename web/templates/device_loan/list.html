@@ -80,12 +80,12 @@
                         <tr>
                             <th>#</th>
                             <th>Asset Code</th>
-                            <th>Tipe Perangkat</th>
                             <th>Peminjam</th>
                             <th>Tgl Pinjam</th>
                             <th>Deadline Kembali</th>
                             <th>Tgl Dikembalikan</th>
                             <th>Status</th>
+                            <th>Keperluan</th>
                             <th>Perpanjangan</th>
                             <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                         </tr>
@@ -95,7 +95,6 @@
                         <tr class="{{ if eq $l.ComputedStatus "overdue" }}table-danger{{ else if eq $l.ComputedStatus "returned" }}table-light{{ end }}" data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceAssetCode }} - {{ $l.BorrowerName }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $l.DeviceAssetCode }}</code></td>
-                            <td>{{ $l.DeviceTypeName }}</td>
                             <td><strong>{{ $l.BorrowerName }}</strong><br><small class="text-muted">{{ $l.BorrowerType }}</small></td>
                             <td{{ if $l.IsReturnedLate }} class="table-danger"{{ end }}>{{ (localTime $l.LoanDate).Format "02/01/2006" }}</td>
                             <td{{ if $l.IsReturnedLate }} class="table-danger"{{ end }}>{{ (localTime $l.ReturnDate).Format "02/01/2006" }}</td>
@@ -109,6 +108,7 @@
                                 <span class="badge bg-secondary">Dikembalikan</span>
                                 {{ end }}
                             </td>
+                            <td><small>{{ if $l.Purpose }}{{ $l.Purpose }}{{ else }}<span class="text-muted">-</span>{{ end }}</small></td>
                             <td class="text-center">{{ if $l.ExtensionCount }}<span class="badge bg-info">{{ $l.ExtensionCount }}x</span>{{ else }}-{{ end }}</td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
