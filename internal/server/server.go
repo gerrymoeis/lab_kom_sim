@@ -134,6 +134,10 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 			return handlers.CanAccessProfile(actorUsername, targetUsername)
 		},
 		"currentDateAfter": func(t time.Time) bool { return time.Now().After(t) },
+		"daysBetween": func(start, end *time.Time) string {
+			if start == nil || end == nil { return "-" }
+			return fmt.Sprintf("%d", int(end.Sub(*start).Hours()/24)+1)
+		},
 	})
 	err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil { return err }
