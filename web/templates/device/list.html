@@ -9,6 +9,9 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
+            <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggleAll()">
+                <i class="bi bi-check-square"></i> Pilih
+            </button>
             <a href="/devices/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Perangkat
             </a>
@@ -141,31 +144,22 @@
                                     </div>
                                 </div>
                                 <div id="ug-{{ $ui }}-cat-{{ $ci }}-type-{{ $ti }}-body" class="px-2{{ if gt $typeCount 1 }} d-none{{ end }}">
-                                    {{ if eq $.role "admin" }}
-                                    <div class="d-flex justify-content-end mb-1">
-                                        <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn" onclick="BatchSelector.toggle(this.closest('.device-type-group').querySelector('table[data-batch-url]'))">
-                                            <i class="bi bi-check-square"></i> Pilih
-                                        </button>
-                                    </div>
-                                    {{ end }}
                                     <div class="table-responsive">
                                         <table class="table table-hover table-sm mb-0" data-batch-url="/devices/batch-delete">
                                             <thead class="table-light">
                                                 <tr>
-                                                    <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th>
                                                     <th>#</th>
                                                     <th>Asset Code</th>
                                                     <th>Serial Number</th>
                                                     <th>Kondisi</th>
                                                     <th>Lokasi</th>
                                                     <th>Status</th>
-                                                    <th class="text-end batch-action-col" style="width:1%;white-space:nowrap">Aksi</th>
+                                                    <th class="text-end batch-action-col" style="width:1%;white-space:nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></div></th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {{ range $idx, $d := $type.Devices }}
                                                 <tr data-batch-id="{{ $d.ID }}" data-batch-label="{{ $d.AssetCode }}">
-                                                    <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                                                     <td class="text-muted">{{ add $idx $.startRow }}</td>
                                                     <td><code>{{ $d.AssetCode }}</code></td>
                                                     <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
@@ -194,6 +188,7 @@
                                                         {{ end }}
                                                     </td>
                                                      <td class="text-nowrap text-end batch-action-col">
+                                                        <span class="batch-mode-off">
                                                         <a href="/devices/{{ $d.CategoryPrefix | lower }}/{{ $d.DeviceTypePrefix | lower }}/{{ $d.AssetCode | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
                                                             <i class="bi bi-eye"></i>
                                                         </a>
@@ -207,11 +202,15 @@
                                                         </button>
                                                         <form id="del-dev-{{ $d.ID }}" method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" class="d-none"></form>
                                                         {{ end }}
+                                                        </span>
+                                                        <span class="batch-mode-on d-none">
+                                                            <input type="checkbox" class="batch-check form-check-input" value="{{ $d.ID }}">
+                                                        </span>
                                                     </td>
                                                 </tr>
                                                 {{ else }}
                                                 <tr>
-                                                    <td colspan="8" class="text-center text-muted py-3">Tidak ada perangkat dalam grup ini</td>
+                                                    <td colspan="7" class="text-center text-muted py-3">Tidak ada perangkat dalam grup ini</td>
                                                 </tr>
                                                 {{ end }}
                                             </tbody>

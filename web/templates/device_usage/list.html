@@ -9,9 +9,6 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
-            <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
-                <i class="bi bi-check-square"></i> Pilih
-            </button>
             <a href="/device-usages/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Pemakaian
             </a>
@@ -80,22 +77,21 @@
                 <table class="table table-hover align-middle" data-batch-url="/device-usages/batch-delete">
                     <thead class="table-light">
                         <tr>
-                            <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th class="th-w-50">#</th>
+                            <th>#</th>
                             <th>Asset Code</th>
                             <th>Tipe Perangkat</th>
-                            <th>Pengguna</th>
-                            <th>Kategori</th>
-                            <th>Tanggal Pemakaian</th>
-                            <th>Status Stok</th>
+                            <th>Peminjam</th>
+                            <th>Tgl Mulai</th>
+                            <th>Tgl Selesai</th>
+                            <th>Durasi (hari)</th>
                             <th>Keperluan</th>
-                            <th>Catatan</th>
-                            <th class="batch-action-col">Aksi</th>
+                            <th>Status</th>
+                            <th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range $i, $u := .usages }}
-                        <tr data-batch-id="{{ $u.ID }}" data-batch-label="{{ $u.DeviceAssetCode }} - {{ $u.UserName }}">
-                            <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
+                        {{ range $i, $l := .usages }}
+                        <tr data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceAssetCode }} - {{ $l.BorrowerName }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $u.DeviceAssetCode }}</code></td>
                             <td><strong>{{ $u.DeviceTypeName }}</strong></td>
@@ -112,24 +108,29 @@
                             <td>{{ if $u.Purpose }}{{ $u.Purpose }}{{ else }}-{{ end }}</td>
                             <td>{{ if $u.Notes }}{{ $u.Notes }}{{ else }}-{{ end }}</td>
                             <td class="batch-action-col text-nowrap">
-                                <a href="/device-usages/{{ $u.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                {{ if eq $.role "admin" }}
-                                <a href="/device-usages/{{ $u.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
-                                    onclick="confirmDelete({message:'Hapus data pemakaian ini?', formId:'del-usage-{{ $u.ID }}'})">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                                <form id="del-usage-{{ $u.ID }}" method="POST" action="/device-usages/{{ $u.ID }}/delete" class="d-none"></form>
-                                {{ end }}
+                                <span class="batch-mode-off">
+                                    <a href="/device-usages/{{ $u.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {{ if eq $.role "admin" }}
+                                    <a href="/device-usages/{{ $u.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                        onclick="confirmDelete({message:'Hapus data pemakaian ini?', formId:'del-usage-{{ $u.ID }}'})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <form id="del-usage-{{ $u.ID }}" method="POST" action="/device-usages/{{ $u.ID }}/delete" class="d-none"></form>
+                                    {{ end }}
+                                </span>
+                                <span class="batch-mode-on d-none">
+                                    <input type="checkbox" class="batch-check form-check-input" value="{{ $u.ID }}">
+                                </span>
                             </td>
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="11" class="text-center text-muted">Belum ada data pemakaian</td>
+                            <td colspan="10" class="text-center text-muted">Belum ada data pemakaian</td>
                         </tr>
                         {{ end }}
                     </tbody>

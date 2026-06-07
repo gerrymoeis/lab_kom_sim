@@ -9,9 +9,6 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
-            <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
-                <i class="bi bi-check-square"></i> Pilih
-            </button>
             <a href="/device-loans/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Peminjaman
             </a>
@@ -81,7 +78,7 @@
                 <table class="table table-hover align-middle" data-batch-url="/device-loans/batch-delete">
                     <thead class="table-light">
                         <tr>
-                            <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th>#</th>
+                            <th>#</th>
                             <th>Asset Code</th>
                             <th>Tipe Perangkat</th>
                             <th>Peminjam</th>
@@ -90,13 +87,12 @@
                             <th>Tgl Dikembalikan</th>
                             <th>Status</th>
                             <th>Perpanjangan</th>
-                            <th class="batch-action-col">Aksi</th>
+                            <th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th>
                         </tr>
                     </thead>
                     <tbody>
                         {{ range $i, $l := .loans }}
                         <tr class="{{ if eq $l.ComputedStatus "overdue" }}table-danger{{ else if eq $l.ComputedStatus "returned" }}table-light{{ end }}" data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceAssetCode }} - {{ $l.BorrowerName }}">
-                            <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $l.DeviceAssetCode }}</code></td>
                             <td>{{ $l.DeviceTypeName }}</td>
@@ -115,22 +111,27 @@
                             </td>
                             <td class="text-center">{{ if $l.ExtensionCount }}<span class="badge bg-info">{{ $l.ExtensionCount }}x</span>{{ else }}-{{ end }}</td>
                             <td class="batch-action-col text-nowrap">
-                                <a href="/device-loans/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="/device-loans/{{ $l.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                {{ if and (eq $.role "admin") (ne $l.ComputedStatus "returned") }}
-                                <button type="button" class="btn btn-sm btn-success me-1" title="Perpanjang" onclick="openExtendModal({{ $l.ID }}, '{{ (localTime $l.ReturnDate).Format "2006-01-02" }}', '{{ (localTime $l.ReturnDate).Format "02/01/2006" }}')">
-                                    <i class="bi bi-arrow-repeat"></i>
-                                </button>
-                                {{ end }}
-                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
-                                    onclick="confirmDelete({message:'Hapus peminjaman ini?', formId:'del-{{ $l.ID }}'})">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                                <form id="del-{{ $l.ID }}" method="POST" action="/device-loans/{{ $l.ID }}/delete" class="d-none"></form>
+                                <span class="batch-mode-off">
+                                    <a href="/device-loans/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="/device-loans/{{ $l.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {{ if and (eq $.role "admin") (ne $l.ComputedStatus "returned") }}
+                                    <button type="button" class="btn btn-sm btn-success me-1" title="Perpanjang" onclick="openExtendModal({{ $l.ID }}, '{{ (localTime $l.ReturnDate).Format "2006-01-02" }}', '{{ (localTime $l.ReturnDate).Format "02/01/2006" }}')">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                    {{ end }}
+                                    <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                        onclick="confirmDelete({message:'Hapus peminjaman ini?', formId:'del-{{ $l.ID }}'})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <form id="del-{{ $l.ID }}" method="POST" action="/device-loans/{{ $l.ID }}/delete" class="d-none"></form>
+                                </span>
+                                <span class="batch-mode-on d-none">
+                                    <input type="checkbox" class="batch-check form-check-input" value="{{ $l.ID }}">
+                                </span>
                             </td>
                         </tr>
                         {{ else }}

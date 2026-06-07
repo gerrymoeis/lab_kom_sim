@@ -9,9 +9,6 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
-            <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
-                <i class="bi bi-check-square"></i> Pilih
-            </button>
             <a href="/pc/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah PC Baru
             </a>
@@ -83,19 +80,18 @@
                 <table class="table table-hover" data-batch-url="/pc/batch-delete">
                     <thead class="table-light">
                         <tr>
-                            <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th>No. PC</th>
+                            <th>No. PC</th>
                             <th>S/N</th>
                             <th>Merek & Model</th>
                             <th>Posisi</th>
                             <th>Status</th>
                             <th>Spesifikasi</th>
-                            <th class="batch-action-col">Aksi</th>
+                            <th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th>
                         </tr>
                     </thead>
                     <tbody>
                         {{ range .pcs }}
                         <tr data-batch-id="{{ .Label }}" data-batch-label="{{ .Label }}">
-                            <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                             <td><strong>{{ .Label }}</strong></td>
                             <td>{{ if .SerialNumber }}<small><code>{{ .SerialNumber }}</code></small>{{ else }}-{{ end }}</td>
                             <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else }}-{{ end }}</td>
@@ -110,6 +106,7 @@
                                 </small>
                             </td>
                             <td class="batch-action-col text-nowrap">
+                                <span class="batch-mode-off">
                                 <a href="/pc/{{ .Label }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
@@ -123,11 +120,15 @@
                                 </button>
                                 <form id="del-pc-{{ .Label }}" method="POST" action="/pc/{{ .Label }}/delete" class="d-none"></form>
                                 {{ end }}
+                                </span>
+                                <span class="batch-mode-on d-none">
+                                    <input type="checkbox" class="batch-check form-check-input" value="{{ .Label }}">
+                                </span>
                             </td>
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="8" class="text-center text-muted">Belum ada data PC</td>
+                            <td colspan="7" class="text-center text-muted">Belum ada data PC</td>
                         </tr>
                         {{ end }}
                     </tbody>
