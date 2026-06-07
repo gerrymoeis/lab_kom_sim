@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
@@ -133,4 +135,16 @@ func (h *Handler) errHTML(c *gin.Context, msg string) {
 
 func (h *Handler) redirectWithError(c *gin.Context, url, msg string) {
 	c.Redirect(http.StatusFound, url+"?error="+msg)
+}
+
+func parseInt64IDs(ids []string) ([]int, error) {
+	result := make([]int, 0, len(ids))
+	for _, id := range ids {
+		n, err := strconv.Atoi(id)
+		if err != nil {
+			return nil, fmt.Errorf("ID tidak valid: %s", id)
+		}
+		result = append(result, n)
+	}
+	return result, nil
 }
