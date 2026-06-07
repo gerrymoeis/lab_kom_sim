@@ -99,16 +99,22 @@ func (s *ScheduleService) ListPaginated(search, dayFilter, sortBy string, page, 
 }
 
 func (s *ScheduleService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	items := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
+		info := map[string]any{"id": id}
+		if cn, err := s.repo.GetCourseName(id); err == nil {
+			info["course_name"] = cn
+		}
 		if err := s.repo.Delete(id); err != nil {
 			s.log.LogDelete(actorID, actorUsername, actorRole, "schedule", 0,
-				map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+				map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 				ipAddress, userAgent, err.Error())
 			return err
 		}
+		items = append(items, info)
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "schedule", 0,
-		map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+		map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 		ipAddress, userAgent)
 	return nil
 }

@@ -117,16 +117,23 @@ func (s *DeviceUsageService) DeleteUsage(id, actorID int, actorUsername, actorRo
 }
 
 func (s *DeviceUsageService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	items := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
+		info := map[string]any{"id": id}
+		if row, err := s.repo.GetByID(id); err == nil {
+			info["user_name"] = row.UserName
+			info["device_asset_code"] = row.DeviceAssetCode
+		}
 		if err := s.repo.Delete(id); err != nil {
 			s.log.LogDelete(actorID, actorUsername, actorRole, "device_usage", 0,
-				map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+				map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 				ipAddress, userAgent, err.Error())
 			return err
 		}
+		items = append(items, info)
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "device_usage", 0,
-		map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+		map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 		ipAddress, userAgent)
 	return nil
 }

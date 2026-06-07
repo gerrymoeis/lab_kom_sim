@@ -153,16 +153,22 @@ func (s *SoftwareService) Delete(id int, actorID int, actorUsername, actorRole, 
 }
 
 func (s *SoftwareService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	items := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
+		info := map[string]any{"id": id}
+		if name, err := s.repo.GetName(id); err == nil {
+			info["name"] = name
+		}
 		if err := s.repo.Delete(id); err != nil {
 			s.log.LogDelete(actorID, actorUsername, actorRole, "software", 0,
-				map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+				map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 				ipAddress, userAgent, err.Error())
 			return err
 		}
+		items = append(items, info)
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "software", 0,
-		map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+		map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 		ipAddress, userAgent)
 	return nil
 }
