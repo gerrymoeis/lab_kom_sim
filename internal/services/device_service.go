@@ -236,3 +236,12 @@ func (s *DeviceService) DeleteDevice(id int, actorID int, actorUsername, actorRo
 		oldVals, ipAddress, userAgent)
 	return nil
 }
+
+func (s *DeviceService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, id := range ids {
+		if err := s.DeleteDevice(id, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+			return err
+		}
+	}
+	return nil
+}

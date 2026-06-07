@@ -221,6 +221,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/pc/:label/edit", h.PCEditPage)
 		protected.POST("/pc/:label/edit", h.PCEdit)
 		protected.POST("/pc/:label/delete", h.PCDelete)
+		protected.POST("/pc/batch-delete", h.PCBatchDelete)
 
 		protected.GET("/devices", h.DeviceList)
 		protected.GET("/devices/export", h.DeviceExport)
@@ -231,15 +232,18 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/devices/:slug/edit", h.DeviceEditPage)
 		protected.POST("/devices/:slug/edit", h.DeviceEdit)
 		protected.POST("/devices/:slug/delete", h.DeviceDelete)
+		protected.POST("/devices/batch-delete", h.DeviceBatchDelete)
 
 		protected.GET("/device-types/:slug", h.DeviceTypeDetail)
 		protected.GET("/device-types/:slug/edit", h.DeviceTypeEditPage)
 		protected.POST("/device-types/:slug/edit", h.DeviceTypeEdit)
 		protected.POST("/device-types/:slug/delete", h.DeviceTypeDelete)
+		protected.POST("/device-types/batch-delete", h.DeviceTypeBatchDelete)
 		protected.GET("/categories/:slug", h.CategoryDetail)
 		protected.GET("/categories/:slug/edit", h.CategoryEditPage)
 		protected.POST("/categories/:slug/edit", h.CategoryEdit)
 		protected.POST("/categories/:slug/delete", h.CategoryDelete)
+		protected.POST("/categories/batch-delete", h.CategoryBatchDelete)
 
 		protected.GET("/device-loans", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=loans") })
 		protected.GET("/device-loans/create", h.DeviceLoanCreatePage)
@@ -248,6 +252,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/device-loans/:id/edit", h.DeviceLoanEditPage)
 		protected.POST("/device-loans/:id/edit", h.DeviceLoanEdit)
 		protected.POST("/device-loans/:id/delete", h.DeviceLoanDelete)
+		protected.POST("/device-loans/batch-delete", h.DeviceLoanBatchDelete)
 
 		protected.GET("/device-usages", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=usages") })
 		protected.GET("/device-usages/create", h.DeviceUsageCreatePage)
@@ -256,6 +261,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/device-usages/:id/edit", h.DeviceUsageEditPage)
 		protected.POST("/device-usages/:id/edit", h.DeviceUsageEdit)
 		protected.POST("/device-usages/:id/delete", h.DeviceUsageDelete)
+		protected.POST("/device-usages/batch-delete", h.DeviceUsageBatchDelete)
 		protected.POST("/device-loans/:id/extend", h.DeviceLoanExtend)
 		protected.GET("/installations", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=installations") })
 		protected.GET("/installations/create", h.DeviceInstallationCreatePage)
@@ -264,12 +270,14 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/installations/:id/edit", h.DeviceInstallationEditPage)
 		protected.POST("/installations/:id/edit", h.DeviceInstallationEdit)
 		protected.POST("/installations/:id/delete", h.DeviceInstallationDelete)
+		protected.POST("/installations/batch-delete", h.DeviceInstallationBatchDelete)
 		protected.GET("/schedules", h.ScheduleList)
 		protected.GET("/schedules/create", h.ScheduleCreatePage)
 		protected.POST("/schedules/create", h.ScheduleCreate)
 		protected.GET("/schedules/:id/edit", h.ScheduleEditPage)
 		protected.POST("/schedules/:id/edit", h.ScheduleEdit)
 		protected.POST("/schedules/:id/delete", h.ScheduleDelete)
+		protected.POST("/schedules/batch-delete", h.ScheduleBatchDelete)
 
 		protected.GET("/software", h.SoftwareList)
 		protected.POST("/software/create", h.SoftwareCreate)
@@ -279,6 +287,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/software/:slug/edit", h.SoftwareEditPage)
 		protected.POST("/software/:slug/edit", h.SoftwareEdit)
 		protected.POST("/software/:slug/delete", h.SoftwareDelete)
+		protected.POST("/software/batch-delete", h.SoftwareBatchDelete)
 
 		protected.GET("/logbook", h.LogbookList)
 		protected.GET("/logbook/upload", h.LogbookUploadPage)
@@ -292,6 +301,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		protected.GET("/logbook/:id/edit", h.LogbookEditPage)
 		protected.POST("/logbook/:id/edit", h.LogbookEdit)
 		protected.POST("/logbook/:id/delete", h.LogbookDelete)
+		protected.POST("/logbook/batch-delete", h.LogbookBatchDelete)
 
 		admin := protected.Group("/admin")
 		admin.Use(middleware.AdminRequired())
@@ -303,6 +313,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 			admin.GET("/users/:username/edit", h.UserEditPage)
 			admin.POST("/users/:username/edit", h.UserEdit)
 			admin.POST("/users/:username/delete", h.UserDelete)
+			admin.POST("/users/batch-delete", h.UserBatchDelete)
 			admin.GET("/activity-logs", h.ActivityLogList)
 			admin.GET("/activity-logs/export", h.ActivityLogExport)
 		}

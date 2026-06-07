@@ -238,3 +238,20 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	}
 	c.Redirect(http.StatusFound, "/profile?success=Password berhasil diubah")
 }
+
+func (h *Handler) UserBatchDelete(c *gin.Context) {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.IDs) == 0 {
+		h.errJSON(c, http.StatusBadRequest, "Tidak ada item yang dipilih")
+		return
+	}
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	if err := h.userService.BatchDeleteUser(uid, req.IDs, u, r, ip, ua); err != nil {
+		h.errJSON(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
