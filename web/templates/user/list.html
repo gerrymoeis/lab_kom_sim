@@ -8,9 +8,6 @@
         </div>
         <div class="col-md-6 text-end">
             {{ template "layout/header_actions_start.html" $ }}
-            <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
-                <i class="bi bi-check-square"></i> Pilih
-            </button>
             <a href="/admin/users/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah User
             </a>
@@ -62,18 +59,17 @@
                 <table class="table table-hover" data-batch-url="/admin/users/batch-delete">
                     <thead class="table-light">
                         <tr>
-                            <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th>#</th>
+                            <th>#</th>
                             <th>Username</th>
                             <th>Nama Lengkap</th>
                             <th>Role</th>
                             <th>Dibuat</th>
-                            <th class="batch-action-col">Aksi</th>
+                            <th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th>
                         </tr>
                     </thead>
                     <tbody>
                         {{ range $i, $u := .users }}
                         <tr data-batch-id="{{ .Username }}" data-batch-label="{{ .Username }} - {{ .FullName }}">
-                            <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                             <td>{{ add $i $.startRow }}</td>
                             <td><strong>{{ if canAccessUser $.username .Username }}<a href="/admin/users/{{ .Username }}" class="text-decoration-none">{{ end }}{{ .Username }}{{ if canAccessUser $.username .Username }}</a>{{ end }}</strong></td>
                             <td>
@@ -89,6 +85,7 @@
                             </td>
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td class="batch-action-col text-nowrap">
+                                <span class="batch-mode-off">
                                 {{ if canAccessUser $.username .Username }}
                                 <a href="/admin/users/{{ .Username }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
@@ -106,11 +103,15 @@
                                 {{ else }}
                                 -
                                 {{ end }}
+                                </span>
+                                <span class="batch-mode-on d-none">
+                                    <input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}">
+                                </span>
                             </td>
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="7" class="text-center text-muted">Belum ada user</td>
+                            <td colspan="6" class="text-center text-muted">Belum ada user</td>
                         </tr>
                         {{ end }}
                     </tbody>

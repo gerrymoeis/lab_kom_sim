@@ -47,11 +47,7 @@
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-box"></i> Tipe Perangkat dalam Kategori Ini</h5>
-            <div>
-                <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
-                    <i class="bi bi-check-square"></i> Pilih
-                </button>
-            </div>
+            <div></div>
         </div>
         <div class="card-body">
             {{ if gt (len .deviceTypes) 0 }}
@@ -59,18 +55,17 @@
                 <table class="table table-hover align-middle" data-batch-url="/device-types/batch-delete">
                     <thead class="table-light">
                         <tr>
-                            <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th>Nama Tipe</th>
+                            <th>Nama Tipe</th>
                             <th>Brand</th>
                             <th>Model</th>
                             <th>Prefix</th>
                             <th>Tipe Penggunaan</th>
-                            <th class="batch-action-col">Aksi</th>
+                            <th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th>
                         </tr>
                     </thead>
                     <tbody>
                         {{ range $t := .deviceTypes }}
                         <tr data-batch-id="{{ $t.ID }}" data-batch-label="{{ $t.Name }} ({{ $t.AssetCodePrefix }})">
-                            <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                             <td><strong>{{ $t.Name }}</strong></td>
                             <td>{{ if $t.Brand }}{{ $t.Brand }}{{ else }}-{{ end }}</td>
                             <td>{{ if $t.Model }}{{ $t.Model }}{{ else }}-{{ end }}</td>
@@ -85,6 +80,7 @@
                                 {{ end }}
                             </td>
                             <td class="batch-action-col text-nowrap">
+                                <span class="batch-mode-off">
                                 <a href="/device-types/{{ $t.AssetCodePrefix | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
@@ -96,6 +92,10 @@
                                     <i class="bi bi-trash"></i>
                                 </button>
                                 <form id="del-type-{{ $t.ID }}" method="POST" action="/device-types/{{ $t.AssetCodePrefix | lower }}/delete" class="d-none"></form>
+                                </span>
+                                <span class="batch-mode-on d-none">
+                                    <input type="checkbox" class="batch-check form-check-input" value="{{ $t.ID }}">
+                                </span>
                             </td>
                         </tr>
                         {{ end }}
