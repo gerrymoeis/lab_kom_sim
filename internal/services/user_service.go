@@ -199,41 +199,44 @@ func (s *UserService) ChangePassword(userID int, oldPassword, newPassword, confi
 }
 
 func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, actorUsername, actorRole, ipAddress, userAgent string) error {
+	items := make([]map[string]string, 0, len(targetUsernames))
 	for _, username := range targetUsernames {
 		if actorUsername == username {
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
-				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "usernames": targetUsernames},
+				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
 				ipAddress, userAgent, ErrSelfDelete.Error())
 			return ErrSelfDelete
 		}
 		target, err := s.GetByUsername(username)
 		if err != nil {
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
-				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "usernames": targetUsernames},
-				ipAddress, userAgent, "user "+username+" tidak ditemukan")
+				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
+				ipAddress, userAgent, "user "+username+" not found")
 			return fmt.Errorf("user %s tidak ditemukan", username)
 		}
 		if target.Username == "admin" || target.Username == "rekan" {
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
-				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "usernames": targetUsernames},
+				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
 				ipAddress, userAgent, ErrProtectedDelete.Error())
 			return ErrProtectedDelete
 		}
 		if actorUsername != "admin" {
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
-				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "usernames": targetUsernames},
+				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
 				ipAddress, userAgent, ErrDeleteNotAllowed.Error())
 			return ErrDeleteNotAllowed
 		}
+		info := map[string]string{"username": target.Username, "full_name": target.FullName}
 		if err := s.userRepo.Delete(target.ID); err != nil {
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
-				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "usernames": targetUsernames},
+				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
 				ipAddress, userAgent, err.Error())
 			return err
 		}
+		items = append(items, info)
 	}
 	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
-		map[string]any{"action": "batch_delete", "count": len(targetUsernames), "usernames": targetUsernames},
+		map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
 		ipAddress, userAgent)
 	return nil
 }
