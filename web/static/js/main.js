@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ ids: ids })
             }).then(function(r) {
                 if (r.ok) {
+                    try { sessionStorage.removeItem(BatchSelector._storageKey()); } catch(e) {}
                     window.location.reload();
                 } else {
                     return r.json().then(function(d) { throw new Error(d.error || 'Gagal menghapus'); }).catch(function() {

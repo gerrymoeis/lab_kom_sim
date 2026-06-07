@@ -74,6 +74,7 @@
                                 <form id="del-{{ $s.ID }}" method="POST" action="/schedules/{{ $s.ID }}/delete" class="d-none"></form>
                             </span>
                         </td>
+                        <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $s.ID }}"></span></td>
                         {{ end }}
                     </tr>
                     {{ else }}

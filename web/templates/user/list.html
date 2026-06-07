@@ -105,7 +105,7 @@
                                 {{ end }}
                                 </span>
                             </td>
-                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}"></span></td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none">{{ if and (ne .Username "admin") (ne .Username "rekan") }}<input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}">{{ end }}</span></td>
                         </tr>
                         {{ else }}
                         <tr>
