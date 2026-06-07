@@ -420,6 +420,7 @@ var BatchSelector = {
         while (parent && parent !== document.body) {
             if (parent.classList && parent.classList.contains('d-none')) {
                 parent.classList.remove('d-none');
+                parent.setAttribute('data-batch-expanded', 'true');
                 var prev = parent.previousElementSibling;
                 if (prev) {
                     var chevron = prev.querySelector('.chevron');
@@ -518,6 +519,15 @@ var BatchSelector = {
             container.querySelectorAll('.batch-mode-off').forEach(function(el) { el.classList.remove('d-none'); });
             container.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.add('d-none'); });
         }
+        document.querySelectorAll('[data-batch-expanded]').forEach(function(el) {
+            el.classList.add('d-none');
+            el.removeAttribute('data-batch-expanded');
+            var prev = el.previousElementSibling;
+            if (prev) {
+                var chevron = prev.querySelector('.chevron');
+                if (chevron) chevron.className = 'bi bi-chevron-right me-2 chevron fs-6';
+            }
+        });
         this._hideToolbar();
         this.activeTables = [];
         this.isGroupMode = false;
