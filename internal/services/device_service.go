@@ -239,9 +239,15 @@ func (s *DeviceService) DeleteDevice(id int, actorID int, actorUsername, actorRo
 
 func (s *DeviceService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	for _, id := range ids {
-		if err := s.DeleteDevice(id, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+		if err := s.deviceRepo.Delete(id); err != nil {
+			s.log.LogDelete(actorID, actorUsername, actorRole, "device", 0,
+				map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+				ipAddress, userAgent, err.Error())
 			return err
 		}
 	}
+	s.log.LogDelete(actorID, actorUsername, actorRole, "device", 0,
+		map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+		ipAddress, userAgent)
 	return nil
 }
