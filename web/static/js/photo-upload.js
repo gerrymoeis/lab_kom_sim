@@ -53,6 +53,7 @@ var serialFileRef = null;
 var frontFileRef = null;
 var serialPreviewUrl = null;
 var frontPreviewUrl = null;
+var uploadingCount = 0;
 
 document.addEventListener('DOMContentLoaded', function () {
     setupFileHandlers();
@@ -163,8 +164,9 @@ function storeFileReference(fileRef, type) {
     }
     hiddenInput.value = fileRef;
 
+    uploadingCount = Math.max(0, uploadingCount - 1);
     var submitBtn = document.getElementById('submitBtn');
-    if (submitBtn) submitBtn.disabled = false;
+    if (submitBtn && uploadingCount === 0) submitBtn.disabled = false;
 }
 
 function showLoadingState(type) {
@@ -175,6 +177,7 @@ function showLoadingState(type) {
     if (area) area.classList.remove('d-none');
     if (loader) loader.classList.remove('d-none');
     if (img) img.style.display = 'none';
+    uploadingCount++;
     var submitBtn = document.getElementById('submitBtn');
     if (submitBtn) submitBtn.disabled = true;
 }
@@ -187,8 +190,9 @@ function showError(type, message) {
     if (errEl) { errEl.textContent = message; errEl.classList.remove('d-none'); }
     if (loader) loader.classList.add('d-none');
     if (area) area.classList.remove('d-none');
+    uploadingCount = Math.max(0, uploadingCount - 1);
     var submitBtn = document.getElementById('submitBtn');
-    if (submitBtn) submitBtn.disabled = false;
+    if (submitBtn && uploadingCount === 0) submitBtn.disabled = false;
 }
 
 function clearOtherInput(type, source) {
@@ -218,9 +222,6 @@ async function clearImage(type) {
     if (previewArea) previewArea.classList.add('d-none');
     if (loader) loader.classList.add('d-none');
     if (errEl) errEl.classList.add('d-none');
-
-    var submitBtn = document.getElementById('submitBtn');
-    if (submitBtn) submitBtn.disabled = true;
 
     if (fileRef) {
         try {
