@@ -175,6 +175,8 @@ function showLoadingState(type) {
     if (area) area.classList.remove('d-none');
     if (loader) loader.classList.remove('d-none');
     if (img) img.style.display = 'none';
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = true;
 }
 
 function showError(type, message) {
@@ -185,6 +187,8 @@ function showError(type, message) {
     if (errEl) { errEl.textContent = message; errEl.classList.remove('d-none'); }
     if (loader) loader.classList.add('d-none');
     if (area) area.classList.remove('d-none');
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = false;
 }
 
 function clearOtherInput(type, source) {

@@ -105,7 +105,7 @@
                         <input type="hidden" id="photo_file_ref" name="photo_file_ref" value="">
 
                         <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
-                            <button type="submit" class="btn btn-warning">
+                            <button type="submit" id="submitBtn" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
                             <a href="/devices" class="btn btn-secondary">
@@ -164,6 +164,8 @@ async function handlePhotoSelect(file, source) {
             photoFileRef = result.file_ref;
             document.getElementById('photo_file_ref').value = result.file_ref;
             document.getElementById('photo_' + source).value = '';
+            var submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) submitBtn.disabled = false;
         } else {
             showError(result.message || 'Gagal upload');
         }
@@ -181,6 +183,8 @@ function showLoadingState() {
     loader.classList.remove('d-none');
     if (img) img.classList.add('d-none');
     if (err) err.classList.add('d-none');
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = true;
 }
 
 function showLocalPreview(url) {
@@ -201,6 +205,8 @@ function showError(message) {
     if (err) { err.textContent = message; err.classList.remove('d-none'); }
     loader.classList.add('d-none');
     area.classList.remove('d-none');
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = false;
 }
 
 function clearOtherInput(source) {
