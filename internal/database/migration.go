@@ -809,7 +809,7 @@ func normalizeSchedules(db *DB) error {
 		}
 		newCourse := toTitleCaseWithAbbr(course)
 		newLecturer := toTitleCaseWithAbbr(lecturer)
-		newClass := toTitleCaseWithAbbr(class)
+		newClass := strings.ToUpper(strings.TrimSpace(class))
 		newNotes := sanitizeText(notes)
 		if newCourse != course || newLecturer != lecturer || newClass != class || newNotes != notes {
 			db.Exec("UPDATE course_schedules SET course_name = ?, lecturer = ?, class = ?, notes = ? WHERE id = ?",
