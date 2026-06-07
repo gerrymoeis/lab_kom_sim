@@ -180,16 +180,23 @@ func (s *DeviceLoanService) DeleteLoan(id, actorID int, actorUsername, actorRole
 }
 
 func (s *DeviceLoanService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	items := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
+		info := map[string]any{"id": id}
+		if row, err := s.loanRepo.GetByID(id); err == nil {
+			info["borrower_name"] = row.BorrowerName
+			info["device_asset_code"] = row.DeviceAssetCode
+		}
 		if err := s.loanRepo.Delete(id); err != nil {
 			s.log.LogDelete(actorID, actorUsername, actorRole, "device_loan", 0,
-				map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+				map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 				ipAddress, userAgent, err.Error())
 			return err
 		}
+		items = append(items, info)
 	}
 	s.log.LogDelete(actorID, actorUsername, actorRole, "device_loan", 0,
-		map[string]any{"action": "batch_delete", "count": len(ids), "ids": ids},
+		map[string]any{"action": "batch_delete", "count": len(ids), "items": items},
 		ipAddress, userAgent)
 	return nil
 }
