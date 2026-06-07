@@ -9,9 +9,6 @@
     <div class="col-md-6 text-end">
         {{ if eq .role "admin" }}
         {{ template "layout/header_actions_start.html" $ }}
-        <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
-            <i class="bi bi-check-square"></i> Pilih
-        </button>
         <a href="/schedules/create" class="btn btn-primary flex-grow-1"><i class="bi bi-plus-circle"></i> Tambah Jadwal</a>
         {{ template "layout/header_actions_end.html" }}
         {{ end }}
@@ -54,14 +51,13 @@
             <table class="table table-hover align-middle" data-batch-url="/schedules/batch-delete">
                 <thead class="table-light">
                     <tr>
-                        <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th>#</th><th>Hari</th><th>Mata Kuliah</th><th>Kelas</th><th>Dosen</th><th>Jam Mulai</th><th>Jam Selesai</th>
-                        {{ if eq .role "admin" }}<th class="batch-action-col">Aksi</th>{{ end }}
+                        <th>#</th><th>Hari</th><th>Mata Kuliah</th><th>Kelas</th><th>Dosen</th><th>Jam Mulai</th><th>Jam Selesai</th>
+                        {{ if eq .role "admin" }}<th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th>{{ end }}
                     </tr>
                 </thead>
                 <tbody>
                     {{ range $i, $s := .schedules }}
                     <tr class="{{ if eq $s.Day $.today }}table-primary{{ end }}" data-day="{{ $s.Day }}" data-course="{{ $s.CourseName }}" data-batch-id="{{ $s.ID }}" data-batch-label="{{ $s.CourseName }} - {{ $s.Day }} {{ $s.TimeStart }}">
-                        <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                         <td>{{ add $i $.startRow }}</td>
                         <td>{{ if eq $s.Day $.today }}<span class="badge bg-primary">{{ $s.Day }}</span>{{ else }}{{ $s.Day }}{{ end }}</td>
                         <td><strong>{{ $s.CourseName }}</strong></td>
@@ -71,10 +67,15 @@
                         <td>{{ $s.TimeEnd }}</td>
                         {{ if eq $.role "admin" }}
                         <td class="batch-action-col text-nowrap">
-                            <a href="/schedules/{{ $s.ID }}/edit" class="btn btn-sm btn-warning me-1"><i class="bi bi-pencil"></i></a>
-                            <button type="button" class="btn btn-sm btn-danger"
-                                onclick="confirmDelete({message:'Hapus jadwal ini?', formId:'del-{{ $s.ID }}'})"><i class="bi bi-trash"></i></button>
-                            <form id="del-{{ $s.ID }}" method="POST" action="/schedules/{{ $s.ID }}/delete" class="d-none"></form>
+                            <span class="batch-mode-off">
+                                <a href="/schedules/{{ $s.ID }}/edit" class="btn btn-sm btn-warning me-1"><i class="bi bi-pencil"></i></a>
+                                <button type="button" class="btn btn-sm btn-danger"
+                                    onclick="confirmDelete({message:'Hapus jadwal ini?', formId:'del-{{ $s.ID }}'})"><i class="bi bi-trash"></i></button>
+                                <form id="del-{{ $s.ID }}" method="POST" action="/schedules/{{ $s.ID }}/delete" class="d-none"></form>
+                            </span>
+                            <span class="batch-mode-on d-none">
+                                <input type="checkbox" class="batch-check form-check-input" value="{{ $s.ID }}">
+                            </span>
                         </td>
                         {{ end }}
                     </tr>

@@ -7,9 +7,6 @@
     <div class="col-md-6 text-end">
         {{ if eq .role "admin" }}
         {{ template "layout/header_actions_start.html" $ }}
-        <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
-            <i class="bi bi-check-square"></i> Pilih
-        </button>
         <button type="button" class="btn btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#addSoftwareModal"><i class="bi bi-plus-circle"></i> Tambah Software</button>
         <a href="/software/export" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
         {{ template "layout/header_actions_end.html" }}
@@ -53,27 +50,31 @@
         <div class="table-responsive">
             <table class="table table-hover" data-batch-url="/software/batch-delete">
                 <thead class="table-light">
-                    <tr><th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th>#</th><th>Nama Software</th><th>Kategori</th><th>Deskripsi</th><th>PC Terinstall</th><th class="batch-action-col">Aksi</th></tr>
+                    <tr><th>#</th><th>Nama Software</th><th>Kategori</th><th>Deskripsi</th><th>PC Terinstall</th><th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th></tr>
                 </thead>
                 <tbody>
                     {{ range $i, $s := .catalog }}
                     <tr data-batch-id="{{ .ID }}" data-batch-label="{{ .Name }}">
-                        <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                         <td>{{ add $i $.startRow }}</td>
                         <td><strong>{{ .Name }}</strong></td>
                         <td>{{ if eq .Category "required" }}<span class="badge bg-primary">Required</span>{{ else }}<span class="badge bg-secondary">Other</span>{{ end }}</td>
                         <td>{{ .Description }}</td>
                         <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
                         <td class="batch-action-col text-nowrap">
-                            <a href="/software/{{ .Slug }}" class="btn btn-sm btn-info me-1" title="Detail"><i class="bi bi-eye"></i></a>
-                            <a href="/software/{{ .Slug }}/edit" class="btn btn-sm btn-warning me-1" title="Edit"><i class="bi bi-pencil"></i></a>
-                            <button type="button" class="btn btn-sm btn-danger" title="Hapus"
-                                onclick="confirmDelete({message:'Hapus {{ .Name }}?', formId:'del-{{ .ID }}'})"><i class="bi bi-trash"></i></button>
-                            <form id="del-{{ .ID }}" method="POST" action="/software/{{ .Slug }}/delete" class="d-none"></form>
+                            <span class="batch-mode-off">
+                                <a href="/software/{{ .Slug }}" class="btn btn-sm btn-info me-1" title="Detail"><i class="bi bi-eye"></i></a>
+                                <a href="/software/{{ .Slug }}/edit" class="btn btn-sm btn-warning me-1" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Hapus {{ .Name }}?', formId:'del-{{ .ID }}'})"><i class="bi bi-trash"></i></button>
+                                <form id="del-{{ .ID }}" method="POST" action="/software/{{ .Slug }}/delete" class="d-none"></form>
+                            </span>
+                            <span class="batch-mode-on d-none">
+                                <input type="checkbox" class="batch-check form-check-input" value="{{ .ID }}">
+                            </span>
                         </td>
                     </tr>
                     {{ else }}
-                    <tr><td colspan="7" class="text-center text-muted">Belum ada data software</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted">Belum ada data software</td></tr>
                     {{ end }}
                 </tbody>
             </table>

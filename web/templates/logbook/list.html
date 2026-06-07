@@ -9,9 +9,6 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
-            <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
-                <i class="bi bi-check-square"></i> Pilih
-            </button>
             <a href="/logbook/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Manual
             </a>
@@ -88,7 +85,7 @@
                 <table class="table table-hover" data-batch-url="/logbook/batch-delete">
                     <thead class="table-light">
                         <tr>
-                            <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th class="th-w-50">#</th>
+                            <th class="th-w-50">#</th>
                             <th>Tanggal</th>
                             <th>Nama Mahasiswa</th>
                             <th>NIM</th>
@@ -97,14 +94,13 @@
                             <th>Jam Keluar</th>
                             <th class="th-w-120">Indikasi</th>
                             {{ if eq .role "admin" }}
-                            <th class="batch-action-col">Aksi</th>
+                            <th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th>
                             {{ end }}
                         </tr>
                     </thead>
                     <tbody>
                         {{ range $i, $entry := .entries }}
                         <tr data-batch-id="{{ $entry.ID }}" data-batch-label="{{ $entry.StudentName }} - {{ $entry.NIM }} ({{ ($entry.Date).Format "02/01/2006" }})">
-                            <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td>{{ (localTime $entry.Date).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td><strong>{{ $entry.StudentName }}</strong></td>
@@ -134,23 +130,28 @@
                             </td>
                             {{ if eq $.role "admin" }}
                             <td class="batch-action-col text-nowrap">
-                                <a href="/logbook/{{ $entry.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="/logbook/{{ $entry.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
-                                    onclick="confirmDelete({message:'Yakin ingin menghapus entry ini?', formId:'del-log-{{ $entry.ID }}'})">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                                <form id="del-log-{{ $entry.ID }}" method="POST" action="/logbook/{{ $entry.ID }}/delete" class="d-none"></form>
+                                <span class="batch-mode-off">
+                                    <a href="/logbook/{{ $entry.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="/logbook/{{ $entry.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                        onclick="confirmDelete({message:'Yakin ingin menghapus entry ini?', formId:'del-log-{{ $entry.ID }}'})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <form id="del-log-{{ $entry.ID }}" method="POST" action="/logbook/{{ $entry.ID }}/delete" class="d-none"></form>
+                                </span>
+                                <span class="batch-mode-on d-none">
+                                    <input type="checkbox" class="batch-check form-check-input" value="{{ $entry.ID }}">
+                                </span>
                             </td>
                             {{ end }}
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="{{ if eq $.role "admin" }}10{{ else }}9{{ end }}" class="text-center text-muted py-4">
+                            <td colspan="{{ if eq $.role "admin" }}9{{ else }}8{{ end }}" class="text-center text-muted py-4">
                                 <i class="bi bi-inbox" style="font-size: 2rem;"></i>
                                 <p class="mt-2">Belum ada data logbook</p>
                             </td>
