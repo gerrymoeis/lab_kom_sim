@@ -80,12 +80,11 @@
                         <tr>
                             <th class="th-w-50">#</th>
                             <th>Asset Code</th>
-                            <th>Tipe Perangkat</th>
-                            <th>Kategori</th>
                             <th>Lokasi Instalasi</th>
-                            <th>Status</th>
                             <th>Tgl Mulai</th>
                             <th>Tgl Selesai</th>
+                            <th>Durasi (hari)</th>
+                            <th>Status</th>
                             <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                         </tr>
                     </thead>
@@ -94,9 +93,10 @@
                         <tr data-batch-id="{{ $inst.ID }}" data-batch-label="{{ $inst.DeviceAssetCode }} - {{ $inst.LocationInstalled }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $inst.DeviceAssetCode }}</code></td>
-                            <td>{{ $inst.DeviceTypeName }}</td>
-                            <td><span class="badge bg-secondary">{{ $inst.CategoryName }}</span></td>
                             <td>{{ $inst.LocationInstalled }}</td>
+                            <td>{{ if $inst.InstallationStartDate }}{{ (localTime $inst.InstallationStartDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
+                            <td>{{ if $inst.InstallationFinishDate }}{{ (localTime $inst.InstallationFinishDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
+                            <td class="text-center">{{ daysBetween $inst.InstallationStartDate $inst.InstallationFinishDate }}</td>
                             <td>
                                 {{ if $inst.InstallationFinishDate }}
                                 <span class="badge bg-success"><i class="bi bi-check-circle"></i> Selesai</span>
@@ -106,8 +106,6 @@
                                 <span class="badge bg-secondary"><i class="bi bi-info-circle"></i> Belum Mulai</span>
                                 {{ end }}
                             </td>
-                            <td>{{ if $inst.InstallationStartDate }}{{ (localTime $inst.InstallationStartDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
-                            <td>{{ if $inst.InstallationFinishDate }}{{ (localTime $inst.InstallationFinishDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                     <a href="/installations/{{ $inst.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
@@ -127,7 +125,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="10" class="text-center text-muted">Belum ada data instalasi</td>
+                            <td colspan="9" class="text-center text-muted">Belum ada data instalasi</td>
                         </tr>
                         {{ end }}
                     </tbody>
