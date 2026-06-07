@@ -2,7 +2,8 @@
 
 <div class="container mt-4">
     {{ template "layout/card_create.html" . }}
-        <form method="POST" action="/logbook/create">
+        {{ template "layout/alert.html" . }}
+        <form method="POST" action="/logbook/create" data-validate="true">
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="date" class="form-label">Tanggal <span class="text-danger">*</span></label>
@@ -11,15 +12,18 @@
                 <div class="col-md-6 mb-3">
                     <label for="nim" class="form-label">NIM <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="nim" name="nim"
-                           placeholder="Contoh: 24091397012" required>
-                    <small class="text-muted">Akan otomatis diformat uppercase tanpa spasi</small>
+                           placeholder="Contoh: 24091397012" required
+                           minlength="11" maxlength="11"
+                           pattern="[0-9]{11}"
+                           data-pattern-message="NIM harus tepat 11 digit angka">
+                    <small class="text-muted">Tepat 11 digit angka, akan otomatis uppercase tanpa spasi</small>
                 </div>
             </div>
 
             <div class="mb-3">
                 <label for="student_name" class="form-label">Nama Mahasiswa <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="student_name" name="student_name"
-                       placeholder="Contoh: Rian Dwi Hermawan" required>
+                       placeholder="Contoh: Rian Dwi Hermawan" required maxlength="100">
                 <small class="text-muted">Akan otomatis diformat Title Case dengan singkatan yang benar</small>
             </div>
 
@@ -38,7 +42,7 @@
             <div class="mb-3">
                 <label for="purpose" class="form-label">Keperluan</label>
                 <input type="text" class="form-control" id="purpose" name="purpose"
-                       placeholder="Contoh: Pemrograman Web Lanjut">
+                       placeholder="Contoh: Pemrograman Web Lanjut" maxlength="500">
                 <small class="text-muted">Akan otomatis diformat Title Case</small>
             </div>
 

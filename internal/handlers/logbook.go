@@ -382,9 +382,13 @@ func (h *Handler) LogbookCreate(c *gin.Context) {
 
 	var req CreateLogbookRequest
 	if err := c.ShouldBind(&req); err != nil {
+		errMsg := "Lengkapi data yang diperlukan"
+		if strings.TrimSpace(req.NIM) != "" && len(strings.ReplaceAll(req.NIM, " ", "")) != 11 {
+			errMsg = "NIM harus tepat 11 digit angka"
+		}
 		h.renderTemplate(c, http.StatusBadRequest, "logbook/create.html", gin.H{
 			"title": "Tambah Logbook", "currentPage": "logbook",
-			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
+			"username": username, "role": role, "error": errMsg,
 		})
 		return
 	}
@@ -429,9 +433,28 @@ func (h *Handler) LogbookEditPage(c *gin.Context) {
 
 func (h *Handler) LogbookEdit(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+	_, username, role, _ := h.user(c)
+
+	renderEditWithError := func(errMsg string) {
+		entry, err := h.logbookService.GetByID(id)
+		if err != nil {
+			h.errHTML(c, "Data tidak ditemukan")
+			return
+		}
+		h.renderTemplate(c, http.StatusBadRequest, "logbook/edit.html", gin.H{
+			"title": "Edit Logbook", "currentPage": "logbook",
+			"username": username, "role": role,
+			"entry": entry, "error": errMsg,
+		})
+	}
+
 	var req EditLogbookRequest
 	if err := c.ShouldBind(&req); err != nil {
-		h.errHTML(c, "Data tidak valid")
+		errMsg := "Lengkapi data yang diperlukan"
+		if strings.TrimSpace(req.NIM) != "" && len(strings.ReplaceAll(req.NIM, " ", "")) != 11 {
+			errMsg = "NIM harus tepat 11 digit angka"
+		}
+		renderEditWithError(errMsg)
 		return
 	}
 
@@ -442,7 +465,7 @@ func (h *Handler) LogbookEdit(c *gin.Context) {
 		Date: req.Date, StudentName: req.StudentName, NIM: req.NIM,
 		TimeIn: req.TimeIn, TimeOut: req.TimeOut, Purpose: req.Purpose,
 	}, uid, u, r, ip, ua); err != nil {
-		h.errHTML(c, "Gagal mengupdate data")
+		renderEditWithError("Gagal mengupdate data")
 		return
 	}
 	c.Redirect(http.StatusFound, "/logbook")
