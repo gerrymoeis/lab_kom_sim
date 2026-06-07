@@ -136,6 +136,10 @@ type CreateDeviceLoanRequest struct {
 }
 
 type EditDeviceLoanRequest struct {
+	BorrowerName     string `form:"borrower_name" binding:"required,max=100"`
+	BorrowerType     string `form:"borrower_type" binding:"omitempty,oneof=dosen mahasiswa staff lainnya"`
+	LoanDate         string `form:"loan_date" binding:"required"`
+	Purpose          string `form:"purpose" binding:"omitempty,max=500"`
 	Status           string `form:"status" binding:"required"`
 	ActualReturnDate string `form:"actual_return_date"`
 	Notes            string `form:"notes" binding:"omitempty,max=500"`

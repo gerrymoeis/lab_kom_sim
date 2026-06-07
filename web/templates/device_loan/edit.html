@@ -3,10 +3,7 @@
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
                     <div class="alert alert-info">
-                        <strong>Perangkat:</strong> {{ .assetCode }}<br>
-                        <strong>Peminjam:</strong> {{ .loan.BorrowerName }} ({{ .loan.BorrowerType }})<br>
-                        <strong>Tgl Pinjam:</strong> {{ (localTime .loan.LoanDate).Format "02/01/2006" }} {{ tzCode }}<br>
-                        <strong>Deadline Kembali:</strong> {{ (localTime .loan.ReturnDate).Format "02/01/2006" }}<br>
+                        <strong>Perangkat:</strong> {{ .assetCode }} ({{ .deviceTypeName }})
                     </div>
 
                     {{ if eq .loan.ComputedStatus "overdue" }}
@@ -17,34 +14,51 @@
                     {{ end }}
 
                     <form method="POST" action="/device-loans/{{ .loan.ID }}/edit">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="borrower_name" class="form-label required">Nama Peminjam</label>
+                                <input type="text" class="form-control" id="borrower_name" name="borrower_name" required maxlength="100" value="{{ .loan.BorrowerName }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="borrower_type" class="form-label">Tipe Peminjam</label>
+                                <select class="form-select" id="borrower_type" name="borrower_type">
+                                    <option value="dosen" {{ if eq .loan.BorrowerType "dosen" }}selected{{ end }}>Dosen</option>
+                                    <option value="mahasiswa" {{ if eq .loan.BorrowerType "mahasiswa" }}selected{{ end }}>Mahasiswa</option>
+                                    <option value="staff" {{ if eq .loan.BorrowerType "staff" }}selected{{ end }}>Staff</option>
+                                    <option value="lainnya" {{ if eq .loan.BorrowerType "lainnya" }}selected{{ end }}>Lainnya</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
-                            <label for="status" class="form-label">Status *</label>
+                            <label for="loan_date" class="form-label required">Tgl Pinjam</label>
+                            <input type="date" class="form-control" id="loan_date" name="loan_date" required value="{{ (localTime .loan.LoanDate).Format "2006-01-02" }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label required">Status</label>
                             <select class="form-select" id="status" name="status" required>
                                 <option value="active" {{ if eq .loan.ComputedStatus "active" }}selected{{ end }}>Masih Dipinjam</option>
                                 <option value="returned" {{ if eq .loan.ComputedStatus "returned" }}selected{{ end }}>Dikembalikan</option>
                                 <option value="overdue" {{ if eq .loan.ComputedStatus "overdue" }}selected{{ end }}>Terlambat</option>
                             </select>
-                            <small class="text-muted">Status saat ini: 
-                                {{ if eq .loan.ComputedStatus "overdue" }}
-                                    <span class="text-danger fw-bold">Terlambat</span>
-                                {{ else if eq .loan.ComputedStatus "active" }}
-                                    <span class="text-success">Masih Dipinjam</span>
-                                {{ else }}
-                                    <span class="text-secondary">Dikembalikan</span>
-                                {{ end }}
-                            </small>
                         </div>
 
                         <div class="mb-3">
                             <label for="actual_return_date" class="form-label">Tgl Dikembalikan</label>
-                            <input type="date" class="form-control" id="actual_return_date" name="actual_return_date" 
+                            <input type="date" class="form-control" id="actual_return_date" name="actual_return_date"
                                 value="{{ if .loan.ActualReturnDate }}{{ (localTime .loan.ActualReturnDate).Format "2006-01-02" }}{{ end }}">
                             <small class="text-muted">Isi jika perangkat sudah dikembalikan</small>
                         </div>
 
                         <div class="mb-3">
+                            <label for="purpose" class="form-label">Keperluan</label>
+                            <textarea class="form-control" id="purpose" name="purpose" rows="2">{{ .loan.Purpose }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="notes" class="form-label">Catatan</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ .loan.Notes }}</textarea>
+                            <textarea class="form-control" id="notes" name="notes" rows="2">{{ .loan.Notes }}</textarea>
                             <small class="text-muted">Catatan kondisi saat pengembalian, dll</small>
                         </div>
 

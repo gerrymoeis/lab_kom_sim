@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
@@ -163,17 +162,24 @@ func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 		return
 	}
 
+	existing, err := h.deviceLoanService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Peminjaman tidak ditemukan")
+		return
+	}
+
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	var actualReturnDate *time.Time
-	if req.Status == "returned" && req.ActualReturnDate != "" {
-		if t, err := time.Parse("2006-01-02", req.ActualReturnDate); err == nil {
-			actualReturnDate = &t
-		}
-	}
-
-	if err := h.deviceLoanService.UpdateReturn(id, actualReturnDate, req.Notes, uid, u, r, ip, ua); err != nil {
+	if err := h.deviceLoanService.UpdateLoan(id, services.UpdateLoanInput{
+		BorrowerName:     req.BorrowerName,
+		BorrowerType:     req.BorrowerType,
+		LoanDate:         req.LoanDate,
+		ReturnDate:       &existing.ReturnDate,
+		ActualReturnDate: req.ActualReturnDate,
+		Purpose:          req.Purpose,
+		Notes:            req.Notes,
+	}, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, "Gagal mengupdate peminjaman")
 		return
 	}
