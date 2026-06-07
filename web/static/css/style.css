@@ -147,6 +147,8 @@ body.modal-open { overflow: auto !important; padding-right: 0 !important; }
 .th-w-250 { width: 250px; }
 .th-w-40 { width: 40px; }
 
+.category-header { background-color: #e9ecef !important; }
+
 .cursor-pointer { cursor: pointer; }
 .cursor-pointer:hover { opacity: 0.85; }
 
