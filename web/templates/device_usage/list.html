@@ -9,6 +9,9 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
+            <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
+                <i class="bi bi-check-square"></i> Pilih
+            </button>
             <a href="/device-usages/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Pemakaian
             </a>
@@ -74,10 +77,10 @@
             {{ template "layout/pagination.html" . }}
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table class="table table-hover align-middle" data-batch-url="/device-usages/batch-delete">
                     <thead class="table-light">
                         <tr>
-                            <th class="th-w-50">#</th>
+                            <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th class="th-w-50">#</th>
                             <th>Asset Code</th>
                             <th>Tipe Perangkat</th>
                             <th>Pengguna</th>
@@ -86,12 +89,13 @@
                             <th>Status Stok</th>
                             <th>Keperluan</th>
                             <th>Catatan</th>
-                            <th>Aksi</th>
+                            <th class="batch-action-col">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         {{ range $i, $u := .usages }}
-                        <tr>
+                        <tr data-batch-id="{{ $u.ID }}" data-batch-label="{{ $u.DeviceAssetCode }} - {{ $u.UserName }}">
+                            <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $u.DeviceAssetCode }}</code></td>
                             <td><strong>{{ $u.DeviceTypeName }}</strong></td>
@@ -107,7 +111,7 @@
                             </td>
                             <td>{{ if $u.Purpose }}{{ $u.Purpose }}{{ else }}-{{ end }}</td>
                             <td>{{ if $u.Notes }}{{ $u.Notes }}{{ else }}-{{ end }}</td>
-                            <td class="text-nowrap">
+                            <td class="batch-action-col text-nowrap">
                                 <a href="/device-usages/{{ $u.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
@@ -125,7 +129,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="10" class="text-center text-muted">Belum ada data pemakaian</td>
+                            <td colspan="11" class="text-center text-muted">Belum ada data pemakaian</td>
                         </tr>
                         {{ end }}
                     </tbody>

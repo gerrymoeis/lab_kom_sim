@@ -79,3 +79,12 @@ func (s *CategoryService) Delete(id int, actorID int, actorUsername, actorRole, 
 		map[string]any{"id": id}, ipAddress, userAgent)
 	return nil
 }
+
+func (s *CategoryService) BatchDelete(ids []int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, id := range ids {
+		if err := s.Delete(id, actorID, actorUsername, actorRole, ipAddress, userAgent); err != nil {
+			return err
+		}
+	}
+	return nil
+}
