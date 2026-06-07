@@ -17,15 +17,6 @@ type pcSeedData struct {
 }
 
 func seedPCs(db *DB) error {
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM pcs").Scan(&count)
-	if err != nil {
-		return fmt.Errorf("failed to check PC count: %w", err)
-	}
-	if count > 0 {
-		return nil
-	}
-
 	pcs := []pcSeedData{
 		{1, "0A23460005250060214", "Windows 11 Pro 23H2",
 			[]string{"Visual Studio Code", "Cisco Packet Tracer", "Wireshark", "Postman", "PHP + Xampp", "Composer", "Unity", "Blender", "Android Studio", "Figma", "Node.js", "Python"},
@@ -216,6 +207,28 @@ func seedPCs(db *DB) error {
 		}
 	}
 
+	existing := map[string]bool{}
+	if rows, err := db.Query(`SELECT label FROM pcs`); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var lbl string
+			if rows.Scan(&lbl) == nil {
+				existing[lbl] = true
+			}
+		}
+	}
+
+	missing := map[string]bool{}
+	for _, pc := range pcs {
+		lbl := labelFor(pc.Number)
+		if !existing[lbl] {
+			missing[lbl] = true
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+
 	// Pre-resolve all software IDs from catalog
 	swByName := map[string]int{}
 	catalogRows, _ := db.Query(`SELECT id, name FROM software_catalog`)
@@ -242,7 +255,6 @@ func seedPCs(db *DB) error {
 				slug := util.Slugify(name)
 				pgErr := tx.QueryRow(`INSERT INTO software_catalog (name, category, description, slug) VALUES (?, 'other', '', ?) RETURNING id`, name, slug).Scan(&swID)
 				if pgErr != nil {
-					// Fallback for DBs that don't support RETURNING (e.g., older SQLite)
 					tx.Exec(`INSERT INTO software_catalog (name, category, description, slug) VALUES (?, 'other', '', ?)`, name, slug)
 					tx.QueryRow(`SELECT id FROM software_catalog WHERE name = ?`, name).Scan(&swID)
 				}
@@ -265,6 +277,9 @@ func seedPCs(db *DB) error {
 		}
 
 		label := labelFor(pc.Number)
+		if !missing[label] {
+			continue
+		}
 		pcType := defPCType
 		brandModel := defBrandModel
 		if pc.Number >= 41 {
