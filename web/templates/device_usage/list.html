@@ -79,13 +79,10 @@
                         <tr>
                             <th>#</th>
                             <th>Asset Code</th>
-                            <th>Tipe Perangkat</th>
-                            <th>Peminjam</th>
-                            <th>Tgl Mulai</th>
-                            <th>Tgl Selesai</th>
-                            <th>Durasi (hari)</th>
+                            <th>Pengguna</th>
                             <th>Keperluan</th>
-                            <th>Status</th>
+                            <th>Tgl Pemakaian</th>
+                            <th>Status Stok</th>
                             <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                         </tr>
                     </thead>
@@ -94,19 +91,16 @@
                         <tr data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceAssetCode }} - {{ $l.UserName }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $l.DeviceAssetCode }}</code></td>
-                            <td><strong>{{ $l.DeviceTypeName }}</strong></td>
                             <td>{{ $l.UserName }}<br><small class="text-muted">{{ $l.UserType }}</small></td>
-                            <td><span class="badge bg-secondary">{{ $l.CategoryName }}</span></td>
+                            <td><small>{{ if $l.Purpose }}{{ $l.Purpose }}{{ else }}<span class="text-muted">-</span>{{ end }}</small></td>
                             <td>{{ (localTime $l.UsageDate).Format "02/01/2006" }}</td>
                             <td>
                                 {{ if eq $l.IsAvailable "yes" }}
-                                <span class="badge bg-success">Masih ada</span>
+                                <span class="badge bg-success">Masih Ada</span>
                                 {{ else }}
                                 <span class="badge bg-danger">Habis</span>
                                 {{ end }}
                             </td>
-                            <td>{{ if $l.Purpose }}{{ $l.Purpose }}{{ else }}-{{ end }}</td>
-                            <td>{{ if $l.Notes }}{{ $l.Notes }}{{ else }}-{{ end }}</td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                     <a href="/device-usages/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
@@ -128,7 +122,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="11" class="text-center text-muted">Belum ada data pemakaian</td>
+                            <td colspan="8" class="text-center text-muted">Belum ada data pemakaian</td>
                         </tr>
                         {{ end }}
                     </tbody>
