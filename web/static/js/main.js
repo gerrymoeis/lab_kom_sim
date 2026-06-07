@@ -355,133 +355,238 @@ const FormValidator = {
 FormValidator.init();
 
 const BatchSelector = {
-    activeTable: null,
+    activeTables: [],
+    isGroupMode: false,
     options: {},
 
-    enable: function(table, opts) {
-        if (this.activeTable) this.disable();
-        this.activeTable = table;
-        this.options = opts || {};
+    _storageKey: function() {
+        return 'batch_' + window.location.pathname.replace(/[^a-zA-Z0-9]/g, '_');
+    },
 
-        table.querySelectorAll('.batch-col').forEach(function(el) {
-            el.classList.remove('d-none');
+    _saveState: function() {
+        if (this.activeTables.length === 0) return;
+        var ids = [];
+        this.activeTables.forEach(function(table) {
+            table.querySelectorAll('.batch-check:checked').forEach(function(cb) {
+                var tr = cb.closest('tr');
+                var id = tr ? tr.getAttribute('data-batch-id') : cb.value;
+                if (id && ids.indexOf(id) === -1) ids.push(id);
+            });
+        });
+        try {
+            sessionStorage.setItem(this._storageKey(), JSON.stringify(ids));
+            sessionStorage.setItem(this._storageKey() + '_active', 'true');
+        } catch(e) {}
+    },
+
+    _loadState: function() {
+        try {
+            var data = sessionStorage.getItem(this._storageKey());
+            return data ? JSON.parse(data) : [];
+        } catch(e) { return []; }
+    },
+
+    _clearState: function() {
+        try {
+            sessionStorage.removeItem(this._storageKey());
+            sessionStorage.removeItem(this._storageKey() + '_active');
+        } catch(e) {}
+    },
+
+    isActive: function() {
+        return sessionStorage.getItem(this._storageKey() + '_active') === 'true';
+    },
+
+    _tableId: function(table) {
+        var i = this.activeTables.indexOf(table);
+        return i !== -1 ? 't' + i : '';
+    },
+
+    enable: function(table, opts) {
+        if (this.activeTables.length > 0) this.disable();
+        this.activeTables = [table];
+        this.isGroupMode = false;
+        this.options = opts || {};
+        var self = this;
+
+        this.activeTables.forEach(function(t) {
+            t.querySelectorAll('.batch-mode-off').forEach(function(el) { el.classList.add('d-none'); });
+            t.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.remove('d-none'); });
         });
 
-        var actionCols = table.querySelectorAll('.batch-action-col');
-        if (actionCols.length) {
-            table.querySelectorAll('tr').forEach(function(tr) {
-                actionCols.forEach(function(ac) {
-                    var idx = ac.cellIndex;
-                    if (tr.children[idx]) tr.children[idx].classList.add('d-none');
+        this._showToolbar();
+        this._attachListeners();
+
+        var savedIds = this._loadState();
+        if (savedIds.length > 0) {
+            this.activeTables.forEach(function(t) {
+                t.querySelectorAll('.batch-check').forEach(function(cb) {
+                    var tr = cb.closest('tr');
+                    var id = tr ? tr.getAttribute('data-batch-id') : cb.value;
+                    if (savedIds.indexOf(id) !== -1) cb.checked = true;
                 });
             });
         }
 
-        this._showToolbar(table);
+        this._updateToolbar();
+    },
 
-        var selectAll = table.querySelector('.batch-select-all');
-        if (selectAll) {
-            selectAll.addEventListener('change', this._onSelectAll.bind(this));
+    enableGroup: function(container, opts) {
+        if (this.activeTables.length > 0) this.disable();
+        var tables = container.querySelectorAll('table[data-batch-url]');
+        this.activeTables = Array.prototype.slice.call(tables);
+        this.isGroupMode = true;
+        this.options = opts || {};
+        var self = this;
+
+        this.activeTables.forEach(function(t) {
+            t.querySelectorAll('.batch-mode-off').forEach(function(el) { el.classList.add('d-none'); });
+            t.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.remove('d-none'); });
+        });
+
+        this._showToolbar();
+        this._attachListeners();
+
+        var savedIds = this._loadState();
+        if (savedIds.length > 0) {
+            this.activeTables.forEach(function(t) {
+                t.querySelectorAll('.batch-check').forEach(function(cb) {
+                    var tr = cb.closest('tr');
+                    var id = tr ? tr.getAttribute('data-batch-id') : cb.value;
+                    if (savedIds.indexOf(id) !== -1) cb.checked = true;
+                });
+            });
         }
-
-        table.querySelectorAll('.batch-check').forEach(function(cb) {
-            cb.addEventListener('change', this._updateToolbar.bind(this));
-        }.bind(this));
 
         this._updateToolbar();
     },
 
     disable: function() {
-        if (!this.activeTable) return;
-        var table = this.activeTable;
-
-        table.querySelectorAll('.batch-col').forEach(function(el) {
-            el.classList.add('d-none');
+        if (this.activeTables.length === 0) return;
+        this.activeTables.forEach(function(t) {
+            t.querySelectorAll('.batch-mode-off').forEach(function(el) { el.classList.remove('d-none'); });
+            t.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.add('d-none'); });
+            t.querySelectorAll('.batch-check, .batch-select-all').forEach(function(cb) { cb.checked = false; });
         });
-
-        var actionCols = table.querySelectorAll('.batch-action-col');
-        if (actionCols.length) {
-            table.querySelectorAll('tr').forEach(function(tr) {
-                actionCols.forEach(function(ac) {
-                    var idx = ac.cellIndex;
-                    if (tr.children[idx]) tr.children[idx].classList.remove('d-none');
-                });
-            });
-        }
-
         this._hideToolbar();
-
-        table.querySelectorAll('.batch-check, .batch-select-all').forEach(function(cb) {
-            cb.checked = false;
-        });
-
-        this.activeTable = null;
+        this._clearState();
+        this.activeTables = [];
+        this.isGroupMode = false;
     },
 
     toggle: function(table, opts) {
-        if (this.activeTable === table) {
+        if (this.activeTables.indexOf(table) !== -1) {
             this.disable();
         } else {
             this.enable(table, opts);
         }
     },
 
-    _onSelectAll: function(e) {
-        var checked = e.target.checked;
-        this.activeTable.querySelectorAll('.batch-check').forEach(function(cb) {
-            cb.checked = checked;
-        });
-        this._updateToolbar();
-    },
-
-    _updateToolbar: function() {
-        var table = this.activeTable;
-        if (!table) return;
-        var selected = table.querySelectorAll('.batch-check:checked').length;
-        var total = table.querySelectorAll('.batch-check').length;
-        var toolbar = document.getElementById('batchToolbar');
-        if (!toolbar) return;
-
-        var countEl = toolbar.querySelector('.batch-selected-count');
-        if (countEl) countEl.textContent = selected;
-
-        var deleteBtn = toolbar.querySelector('.batch-delete-btn');
-        if (deleteBtn) deleteBtn.disabled = selected === 0;
-
-        var selectAll = table.querySelector('.batch-select-all');
-        if (selectAll) {
-            selectAll.checked = selected > 0 && selected === total;
-            selectAll.indeterminate = selected > 0 && selected < total;
+    toggleGroup: function(container, opts) {
+        if (this.activeTables.length > 0 && this.isGroupMode) {
+            this.disable();
+        } else {
+            this.enableGroup(container, opts);
         }
     },
 
-    _showToolbar: function(table) {
+    toggleAll: function() {
+        var container = document.querySelector('.card-body') || document.querySelector('main') || document.body;
+        this.toggleGroup(container, { container: container });
+    },
+
+    _attachListeners: function() {
+        var self = this;
+        this.activeTables.forEach(function(t) {
+            var selectAll = t.querySelector('.batch-select-all');
+            if (selectAll) {
+                selectAll.addEventListener('change', function(e) { self._onSelectAll(e); });
+            }
+            t.querySelectorAll('.batch-check').forEach(function(cb) {
+                cb.addEventListener('change', function() {
+                    self._updateToolbar();
+                    self._saveState();
+                });
+            });
+        });
+    },
+
+    _onSelectAll: function(e) {
+        var checked = e.target.checked;
+        var table = e.target.closest('table');
+        if (table) {
+            table.querySelectorAll('.batch-check').forEach(function(cb) { cb.checked = checked; });
+        } else if (this.activeTables.length > 0 && !this.isGroupMode) {
+            this.activeTables.forEach(function(t) {
+                t.querySelectorAll('.batch-check').forEach(function(cb) { cb.checked = checked; });
+            });
+        }
+        this._updateToolbar();
+        this._saveState();
+    },
+
+    _updateToolbar: function() {
+        if (this.activeTables.length === 0) return;
+        var selected = 0, total = 0;
+        this.activeTables.forEach(function(t) {
+            selected += t.querySelectorAll('.batch-check:checked').length;
+            total += t.querySelectorAll('.batch-check').length;
+        });
+        var toolbar = document.getElementById('batchToolbar');
+        if (!toolbar) return;
+        var countEl = toolbar.querySelector('.batch-selected-count');
+        if (countEl) countEl.textContent = selected;
+        var deleteBtn = toolbar.querySelector('.batch-delete-btn');
+        if (deleteBtn) deleteBtn.disabled = selected === 0;
+        this.activeTables.forEach(function(t) {
+            var sa = t.querySelector('.batch-select-all');
+            if (sa) {
+                var ts = t.querySelectorAll('.batch-check:checked').length;
+                var tt = t.querySelectorAll('.batch-check').length;
+                sa.checked = ts > 0 && ts === tt;
+                sa.indeterminate = ts > 0 && ts < tt;
+            }
+        });
+    },
+
+    _showToolbar: function() {
         var existing = document.getElementById('batchToolbar');
         if (existing) {
             existing.classList.remove('d-none');
+            this._updateToolbar();
             return;
         }
         var toolbar = document.createElement('div');
         toolbar.id = 'batchToolbar';
-        toolbar.className = 'd-flex align-items-center gap-2 mb-2 p-2 bg-light border rounded';
+        toolbar.className = 'd-flex align-items-center gap-2 mb-2 p-2 bg-light border rounded justify-content-end';
         toolbar.style.flexWrap = 'wrap';
         toolbar.innerHTML =
-            '<span class="fw-semibold me-2"><i class="bi bi-check-square"></i> <span class="batch-selected-count">0</span> terpilih</span>' +
+            '<span class="fw-semibold me-auto"><i class="bi bi-check-square"></i> <span class="batch-selected-count">0</span> terpilih</span>' +
             '<button type="button" class="btn btn-sm btn-outline-secondary batch-select-all-btn"><i class="bi bi-check-all"></i> Pilih Semua</button>' +
             '<button type="button" class="btn btn-sm btn-outline-secondary batch-deselect-all-btn"><i class="bi bi-x"></i> Batal Semua</button>' +
             '<button type="button" class="btn btn-sm btn-danger batch-delete-btn" disabled><i class="bi bi-trash"></i> Hapus Terpilih</button>' +
-            '<button type="button" class="btn btn-sm btn-link text-decoration-none batch-cancel-btn ms-auto">Batal Pilih</button>';
+            '<button type="button" class="btn btn-sm btn-link text-decoration-none batch-cancel-btn">Batal Pilih</button>';
 
-        table.parentElement.insertBefore(toolbar, table);
+        if (this.isGroupMode && this.options.container) {
+            this.options.container.insertBefore(toolbar, this.options.container.firstChild);
+        } else if (this.activeTables.length > 0) {
+            this.activeTables[0].parentElement.insertBefore(toolbar, this.activeTables[0]);
+        }
 
         var self = this;
         toolbar.querySelector('.batch-select-all-btn').addEventListener('click', function() {
-            self.activeTable.querySelectorAll('.batch-check').forEach(function(cb) { cb.checked = true; });
+            self.activeTables.forEach(function(t) {
+                t.querySelectorAll('.batch-check').forEach(function(cb) { cb.checked = true; });
+            });
             self._updateToolbar();
+            self._saveState();
         });
         toolbar.querySelector('.batch-deselect-all-btn').addEventListener('click', function() {
-            self.activeTable.querySelectorAll('.batch-check').forEach(function(cb) { cb.checked = false; });
+            self.activeTables.forEach(function(t) {
+                t.querySelectorAll('.batch-check').forEach(function(cb) { cb.checked = false; });
+            });
             self._updateToolbar();
+            self._saveState();
         });
         toolbar.querySelector('.batch-delete-btn').addEventListener('click', function() {
             self._deleteSelected();
@@ -493,23 +598,45 @@ const BatchSelector = {
 
     _hideToolbar: function() {
         var toolbar = document.getElementById('batchToolbar');
-        if (toolbar) toolbar.classList.add('d-none');
+        if (toolbar) toolbar.remove();
     },
 
     _deleteSelected: function() {
-        var table = this.activeTable;
-        if (!table) return;
+        if (this.activeTables.length === 0) return;
         var items = [];
-        table.querySelectorAll('.batch-check:checked').forEach(function(cb) {
-            var tr = cb.closest('tr');
-            var id = tr.getAttribute('data-batch-id');
-            if (!id) id = cb.value;
-            var label = tr.getAttribute('data-batch-label') || id;
-            items.push({ id: id, label: label });
-        });
-        if (items.length === 0) return;
+        var seenIds = [];
 
-        var url = table.getAttribute('data-batch-url') || this.options.batchUrl;
+        this.activeTables.forEach(function(t) {
+            t.querySelectorAll('.batch-check:checked').forEach(function(cb) {
+                var tr = cb.closest('tr');
+                var id = tr ? tr.getAttribute('data-batch-id') : cb.value;
+                if (id && seenIds.indexOf(id) === -1) {
+                    seenIds.push(id);
+                    var label = tr ? tr.getAttribute('data-batch-label') || id : id;
+                    items.push({ id: id, label: label });
+                }
+            });
+        });
+
+        var savedIds = this._loadState();
+        savedIds.forEach(function(id) {
+            if (seenIds.indexOf(id) === -1) {
+                seenIds.push(id);
+                items.push({ id: id, label: id });
+            }
+        });
+
+        if (items.length === 0) {
+            showToast('Tidak ada item terpilih', 'error');
+            return;
+        }
+
+        var url = null;
+        if (this.isGroupMode) {
+            url = this.options.batchUrl;
+        } else if (this.activeTables.length > 0) {
+            url = this.activeTables[0].getAttribute('data-batch-url') || this.options.batchUrl;
+        }
         if (!url) {
             showToast('URL batch delete tidak ditemukan', 'error');
             return;
@@ -518,6 +645,18 @@ const BatchSelector = {
         confirmBatchDelete({ items: items, url: url });
     }
 };
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (BatchSelector.isActive()) {
+        var groupContainer = document.getElementById('deviceBatchContainer');
+        if (groupContainer) {
+            BatchSelector.enableGroup(groupContainer, { container: groupContainer, batchUrl: '/devices/batch-delete' });
+        } else {
+            var table = document.querySelector('table[data-batch-url]');
+            if (table) BatchSelector.enable(table);
+        }
+    }
+});
 
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toastContainer');

@@ -9,9 +9,6 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
-            <button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn flex-grow-1" onclick="BatchSelector.toggle(document.querySelector('table[data-batch-url]'))">
-                <i class="bi bi-check-square"></i> Pilih
-            </button>
             <a href="/installations/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Instalasi
             </a>
@@ -81,7 +78,7 @@
                 <table class="table table-hover align-middle" data-batch-url="/installations/batch-delete">
                     <thead class="table-light">
                         <tr>
-                            <th class="batch-col d-none"><input type="checkbox" class="batch-select-all form-check-input"></th><th class="th-w-50">#</th>
+                            <th class="th-w-50">#</th>
                             <th>Asset Code</th>
                             <th>Tipe Perangkat</th>
                             <th>Kategori</th>
@@ -89,13 +86,12 @@
                             <th>Status</th>
                             <th>Tgl Mulai</th>
                             <th>Tgl Selesai</th>
-                            <th class="batch-action-col">Aksi</th>
+                            <th class="batch-action-col text-nowrap"><div class="d-flex align-items-center gap-1 justify-content-end"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i></button></div></th>
                         </tr>
                     </thead>
                     <tbody>
                         {{ range $i, $inst := .installations }}
                         <tr data-batch-id="{{ $inst.ID }}" data-batch-label="{{ $inst.DeviceAssetCode }} - {{ $inst.LocationInstalled }}">
-                            <td class="batch-col d-none"><input type="checkbox" class="batch-check form-check-input"></td>
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $inst.DeviceAssetCode }}</code></td>
                             <td>{{ $inst.DeviceTypeName }}</td>
@@ -113,22 +109,27 @@
                             <td>{{ if $inst.InstallationStartDate }}{{ (localTime $inst.InstallationStartDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
                             <td>{{ if $inst.InstallationFinishDate }}{{ (localTime $inst.InstallationFinishDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
                             <td class="batch-action-col text-nowrap">
-                                <a href="/installations/{{ $inst.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="/installations/{{ $inst.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
-                                    onclick="confirmDelete({message:'Hapus instalasi ini?', formId:'del-{{ $inst.ID }}'})">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                                <form id="del-{{ $inst.ID }}" method="POST" action="/installations/{{ $inst.ID }}/delete" class="d-none"></form>
+                                <span class="batch-mode-off">
+                                    <a href="/installations/{{ $inst.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="/installations/{{ $inst.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                        onclick="confirmDelete({message:'Hapus instalasi ini?', formId:'del-{{ $inst.ID }}'})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <form id="del-{{ $inst.ID }}" method="POST" action="/installations/{{ $inst.ID }}/delete" class="d-none"></form>
+                                </span>
+                                <span class="batch-mode-on d-none">
+                                    <input type="checkbox" class="batch-check form-check-input" value="{{ $inst.ID }}">
+                                </span>
                             </td>
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="10" class="text-center text-muted">Belum ada data instalasi</td>
+                            <td colspan="9" class="text-center text-muted">Belum ada data instalasi</td>
                         </tr>
                         {{ end }}
                     </tbody>
