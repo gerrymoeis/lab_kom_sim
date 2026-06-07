@@ -415,6 +415,21 @@ var BatchSelector = {
         } catch(e) { return false; }
     },
 
+    _ensureVisible: function(el) {
+        var parent = el.parentElement;
+        while (parent && parent !== document.body) {
+            if (parent.classList && parent.classList.contains('d-none')) {
+                parent.classList.remove('d-none');
+                var prev = parent.previousElementSibling;
+                if (prev) {
+                    var chevron = prev.querySelector('.chevron');
+                    if (chevron) chevron.className = 'bi bi-chevron-down me-2 chevron fs-6';
+                }
+            }
+            parent = parent.parentElement;
+        }
+    },
+
     enable: function(table, opts) {
         if (this.activeTables.length > 0) this.disable();
         this.activeTables = [table];
@@ -423,6 +438,7 @@ var BatchSelector = {
         var self = this;
 
         this.activeTables.forEach(function(t) {
+            self._ensureVisible(t);
             t.querySelectorAll('.batch-mode-off').forEach(function(el) { el.classList.add('d-none'); });
             t.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.remove('d-none'); });
         });
@@ -458,6 +474,7 @@ var BatchSelector = {
         var self = this;
 
         this.activeTables.forEach(function(t) {
+            self._ensureVisible(t);
             t.querySelectorAll('.batch-mode-off').forEach(function(el) { el.classList.add('d-none'); });
             t.querySelectorAll('.batch-mode-on').forEach(function(el) { el.classList.remove('d-none'); });
         });
