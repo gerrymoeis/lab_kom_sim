@@ -492,7 +492,8 @@ const BatchSelector = {
     },
 
     toggleAll: function() {
-        var container = document.querySelector('.card-body') || document.querySelector('main') || document.body;
+        var container = document.getElementById('deviceBatchContainer');
+        if (!container) return;
         this.toggleGroup(container, { container: container });
     },
 
