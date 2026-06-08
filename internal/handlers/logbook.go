@@ -267,7 +267,7 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		return
 	}
 	if saved == 0 {
-		h.errJSON(c, http.StatusConflict, fmt.Sprintf("Semua data sudah ada di database (%d duplikat). Tidak ada yang perlu disimpan.", dups))
+		h.errJSON(c, http.StatusConflict, fmt.Sprintf("Semua data adalah duplikat (%d data). Tidak ada yang disimpan. Silakan review data upload, upload file lain, atau kembali ke halaman logbook.", dups))
 		return
 	}
 	message := fmt.Sprintf("Berhasil menyimpan %d data.", saved)
