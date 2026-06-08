@@ -39,6 +39,7 @@ func (h *Handler) UserList(c *gin.Context) {
 	h.renderTemplate(c, http.StatusOK, "user/list.html", gin.H{
 		"title": "Manajemen User", "currentPage": "users",
 		"username": username, "role": role, "users": users,
+		"isSuperAdmin": h.isSuperAdmin(c),
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query, "filters": gin.H{"search": search, "role": roleFilter, "sort_by": sortBy, "sort_order": sortOrder},
 		"error": c.Query("error"),
@@ -81,7 +82,7 @@ func (h *Handler) UserDetail(c *gin.Context) {
 		return
 	}
 
-	if !h.canAccessProfile(username, user.Username) {
+	if !h.canAccessProfile(username, user, h.isSuperAdmin(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -104,7 +105,7 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 		return
 	}
 
-	if !h.canAccessProfile(username, user.Username) {
+	if !h.canAccessProfile(username, user, h.isSuperAdmin(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -127,7 +128,7 @@ func (h *Handler) UserEdit(c *gin.Context) {
 	_, u, _, ok := h.user(c)
 	if !ok { return }
 
-	if !h.canAccessProfile(u, target.Username) {
+	if !h.canAccessProfile(u, target, h.isSuperAdmin(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -172,7 +173,7 @@ func (h *Handler) UserDelete(c *gin.Context) {
 	r, _ := sess.Get("role").(string)
 	ip, ua := getRequestContext(c)
 
-	if err := h.userService.DeleteUser(currentUserID, target.ID, u, r, ip, ua); err != nil {
+	if err := h.userService.DeleteUser(currentUserID, target.ID, u, r, h.isSuperAdmin(c), ip, ua); err != nil {
 		msg := "Gagal menghapus user"
 		if errors.Is(err, services.ErrSelfDelete) { msg = "Tidak dapat menghapus akun sendiri" }
 		if errors.Is(err, services.ErrProtectedDelete) { msg = "Tidak dapat menghapus akun admin utama" }
@@ -255,7 +256,7 @@ func (h *Handler) UserBatchDelete(c *gin.Context) {
 	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	if err := h.userService.BatchDeleteUser(uid, req.IDs, u, r, ip, ua); err != nil {
+	if err := h.userService.BatchDeleteUser(uid, req.IDs, u, r, h.isSuperAdmin(c), ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}

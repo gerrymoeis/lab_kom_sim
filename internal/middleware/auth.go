@@ -61,7 +61,7 @@ func AdminRequired() gin.HandlerFunc {
 }
 
 // GetCurrentUser gets current user info from session
-func GetCurrentUser(c *gin.Context) (userID int, username string, role string, ok bool) {
+func GetCurrentUser(c *gin.Context) (userID int, username string, role string, isSuperAdmin bool, ok bool) {
 	session := sessions.Default(c)
 	
 	userIDVal := session.Get("user_id")
@@ -69,8 +69,9 @@ func GetCurrentUser(c *gin.Context) (userID int, username string, role string, o
 	roleVal := session.Get("role")
 
 	if userIDVal == nil || usernameVal == nil || roleVal == nil {
-		return 0, "", "", false
+		return 0, "", "", false, false
 	}
 
-	return userIDVal.(int), usernameVal.(string), roleVal.(string), true
+	isSuperAdmin, _ = session.Get("is_super_admin").(bool)
+	return userIDVal.(int), usernameVal.(string), roleVal.(string), isSuperAdmin, true
 }

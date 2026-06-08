@@ -8,6 +8,7 @@ import (
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/middleware"
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
 
@@ -78,32 +79,31 @@ func getRequestContext(c *gin.Context) (ipAddress, userAgent string) {
 	return
 }
 
-func (h *Handler) canAccessProfile(actorUsername, targetUsername string) bool {
-	mainAdmin := "admin"
-	protected := map[string]bool{"admin": true, "rekan": true}
-
-	if protected[targetUsername] {
-		return actorUsername == targetUsername
+func (h *Handler) canAccessProfile(actorUsername string, target *models.User, actorIsSuperAdmin bool) bool {
+	if target.IsProtected {
+		return actorUsername == target.Username
 	}
-	return actorUsername == targetUsername || actorUsername == mainAdmin
+	return actorUsername == target.Username || actorIsSuperAdmin
 }
 
-func CanAccessProfile(actorUsername, targetUsername string) bool {
-	mainAdmin := "admin"
-	protected := map[string]bool{"admin": true, "rekan": true}
-
-	if protected[targetUsername] {
-		return actorUsername == targetUsername
+func CanAccessProfile(actorUsername string, target models.User, actorIsSuperAdmin bool) bool {
+	if target.IsProtected {
+		return actorUsername == target.Username
 	}
-	return actorUsername == targetUsername || actorUsername == mainAdmin
+	return actorUsername == target.Username || actorIsSuperAdmin
 }
 
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {
-	userID, username, role, ok = middleware.GetCurrentUser(c)
+	userID, username, role, _, ok = middleware.GetCurrentUser(c)
 	if !ok {
 		c.Redirect(http.StatusFound, "/login")
 	}
 	return
+}
+
+func (h *Handler) isSuperAdmin(c *gin.Context) bool {
+	_, _, _, val, ok := middleware.GetCurrentUser(c)
+	return ok && val
 }
 
 func (h *Handler) Close() {
