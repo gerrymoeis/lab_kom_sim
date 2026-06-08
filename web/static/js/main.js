@@ -64,8 +64,9 @@ window.confirmDelete = function(opts) {
 window.confirmBatchDelete = function(opts) {
     var items = opts.items || [];
     var url = opts.url || '';
+    var onConfirm = opts.onConfirm || null;
 
-    deleteState = { batchItems: items, batchUrl: url, requirePrefix: false, prefix: '', formId: '' };
+    deleteState = { batchItems: items, batchUrl: url, onConfirm: onConfirm, requirePrefix: false, prefix: '', formId: '' };
 
     var titleEl = document.getElementById('deleteConfirmTitle');
     titleEl.innerHTML = '<i class="bi bi-exclamation-triangle text-danger me-1"></i> Konfirmasi Hapus Massal';
@@ -95,6 +96,11 @@ window.confirmBatchDelete = function(opts) {
 
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('deleteConfirmBtn')?.addEventListener('click', function() {
+        if (deleteState.onConfirm) {
+            deleteState.onConfirm(deleteState.batchItems);
+            deleteState = {};
+            return;
+        }
         if (deleteState.batchItems) {
             var btn = document.getElementById('deleteConfirmBtn');
             showLoading(btn);
