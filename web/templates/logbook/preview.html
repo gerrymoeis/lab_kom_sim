@@ -59,6 +59,15 @@
                         <form id="previewForm" action="/logbook/save" method="POST">
                             <input type="hidden" name="source_file" value="{{ .source_file }}">
 
+                            <div id="batchIndikasi" class="mb-2 d-none d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="dismissAllDups()">
+                                    <i class="bi bi-x-circle"></i> Batal Semua Indikasi
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="restoreAllDups()">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Pulihkan Semua Indikasi
+                                </button>
+                            </div>
+
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover" id="previewTable">
                                     <thead class="table-light">
@@ -71,7 +80,14 @@
                                             <th>Jam Masuk <span class="text-danger">*</span></th>
                                             <th>Jam Keluar</th>
                                             <th class="th-w-180">Indikasi</th>
-                                            <th class="th-w-80">Aksi</th>
+                                            <th class="th-w-120 text-end" style="white-space:nowrap">
+                                                <span id="batchOff"><button type="button" class="btn btn-sm btn-outline-primary py-0" onclick="enablePreviewBatch()"><i class="bi bi-check-square"></i> Pilih</button></span>
+                                                <span id="batchOn" class="d-none gap-1">
+                                                    <button type="button" class="btn btn-sm btn-danger py-0" id="deleteSelectedBtn" onclick="deleteSelectedRows()" disabled><i class="bi bi-trash"></i> Hapus Terpilih</button>
+                                                    <button type="button" class="btn btn-sm btn-secondary py-0" onclick="disablePreviewBatch()"><i class="bi bi-x"></i> Batal</button>
+                                                </span>
+                                            </th>
+                                            <th style="width:1%" id="batchSelectAllTh" class="d-none"><input type="checkbox" class="form-check-input" id="previewSelectAll" onchange="selectAllPreview(this.checked)"></th>
                                         </tr>
                                     </thead>
                                     <tbody id="entriesTableBody">
@@ -129,11 +145,9 @@
                                                     {{ end }}
                                                 </td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteRow(this)"
-                                                        title="Hapus baris">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger batch-row-off" onclick="deleteRow(this)" title="Hapus baris"><i class="bi bi-trash"></i></button>
                                                 </td>
+                                                <td class="text-end batch-check-col d-none" style="width:1%"><input type="checkbox" class="form-check-input preview-check"></td>
                                             </tr>
                                             {{ if $info }}{{ if eq $info.Type "existing-db" }}
                                             {{ range $ref := $info.Refs }}
@@ -149,6 +163,7 @@
                                                     <i class="bi bi-arrow-up"></i> Referensi DB
                                                 </td>
                                                 <td class="text-center text-muted small">-</td>
+                                                <td class="batch-check-col d-none"></td>
                                             </tr>
                                             {{ end }}
                                             {{ end }}{{ end }}
@@ -176,11 +191,9 @@
                                                 </td>
                                                 <td class="text-center text-muted small">-</td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteRow(this)"
-                                                        title="Hapus baris">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger batch-row-off" onclick="deleteRow(this)" title="Hapus baris"><i class="bi bi-trash"></i></button>
                                                 </td>
+                                                <td class="batch-check-col d-none" style="width:1%"><input type="checkbox" class="form-check-input preview-check"></td>
                                             </tr>
                                         {{ end }}
                                     </tbody>
@@ -245,6 +258,102 @@
     function updateDupWarning() {
         const warning = document.getElementById('duplicateWarning');
         warning.classList.toggle('d-none', visibleDupCount() === 0);
+        const toolbar = document.getElementById('batchIndikasi');
+        if (toolbar) {
+            const hasDups = document.querySelectorAll('.dup-wrapper').length > 0;
+            toolbar.classList.toggle('d-none', !hasDups);
+            toolbar.classList.toggle('d-flex', hasDups);
+        }
+    }
+
+    function dismissAllDups() {
+        document.querySelectorAll('.dup-wrapper[data-state="visible"]').forEach(function(w) {
+            const row = w.closest('tr');
+            const dupType = w.dataset.type;
+            if (dupType === 'intra-batch') {
+                row.classList.remove('table-warning');
+            } else {
+                row.classList.remove('table-danger');
+                hideRefRows(row);
+            }
+            row.dataset.dismissed = 'true';
+            setDismissed(w, true);
+        });
+        updateDupWarning();
+        updateSaveButton();
+    }
+
+    function restoreAllDups() {
+        document.querySelectorAll('.dup-wrapper[data-state="dismissed"]').forEach(function(w) {
+            const row = w.closest('tr');
+            const dupType = w.dataset.type;
+            if (dupType === 'intra-batch') {
+                row.classList.add('table-warning');
+            } else {
+                row.classList.add('table-danger');
+                showRefRows(row);
+            }
+            row.dataset.dismissed = 'false';
+            setDismissed(w, false);
+        });
+        updateDupWarning();
+        updateSaveButton();
+    }
+
+    function enablePreviewBatch() {
+        document.getElementById('batchOff').classList.add('d-none');
+        document.getElementById('batchOn').classList.remove('d-none');
+        document.getElementById('batchOn').classList.add('d-flex');
+        document.getElementById('batchSelectAllTh').classList.remove('d-none');
+        document.querySelectorAll('.batch-check-col').forEach(function(el) { el.classList.remove('d-none'); });
+    }
+
+    function disablePreviewBatch() {
+        document.getElementById('batchOff').classList.remove('d-none');
+        document.getElementById('batchOn').classList.add('d-none');
+        document.getElementById('batchOn').classList.remove('d-flex');
+        document.getElementById('batchSelectAllTh').classList.add('d-none');
+        document.querySelectorAll('.batch-check-col').forEach(function(el) { el.classList.add('d-none'); });
+        document.querySelectorAll('.preview-check').forEach(function(cb) { cb.checked = false; });
+        document.getElementById('previewSelectAll').checked = false;
+        document.getElementById('deleteSelectedBtn').disabled = true;
+    }
+
+    function selectAllPreview(checked) {
+        document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check').forEach(function(cb) {
+            cb.checked = checked;
+        });
+        document.getElementById('deleteSelectedBtn').disabled = !checked || document.querySelectorAll('.preview-check:checked').length === 0;
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('preview-check')) {
+            const checked = document.querySelectorAll('.preview-check:checked').length;
+            document.getElementById('deleteSelectedBtn').disabled = checked === 0;
+            const all = document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check').length;
+            document.getElementById('previewSelectAll').checked = checked === all;
+        }
+    });
+
+    function deleteSelectedRows() {
+        const tbody = document.getElementById('entriesTableBody');
+        const checked = document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check:checked');
+        const total = document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref)').length;
+        if (checked.length >= total) { alert('Minimal harus ada 1 baris'); return; }
+        checked.forEach(function(cb) {
+            const row = cb.closest('tr');
+            let next = row.nextElementSibling;
+            while (next && next.classList.contains('table-dup-db-ref')) {
+                const toRemove = next;
+                next = next.nextElementSibling;
+                toRemove.remove();
+            }
+            row.remove();
+        });
+        document.getElementById('previewSelectAll').checked = false;
+        document.getElementById('deleteSelectedBtn').disabled = true;
+        updateRowNumbers();
+        updateSaveButton();
     }
 
     function setDismissed(wrapper, dismissed) {
@@ -476,7 +585,8 @@
             <td><input type="time" class="form-control form-control-sm" name="time_in[]" required></td>
             <td><input type="time" class="form-control form-control-sm" name="time_out[]"></td>
             <td class="text-center text-muted small">-</td>
-            <td class="text-center"><button type="button" class="btn btn-sm btn-danger" onclick="deleteRow(this)" title="Hapus baris"><i class="bi bi-trash"></i></button></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-danger batch-row-off" onclick="deleteRow(this)" title="Hapus baris"><i class="bi bi-trash"></i></button></td>
+            <td class="batch-check-col d-none" style="width:1%"><input type="checkbox" class="form-check-input preview-check"></td>
         `;
         tbody.appendChild(newRow);
         updateRowNumbers();
