@@ -21,7 +21,7 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	ip, ua := getRequestContext(c)
-	userID, fullName, role, token, err := h.authService.Login(req.Username, req.Password, ip, ua)
+	userID, fullName, role, token, isSuperAdmin, err := h.authService.Login(req.Username, req.Password, ip, ua)
 	if err != nil {
 		msg := "Username atau password salah"
 		if errors.Is(err, services.ErrAlreadyLoggedIn) {
@@ -43,6 +43,7 @@ func (h *Handler) Login(c *gin.Context) {
 	session.Set("username", req.Username)
 	session.Set("full_name", fullName)
 	session.Set("role", role)
+	session.Set("is_super_admin", isSuperAdmin)
 	session.Set("session_token", token)
 	if err := session.Save(); err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "login.html", gin.H{

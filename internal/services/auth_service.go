@@ -25,15 +25,15 @@ func NewAuthService(userRepo *repository.UserRepository, activityLogService *Act
 	return &AuthService{userRepo: userRepo, activityLogService: activityLogService}
 }
 
-func (s *AuthService) Login(username, password, ipAddress, userAgent string) (userID int, fullName, role, token string, err error) {
+func (s *AuthService) Login(username, password, ipAddress, userAgent string) (userID int, fullName, role, token string, isSuperAdmin bool, err error) {
 	u, err := s.userRepo.GetByUsername(username)
 	if err != nil {
-		return 0, "", "", "", ErrInvalidCredentials
+		return 0, "", "", "", false, ErrInvalidCredentials
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)); err != nil {
 		s.activityLogService.LogAuth(0, username, "", "login", false, ipAddress, userAgent, "Invalid password")
-		return 0, "", "", "", ErrInvalidCredentials
+		return 0, "", "", "", false, ErrInvalidCredentials
 	}
 
 	existingToken, _ := s.userRepo.GetSessionToken(u.ID)
@@ -44,13 +44,13 @@ func (s *AuthService) Login(username, password, ipAddress, userAgent string) (us
 
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return 0, "", "", "", fmt.Errorf("failed to generate session token: %w", err)
+		return 0, "", "", "", false, fmt.Errorf("failed to generate session token: %w", err)
 	}
 	token = hex.EncodeToString(b)
 	s.userRepo.UpdateSessionToken(u.ID, token)
 
 	s.activityLogService.LogAuth(u.ID, username, u.Role, "login", true, ipAddress, userAgent, "")
-	return u.ID, u.FullName, u.Role, token, nil
+	return u.ID, u.FullName, u.Role, token, u.IsSuperAdmin, nil
 }
 
 func (s *AuthService) Logout(userID int, username, role, ipAddress, userAgent string) {

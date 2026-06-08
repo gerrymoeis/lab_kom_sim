@@ -4,13 +4,15 @@ import "time"
 
 // User represents a system user
 type User struct {
-	ID        int       `json:"id"`
-	Username  string    `json:"username"`
-	Password  string    `json:"-"` // Never expose password in JSON
-	FullName  string    `json:"full_name"`
-	Role      string    `json:"role"` // "admin" or "dosen"
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           int       `json:"id"`
+	Username     string    `json:"username"`
+	Password     string    `json:"-"` // Never expose password in JSON
+	FullName     string    `json:"full_name"`
+	Role         string    `json:"role"` // "admin" or "dosen"
+	IsProtected  bool      `json:"is_protected"`
+	IsSuperAdmin bool      `json:"is_super_admin"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // PC represents a computer in the lab

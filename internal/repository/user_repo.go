@@ -18,7 +18,7 @@ func NewUserRepository(db *database.DB) *UserRepository {
 }
 
 func (r *UserRepository) List() ([]models.User, error) {
-	rows, err := r.db.Query(`SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at DESC`)
+	rows, err := r.db.Query(`SELECT id, username, full_name, role, is_protected, is_super_admin, created_at FROM users ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func (r *UserRepository) List() ([]models.User, error) {
 	var users []models.User
 	for rows.Next() {
 		var u models.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.IsProtected, &u.IsSuperAdmin, &u.CreatedAt); err != nil {
 			return nil, err
 		}
 		users = append(users, u)
@@ -59,7 +59,7 @@ func (r *UserRepository) ListPaginated(search, role, sortBy, sortOrder string, p
 	}
 
 	offset := (page - 1) * pageSize
-	q := `SELECT id, username, full_name, role, created_at FROM users WHERE 1=1`
+	q := `SELECT id, username, full_name, role, is_protected, is_super_admin, created_at FROM users WHERE 1=1`
 	var qa []any
 	if search != "" {
 		sClause, sArgs := r.search.Where("user", search)
@@ -82,7 +82,7 @@ func (r *UserRepository) ListPaginated(search, role, sortBy, sortOrder string, p
 	var users []models.User
 	for rows.Next() {
 		var u models.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.IsProtected, &u.IsSuperAdmin, &u.CreatedAt); err != nil {
 			return nil, 0, err
 		}
 		users = append(users, u)
@@ -92,15 +92,15 @@ func (r *UserRepository) ListPaginated(search, role, sortBy, sortOrder string, p
 
 func (r *UserRepository) GetByID(id int) (*models.User, error) {
 	var u models.User
-	err := r.db.QueryRow(`SELECT id, username, full_name, role, created_at, updated_at FROM users WHERE id = ?`, id).
-		Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.CreatedAt, &u.UpdatedAt)
+	err := r.db.QueryRow(`SELECT id, username, full_name, role, is_protected, is_super_admin, created_at, updated_at FROM users WHERE id = ?`, id).
+		Scan(&u.ID, &u.Username, &u.FullName, &u.Role, &u.IsProtected, &u.IsSuperAdmin, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	return &u, nil
 }
 
-var userFullCols = []string{"id", "username", "password", "full_name", "role", "created_at", "updated_at"}
+var userFullCols = []string{"id", "username", "password", "full_name", "role", "is_protected", "is_super_admin", "created_at", "updated_at"}
 
 func (r *UserRepository) GetByUsername(username string) (*models.User, error) {
 	return getByField[models.User](r.db, "users", userFullCols, "username", username)

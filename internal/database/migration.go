@@ -530,6 +530,32 @@ func runMigrations(db *DB, isPostgres bool) error {
 		return fmt.Errorf("failed to create unique index on software_catalog.slug: %w", err)
 	}
 
+	// Add is_protected and is_super_admin columns to users
+	for _, col := range []struct {
+		name    string
+		def     string
+		pqDef   string
+		seedVal int
+		seedUsr string
+	}{
+		{"is_protected", "INTEGER NOT NULL DEFAULT 0", "BOOLEAN NOT NULL DEFAULT FALSE", 1, "IN ('admin', 'rekan')"},
+		{"is_super_admin", "INTEGER NOT NULL DEFAULT 0", "BOOLEAN NOT NULL DEFAULT FALSE", 1, "= 'admin'"},
+	} {
+		if exists, err := d.columnExists(db, "users", col.name); err != nil {
+			return fmt.Errorf("failed to check users.%s: %w", col.name, err)
+		} else if !exists {
+			pql := col.def
+			if isPostgres {
+				pql = col.pqDef
+			}
+			if _, err := db.Exec(fmt.Sprintf("ALTER TABLE users ADD COLUMN %s %s", col.name, pql)); err != nil {
+				return fmt.Errorf("failed to add users.%s: %w", col.name, err)
+			}
+			// Set flag for existing main accounts
+			db.Exec(fmt.Sprintf("UPDATE users SET %s = %d WHERE username %s", col.name, col.seedVal, col.seedUsr))
+		}
+	}
+
 	if err := normalizeExistingData(db); err != nil {
 		return fmt.Errorf("failed to normalize existing data: %w", err)
 	}
