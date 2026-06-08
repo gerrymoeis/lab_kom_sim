@@ -64,7 +64,7 @@ func (s *UserService) CreateUser(actorID int, actorUsername, actorRole, username
 	return nil
 }
 
-func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actorRole string, actorIsSuperAdmin bool, ipAddress, userAgent string) error {
 	if actorID == targetID {
 		return ErrSelfDelete
 	}
@@ -72,10 +72,10 @@ func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actor
 	if err != nil {
 		return ErrUserNotFound
 	}
-	if u.Username == "admin" || u.Username == "rekan" {
+	if u.IsProtected {
 		return ErrProtectedDelete
 	}
-	if actorUsername != "admin" {
+	if !actorIsSuperAdmin {
 		return ErrDeleteNotAllowed
 	}
 	if err := s.userRepo.Delete(targetID); err != nil {
@@ -96,11 +96,11 @@ func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actor
 		return ErrUserNotFound
 	}
 
-	if (target.Username == "admin" || target.Username == "rekan") && username != target.Username {
+	if target.IsProtected && username != target.Username {
 		return ErrProtectedUpdate
 	}
 
-	if (target.Username == "admin" || target.Username == "rekan") && role != target.Role {
+	if target.IsProtected && role != target.Role {
 		return ErrProtectedUpdate
 	}
 
@@ -202,7 +202,7 @@ func (s *UserService) ChangePassword(userID int, oldPassword, newPassword, confi
 	return nil
 }
 
-func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, actorUsername, actorRole, ipAddress, userAgent string) error {
+func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, actorUsername, actorRole string, actorIsSuperAdmin bool, ipAddress, userAgent string) error {
 	items := make([]map[string]string, 0, len(targetUsernames))
 	for _, username := range targetUsernames {
 		if actorUsername == username {
@@ -218,13 +218,13 @@ func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, act
 				ipAddress, userAgent, "user "+username+" not found")
 			return fmt.Errorf("user %s tidak ditemukan", username)
 		}
-		if target.Username == "admin" || target.Username == "rekan" {
+		if target.IsProtected {
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
 				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
 				ipAddress, userAgent, ErrProtectedDelete.Error())
 			return ErrProtectedDelete
 		}
-		if actorUsername != "admin" {
+		if !actorIsSuperAdmin {
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
 				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
 				ipAddress, userAgent, ErrDeleteNotAllowed.Error())
