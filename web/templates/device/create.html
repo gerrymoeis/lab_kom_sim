@@ -349,20 +349,17 @@
 
         const defaultLoc = getDefaultLocation();
 
-        // Fetch actual next asset code from server
-        let startNum = 1;
+        // Fetch batch codes from server (gap-aware)
+        let codes = [];
         try {
-            const resp = await fetch('/api/devices/next-asset-code?prefix=' + encodeURIComponent(prefix));
+            const resp = await fetch('/api/devices/next-asset-codes?prefix=' + encodeURIComponent(prefix) + '&count=' + count);
             const data = await resp.json();
-            if (data.next_code) {
-                const parts = data.next_code.split('-');
-                startNum = parseInt(parts[parts.length - 1]) || 1;
-            }
+            if (data.codes) { codes = data.codes; }
         } catch(e) {}
 
         batchBody.innerHTML = '';
         for (let i = 0; i < count; i++) {
-            const code = prefix + '-' + String(startNum + i).padStart(3, '0');
+            const code = codes[i] || (prefix + '-???' + (i + 1).toString().padStart(3, '0'));
             const tr = document.createElement('tr');
             tr.innerHTML =
                 '<td class="text-center fw-bold">' + (i + 1) + '</td>' +
