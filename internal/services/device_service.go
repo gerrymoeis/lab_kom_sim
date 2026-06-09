@@ -147,7 +147,7 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 		return nil, err
 	}
 
-	startCode := s.deviceRepo.GetNextAssetCode(prefix)
+	startCode := s.deviceRepo.GetNextAssetCodeSequence(prefix)
 	parts := strings.Split(startCode, "-")
 	startNum, _ := strconv.Atoi(parts[len(parts)-1])
 	if startNum < 1 {
