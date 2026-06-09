@@ -237,7 +237,7 @@ var PCLayoutManager = (function() {
     .then(function(data) {
       busy = false;
       if (data.success) {
-        onDone(data.pcs || null);
+        onDone(data.pcs || null, data.changes || null);
       } else {
         alert('Gagal: ' + (data.error || 'unknown error'));
       }
@@ -248,10 +248,25 @@ var PCLayoutManager = (function() {
     });
   }
 
-  function onDone(pcs) {
+  function onDone(pcs, changes) {
     selectedSlot = null;
+    if (redirectOnChanges(changes)) return;
     fetchLayout();
     refreshOrUpdateDashboard(pcs);
+  }
+
+  function redirectOnChanges(changes) {
+    if (!changes || changes.length === 0) return false;
+    var match = window.location.pathname.match(/^\/pc\/edit\/(.+)$/);
+    if (!match) return false;
+    var currentLabel = decodeURIComponent(match[1]);
+    for (var i = 0; i < changes.length; i++) {
+      if (changes[i].old_label === currentLabel) {
+        window.location.href = '/pc/edit/' + changes[i].new_label;
+        return true;
+      }
+    }
+    return false;
   }
 
   function refreshOrUpdateDashboard(pcs) {
@@ -278,6 +293,7 @@ var PCLayoutManager = (function() {
     }).then(function(r) { return r.json(); }).then(function(data) {
       if (data.success) {
         selectedSlot = null;
+        if (redirectOnChanges(data.changes || null)) return;
         fetchLayout();
         refreshOrUpdateDashboard(data.pcs || null);
       } else {
