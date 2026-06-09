@@ -248,17 +248,21 @@ func (s *PCService) ReplacePC(target, spare string, actorID int, actorUsername, 
 	return nil
 }
 
-func (s *PCService) MoveRowToCadangan(row int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+func (s *PCService) MoveRowToCadangan(row int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (map[string]string, error) {
 	oldVals := map[string]any{"operation": "move_row", "row": row, "status": "active"}
 	newVals := map[string]any{"operation": "move_row", "row": row, "status": "moved_to_cadangan"}
-	if err := s.pcRepo.MoveRowToCadangan(row); err != nil {
+	labelMap, err := s.pcRepo.MoveRowToCadangan(row)
+	if err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
 			oldVals, nil, ipAddress, userAgent, err.Error())
-		return err
+		return nil, err
+	}
+	if labelMap != nil {
+		newVals["labels"] = labelMap
 	}
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", 0,
 		oldVals, newVals, ipAddress, userAgent)
-	return nil
+	return labelMap, nil
 }
 
 func (s *PCService) MovePC(label string, row, col int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
@@ -301,7 +305,7 @@ func (s *PCService) PlaceCadangan(label string, row, col int, actorID int, actor
 	return nil
 }
 
-func (s *PCService) MoveToCadangan(label string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+func (s *PCService) MoveToCadangan(label string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (string, error) {
 	pc, _ := s.pcRepo.GetByLabel(label)
 	pcID := 0
 	oldVals := map[string]any{}
@@ -313,14 +317,16 @@ func (s *PCService) MoveToCadangan(label string, actorID int, actorUsername, act
 	}
 	newVals["label"] = label; newVals["row"] = 0; newVals["column"] = 0
 	newVals["status"] = "cadangan"; newVals["placement"] = "cadangan"
-	if err := s.pcRepo.MoveToCadangan(label); err != nil {
+	newLabel, err := s.pcRepo.MoveToCadangan(label)
+	if err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 			oldVals, nil, ipAddress, userAgent, err.Error())
-		return err
+		return "", err
 	}
+	newVals["label"] = newLabel
 	s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 		oldVals, newVals, ipAddress, userAgent)
-	return nil
+	return newLabel, nil
 }
 
 func (s *PCService) SyncSoftware(label string, requiredIDs []string, otherNames, otherDescs []string,
