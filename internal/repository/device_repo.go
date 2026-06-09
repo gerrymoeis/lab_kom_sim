@@ -167,6 +167,27 @@ func (r *DeviceRepository) GetByAssetCode(code string) (*models.Device, error) {
 
 func (r *DeviceRepository) GetNextAssetCode(prefix string) string {
 	var next int
+	r.db.QueryRow(`WITH RECURSIVE nums(n) AS (
+		SELECT 1
+		UNION ALL
+		SELECT n+1 FROM nums WHERE n < (
+			SELECT COALESCE(MAX(CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)), 0)
+			FROM devices WHERE asset_code LIKE ? || '-%'
+		)
+	)
+	SELECT COALESCE(
+		(SELECT n FROM nums WHERE n NOT IN (
+			SELECT CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)
+			FROM devices WHERE asset_code LIKE ? || '-%'
+		) LIMIT 1),
+		(SELECT COALESCE(MAX(CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)), 0) + 1
+		 FROM devices WHERE asset_code LIKE ? || '-%')
+	)`, prefix, prefix, prefix, prefix, prefix, prefix).Scan(&next)
+	return fmt.Sprintf("%s-%03d", prefix, next)
+}
+
+func (r *DeviceRepository) GetNextAssetCodeSequence(prefix string) string {
+	var next int
 	r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)) + 1, 1)
 		FROM devices WHERE asset_code LIKE ? || '-%'`, prefix, prefix).Scan(&next)
 	return fmt.Sprintf("%s-%03d", prefix, next)
