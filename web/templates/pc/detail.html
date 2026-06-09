@@ -20,7 +20,7 @@
                 <table class="table table-bordered">
 <tr><th width="30%">Label PC</th><td><strong>{{ .pc.Label }}</strong></td></tr>
                     {{ if .pc.AssetID }}<tr><th>ID Aset</th><td><span class="badge bg-info">{{ .pc.AssetID }}</span></td></tr>{{ end }}
-                    <tr><th>Posisi</th><td>{{ if eq .pc.Placement "dipakai" }}Baris {{ .pc.Column }}, Kolom {{ .pc.Row }}{{ else }}-{{ end }}</td></tr>
+                    <tr><th>Posisi</th><td>{{ if eq .pc.Placement "dipakai" }}Baris {{ .pc.Row }}, Kolom {{ .pc.Column }}{{ else }}-{{ end }}</td></tr>
                     <tr><th>Kondisi</th><td><span class="badge bg-{{ (pcStatusInfo .pc.Status).BadgeClass }}">{{ (pcStatusInfo .pc.Status).VisLabel }}</span></td></tr>
                     <tr><th>Penempatan</th><td><span class="badge bg-{{ (pcPlacementInfo .pc.Placement).BadgeClass }}">{{ (pcPlacementInfo .pc.Placement).VisLabel }}</span></td></tr>
                 </table>
