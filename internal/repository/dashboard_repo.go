@@ -25,10 +25,9 @@ func (r *DashboardRepository) ListPCs() ([]models.PC, error) {
 	var pcs []models.PC
 	for rows.Next() {
 		var pc models.PC
-		var processor, ram, storage, os, notes, label sql.NullString
-		var lastChecked sql.NullTime
+		var processor, ram, storage, os, notes, label, lc sql.NullString
 		if err := rows.Scan(&pc.ID, &label, &pc.Row, &pc.Column, &pc.Status, &pc.Placement,
-			&processor, &ram, &storage, &os, &notes, &lastChecked); err != nil {
+			&processor, &ram, &storage, &os, &notes, &lc); err != nil {
 			return nil, err
 		}
 		pc.Processor = valStr(processor)
@@ -37,7 +36,7 @@ func (r *DashboardRepository) ListPCs() ([]models.PC, error) {
 		pc.OperatingSystem = valStr(os)
 		pc.Notes = valStr(notes)
 		pc.Label = valStr(label)
-		if lastChecked.Valid { pc.LastChecked = &lastChecked.Time }
+		pc.LastChecked = parseDate(lc)
 		pcs = append(pcs, pc)
 	}
 	return pcs, nil
