@@ -373,7 +373,14 @@ func (h *Handler) PCSwap(c *gin.Context) {
 	}
 
 	pcs, _ := h.pcService.List(repository.PCFilters{})
-	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"pcs":     pcs,
+		"changes": []gin.H{
+			{"old_label": req.A, "new_label": req.B},
+			{"old_label": req.B, "new_label": req.A},
+		},
+	})
 }
 
 func (h *Handler) PCReplace(c *gin.Context) {
@@ -395,7 +402,14 @@ func (h *Handler) PCReplace(c *gin.Context) {
 	}
 
 	pcs, _ := h.pcService.List(repository.PCFilters{})
-	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"pcs":     pcs,
+		"changes": []gin.H{
+			{"old_label": req.Target, "new_label": req.Spare},
+			{"old_label": req.Spare, "new_label": req.Target},
+		},
+	})
 }
 
 func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
@@ -410,13 +424,19 @@ func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.pcService.MoveRowToCadangan(req.Row, uid, u, r, ip, ua); err != nil {
+	labelMap, err := h.pcService.MoveRowToCadangan(req.Row, uid, u, r, ip, ua)
+	if err != nil {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal memindahkan baris")
 		return
 	}
 
+	changes := make([]gin.H, 0, len(labelMap))
+	for oldLabel, newLabel := range labelMap {
+		changes = append(changes, gin.H{"old_label": oldLabel, "new_label": newLabel})
+	}
+
 	pcs, _ := h.pcService.List(repository.PCFilters{})
-	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
+	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs, "changes": changes})
 }
 
 func (h *Handler) PCMove(c *gin.Context) {
@@ -438,8 +458,13 @@ func (h *Handler) PCMove(c *gin.Context) {
 		return
 	}
 
+	newLabel := fmt.Sprintf("pc-%d", (req.Row-1)*8+req.Col)
 	pcs, _ := h.pcService.List(repository.PCFilters{})
-	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"pcs":     pcs,
+		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
+	})
 }
 
 func (h *Handler) PCPlace(c *gin.Context) {
@@ -461,8 +486,13 @@ func (h *Handler) PCPlace(c *gin.Context) {
 		return
 	}
 
+	newLabel := fmt.Sprintf("pc-%d", (req.Row-1)*8+req.Col)
 	pcs, _ := h.pcService.List(repository.PCFilters{})
-	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"pcs":     pcs,
+		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
+	})
 }
 
 func (h *Handler) PCMoveToCadangan(c *gin.Context) {
@@ -477,13 +507,18 @@ func (h *Handler) PCMoveToCadangan(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.pcService.MoveToCadangan(req.Label, uid, u, r, ip, ua); err != nil {
+	newLabel, err := h.pcService.MoveToCadangan(req.Label, uid, u, r, ip, ua)
+	if err != nil {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal memindahkan ke cadangan")
 		return
 	}
 
 	pcs, _ := h.pcService.List(repository.PCFilters{})
-	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"pcs":     pcs,
+		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
+	})
 }
 
 func processPhotoRef(photoRef, subDir string) string {
