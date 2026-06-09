@@ -583,9 +583,13 @@ func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
 
 	newLabel := fmt.Sprintf("pc-%d", (row-1)*8+col)
 	var clash int
-	tx.QueryRow(`SELECT id FROM pcs WHERE label=? AND id!=?`, newLabel, id).Scan(&clash)
+	if err := tx.QueryRow(`SELECT id FROM pcs WHERE label=? AND id!=?`, newLabel, id).Scan(&clash); err == nil {
+		return fmt.Errorf("label %s sudah digunakan oleh PC lain", newLabel)
+	}
 
-	tx.Exec(`UPDATE pcs SET label=?, "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, row, col, id)
+	if _, err := tx.Exec(`UPDATE pcs SET label=?, "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, row, col, id); err != nil {
+		return err
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
