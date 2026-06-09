@@ -501,35 +501,46 @@ func (r *PCRepository) ReplaceWithSpare(target, spare string) error {
 	return tx.Commit()
 }
 
-func (r *PCRepository) MoveRowToCadangan(row int) error {
+func (r *PCRepository) MoveRowToCadangan(row int) (map[string]string, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback()
 
-	rows, err := tx.Query(`SELECT id FROM pcs WHERE "row" = ? AND placement = 'dipakai'`, row)
+	rows, err := tx.Query(`SELECT id, label FROM pcs WHERE "row" = ? AND placement = 'dipakai'`, row)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var ids []int
+	type pcRow struct {
+		id         int
+		oldLabel   string
+	}
+	var pcs []pcRow
 	for rows.Next() {
-		var id int
-		rows.Scan(&id)
-		ids = append(ids, id)
+		var p pcRow
+		rows.Scan(&p.id, &p.oldLabel)
+		pcs = append(pcs, p)
 	}
 	rows.Close()
 
-	if len(ids) == 0 {
-		return nil
+	if len(pcs) == 0 {
+		return nil, nil
 	}
 
-	for _, id := range ids {
-		label := r.NextLabel("cadangan", false)
-		tx.Exec(`UPDATE pcs SET label=?, "row"=0, "column"=0, placement='cadangan', updated_at=CURRENT_TIMESTAMP WHERE id=?`, label, id)
+	labelMap := make(map[string]string, len(pcs))
+	for _, p := range pcs {
+		newLabel := r.NextLabel("cadangan", false)
+		if _, err := tx.Exec(`UPDATE pcs SET label=?, "row"=0, "column"=0, placement='cadangan', updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, p.id); err != nil {
+			return nil, err
+		}
+		labelMap[p.oldLabel] = newLabel
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return labelMap, nil
 }
 
 func (r *PCRepository) MoveToPosition(label string, row, col int) error {
@@ -584,25 +595,28 @@ func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
 	return nil
 }
 
-func (r *PCRepository) MoveToCadangan(label string) error {
+func (r *PCRepository) MoveToCadangan(label string) (string, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer tx.Rollback()
 
 	var id int
 	if err := tx.QueryRow(`SELECT id FROM pcs WHERE label=?`, label).Scan(&id); err != nil {
-		return err
+		return "", err
 	}
 
 	newLabel := r.NextLabel("cadangan", false)
 
 	if _, err := tx.Exec(`UPDATE pcs SET label=?, "row"=0, "column"=0, placement='cadangan', updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, id); err != nil {
-		return err
+		return "", err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+	return newLabel, nil
 }
 
 func (r *PCRepository) GetDistinctOS() ([]string, error) {
