@@ -2,7 +2,6 @@
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"inventaris-lab-kom/internal/models"
@@ -108,6 +107,10 @@ func (s *DeviceService) GetNextAssetCode(prefix string) string {
 	return s.deviceRepo.GetNextAssetCode(prefix)
 }
 
+func (s *DeviceService) GetNextAssetCodes(prefix string, count int) []string {
+	return s.deviceRepo.GetNextAssetCodes(prefix, count)
+}
+
 func (s *DeviceService) CreateDevice(in CreateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, string, error) {
 	in.Location = ToTitleCaseWithAbbr(in.Location)
 	in.Notes = SanitizeText(in.Notes)
@@ -147,30 +150,22 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 		return nil, err
 	}
 
-	startCode := s.deviceRepo.GetNextAssetCodeSequence(prefix)
-	parts := strings.Split(startCode, "-")
-	startNum, _ := strconv.Atoi(parts[len(parts)-1])
-	if startNum < 1 {
-		startNum = 1
-	}
+	codes := s.deviceRepo.GetNextAssetCodes(prefix, len(devices))
 
 	var inputs []repository.BatchCreateInput
-	var codes []string
 	for i, dev := range devices {
 		dev.Location = ToTitleCaseWithAbbr(dev.Location)
 		dev.Notes = SanitizeText(dev.Notes)
 		dev.SerialNumber = SanitizeText(dev.SerialNumber)
-		code := fmt.Sprintf("%s-%03d", prefix, startNum+i)
 		inputs = append(inputs, repository.BatchCreateInput{
 			DeviceTypeID: deviceTypeID,
-			AssetCode:    code,
+			AssetCode:    codes[i],
 			SerialNumber: dev.SerialNumber,
 			Condition:    dev.Condition,
 			Location:     dev.Location,
 			PurchaseDate: dev.PurchaseDate,
 			Notes:        dev.Notes,
 		})
-		codes = append(codes, code)
 	}
 
 	if err := s.deviceRepo.BatchCreate(inputs); err != nil {

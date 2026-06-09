@@ -485,6 +485,19 @@ func (h *Handler) GetNextAssetCode(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"next_code": code})
 }
 
+func (h *Handler) GetNextAssetCodes(c *gin.Context) {
+	prefix := c.Query("prefix")
+	count, _ := strconv.Atoi(c.DefaultQuery("count", "1"))
+	if count < 1 {
+		count = 1
+	}
+	if count > 100 {
+		count = 100
+	}
+	codes := h.deviceService.GetNextAssetCodes(prefix, count)
+	c.JSON(http.StatusOK, gin.H{"codes": codes})
+}
+
 func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok {

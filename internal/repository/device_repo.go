@@ -186,11 +186,27 @@ func (r *DeviceRepository) GetNextAssetCode(prefix string) string {
 	return fmt.Sprintf("%s-%03d", prefix, next)
 }
 
-func (r *DeviceRepository) GetNextAssetCodeSequence(prefix string) string {
-	var next int
-	r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)) + 1, 1)
-		FROM devices WHERE asset_code LIKE ? || '-%'`, prefix, prefix).Scan(&next)
-	return fmt.Sprintf("%s-%03d", prefix, next)
+func (r *DeviceRepository) GetNextAssetCodes(prefix string, count int) []string {
+	existing := make(map[int]bool)
+	rows, err := r.db.Query(`SELECT CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER) FROM devices WHERE asset_code LIKE ? || '-%'`, prefix, prefix)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var n int
+			rows.Scan(&n)
+			existing[n] = true
+		}
+	}
+
+	codes := make([]string, 0, count)
+	n := 1
+	for len(codes) < count {
+		if !existing[n] {
+			codes = append(codes, fmt.Sprintf("%s-%03d", prefix, n))
+		}
+		n++
+	}
+	return codes
 }
 
 type BatchCreateInput struct {
