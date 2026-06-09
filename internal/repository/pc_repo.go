@@ -171,6 +171,36 @@ func (r *PCRepository) NextLabel(placement string, isMahasiswa bool) string {
 	}
 }
 
+func (r *PCRepository) NextLabelTx(tx *database.Tx, placement string, isMahasiswa bool) string {
+	switch {
+	case placement == "cadangan":
+		var next int
+		tx.QueryRow(`WITH RECURSIVE nums(n) AS (
+			SELECT 1
+			UNION ALL
+			SELECT n+1 FROM nums WHERE n < (
+				SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0)
+				FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'
+			)
+		)
+		SELECT COALESCE(
+			(SELECT n FROM nums WHERE n NOT IN (
+				SELECT CAST(SUBSTR(label, 13) AS INTEGER)
+				FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*'
+			) LIMIT 1),
+			(SELECT COALESCE(MAX(CAST(SUBSTR(label, 13) AS INTEGER)), 0) + 1
+			 FROM pcs WHERE label GLOB 'pc-cadangan-[0-9]*')
+		)`).Scan(&next)
+		return fmt.Sprintf("pc-cadangan-%d", next)
+	case isMahasiswa:
+		var max int
+		tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 4) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-[0-9]*'`).Scan(&max)
+		return fmt.Sprintf("pc-%d", max)
+	default:
+		return ""
+	}
+}
+
 func (r *PCRepository) GetStatusCounts() (map[string]int, error) {
 	statusCounts := map[string]int{}
 	rows, err := r.db.Query(`SELECT status, COUNT(*) FROM pcs GROUP BY status`)
@@ -518,7 +548,7 @@ func (r *PCRepository) MoveRowToCadangan(row int) (map[string]string, error) {
 
 	labelMap := make(map[string]string, len(pcs))
 	for _, p := range pcs {
-		newLabel := r.NextLabel("cadangan", false)
+		newLabel := r.NextLabelTx(tx, "cadangan", false)
 		if _, err := tx.Exec(`UPDATE pcs SET label=?, "row"=0, "column"=0, placement='cadangan', updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, p.id); err != nil {
 			return nil, err
 		}
