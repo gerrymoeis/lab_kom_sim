@@ -143,6 +143,14 @@ func parseDate(s sql.NullString) *time.Time {
 		if err == nil {
 			return &t
 		}
+		t, err = time.Parse("2006-01-02T15:04", s.String)
+		if err == nil {
+			return &t
+		}
+		t, err = time.Parse("2006-01-02 15:04:05", s.String)
+		if err == nil {
+			return &t
+		}
 	}
 	return nil
 }

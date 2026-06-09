@@ -83,7 +83,7 @@ func (r *PCRepository) buildCountArgs(filters PCFilters) []any {
 
 func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, offset int) ([]models.PC, error) {
 	query := `SELECT id, label, "row", "column", status, placement, processor, ram, storage, operating_system,
-		serial_number, brand_model, pc_type, accessories, notes, last_checked FROM pcs WHERE 1=1`
+		serial_number, brand_model, pc_type, accessories, notes, purchase_date, last_checked FROM pcs WHERE 1=1`
 	clause, args := r.buildWhereClause(filters)
 	query += clause
 
@@ -119,10 +119,9 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 	var pcs []models.PC
 	for rows.Next() {
 		var pc models.PC
-		var processor, ram, storage, os, sn, bm, pt, acc, notes, label sql.NullString
-		var lastChecked sql.NullTime
+		var processor, ram, storage, os, sn, bm, pt, acc, notes, label, pDate, lc sql.NullString
 		if err := rows.Scan(&pc.ID, &label, &pc.Row, &pc.Column, &pc.Status, &pc.Placement, &processor, &ram, &storage, &os,
-			&sn, &bm, &pt, &acc, &notes, &lastChecked); err != nil {
+			&sn, &bm, &pt, &acc, &notes, &pDate, &lc); err != nil {
 			return nil, err
 		}
 		pc.Processor = valStr(processor)
@@ -135,9 +134,8 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 		pc.Accessories = valStr(acc)
 		pc.Notes = valStr(notes)
 		pc.Label = valStr(label)
-		if lastChecked.Valid {
-			pc.LastChecked = &lastChecked.Time
-		}
+		pc.PurchaseDate = parseDate(pDate)
+		pc.LastChecked = parseDate(lc)
 		pcs = append(pcs, pc)
 	}
 	return pcs, nil
@@ -194,8 +192,7 @@ func (r *PCRepository) GetStatusCounts() (map[string]int, error) {
 
 func (r *PCRepository) GetByLabel(label string) (*models.PC, error) {
 	var pc models.PC
-	var processor, ram, storage, os, notes, sn, bm, pt, acc, ps, pf, aid, lbl sql.NullString
-	var pDate, lc sql.NullTime
+	var processor, ram, storage, os, notes, sn, bm, pt, acc, ps, pf, aid, lbl, pDate, lc sql.NullString
 	err := r.db.QueryRow(`SELECT id, label, "row", "column", status, placement, processor, ram, storage,
 		purchase_date, notes, last_checked, asset_id, serial_number, operating_system,
 		pc_type, brand_model, accessories, photo_serial, photo_front,
@@ -219,19 +216,14 @@ func (r *PCRepository) GetByLabel(label string) (*models.PC, error) {
 	pc.PhotoFront = valStr(pf)
 	pc.AssetID = valStr(aid)
 	pc.Label = valStr(lbl)
-	if pDate.Valid {
-		pc.PurchaseDate = &pDate.Time
-	}
-	if lc.Valid {
-		pc.LastChecked = &lc.Time
-	}
+	pc.PurchaseDate = parseDate(pDate)
+	pc.LastChecked = parseDate(lc)
 	return &pc, nil
 }
 
 func (r *PCRepository) GetByLabelEdit(label string) (*models.PC, error) {
 	var pc models.PC
-	var processor, ram, storage, os, notes, sn, bm, pt, acc, ps, pf, lbl sql.NullString
-	var pDate, lc sql.NullTime
+	var processor, ram, storage, os, notes, sn, bm, pt, acc, ps, pf, lbl, pDate, lc sql.NullString
 	err := r.db.QueryRow(`SELECT id, label, "row", "column", status, placement, processor, ram, storage,
 		purchase_date, last_checked, operating_system, notes, pc_type, serial_number, brand_model,
 		accessories, photo_serial, photo_front FROM pcs WHERE label = ?`, label).
@@ -252,12 +244,8 @@ func (r *PCRepository) GetByLabelEdit(label string) (*models.PC, error) {
 	pc.PhotoSerial = valStr(ps)
 	pc.PhotoFront = valStr(pf)
 	pc.Label = valStr(lbl)
-	if pDate.Valid {
-		pc.PurchaseDate = &pDate.Time
-	}
-	if lc.Valid {
-		pc.LastChecked = &lc.Time
-	}
+	pc.PurchaseDate = parseDate(pDate)
+	pc.LastChecked = parseDate(lc)
 	return &pc, nil
 }
 
@@ -668,6 +656,8 @@ func (r *PCRepository) ExportAll() ([]models.PC, error) {
 		pc.OperatingSystem = valStr(os)
 		pc.Accessories = valStr(acc)
 		pc.Notes = valStr(n)
+		pc.PurchaseDate = parseDate(pd)
+		pc.LastChecked = parseDate(lc)
 		pcs = append(pcs, pc)
 	}
 	return pcs, nil
