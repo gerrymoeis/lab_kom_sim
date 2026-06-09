@@ -343,6 +343,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		api.POST("/delete-temp-file", h.DeleteTempFile)
 		api.POST("/cleanup-temp-files", h.CleanupTempFiles)
 		api.GET("/devices/next-asset-code", h.GetNextAssetCode)
+		api.GET("/devices/next-asset-codes", h.GetNextAssetCodes)
 	}
 
 	return router, func() { h.Close() }, func() { h.FlushActivityLogs() }

@@ -257,12 +257,12 @@ var PCLayoutManager = (function() {
 
   function redirectOnChanges(changes) {
     if (!changes || changes.length === 0) return false;
-    var match = window.location.pathname.match(/^\/pc\/edit\/(.+)$/);
+    var match = window.location.pathname.match(/^\/pc\/(.+)\/edit$/);
     if (!match) return false;
     var currentLabel = decodeURIComponent(match[1]);
     for (var i = 0; i < changes.length; i++) {
       if (changes[i].old_label === currentLabel) {
-        window.location.href = '/pc/edit/' + changes[i].new_label;
+        window.location.href = '/pc/' + changes[i].new_label + '/edit';
         return true;
       }
     }
