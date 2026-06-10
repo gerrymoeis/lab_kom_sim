@@ -114,6 +114,15 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 		"allCategories":   func() []Category { return loadCategories() },
 		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },
 		"pcPlacementInfo": func(placement string) PlacementInfo { return getPCPlacementInfo(placement) },
+		"isSpecialLabel": func(label, placement string) bool {
+			if placement != "dipakai" { return false }
+			if len(label) < 4 || !strings.HasPrefix(label, "pc-") { return false }
+			for _, c := range label[3:] {
+				if c >= '0' && c <= '9' { continue }
+				return true
+			}
+			return false
+		},
 		"formatPCLabel": func(pc models.PC) string {
 			if pc.Label != "" { return pc.Label }
 			return "-"

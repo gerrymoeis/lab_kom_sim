@@ -90,6 +90,10 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 		in.Label = s.pcRepo.NextLabel(in.Placement, in.IsMahasiswa)
 	}
 
+	if in.Placement == "dipakai" && !isNumericLabel(in.Label) && in.Row == 0 && in.Column == 0 {
+		in.Column = s.pcRepo.NextSpecialCol()
+	}
+
 	result, err := s.pcRepo.Create(in.Row, in.Column, in.Status, in.Placement, in.Processor, in.RAM, in.Storage,
 		in.SerialNumber, in.OperatingSystem, in.PCType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label,
 		in.PurchaseDate, in.LastChecked, in.Notes)
