@@ -349,11 +349,14 @@ var nextCadanganLabel = '{{ .nextCadanganLabel }}';
 function validatePCForm() {
     const placement = document.getElementById('placement').value;
     if (placement === 'dipakai') {
-        const row = parseInt(document.getElementById('row').value, 10);
-        const col = parseInt(document.getElementById('column').value, 10);
-        if (!row || !col) {
-            alert('Silakan pilih posisi meja terlebih dahulu.');
-            return false;
+        const isMahasiswa = document.getElementById('is_mahasiswa').value === 'true';
+        if (isMahasiswa) {
+            const row = parseInt(document.getElementById('row').value, 10);
+            const col = parseInt(document.getElementById('column').value, 10);
+            if (!row || !col) {
+                alert('Silakan pilih posisi meja terlebih dahulu.');
+                return false;
+            }
         }
     }
     return true;
@@ -404,14 +407,20 @@ function toggleLabelField() {
     const labelInput = document.getElementById('label');
     const labelFieldGroup = document.getElementById('labelFieldGroup');
     const autoLabelDisplay = document.getElementById('autoLabelDisplay');
+    const positionFields = document.getElementById('positionFields');
 
     if (isMahasiswa) {
         labelFieldGroup.classList.add('d-none');
         autoLabelDisplay.classList.remove('d-none');
+        positionFields.classList.remove('d-none');
         updateAutoLabel();
     } else {
         labelFieldGroup.classList.remove('d-none');
         autoLabelDisplay.classList.add('d-none');
+        positionFields.classList.add('d-none');
+        document.getElementById('row').value = 0;
+        document.getElementById('column').value = 0;
+        document.getElementById('positionDisplay').textContent = 'Belum dipilih';
         labelInput.value = '';
         labelInput.readOnly = false;
         labelInput.placeholder = 'Contoh: pc-dosen, pc-laboran, pc-cctv';

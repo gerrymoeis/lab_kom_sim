@@ -18,7 +18,7 @@
             </div>
             <div class="card-body">
                 <table class="table table-bordered">
-<tr><th width="30%">Label PC</th><td><strong>{{ .pc.Label }}</strong></td></tr>
+<tr><th width="30%">Label PC</th><td><strong>{{ .pc.Label }}</strong>{{ if isSpecialLabel .pc.Label .pc.Placement }} <span class="badge bg-info ms-2">Spesial</span>{{ end }}</td></tr>
                     {{ if .pc.AssetID }}<tr><th>ID Aset</th><td><span class="badge bg-info">{{ .pc.AssetID }}</span></td></tr>{{ end }}
                     <tr><th>Posisi</th><td>{{ if eq .pc.Placement "dipakai" }}Baris {{ .pc.Row }}, Kolom {{ .pc.Column }}{{ else }}-{{ end }}</td></tr>
                     <tr><th>Kondisi</th><td><span class="badge bg-{{ (pcStatusInfo .pc.Status).BadgeClass }}">{{ (pcStatusInfo .pc.Status).VisLabel }}</span></td></tr>

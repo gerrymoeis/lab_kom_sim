@@ -203,6 +203,39 @@
                     {{ end }}
                 </div>
 
+                {{ if .specialPCs }}
+                <hr class="my-3">
+                <h6 class="text-muted mb-2"><i class="bi bi-star"></i> PC Spesial Lainnya</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    {{ range .specialPCs }}
+                    <div class="pc-card-wrapper pc-card-wrapper-special">
+                        <div class="pc-card pc-card-special pc-card-clickable status-{{ .Status }}"
+                             role="button" tabindex="0"
+                             aria-label="{{ .Label }}"
+                             data-pc-id="{{ .ID }}"
+                             data-pc-label="{{ .Label }}"
+                             data-pc-row="0" data-pc-column="0"
+                             data-pc-status="{{ .Status }}"
+                             data-pc-processor="{{ .Processor }}"
+                             data-pc-ram="{{ .RAM }}"
+                             data-pc-storage="{{ .Storage }}"
+                             data-pc-os="{{ .OperatingSystem }}"
+                             data-pc-notes="{{ .Notes }}"
+                             style="cursor: pointer;">
+                            <div class="pc-number">{{ .Label }}</div>
+                            <div class="pc-icon"><i class="bi bi-star" aria-hidden="true"></i></div>
+                            <div class="pc-status-badge">
+                                {{ $info := pcStatusInfo .Status }}
+                                <i class="bi {{ $info.Icon }} {{ $info.Color }}" aria-hidden="true"></i>
+                                <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
+                            </div>
+                        </div>
+                        <div class="pc-windows-text"></div>
+                    </div>
+                    {{ end }}
+                </div>
+                {{ end }}
+
                 <div class="mt-4">
                     <h6>Keterangan:</h6>
                     <div class="d-flex gap-3 flex-wrap">

@@ -154,6 +154,28 @@
                     </div>
                 </div>
                 {{ end }}
+
+                {{ if .specialPCs }}
+                <div class="mt-4">
+                    <h6>PC Spesial Lainnya:</h6>
+                    <div class="container d-flex flex-wrap gap-2">
+                        {{ range .specialPCs }}
+                        <div class="pc-card-wrapper pc-card-wrapper-special">
+                            <div class="pc-card pc-card-special pc-card-clickable status-{{ .Status }}"
+                                 onclick="window.location='/pc/detail/{{ formatPCLabel . }}.html'"
+                                 style="cursor: pointer;">
+                                <div class="pc-number">{{ .Label }}</div>
+                                <div class="pc-icon"><i class="bi bi-star"></i></div>
+                                <div class="pc-status-badge">
+                                    {{ $info := pcStatusInfo .Status }}
+                                    <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+                {{ end }}
             </div>
         </div>
     </div>
