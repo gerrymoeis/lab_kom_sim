@@ -92,10 +92,10 @@
                     <tbody>
                         {{ range .pcs }}
                         <tr data-batch-id="{{ .Label }}" data-batch-label="{{ .Label }}">
-                            <td><strong>{{ .Label }}</strong></td>
+                            <td><strong>{{ .Label }}</strong>{{ if isSpecialLabel .Label .Placement }} <span class="badge bg-info ms-1">Spesial</span>{{ end }}</td>
                             <td>{{ if .SerialNumber }}<small><code>{{ .SerialNumber }}</code></small>{{ else }}-{{ end }}</td>
                             <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else }}-{{ end }}</td>
-                            <td>{{ if eq .Placement "dipakai" }}Baris {{ .Row }}, Kolom {{ .Column }}{{ else }}-{{ end }}</td>
+                            <td>{{ if eq .Placement "dipakai" }}{{ if isSpecialLabel .Label .Placement }}Spesial{{ else }}Baris {{ .Row }}, Kolom {{ .Column }}{{ end }}{{ else }}-{{ end }}</td>
                             <td>
 <span class="badge bg-{{ (pcStatusInfo .Status).BadgeClass }} me-1">{{ (pcStatusInfo .Status).VisLabel }}</span>
 <span class="badge bg-{{ (pcPlacementInfo .Placement).BadgeClass }}">{{ (pcPlacementInfo .Placement).VisLabel }}</span>
