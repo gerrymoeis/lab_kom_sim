@@ -65,7 +65,6 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 		if isNumericLabel(pc.Label) && pc.Row >= 1 && pc.Column >= 1 && pc.Row <= maxRow && pc.Column <= 8 {
 			grid[pc.Row-1][pc.Column-1] = pc
 		} else if pc.Label != "" {
-			specialPCs = append(specialPCs, pc)
 			switch pc.Label {
 			case "pc-dosen":
 				data.PCLecturer = pc
@@ -73,6 +72,8 @@ func (s *DashboardService) GetDashboardData() (*DashboardData, error) {
 				data.PCLaboran = pc
 			case "pc-cctv":
 				data.PCCCTV = pc
+			default:
+				specialPCs = append(specialPCs, pc)
 			}
 		}
 	}
