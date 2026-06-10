@@ -110,8 +110,11 @@ var PCLayoutManager = (function() {
     var html = '';
     special.forEach(function(pc) {
       if (!pc.label) return;
-      var cls = 'border rounded small text-center flex-shrink-0 px-2 py-1 border-secondary bg-light';
-      html += '<div class="' + cls + '" style="min-width:90px">' + pc.label + '<br><small>' + (pc.status || '') + '</small></div>';
+      var selected = selectedSlot && selectedSlot.label === pc.label && selectedSlot.type === 'special';
+      var cls = 'border rounded small text-center flex-shrink-0 px-2 py-1';
+      cls += ' ' + (selected ? 'border-primary border-2 shadow-sm' : 'border-secondary');
+      cls += ' bg-light';
+      html += '<div class="' + cls + '" style="min-width:90px;cursor:pointer" data-label="' + pc.label + '" onclick="PCLayoutManager.onSpecialClick(\'' + pc.label + '\')">' + pc.label + '<br><small>' + (pc.status || '') + '</small></div>';
     });
     container.innerHTML = html || '';
   }
@@ -183,6 +186,16 @@ var PCLayoutManager = (function() {
         body = { target: label, spare: selectedSlot.label };
         confirmMsg = 'Ganti ' + label + ' dengan ' + selectedSlot.label + '?';
       }
+    } else if (selectedSlot.type === 'special') {
+      if (!label) {
+        op = 'move';
+        body = { label: selectedSlot.label, row: row + 1, col: col + 1 };
+        confirmMsg = 'Pindahkan ' + selectedSlot.label + ' ke Baris ' + (row + 1) + ', Kolom ' + (col + 1) + '?';
+      } else {
+        op = 'swap';
+        body = { a: selectedSlot.label, b: label };
+        confirmMsg = 'Tukar ' + selectedSlot.label + ' dengan ' + label + '?';
+      }
     }
 
     if (!confirm(confirmMsg)) return;
@@ -214,11 +227,45 @@ var PCLayoutManager = (function() {
       return;
     }
 
+    if (selectedSlot.type === 'special') {
+      if (!confirm('Pindahkan ' + selectedSlot.label + ' ke cadangan?')) return;
+      selectedSlot = null;
+      render();
+      executeOperation('move-to-cadangan', { label: selectedSlot.label });
+      return;
+    }
+
     var gridLabel = selectedSlot.label;
     if (!confirm('Ganti ' + gridLabel + ' dengan ' + label + '?')) return;
     selectedSlot = null;
     render();
     executeOperation('replace', { target: gridLabel, spare: label });
+  }
+
+  function onSpecialClick(label) {
+    if (mode === 'picker') return;
+
+    if (!selectedSlot) {
+      selectedSlot = { type: 'special', label: label };
+      render();
+      document.getElementById('layoutSelectedInfo').textContent = 'Terpilih: ' + label;
+      return;
+    }
+
+    if (selectedSlot.type === 'special' && selectedSlot.label === label) {
+      selectedSlot = null;
+      render();
+      document.getElementById('layoutSelectedInfo').textContent = '';
+      return;
+    }
+
+    if (selectedSlot.type === 'special') {
+      if (!confirm('Tukar ' + selectedSlot.label + ' dengan ' + label + '?')) return;
+      selectedSlot = null;
+      render();
+      executeOperation('swap', { a: selectedSlot.label, b: label });
+      return;
+    }
   }
 
   function executeOperation(op, body) {
@@ -324,6 +371,7 @@ var PCLayoutManager = (function() {
     openManager: openManager,
     onSlotClick: onSlotClick,
     onCadanganClick: onCadanganClick,
+    onSpecialClick: onSpecialClick,
     addRow: addRow,
     moveSelectedToCadangan: moveSelectedToCadangan,
     init: init
