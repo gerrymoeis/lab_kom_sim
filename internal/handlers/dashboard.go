@@ -23,5 +23,6 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		"totalDevices": data.DeviceCount, "totalSoftware": data.SoftwareCount,
 		"pcLecturer": data.PCLecturer, "pcLaboran": data.PCLaboran,
 		"pcCCTV": data.PCCCTV,
+		"specialPCs": data.SpecialPCs,
 	})
 }

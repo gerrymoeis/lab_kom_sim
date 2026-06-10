@@ -641,6 +641,15 @@ func (r *PCRepository) MoveToCadangan(label string) (string, error) {
 	return newLabel, nil
 }
 
+func (r *PCRepository) NextSpecialCol() int {
+	var max int
+	r.db.QueryRow(`SELECT COALESCE(MAX("column"), 0) + 1 FROM pcs
+		WHERE placement='dipakai' AND "row"=0
+		AND label NOT GLOB 'pc-[0-9]*'
+		AND label NOT GLOB 'pc-cadangan-[0-9]*'`).Scan(&max)
+	return max
+}
+
 func (r *PCRepository) GetDistinctOS() ([]string, error) {
 	rows, err := r.db.Query(`SELECT DISTINCT operating_system FROM pcs WHERE operating_system != '' ORDER BY operating_system`)
 	if err != nil { return nil, err }
