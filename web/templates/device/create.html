@@ -625,6 +625,6 @@
 </script>
 
 <script>window.ANDROID_MODE={{ .android }};</script>
-{{ if .android }}<script src="/static/vendor/heic-to.js"></script>{{ end }}
+{{ if .android }}<script src="{{ staticURL "vendor/heic-to.js" }}"></script>{{ end }}
 
 {{ template "layout/footer.html" . }}

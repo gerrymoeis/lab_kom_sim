@@ -16,7 +16,9 @@ import (
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
+	"inventaris-lab-kom/internal/versioner"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )
 
@@ -100,10 +102,11 @@ func CleanupTempFiles() {
 		})
 }
 
-func LoadTemplates(templatesDir string) (*template.Template, error) {
+func LoadTemplates(templatesDir string, staticURL func(string) string) (*template.Template, error) {
 	templ := template.New("").Funcs(template.FuncMap{
-		"add": func(a, b int) int { return a + b },
-		"sub": func(a, b int) int { return a - b },
+		"staticURL": staticURL,
+		"add":       func(a, b int) int { return a + b },
+		"sub":       func(a, b int) int { return a - b },
 		"iterate": func(count int) []int {
 			r := make([]int, count)
 			for i := 0; i < count; i++ { r[i] = i }
@@ -175,17 +178,24 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	router := gin.New()
 	router.MaxMultipartMemory = 6 << 20
 	router.Use(sourceMapBlocker())
+	router.Use(gzip.Gzip(gzip.DefaultCompression))
+	router.Use(middleware.CacheControl())
 	router.Use(middleware.SecurityHeaders(cfg.Environment))
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
-	templ, err := LoadTemplates("web/templates")
+	v, err := versioner.New("./web/static")
+	if err != nil {
+		panic(fmt.Sprintf("Failed to init versioner: %v", err))
+	}
+
+	templ, err := LoadTemplates("web/templates", v.URL)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to load templates: %v", err))
 	}
 	router.SetHTMLTemplate(templ)
 
-	router.Static("/static", "./web/static")
+	router.GET("/static/*filepath", v.Handler())
 	router.Static("/uploads", "./uploads")
 
 	sessionMiddleware := middleware.SessionMiddleware(cfg.SessionSecret, cfg.Environment == "production")

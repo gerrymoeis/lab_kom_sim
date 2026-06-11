@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/gen2brain/heic v0.4.9
+	github.com/gin-contrib/gzip v1.2.6
 	github.com/gin-contrib/sessions v1.1.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/jackc/pgx/v5 v5.9.2
