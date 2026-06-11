@@ -1,6 +1,7 @@
 ﻿package middleware
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"net/http"
 
@@ -28,7 +29,7 @@ func AuthRequired(db any) gin.HandlerFunc {
 		if ok {
 			var dbToken string
 			err := queryDB.QueryRow(`SELECT session_token FROM users WHERE id = ?`, userID.(int)).Scan(&dbToken)
-			if err != nil || dbToken == "" || dbToken != sessionToken.(string) {
+			if err != nil || dbToken == "" || subtle.ConstantTimeCompare([]byte(dbToken), []byte(sessionToken.(string))) != 1 {
 				session.Clear()
 				session.Save()
 				c.Redirect(http.StatusFound, "/login")

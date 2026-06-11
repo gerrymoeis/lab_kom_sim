@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
 	"strings"
@@ -10,6 +11,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func NewCSRFToken(session sessions.Session) string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+	token := hex.EncodeToString(b)
+	session.Set("csrf_token", token)
+	session.Save()
+	return token
+}
+
 func CSRF() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
@@ -17,11 +29,11 @@ func CSRF() gin.HandlerFunc {
 		tokenRaw := session.Get("csrf_token")
 		token, ok := tokenRaw.(string)
 		if !ok || token == "" {
-			b := make([]byte, 32)
-			if _, err := rand.Read(b); err == nil {
-				token = hex.EncodeToString(b)
-				session.Set("csrf_token", token)
-				session.Save()
+			NewCSRFToken(session)
+			token, _ = session.Get("csrf_token").(string)
+			if token == "" {
+				c.Next()
+				return
 			}
 		}
 
@@ -35,7 +47,7 @@ func CSRF() gin.HandlerFunc {
 			clientToken = c.GetHeader("X-CSRF-Token")
 		}
 
-		if clientToken == "" || clientToken != token {
+		if clientToken == "" || subtle.ConstantTimeCompare([]byte(clientToken), []byte(token)) != 1 {
 			if strings.Contains(c.GetHeader("Accept"), "application/json") {
 				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "CSRF token mismatch"})
 			} else {
