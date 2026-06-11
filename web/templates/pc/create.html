@@ -432,9 +432,9 @@ document.addEventListener('DOMContentLoaded', togglePCCreateFields);
 window.ANDROID_MODE = {{ .android }};
 </script>
 {{ if .android }}
-<script src="/static/vendor/heic-to.js"></script>
+<script src="{{ staticURL "vendor/heic-to.js" }}"></script>
 {{ end }}
-<script src="/static/js/photo-upload.js"></script>
-<script src="/static/js/layout-manager.js"></script>
+<script src="{{ staticURL "js/photo-upload.js" }}"></script>
+<script src="{{ staticURL "js/layout-manager.js" }}"></script>
 {{ template "pc/layout_modal.html" . }}
 {{ template "layout/footer.html" . }}
