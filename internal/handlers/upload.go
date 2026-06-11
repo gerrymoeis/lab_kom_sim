@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -75,6 +76,33 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, UploadResponse{
 			Success: false,
 			Message: "Format file tidak didukung. Gunakan JPEG, PNG, atau HEIC",
+		})
+		return
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, UploadResponse{
+			Success: false,
+			Message: "Gagal membaca file",
+		})
+		return
+	}
+	buf := make([]byte, 512)
+	if _, err := f.Read(buf); err != nil && err != io.EOF {
+		f.Close()
+		c.JSON(http.StatusBadRequest, UploadResponse{
+			Success: false,
+			Message: "Gagal membaca file",
+		})
+		return
+	}
+	f.Close()
+	mimeType := http.DetectContentType(buf)
+	if !strings.HasPrefix(mimeType, "image/") {
+		c.JSON(http.StatusBadRequest, UploadResponse{
+			Success: false,
+			Message: "File harus berupa gambar",
 		})
 		return
 	}

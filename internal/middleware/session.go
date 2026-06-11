@@ -9,15 +9,14 @@ import (
 )
 
 // SessionMiddleware creates session middleware
-func SessionMiddleware(secret string) gin.HandlerFunc {
+func SessionMiddleware(secret string, secure bool) gin.HandlerFunc {
 	store := cookie.NewStore([]byte(secret))
 	
-	// Configure session options
 	store.Options(sessions.Options{
 		Path:     "/",
-		MaxAge:   86400 * 7, // 7 days
+		MaxAge:   86400 * 7,
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 	})
 
