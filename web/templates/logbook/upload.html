@@ -121,7 +121,7 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
 });
 </script>
 {{ if .android }}
-<script src="/static/vendor/heic-to.js"></script>
+<script src="{{ staticURL "vendor/heic-to.js" }}"></script>
 {{ end }}
-<script src="/static/js/photo-upload.js"></script>
+<script src="{{ staticURL "js/photo-upload.js" }}"></script>
 {{ template "layout/footer.html" . }}

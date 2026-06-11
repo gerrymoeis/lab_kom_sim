@@ -79,7 +79,7 @@ jobs:
           fi
 
           echo "=== 7. Resolve dependencies ==="
-          go mod download
+          go mod tidy
 
           echo "=== 8. Stage all changes ==="
           git add -A
