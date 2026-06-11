@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-contrib/sessions"
@@ -45,6 +46,7 @@ func (h *Handler) Login(c *gin.Context) {
 	session.Set("role", role)
 	session.Set("is_super_admin", isSuperAdmin)
 	session.Set("session_token", token)
+	middleware.NewCSRFToken(session)
 	if err := session.Save(); err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "login.html", gin.H{
 			"title": "Login - Sistem Inventaris Lab",

@@ -173,7 +173,9 @@ func sourceMapBlocker() gin.HandlerFunc {
 
 func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotifier) (*gin.Engine, func(), func()) {
 	router := gin.New()
+	router.MaxMultipartMemory = 6 << 20
 	router.Use(sourceMapBlocker())
+	router.Use(middleware.SecurityHeaders(cfg.Environment))
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
@@ -186,7 +188,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	router.Static("/static", "./web/static")
 	router.Static("/uploads", "./uploads")
 
-	sessionMiddleware := middleware.SessionMiddleware(cfg.SessionSecret)
+	sessionMiddleware := middleware.SessionMiddleware(cfg.SessionSecret, cfg.Environment == "production")
 	router.Use(sessionMiddleware)
 
 	// writeFlushMiddleware ensures all pending async writes are flushed
