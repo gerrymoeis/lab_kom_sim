@@ -3,6 +3,7 @@
 import (
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -159,9 +160,26 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		if err != nil {
 			h.errHTML(c, "Gagal mengambil file"); return
 		}
+		if file.Size > 10*1024*1024 {
+			h.errHTML(c, "File terlalu besar (max 10MB)"); return
+		}
 		ext := strings.ToLower(filepath.Ext(file.Filename))
 		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".heic" && ext != ".heif" {
 			h.errHTML(c, "Format file tidak didukung"); return
+		}
+		lf, err := file.Open()
+		if err != nil {
+			h.errHTML(c, "Gagal membaca file"); return
+		}
+		buf := make([]byte, 512)
+		if _, err := lf.Read(buf); err != nil && err != io.EOF {
+			lf.Close()
+			h.errHTML(c, "Gagal membaca file"); return
+		}
+		lf.Close()
+		mimeType := http.DetectContentType(buf)
+		if !strings.HasPrefix(mimeType, "image/") {
+			h.errHTML(c, "File harus berupa gambar"); return
 		}
 		fn = fmt.Sprintf("logbook_%d%s", time.Now().Unix(), ext)
 		tempPath := filepath.Join("uploads", "temp", fn)

@@ -204,7 +204,12 @@ func TestFullIntegration(t *testing.T) {
 	assert(login(), "Login should set session cookie")
 	resp, err := get("/dashboard")
 	assert(err == nil && resp.StatusCode == 200, "/dashboard returns 200")
-	closeResp(resp)
+	dashBody, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if t := extractCSRFToken(string(dashBody)); t != "" {
+		csrfToken = t
+	}
+	assert(csrfToken != "", "CSRF token exists on dashboard")
 
 	// 2. PC CRUD
 	t.Log("\n=== 2. PC CRUD ===")
