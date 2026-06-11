@@ -18,7 +18,6 @@ func NewCSRFToken(session sessions.Session) string {
 	}
 	token := hex.EncodeToString(b)
 	session.Set("csrf_token", token)
-	session.Save()
 	return token
 }
 
@@ -29,12 +28,12 @@ func CSRF() gin.HandlerFunc {
 		tokenRaw := session.Get("csrf_token")
 		token, ok := tokenRaw.(string)
 		if !ok || token == "" {
-			NewCSRFToken(session)
-			token, _ = session.Get("csrf_token").(string)
+			token = NewCSRFToken(session)
 			if token == "" {
 				c.Next()
 				return
 			}
+			session.Save()
 		}
 
 		if c.Request.Method == "GET" || c.Request.Method == "HEAD" || c.Request.Method == "OPTIONS" {
