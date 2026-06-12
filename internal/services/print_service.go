@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	gofpdf "github.com/lvillar/gofpdf"
@@ -42,7 +43,7 @@ func (s *PrintService) GetLabels(cfg PrintConfig) ([]string, error) {
 		labels := make([]string, 0, len(pcs))
 		for _, pc := range pcs {
 			if pc.Label != "" {
-				labels = append(labels, pc.Label)
+				labels = append(labels, strings.ToUpper(pc.Label))
 			}
 		}
 		return labels, nil

@@ -211,16 +211,16 @@ function updatePreview() {
     var stickerH = cfg.fontSize + 2 * cfg.padV;
 
     var preview = document.getElementById('previewSingle');
-    var scale = 37.8;
-    var pW = Math.max(stickerW * scale, 60);
-    var pH = Math.max(stickerH * scale, 40);
+    var scale = 120;
+    var pW = Math.max(stickerW * scale, 100);
+    var pH = Math.max(stickerH * scale, 60);
     preview.style.width = pW + 'px';
     preview.style.height = pH + 'px';
-    preview.style.padding = (cfg.padV * scale * 0.3) + 'px ' + (cfg.padH * scale * 0.3) + 'px';
+    preview.style.padding = (cfg.padV * scale * 0.35) + 'px ' + (cfg.padH * scale * 0.35) + 'px';
 
     var textSpan = document.getElementById('previewText');
     textSpan.textContent = sample;
-    textSpan.style.fontSize = (cfg.fontSize * scale * 0.5) + 'px';
+    textSpan.style.fontSize = (cfg.fontSize * scale * 0.45) + 'px';
 
     var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
     var margin = 1.0;
