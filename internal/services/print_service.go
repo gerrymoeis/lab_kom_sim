@@ -20,7 +20,8 @@ type PrintConfig struct {
 	PaddingHCM     float64 // padding horizontal dalam cm
 	PaddingVCM     float64 // padding vertical dalam cm
 	PaperSize      string  // "A4", "F4", "A3"
-	NumSheets      int     // jumlah lembar (1..100)
+	NumSheets      int     // jumlah copy (1..100)
+	PDFTitle       string  // judul untuk metadata PDF
 }
 
 type PrintService struct {
@@ -84,7 +85,7 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 	}
 
 	fontPt := cfg.FontSizeCM * 28.35
-	margin := 1.0
+	margin := 0.5
 	gap := 0.3
 
 	paperSize, ok := printPaperSizes[cfg.PaperSize]
@@ -100,6 +101,10 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 	pdf := gofpdf.New("P", "cm", "", "")
 	pdf.SetAutoPageBreak(false, 0)
 	pdf.SetMargins(margin, margin, margin)
+
+	if cfg.PDFTitle != "" {
+		pdf.SetTitle(cfg.PDFTitle, true)
+	}
 
 	pdf.SetFont("Helvetica", "B", fontPt)
 

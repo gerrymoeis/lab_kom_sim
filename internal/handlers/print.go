@@ -52,6 +52,8 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 		PaperSize:      c.DefaultQuery("paper_size", "A4"),
 	}
 
+	rawDeviceTypeFilter := c.Query("device_type")
+
 	if cfg.Type == "device" && cfg.DeviceTypeSlug != "" {
 		dt, err := h.deviceTypeService.GetByPrefixSlug(cfg.DeviceTypeSlug)
 		if err != nil {
@@ -101,13 +103,29 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 		return
 	}
 
+	var labelName, titleName string
+	switch cfg.Type {
+	case "pc":
+		labelName = "pc_label"
+		titleName = "PC Label"
+	case "device":
+		if rawDeviceTypeFilter != "" {
+			labelName = "device_" + rawDeviceTypeFilter
+			titleName = "Device " + rawDeviceTypeFilter
+		} else {
+			labelName = "device_asset_code"
+			titleName = "Device Asset Code"
+		}
+	}
+	cfg.PDFTitle = "Stiker " + titleName
+
 	pdfBytes, err := h.printService.GenerateStickerPDF(cfg)
 	if err != nil {
 		h.errHTML(c, "Gagal generate PDF: "+err.Error())
 		return
 	}
 
-	filename := fmt.Sprintf("stiker-%s-%s.pdf", cfg.Type, services.FormatPrintTimestamp())
+	filename := fmt.Sprintf("stiker_%s_%s.pdf", labelName, services.FormatPrintTimestamp())
 	c.Header("Content-Type", "application/pdf")
 	c.Header("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, filename))
 	// Hapus cache agar selalu fresh
