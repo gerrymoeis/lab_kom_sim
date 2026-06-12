@@ -26,8 +26,8 @@
                         </td></tr>
                         <tr><th>Serial Number</th><td>{{ if .device.SerialNumber }}{{ .device.SerialNumber }}{{ else }}<span class="text-muted">-</span>{{ end }}</td></tr>
                         <tr><th>Kondisi</th><td>
-                            <span class="badge bg-{{ if eq .device.Condition "baik" }}success{{ else if eq .device.Condition "rusak" }}danger{{ else }}warning{{ end }}">
-                                {{ if eq .device.Condition "baik" }}Baik{{ else if eq .device.Condition "rusak" }}Rusak{{ else }}Maintenance{{ end }}
+                            <span class="badge bg-{{ if eq .device.Condition "normal" }}success{{ else if eq .device.Condition "rusak" }}danger{{ else }}warning{{ end }}">
+                                {{ if eq .device.Condition "normal" }}Normal{{ else if eq .device.Condition "rusak" }}Rusak{{ else }}Warning{{ end }}
                             </span>
                         </td></tr>
                         <tr><th>Lokasi</th><td>{{ if .device.Location }}{{ .device.Location }}{{ else }}<span class="text-muted">-</span>{{ end }}</td></tr>
@@ -49,12 +49,12 @@
             <div class="card shadow-sm mb-4">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-lightning"></i> Status</h5></div>
                 <div class="card-body">
-                    {{ if eq .device.Condition "baik" }}
-                    <div class="alert alert-success mb-0"><i class="bi bi-check-circle"></i> Perangkat dalam kondisi baik</div>
+                    {{ if eq .device.Condition "normal" }}
+                    <div class="alert alert-success mb-0"><i class="bi bi-check-circle"></i> Perangkat dalam kondisi normal</div>
                     {{ else if eq .device.Condition "rusak" }}
                     <div class="alert alert-danger mb-0"><i class="bi bi-x-circle"></i> Perangkat rusak</div>
                     {{ else }}
-                    <div class="alert alert-warning mb-0"><i class="bi bi-tools"></i> Perangkat dalam maintenance</div>
+                    <div class="alert alert-warning mb-0"><i class="bi bi-tools"></i> Perangkat memerlukan perhatian</div>
                     {{ end }}
                 </div>
             </div>
