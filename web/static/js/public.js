@@ -31,9 +31,13 @@
       if (state.page > pages) state.page = pages
       var start = (state.page - 1) * pageSize
       var pageData = state.filtered.slice(start, start + pageSize)
+      var infoStart = total > 0 ? start + 1 : 0
+      var infoEnd = Math.min(start + pageSize, total)
 
       var html = buildSearchBar(total)
       html += buildFilters()
+      html += buildInfoText(infoStart, infoEnd, total)
+      html += buildPagination(total, pages)
       html += buildTable(pageData)
       html += buildPagination(total, pages)
 
@@ -82,9 +86,14 @@
       h += '<input type="text" id="ps-search" class="form-control" placeholder="Cari..." value="' + esc(state.searchTerm) + '">'
       h += '</div>'
       h += '<div class="col-md-6 text-md-end">'
-      h += '<small class="text-muted">' + total + ' data ditemukan</small>'
+      h += '<small class="text-muted">' + total + ' total data</small>'
       h += '</div></div>'
       return h
+    }
+
+    function buildInfoText(start, end, total) {
+      if (total === 0) return ''
+      return '<p class="text-muted my-2">Menampilkan ' + start + ' - ' + end + ' dari ' + total + ' data</p>'
     }
 
     function buildFilters() {
