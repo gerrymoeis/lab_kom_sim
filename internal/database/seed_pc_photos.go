@@ -28,18 +28,15 @@ func seedPCPhotos(db *DB) error {
 		return nil
 	}
 
-	var photoCount int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM pcs WHERE photo_serial IS NOT NULL AND photo_serial != ''`).Scan(&photoCount); err != nil {
-		return fmt.Errorf("seedPCPhotos: failed to check photo count: %w", err)
-	}
-	if photoCount > 0 {
-		return nil
-	}
-
+	// Check if photo files already exist on disk (more reliable than DB-only check)
 	uploadPath := os.Getenv("UPLOAD_PATH")
 	if uploadPath == "" {
 		uploadPath = "uploads"
 	}
+	if fi, err := os.Stat(filepath.Join(uploadPath, "pc", "1_serial.jpeg")); err == nil && fi.Size() > 0 {
+		return nil
+	}
+
 	pcDir := filepath.Join(uploadPath, "pc")
 	if err := os.MkdirAll(pcDir, 0755); err != nil {
 		return fmt.Errorf("seedPCPhotos: failed to create pc dir: %w", err)
