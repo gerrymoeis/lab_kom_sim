@@ -223,7 +223,7 @@ function updatePreview() {
     textSpan.style.fontSize = (cfg.fontSize * scale * 0.45) + 'px';
 
     var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
-    var margin = 1.0;
+    var margin = 0.5;
     var gap = 0.3;
     var printW = ps[0] - 2 * margin;
     var printH = ps[1] - 2 * margin;
@@ -258,7 +258,7 @@ function generatePrint() {
     var cfg = getConfig();
 
     var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
-    var margin = 1.0;
+    var margin = 0.5;
     var gap = 0.3;
     var approxCharW = cfg.fontSize * 0.35;
     var sample = getSampleText(cfg);
