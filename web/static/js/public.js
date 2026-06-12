@@ -26,6 +26,7 @@
       searchTerm: '',
       filters: {},
       page: 1,
+      groupExpanded: {},
     }
 
     function render() {
@@ -229,9 +230,12 @@
         var keys = order ? order.filter(function (k) { return groups[k] }) : Object.keys(groups).sort()
 
         keys.forEach(function (key) {
-          var rows = groups[key]
           var isToday = todayName && key === todayName
-          var dayExpanded = !!isToday
+          var dayStateKey = 'day:' + key
+          if (state.groupExpanded[dayStateKey] === undefined) {
+            state.groupExpanded[dayStateKey] = isToday
+          }
+          var dayExpanded = state.groupExpanded[dayStateKey]
 
           h += '<tr class="ps-group-header' + (isToday ? ' table-primary' : '') + '" data-group="' + esc(key) + '">'
           h += '<td colspan="' + columns.length + '">'
@@ -254,9 +258,15 @@
             subKeys.forEach(function (subKey) {
               var subRows = subGroups[subKey]
               var multiRow = subRows.length > 1
-              var courseExpanded = dayExpanded && multiRow
+              var courseStateKey = 'course:' + key + ':' + subKey
+              if (state.groupExpanded[courseStateKey] === undefined) {
+                state.groupExpanded[courseStateKey] = true
+              }
+              var courseExpanded = dayExpanded && state.groupExpanded[courseStateKey]
+              var showSubHeader = dayExpanded
+              var showCourseRows = dayExpanded && (multiRow ? courseExpanded : true)
 
-              h += '<tr class="ps-subgroup-header' + (dayExpanded ? '' : ' d-none') + '" data-subgroup-day="' + esc(key) + '" data-subgroup="' + esc(subKey) + '"' + (multiRow ? '' : ' style="cursor:default"') + '>'
+              h += '<tr class="ps-subgroup-header' + (showSubHeader ? '' : ' d-none') + '" data-subgroup="' + esc(subKey) + '" data-parent-day="' + esc(key) + '" data-count="' + subRows.length + '"' + (multiRow ? '' : ' style="cursor:default"') + '>'
               h += '<td colspan="' + columns.length + '">'
               if (multiRow) {
                 h += '<span class="ps-group-toggle ms-3 me-1"><i class="bi ' + (courseExpanded ? 'bi-chevron-down' : 'bi-chevron-right') + '"></i></span> '
@@ -270,8 +280,7 @@
               h += '</td></tr>'
 
               subRows.forEach(function (row) {
-                var visible = dayExpanded && (multiRow ? courseExpanded : true)
-                h += '<tr class="ps-group-data' + (visible ? '' : ' d-none') + '" data-group-parent="' + esc(key) + '" data-subgroup-parent="' + esc(subKey) + '">'
+                h += '<tr class="ps-group-data' + (showCourseRows ? '' : ' d-none') + '">'
                 columns.forEach(function (col) {
                   h += '<td>'
                   if (col.render) {
@@ -370,35 +379,21 @@
         tr.addEventListener('click', function (e) {
           var key = tr.getAttribute('data-group')
           if (!key) return
-          var dataRows = container.querySelectorAll('[data-group-parent="' + key + '"]')
-          var subHeaders = container.querySelectorAll('[data-subgroup-day="' + key + '"]')
-          var icon = tr.querySelector('.ps-group-toggle i')
-          var allHidden = true
-          dataRows.forEach(function (el) {
-            el.classList.toggle('d-none')
-            if (!el.classList.contains('d-none')) allHidden = false
-          })
-          subHeaders.forEach(function (el) {
-            el.classList.toggle('d-none')
-          })
-          if (icon) icon.className = 'bi ' + (allHidden ? 'bi-chevron-right' : 'bi-chevron-down')
+          var dayStateKey = 'day:' + key
+          state.groupExpanded[dayStateKey] = !state.groupExpanded[dayStateKey]
+          render()
         })
       })
 
       container.querySelectorAll('.ps-subgroup-header').forEach(function (tr) {
         var subKey = tr.getAttribute('data-subgroup')
-        if (!subKey) return
-        var dataRows = container.querySelectorAll('[data-subgroup-parent="' + subKey + '"]')
-        if (dataRows.length <= 1) return
+        var parentDay = tr.getAttribute('data-parent-day')
+        var count = parseInt(tr.getAttribute('data-count'), 10)
+        if (!subKey || !parentDay || count <= 1) return
         tr.addEventListener('click', function (e) {
-          e.stopPropagation()
-          var icon = tr.querySelector('.ps-group-toggle i')
-          var allHidden = true
-          dataRows.forEach(function (el) {
-            el.classList.toggle('d-none')
-            if (!el.classList.contains('d-none')) allHidden = false
-          })
-          if (icon) icon.className = 'bi ' + (allHidden ? 'bi-chevron-right' : 'bi-chevron-down')
+          var courseStateKey = 'course:' + parentDay + ':' + subKey
+          state.groupExpanded[courseStateKey] = !state.groupExpanded[courseStateKey]
+          render()
         })
       })
 
