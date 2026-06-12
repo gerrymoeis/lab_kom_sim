@@ -29,7 +29,11 @@ initPublicTable({
         { field: "time_end", label: "Jam Selesai", sortable: true }
     ],
     searchFields: ["course_name", "lecturer", "class", "day"],
-    pageSize: 50
+    groupBy: ["day", "course_name"],
+    groupConfig: {
+        day: { order: ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"] }
+    },
+    highlightToday: true
 });
 </script>
 
