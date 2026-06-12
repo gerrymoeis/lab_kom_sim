@@ -22,19 +22,20 @@ type Handler struct {
 	activityLogService *services.ActivityLogService
 	imageService       *services.ImageService
 
-	authService              *services.AuthService
-	userService              *services.UserService
-	deviceService            *services.DeviceService
-	pcService                *services.PCService
-	deviceLoanService        *services.DeviceLoanService
-	deviceUsageService       *services.DeviceUsageService
+	authService               *services.AuthService
+	userService               *services.UserService
+	deviceService             *services.DeviceService
+	pcService                 *services.PCService
+	deviceLoanService         *services.DeviceLoanService
+	deviceUsageService        *services.DeviceUsageService
 	deviceInstallationService *services.DeviceInstallationService
-	logbookService           *services.LogbookService
-	dashboardService         *services.DashboardService
-	scheduleService          *services.ScheduleService
-	softwareService          *services.SoftwareService
-	deviceTypeService        *services.DeviceTypeService
-	categoryService          *services.CategoryService
+	logbookService            *services.LogbookService
+	dashboardService          *services.DashboardService
+	scheduleService           *services.ScheduleService
+	softwareService           *services.SoftwareService
+	deviceTypeService         *services.DeviceTypeService
+	categoryService           *services.CategoryService
+	printService              *services.PrintService
 }
 
 func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifier) *Handler {
@@ -58,19 +59,20 @@ func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifi
 		activityLogService: activityLogService,
 		imageService:       services.NewImageService(),
 
-		authService:              services.NewAuthService(userRepo, activityLogService),
-		userService:              services.NewUserService(userRepo, activityLogService),
-		deviceService:            services.NewDeviceService(deviceRepo, deviceTypeRepo, activityLogService),
-		pcService:                services.NewPCService(pcRepo, activityLogService),
-		deviceLoanService:        services.NewDeviceLoanService(deviceLoanRepo, loanExtensionRepo, activityLogService),
-		deviceUsageService:       services.NewDeviceUsageService(deviceUsageRepo, activityLogService),
+		authService:               services.NewAuthService(userRepo, activityLogService),
+		userService:               services.NewUserService(userRepo, activityLogService),
+		deviceService:             services.NewDeviceService(deviceRepo, deviceTypeRepo, activityLogService),
+		pcService:                 services.NewPCService(pcRepo, activityLogService),
+		deviceLoanService:         services.NewDeviceLoanService(deviceLoanRepo, loanExtensionRepo, activityLogService),
+		deviceUsageService:        services.NewDeviceUsageService(deviceUsageRepo, activityLogService),
 		deviceInstallationService: services.NewDeviceInstallationService(deviceInstallationRepo, activityLogService),
-		logbookService:           services.NewLogbookService(logbookRepo, activityLogService),
-		dashboardService:         services.NewDashboardService(dashboardRepo),
-		scheduleService:          services.NewScheduleService(scheduleRepo, activityLogService),
-		softwareService:          services.NewSoftwareService(softwareRepo, activityLogService),
-		deviceTypeService:        services.NewDeviceTypeService(deviceTypeRepo, activityLogService),
-		categoryService:          services.NewCategoryService(categoryRepo, activityLogService),
+		logbookService:            services.NewLogbookService(logbookRepo, activityLogService),
+		dashboardService:          services.NewDashboardService(dashboardRepo),
+		scheduleService:           services.NewScheduleService(scheduleRepo, activityLogService),
+		softwareService:           services.NewSoftwareService(softwareRepo, activityLogService),
+		deviceTypeService:         services.NewDeviceTypeService(deviceTypeRepo, activityLogService),
+		categoryService:           services.NewCategoryService(categoryRepo, activityLogService),
+		printService:              services.NewPrintService(pcRepo, deviceRepo),
 	}
 }
 
