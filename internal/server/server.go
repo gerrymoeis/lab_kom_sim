@@ -82,6 +82,7 @@ func loadNavItems(currentPage, role string) []NavItem {
 		{"software", "bi-app-indicator", "Software", "/software"},
 		{"schedules", "bi-calendar-event", "Jadwal", "/schedules"},
 		{"logbook", "bi-journal-text", "Logbook", "/logbook"},
+		{"print", "bi-printer", "Print Stiker", "/print"},
 	}
 	if role == "admin" {
 		items = append(items,
@@ -342,6 +343,9 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 			admin.GET("/activity-logs", h.ActivityLogList)
 			admin.GET("/activity-logs/export", h.ActivityLogExport)
 		}
+
+		protected.GET("/print", h.PrintForm)
+		protected.GET("/print/generate", h.PrintGeneratePDF)
 
 		protected.GET("/profile", h.Profile)
 		protected.POST("/profile", h.UpdateProfile)

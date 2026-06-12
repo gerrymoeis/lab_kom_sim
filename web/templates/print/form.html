@@ -1,0 +1,257 @@
+{{ template "layout/base.html" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-printer"></i> Print Stiker Label</h2>
+            <p class="text-muted">Generate PDF stiker untuk PC label atau asset code perangkat</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <form id="printForm" onsubmit="return false;">
+                <h5 class="mb-3">Langkah 1: Pilih Tipe Stiker</h5>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Tipe Stiker</label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="type" id="typePc" value="pc" {{ if eq .selectedType "pc" }}checked{{ end }}
+                                    onchange="updateDefaults()">
+                                <label class="form-check-label" for="typePc">
+                                    <i class="bi bi-pc-display"></i> PC Label
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="type" id="typeDevice" value="device" {{ if eq .selectedType "device" }}checked{{ end }}
+                                    onchange="updateDefaults()">
+                                <label class="form-check-label" for="typeDevice">
+                                    <i class="bi bi-hdd-rack"></i> Device Asset Code
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6" id="deviceTypeGroup" style="{{ if ne .selectedType "device" }}display:none{{ end }}">
+                        <label for="deviceType" class="form-label">Device Type (opsional)</label>
+                        <select class="form-select" name="device_type" id="deviceType">
+                            <option value="">Semua Device Type</option>
+                            {{ range .deviceTypes }}
+                            <option value="{{ .Slug }}">{{ .Name }}</option>
+                            {{ end }}
+                        </select>
+                        <div class="form-text">Kosongkan untuk print semua device</div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">Langkah 2: Ukuran Stiker (cm)</h5>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="fontSize" class="form-label">Font Size (cm)</label>
+                        <input type="number" class="form-control" id="fontSize" name="font_size"
+                            value="{{ .defaultFontSize }}" step="0.1" min="0.5" max="5.0"
+                            oninput="updatePreview()">
+                        <div class="form-text">Ukuran teks pada stiker</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="paddingH" class="form-label">Padding Horizontal (cm)</label>
+                        <input type="number" class="form-control" id="paddingH" name="padding_h"
+                            value="{{ .defaultPaddingH }}" step="0.1" min="0.3" max="5.0"
+                            oninput="updatePreview()">
+                        <div class="form-text">Ruang kiri-kanan teks</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="paddingV" class="form-label">Padding Vertical (cm)</label>
+                        <input type="number" class="form-control" id="paddingV" name="padding_v"
+                            value="{{ .defaultPaddingV }}" step="0.1" min="0.3" max="5.0"
+                            oninput="updatePreview()">
+                        <div class="form-text">Ruang atas-bawah teks</div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="form-label">Preview Stiker:</label>
+                        <div class="border rounded p-3 bg-light" id="previewContainer">
+                            <div class="d-flex flex-wrap gap-2 justify-content-center" id="previewGrid">
+                                <div class="sticker-preview-box" id="previewSingle">
+                                    <span id="previewText">PC-XX</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text mt-1">
+                            Ukuran stiker: <strong id="stickerSizeLabel">-</strong> &nbsp;|&nbsp;
+                            Perkiraan per lembar <span id="paperSizeLabelForm">A4</span>: <strong id="perPageEstimate">-</strong> stiker
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">Langkah 3: Pengaturan Kertas</h5>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="paperSize" class="form-label">Ukuran Kertas</label>
+                        <select class="form-select" id="paperSize" name="paper_size" onchange="updatePreview()">
+                            <option value="A4">A4 (21 × 29.7 cm)</option>
+                            <option value="F4">F4 (21 × 33 cm)</option>
+                            <option value="A3">A3 (29.7 × 42 cm)</option>
+                        </select>
+                        <div class="form-text">Kertas stiker yang tersedia</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="numSheets" class="form-label">Jumlah Lembar</label>
+                        <input type="number" class="form-control" id="numSheets" name="num_sheets"
+                            value="1" min="1" max="100" oninput="updatePreview()">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="mb-0">
+                            <div class="text-muted small">
+                                <i class="bi bi-info-circle"></i>
+                                Total sticker: <strong id="totalStickersLabel">memuat...</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge bg-info fs-6" id="summaryBadge">
+                            <i class="bi bi-filetype-pdf"></i> Menghitung...
+                        </span>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-lg" onclick="generatePrint()">
+                        <i class="bi bi-filetype-pdf"></i> Generate Print
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.sticker-preview-box {
+    border: 1px solid #ccc;
+    background: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    transition: all 0.2s;
+}
+</style>
+
+<script>
+var paperSizes = {
+    'A4': [21.0, 29.7],
+    'F4': [21.0, 33.0],
+    'A3': [29.7, 42.0]
+};
+
+function getConfig() {
+    var type = document.querySelector('input[name="type"]:checked');
+    return {
+        type: type ? type.value : 'pc',
+        fontSize: parseFloat(document.getElementById('fontSize').value) || 2.0,
+        padH: parseFloat(document.getElementById('paddingH').value) || 1.5,
+        padV: parseFloat(document.getElementById('paddingV').value) || 1.0,
+        paperSize: document.getElementById('paperSize').value || 'A4',
+        numSheets: parseInt(document.getElementById('numSheets').value) || 1
+    };
+}
+
+function updateDefaults() {
+    var type = document.querySelector('input[name="type"]:checked');
+    var isDevice = type && type.value === 'device';
+    document.getElementById('deviceTypeGroup').style.display = isDevice ? '' : 'none';
+
+    if (isDevice) {
+        document.getElementById('fontSize').value = 1.5;
+        document.getElementById('paddingH').value = 1.5;
+        document.getElementById('paddingV').value = 0.8;
+    } else {
+        document.getElementById('fontSize').value = 2.0;
+        document.getElementById('paddingH').value = 2.0;
+        document.getElementById('paddingV').value = 1.0;
+    }
+    updatePreview();
+}
+
+var sampleTexts = {
+    'pc': 'PC-99',
+    'device': 'MNI-MON-999'
+};
+
+function updatePreview() {
+    var cfg = getConfig();
+    var isDevice = cfg.type === 'device';
+    var sample = sampleTexts[cfg.type];
+
+    // Estimate text width (rough: ~0.6cm per char for bold at 1cm font size, scaled)
+    var approxCharW = cfg.fontSize * 0.35;
+    var textW = sample.length * approxCharW;
+    var stickerW = textW + 2 * cfg.padH;
+    var stickerH = cfg.fontSize + 2 * cfg.padV;
+
+    // Preview box
+    var preview = document.getElementById('previewSingle');
+    var scale = 8;
+    var pW = Math.max(stickerW * scale, 60);
+    var pH = Math.max(stickerH * scale, 40);
+    preview.style.width = pW + 'px';
+    preview.style.height = pH + 'px';
+    preview.style.padding = (cfg.padV * scale * 0.4) + 'px ' + (cfg.padH * scale * 0.4) + 'px';
+
+    var textSpan = document.getElementById('previewText');
+    textSpan.textContent = sample;
+    textSpan.style.fontSize = (cfg.fontSize * scale * 0.5) + 'px';
+
+    // Paper estimate
+    var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
+    var margin = 1.0;
+    var gap = 0.3;
+    var printW = ps[0] - 2 * margin;
+    var printH = ps[1] - 2 * margin;
+
+    var cols = Math.floor((printW + gap) / (stickerW + gap));
+    var rows = Math.floor((printH + gap) / (stickerH + gap));
+
+    document.getElementById('stickerSizeLabel').textContent =
+        stickerW.toFixed(1) + ' × ' + stickerH.toFixed(1) + ' cm';
+    document.getElementById('paperSizeLabelForm').textContent = cfg.paperSize;
+    document.getElementById('perPageEstimate').textContent =
+        (cols > 0 && rows > 0) ? (cols * rows) : 'stiker terlalu besar';
+    document.getElementById('totalStickersLabel').textContent = 'memuat data...';
+
+    // Summary badge
+    var badge = document.getElementById('summaryBadge');
+    if (cols > 0 && rows > 0) {
+        var perPage = cols * rows;
+        badge.innerHTML = '<i class="bi bi-filetype-pdf"></i> ' +
+            perPage + ' stiker/lembar × ' + cfg.numSheets + ' lembar (' + cfg.paperSize + ')';
+    } else {
+        badge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Stiker terlalu besar untuk kertas ' + cfg.paperSize;
+        badge.className = 'badge bg-danger fs-6';
+    }
+}
+
+function generatePrint() {
+    var cfg = getConfig();
+    var params = new URLSearchParams();
+    params.set('type', cfg.type);
+    params.set('device_type', document.getElementById('deviceType').value || '');
+    params.set('font_size', cfg.fontSize.toString());
+    params.set('padding_h', cfg.padH.toString());
+    params.set('padding_v', cfg.padV.toString());
+    params.set('paper_size', cfg.paperSize);
+    params.set('num_sheets', cfg.numSheets.toString());
+
+    window.open('/print/generate?' + params.toString(), '_blank');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updatePreview();
+});
+</script>
+
+{{ template "layout/footer.html" . }}

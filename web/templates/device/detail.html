@@ -14,6 +14,9 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-box"></i> {{ .device.AssetCode }}</h5>
             <div>
+                <a href="/print?type=device" class="btn btn-sm btn-info text-white me-1">
+                    <i class="bi bi-printer"></i> Print Stiker
+                </a>
                 <a href="/devices/{{ .device.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
