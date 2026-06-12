@@ -37,7 +37,7 @@
                         <select class="form-select" name="device_type" id="deviceType">
                             <option value="">Semua Device Type</option>
                             {{ range .deviceTypes }}
-                            <option value="{{ .Slug }}">{{ .Name }}</option>
+                            <option value="{{ .AssetCodePrefix }}">{{ .Name }}</option>
                             {{ end }}
                         </select>
                         <div class="form-text">Kosongkan untuk print semua device</div>
