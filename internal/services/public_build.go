@@ -465,6 +465,12 @@ func gitPushIfChanged(repoDir, outDir, branch string) error {
 		return fmt.Errorf("git checkout %s: %w — ensure branch '%s' exists locally", branch, err, branch)
 	}
 
+	// Clear git index for this path to handle case-only renames
+	// on case-insensitive filesystems (Windows)
+	rmCmd := exec.Command("git", "-C", repoDir, "rm", "--cached", "-r", "--ignore-unmatch", outDir)
+	rmCmd.Stderr = nil
+	rmCmd.Run()
+
 	cmds := [][]string{
 		{"git", "-C", repoDir, "add", "-A"},
 		{"git", "-C", repoDir, "diff", "--cached", "--quiet"},
