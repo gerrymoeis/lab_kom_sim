@@ -154,8 +154,6 @@ var longestSample = {
     'device': '{{ .longestDeviceLabel }}'
 };
 
-(function() {
-
 function getConfig() {
     var type = document.querySelector('input[name="type"]:checked');
     return {
@@ -202,16 +200,16 @@ function updatePreview() {
     var stickerH = cfg.fontSize + 2 * cfg.padV;
 
     var preview = document.getElementById('previewSingle');
-    var scale = 120;
+    var scale = 80;
     var pW = Math.max(stickerW * scale, 100);
     var pH = Math.max(stickerH * scale, 60);
     preview.style.width = pW + 'px';
     preview.style.height = pH + 'px';
-    preview.style.padding = (cfg.padV * scale * 0.35) + 'px ' + (cfg.padH * scale * 0.35) + 'px';
+    preview.style.padding = (cfg.padV * scale) + 'px ' + (cfg.padH * scale) + 'px';
 
     var textSpan = document.getElementById('previewText');
     textSpan.textContent = sample;
-    textSpan.style.fontSize = (cfg.fontSize * scale * 0.45) + 'px';
+    textSpan.style.fontSize = (cfg.fontSize * scale) + 'px';
 
     var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
     var margin = 0.5;
