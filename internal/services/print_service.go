@@ -125,22 +125,29 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 	}
 
 	perPage := cols * rows
-	totalPages := int(math.Ceil(float64(len(labels)) / float64(perPage)))
-	if cfg.NumSheets > 0 && totalPages > cfg.NumSheets {
-		totalPages = cfg.NumSheets
+	pagesForAllData := int(math.Ceil(float64(len(labels)) / float64(perPage)))
+	if pagesForAllData < 1 {
+		pagesForAllData = 1
 	}
+	totalPages := pagesForAllData * cfg.NumSheets
 
 	totalGridW := float64(cols)*stickerW + float64(cols-1)*gap
 	totalGridH := float64(rows)*stickerH + float64(rows-1)*gap
 	offsetX := (printableW - totalGridW) / 2
 	offsetY := (printableH - totalGridH) / 2
 
-	idx := 0
 	for page := 0; page < totalPages; page++ {
 		pdf.AddPageFormat("", gofpdf.SizeType{Wd: paperSize[0], Ht: paperSize[1]})
 
-		for r := 0; r < rows && idx < len(labels); r++ {
-			for c := 0; c < cols && idx < len(labels); c++ {
+		startIdx := (page % pagesForAllData) * perPage
+		endIdx := startIdx + perPage
+		if endIdx > len(labels) {
+			endIdx = len(labels)
+		}
+
+		idx := startIdx
+		for r := 0; r < rows && idx < endIdx; r++ {
+			for c := 0; c < cols && idx < endIdx; c++ {
 				label := labels[idx]
 				idx++
 
