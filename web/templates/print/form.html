@@ -75,7 +75,7 @@
                         <div class="border rounded p-3 bg-light" id="previewContainer">
                             <div class="d-flex flex-wrap gap-2 justify-content-center" id="previewGrid">
                                 <div class="sticker-preview-box" id="previewSingle">
-                                    <span id="previewText">PC-XX</span>
+                                    <span id="previewText">{{ if eq .selectedType "pc" }}{{ .longestPCLabel }}{{ else }}{{ .longestDeviceLabel }}{{ end }}</span>
                                 </div>
                             </div>
                         </div>
@@ -149,16 +149,12 @@ var paperSizes = {
     'A3': [29.7, 42.0]
 };
 
-var deviceTypePrefixes = {};
+var longestSample = {
+    'pc': '{{ .longestPCLabel }}',
+    'device': '{{ .longestDeviceLabel }}'
+};
+
 (function() {
-    var sel = document.getElementById('deviceType');
-    for (var i = 0; i < sel.options.length; i++) {
-        var opt = sel.options[i];
-        if (opt.value) {
-            deviceTypePrefixes[opt.value] = opt.text;
-        }
-    }
-})();
 
 function getConfig() {
     var type = document.querySelector('input[name="type"]:checked');
@@ -191,13 +187,8 @@ function updateDefaults() {
 }
 
 function getSampleText(cfg) {
-    if (cfg.type === 'pc') {
-        return 'PC-99';
-    }
-    if (cfg.deviceType && deviceTypePrefixes[cfg.deviceType]) {
-        return deviceTypePrefixes[cfg.deviceType] + '-999';
-    }
-    return 'PREFIX-999';
+    if (cfg.type === 'pc') return longestSample.pc || 'PC-99';
+    return longestSample.device || 'PREFIX-999';
 }
 
 function updatePreview() {
