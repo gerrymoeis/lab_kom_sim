@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"inventaris-lab-kom/internal/config"
@@ -133,8 +134,16 @@ func (h *Handler) errHTML(c *gin.Context, msg string) {
 	})
 }
 
-func (h *Handler) redirectWithError(c *gin.Context, url, msg string) {
-	c.Redirect(http.StatusFound, url+"?error="+msg)
+func (h *Handler) redirectWithError(c *gin.Context, rawURL, msg string) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/")
+		return
+	}
+	q := u.Query()
+	q.Set("error", msg)
+	u.RawQuery = q.Encode()
+	c.Redirect(http.StatusFound, u.String())
 }
 
 func parseInt64IDs(ids []string) ([]int, error) {
