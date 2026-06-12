@@ -420,6 +420,14 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 		}
 	}
 
+	// Copy PC photos (serial + front, needed for public PC detail pages)
+	pcPhotosDir := filepath.Join("uploads", "pc")
+	if fi, err := os.Stat(pcPhotosDir); err == nil && fi.IsDir() {
+		if err := copyDir(pcPhotosDir, filepath.Join(outDir, "uploads", "pc")); err != nil {
+			errs = append(errs, fmt.Errorf("copy pc photos: %w", err))
+		}
+	}
+
 	// Git push to public repo if configured
 	if cfg.RepoDir != "" {
 		if err := gitPushIfChanged(cfg.RepoDir, cfg.OutDir, cfg.Branch); err != nil {
