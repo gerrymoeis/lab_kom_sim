@@ -58,7 +58,7 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 	}
 
 	if cfg.Type == "device" && cfg.DeviceTypeSlug != "" {
-		dt, err := h.deviceTypeService.GetBySlug(cfg.DeviceTypeSlug)
+		dt, err := h.deviceTypeService.GetByPrefixSlug(cfg.DeviceTypeSlug)
 		if err != nil {
 			h.errHTML(c, "Device type tidak ditemukan")
 			return
