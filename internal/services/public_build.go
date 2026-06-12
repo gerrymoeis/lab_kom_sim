@@ -348,7 +348,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 
 	// Device detail — one file per device
 	for _, d := range devices {
-		re("device/detail.html", filepath.Join(outDir, "devices", "detail", fmt.Sprintf("%d.html", d.ID)), map[string]interface{}{
+		re("device/detail.html", filepath.Join(outDir, "devices", "detail", strings.ToLower(d.AssetCode)+".html"), map[string]interface{}{
 			"title":         "Detail - " + d.AssetCode,
 			"currentPage":   "devices",
 			"device":        d,
@@ -380,7 +380,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 			}
 		}
 		swGrid := buildSoftwareGrid(pcList)
-		re("software/detail.html", filepath.Join(outDir, "software", "detail", fmt.Sprintf("%d.html", sw.ID)), map[string]interface{}{
+		re("software/detail.html", filepath.Join(outDir, "software", "detail", sw.Slug+".html"), map[string]interface{}{
 			"title":          "Detail Software - " + sw.Name,
 			"currentPage":    "software",
 			"software":       sw.SoftwareCatalog,
@@ -410,6 +410,14 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 	// Copy static assets
 	if err := copyDir(cfg.StaticDir, filepath.Join(outDir, "static")); err != nil {
 		errs = append(errs, fmt.Errorf("copy static: %w", err))
+	}
+
+	// Copy device type photos (needed for public device detail pages)
+	deviceTypesDir := filepath.Join("uploads", "device_types")
+	if fi, err := os.Stat(deviceTypesDir); err == nil && fi.IsDir() {
+		if err := copyDir(deviceTypesDir, filepath.Join(outDir, "uploads", "device_types")); err != nil {
+			errs = append(errs, fmt.Errorf("copy device_type photos: %w", err))
+		}
 	}
 
 	// Git push to public repo if configured
