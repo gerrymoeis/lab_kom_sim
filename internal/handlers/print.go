@@ -27,16 +27,36 @@ func (h *Handler) PrintForm(c *gin.Context) {
 	defaultPadH := 0.3
 	defaultPadV := 0.3
 
+	longestPCLabel := ""
+	if pcLabels, err := h.printService.GetLabels(services.PrintConfig{Type: "pc"}); err == nil {
+		for _, l := range pcLabels {
+			if len(l) > len(longestPCLabel) {
+				longestPCLabel = l
+			}
+		}
+	}
+
+	longestDeviceLabel := ""
+	if devLabels, err := h.printService.GetLabels(services.PrintConfig{Type: "device"}); err == nil {
+		for _, l := range devLabels {
+			if len(l) > len(longestDeviceLabel) {
+				longestDeviceLabel = l
+			}
+		}
+	}
+
 	h.renderTemplate(c, http.StatusOK, "print/form.html", gin.H{
-		"title":            "Print Stiker Label",
-		"currentPage":      "print",
-		"username":         username,
-		"role":             role,
-		"deviceTypes":      deviceTypes,
-		"selectedType":     tipe,
-		"defaultFontSize":  defaultFontSize,
-		"defaultPaddingH":  defaultPadH,
-		"defaultPaddingV":  defaultPadV,
+		"title":              "Print Stiker Label",
+		"currentPage":        "print",
+		"username":           username,
+		"role":               role,
+		"deviceTypes":        deviceTypes,
+		"selectedType":       tipe,
+		"defaultFontSize":    defaultFontSize,
+		"defaultPaddingH":    defaultPadH,
+		"defaultPaddingV":    defaultPadV,
+		"longestPCLabel":     longestPCLabel,
+		"longestDeviceLabel": longestDeviceLabel,
 	})
 }
 
