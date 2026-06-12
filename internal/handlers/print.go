@@ -23,14 +23,9 @@ func (h *Handler) PrintForm(c *gin.Context) {
 	}
 
 	tipe := c.DefaultQuery("type", "pc")
-	defaultFontSize := 2.0
-	defaultPadH := 2.0
-	defaultPadV := 1.0
-	if tipe == "device" {
-		defaultFontSize = 1.5
-		defaultPadH = 1.5
-		defaultPadV = 0.8
-	}
+	defaultFontSize := 0.5
+	defaultPadH := 0.3
+	defaultPadV := 0.3
 
 	h.renderTemplate(c, http.StatusOK, "print/form.html", gin.H{
 		"title":            "Print Stiker Label",
@@ -66,30 +61,30 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 		cfg.DeviceTypeSlug = fmt.Sprintf("%d", dt.ID)
 	}
 
-	fontSize, err := strconv.ParseFloat(c.DefaultQuery("font_size", "2.0"), 64)
-	if err != nil || fontSize < 0.5 || fontSize > 5.0 {
-		h.errHTML(c, "Font size harus antara 0.5 - 5.0 cm")
+	fontSize, err := strconv.ParseFloat(c.DefaultQuery("font_size", "0.5"), 64)
+	if err != nil || fontSize < 0.3 || fontSize > 5.0 {
+		h.errHTML(c, "Font size harus antara 0.3 - 5.0 cm")
 		return
 	}
 	cfg.FontSizeCM = fontSize
 
-	padH, err := strconv.ParseFloat(c.DefaultQuery("padding_h", "1.5"), 64)
-	if err != nil || padH < 0.3 || padH > 5.0 {
-		h.errHTML(c, "Padding horizontal harus antara 0.3 - 5.0 cm")
+	padH, err := strconv.ParseFloat(c.DefaultQuery("padding_h", "0.3"), 64)
+	if err != nil || padH < 0.1 || padH > 5.0 {
+		h.errHTML(c, "Padding horizontal harus antara 0.1 - 5.0 cm")
 		return
 	}
 	cfg.PaddingHCM = padH
 
-	padV, err := strconv.ParseFloat(c.DefaultQuery("padding_v", "1.0"), 64)
-	if err != nil || padV < 0.3 || padV > 5.0 {
-		h.errHTML(c, "Padding vertical harus antara 0.3 - 5.0 cm")
+	padV, err := strconv.ParseFloat(c.DefaultQuery("padding_v", "0.3"), 64)
+	if err != nil || padV < 0.1 || padV > 5.0 {
+		h.errHTML(c, "Padding vertical harus antara 0.1 - 5.0 cm")
 		return
 	}
 	cfg.PaddingVCM = padV
 
 	numSheets, err := strconv.Atoi(c.DefaultQuery("num_sheets", "1"))
 	if err != nil || numSheets < 1 || numSheets > 100 {
-		h.errHTML(c, "Jumlah lembar harus antara 1 - 100")
+		h.errHTML(c, "Jumlah copy harus antara 1 - 100")
 		return
 	}
 	cfg.NumSheets = numSheets

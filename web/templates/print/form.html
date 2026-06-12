@@ -34,10 +34,10 @@
                     </div>
                     <div class="col-md-6" id="deviceTypeGroup" style="{{ if ne .selectedType "device" }}display:none{{ end }}">
                         <label for="deviceType" class="form-label">Device Type (opsional)</label>
-                        <select class="form-select" name="device_type" id="deviceType">
+                        <select class="form-select" name="device_type" id="deviceType" onchange="updatePreview()">
                             <option value="">Semua Device Type</option>
                             {{ range .deviceTypes }}
-                            <option value="{{ .AssetCodePrefix }}">{{ .Name }}</option>
+                            <option value="{{ .AssetCodePrefix }}" data-prefix="{{ .AssetCodePrefix }}">{{ .Name }}</option>
                             {{ end }}
                         </select>
                         <div class="form-text">Kosongkan untuk print semua device</div>
@@ -49,21 +49,21 @@
                     <div class="col-md-4">
                         <label for="fontSize" class="form-label">Font Size (cm)</label>
                         <input type="number" class="form-control" id="fontSize" name="font_size"
-                            value="{{ .defaultFontSize }}" step="0.1" min="0.5" max="5.0"
+                            value="{{ .defaultFontSize }}" step="0.1" min="0.3" max="5.0"
                             oninput="updatePreview()">
                         <div class="form-text">Ukuran teks pada stiker</div>
                     </div>
                     <div class="col-md-4">
                         <label for="paddingH" class="form-label">Padding Horizontal (cm)</label>
                         <input type="number" class="form-control" id="paddingH" name="padding_h"
-                            value="{{ .defaultPaddingH }}" step="0.1" min="0.3" max="5.0"
+                            value="{{ .defaultPaddingH }}" step="0.1" min="0.1" max="5.0"
                             oninput="updatePreview()">
                         <div class="form-text">Ruang kiri-kanan teks</div>
                     </div>
                     <div class="col-md-4">
                         <label for="paddingV" class="form-label">Padding Vertical (cm)</label>
                         <input type="number" class="form-control" id="paddingV" name="padding_v"
-                            value="{{ .defaultPaddingV }}" step="0.1" min="0.3" max="5.0"
+                            value="{{ .defaultPaddingV }}" step="0.1" min="0.1" max="5.0"
                             oninput="updatePreview()">
                         <div class="form-text">Ruang atas-bawah teks</div>
                     </div>
@@ -98,15 +98,16 @@
                         <div class="form-text">Kertas stiker yang tersedia</div>
                     </div>
                     <div class="col-md-4">
-                        <label for="numSheets" class="form-label">Jumlah Lembar</label>
+                        <label for="numSheets" class="form-label">Jumlah Copy</label>
                         <input type="number" class="form-control" id="numSheets" name="num_sheets"
                             value="1" min="1" max="100" oninput="updatePreview()">
+                        <div class="form-text">Total copy cetakan</div>
                     </div>
                     <div class="col-md-4 d-flex align-items-end">
                         <div class="mb-0">
                             <div class="text-muted small">
                                 <i class="bi bi-info-circle"></i>
-                                Total sticker: <strong id="totalStickersLabel">memuat...</strong>
+                                Total sticker (est.): <strong id="totalStickersLabel">-</strong>
                             </div>
                         </div>
                     </div>
@@ -115,7 +116,7 @@
                 <hr>
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="badge bg-info fs-6" id="summaryBadge">
+                        <span class="badge fs-6" id="summaryBadge">
                             <i class="bi bi-filetype-pdf"></i> Menghitung...
                         </span>
                     </div>
@@ -148,15 +149,27 @@ var paperSizes = {
     'A3': [29.7, 42.0]
 };
 
+var deviceTypePrefixes = {};
+(function() {
+    var sel = document.getElementById('deviceType');
+    for (var i = 0; i < sel.options.length; i++) {
+        var opt = sel.options[i];
+        if (opt.value) {
+            deviceTypePrefixes[opt.value] = opt.text;
+        }
+    }
+})();
+
 function getConfig() {
     var type = document.querySelector('input[name="type"]:checked');
     return {
         type: type ? type.value : 'pc',
-        fontSize: parseFloat(document.getElementById('fontSize').value) || 2.0,
-        padH: parseFloat(document.getElementById('paddingH').value) || 1.5,
-        padV: parseFloat(document.getElementById('paddingV').value) || 1.0,
+        fontSize: parseFloat(document.getElementById('fontSize').value) || 0.5,
+        padH: parseFloat(document.getElementById('paddingH').value) || 0.3,
+        padV: parseFloat(document.getElementById('paddingV').value) || 0.3,
         paperSize: document.getElementById('paperSize').value || 'A4',
-        numSheets: parseInt(document.getElementById('numSheets').value) || 1
+        numSheets: parseInt(document.getElementById('numSheets').value) || 1,
+        deviceType: document.getElementById('deviceType').value || ''
     };
 }
 
@@ -166,47 +179,49 @@ function updateDefaults() {
     document.getElementById('deviceTypeGroup').style.display = isDevice ? '' : 'none';
 
     if (isDevice) {
-        document.getElementById('fontSize').value = 1.5;
-        document.getElementById('paddingH').value = 1.5;
-        document.getElementById('paddingV').value = 0.8;
+        document.getElementById('fontSize').value = 0.5;
+        document.getElementById('paddingH').value = 0.3;
+        document.getElementById('paddingV').value = 0.3;
     } else {
-        document.getElementById('fontSize').value = 2.0;
-        document.getElementById('paddingH').value = 2.0;
-        document.getElementById('paddingV').value = 1.0;
+        document.getElementById('fontSize').value = 0.5;
+        document.getElementById('paddingH').value = 0.3;
+        document.getElementById('paddingV').value = 0.3;
     }
     updatePreview();
 }
 
-var sampleTexts = {
-    'pc': 'PC-99',
-    'device': 'MNI-MON-999'
-};
+function getSampleText(cfg) {
+    if (cfg.type === 'pc') {
+        return 'PC-99';
+    }
+    if (cfg.deviceType && deviceTypePrefixes[cfg.deviceType]) {
+        return deviceTypePrefixes[cfg.deviceType] + '-999';
+    }
+    return 'PREFIX-999';
+}
 
 function updatePreview() {
     var cfg = getConfig();
-    var isDevice = cfg.type === 'device';
-    var sample = sampleTexts[cfg.type];
 
-    // Estimate text width (rough: ~0.6cm per char for bold at 1cm font size, scaled)
+    var sample = getSampleText(cfg);
+
     var approxCharW = cfg.fontSize * 0.35;
     var textW = sample.length * approxCharW;
     var stickerW = textW + 2 * cfg.padH;
     var stickerH = cfg.fontSize + 2 * cfg.padV;
 
-    // Preview box
     var preview = document.getElementById('previewSingle');
-    var scale = 8;
+    var scale = 37.8;
     var pW = Math.max(stickerW * scale, 60);
     var pH = Math.max(stickerH * scale, 40);
     preview.style.width = pW + 'px';
     preview.style.height = pH + 'px';
-    preview.style.padding = (cfg.padV * scale * 0.4) + 'px ' + (cfg.padH * scale * 0.4) + 'px';
+    preview.style.padding = (cfg.padV * scale * 0.3) + 'px ' + (cfg.padH * scale * 0.3) + 'px';
 
     var textSpan = document.getElementById('previewText');
     textSpan.textContent = sample;
     textSpan.style.fontSize = (cfg.fontSize * scale * 0.5) + 'px';
 
-    // Paper estimate
     var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
     var margin = 1.0;
     var gap = 0.3;
@@ -219,16 +234,20 @@ function updatePreview() {
     document.getElementById('stickerSizeLabel').textContent =
         stickerW.toFixed(1) + ' × ' + stickerH.toFixed(1) + ' cm';
     document.getElementById('paperSizeLabelForm').textContent = cfg.paperSize;
-    document.getElementById('perPageEstimate').textContent =
-        (cols > 0 && rows > 0) ? (cols * rows) : 'stiker terlalu besar';
-    document.getElementById('totalStickersLabel').textContent = 'memuat data...';
 
-    // Summary badge
+    var perPage = (cols > 0 && rows > 0) ? (cols * rows) : 0;
+    document.getElementById('perPageEstimate').textContent =
+        perPage > 0 ? perPage : 'stiker terlalu besar';
+
+    var total = perPage * cfg.numSheets;
+    document.getElementById('totalStickersLabel').textContent =
+        total > 0 ? total + ' stiker' : '-';
+
     var badge = document.getElementById('summaryBadge');
-    if (cols > 0 && rows > 0) {
-        var perPage = cols * rows;
+    if (perPage > 0) {
         badge.innerHTML = '<i class="bi bi-filetype-pdf"></i> ' +
-            perPage + ' stiker/lembar × ' + cfg.numSheets + ' lembar (' + cfg.paperSize + ')';
+            perPage + ' stiker/lembar × ' + cfg.numSheets + ' copy (' + cfg.paperSize + ')';
+        badge.className = 'badge bg-info fs-6';
     } else {
         badge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Stiker terlalu besar untuk kertas ' + cfg.paperSize;
         badge.className = 'badge bg-danger fs-6';
@@ -237,9 +256,44 @@ function updatePreview() {
 
 function generatePrint() {
     var cfg = getConfig();
+
+    var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
+    var margin = 1.0;
+    var gap = 0.3;
+    var approxCharW = cfg.fontSize * 0.35;
+    var sample = getSampleText(cfg);
+    var textW = sample.length * approxCharW;
+    var stickerW = textW + 2 * cfg.padH;
+    var stickerH = cfg.fontSize + 2 * cfg.padV;
+    var printW = ps[0] - 2 * margin;
+    var printH = ps[1] - 2 * margin;
+    var cols = Math.floor((printW + gap) / (stickerW + gap));
+    var rows = Math.floor((printH + gap) / (stickerH + gap));
+
+    if (cols < 1 || rows < 1) {
+        alert('Ukuran stiker terlalu besar untuk kertas ' + cfg.paperSize + '. Perkecil font size atau padding.');
+        return;
+    }
+    if (cfg.fontSize < 0.3 || cfg.fontSize > 5.0) {
+        alert('Font size harus antara 0.3 - 5.0 cm');
+        return;
+    }
+    if (cfg.padH < 0.1 || cfg.padH > 5.0 || cfg.padV < 0.1 || cfg.padV > 5.0) {
+        alert('Padding harus antara 0.1 - 5.0 cm');
+        return;
+    }
+    if (cfg.numSheets < 1 || cfg.numSheets > 100) {
+        alert('Jumlah copy harus antara 1 - 100');
+        return;
+    }
+    if (!paperSizes[cfg.paperSize]) {
+        alert('Ukuran kertas tidak valid');
+        return;
+    }
+
     var params = new URLSearchParams();
     params.set('type', cfg.type);
-    params.set('device_type', document.getElementById('deviceType').value || '');
+    params.set('device_type', cfg.deviceType);
     params.set('font_size', cfg.fontSize.toString());
     params.set('padding_h', cfg.padH.toString());
     params.set('padding_v', cfg.padV.toString());
