@@ -230,6 +230,7 @@
         var keys = order ? order.filter(function (k) { return groups[k] }) : Object.keys(groups).sort()
 
         keys.forEach(function (key) {
+          var rows = groups[key]
           var isToday = todayName && key === todayName
           var dayStateKey = 'day:' + key
           if (state.groupExpanded[dayStateKey] === undefined) {
