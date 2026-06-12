@@ -83,7 +83,7 @@ func (r *PCRepository) buildCountArgs(filters PCFilters) []any {
 
 func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, offset int) ([]models.PC, error) {
 	query := `SELECT id, label, "row", "column", status, placement, processor, ram, storage, operating_system,
-		serial_number, brand_model, pc_type, accessories, notes, purchase_date, last_checked FROM pcs WHERE 1=1`
+		serial_number, brand_model, pc_type, accessories, notes, purchase_date, last_checked, photo_serial, photo_front FROM pcs WHERE 1=1`
 	clause, args := r.buildWhereClause(filters)
 	query += clause
 
@@ -119,9 +119,9 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 	var pcs []models.PC
 	for rows.Next() {
 		var pc models.PC
-		var processor, ram, storage, os, sn, bm, pt, acc, notes, label, pDate, lc sql.NullString
+		var processor, ram, storage, os, sn, bm, pt, acc, notes, label, pDate, lc, photoSerial, photoFront sql.NullString
 		if err := rows.Scan(&pc.ID, &label, &pc.Row, &pc.Column, &pc.Status, &pc.Placement, &processor, &ram, &storage, &os,
-			&sn, &bm, &pt, &acc, &notes, &pDate, &lc); err != nil {
+			&sn, &bm, &pt, &acc, &notes, &pDate, &lc, &photoSerial, &photoFront); err != nil {
 			return nil, err
 		}
 		pc.Processor = valStr(processor)
@@ -134,6 +134,8 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 		pc.Accessories = valStr(acc)
 		pc.Notes = valStr(notes)
 		pc.Label = valStr(label)
+		pc.PhotoSerial = valStr(photoSerial)
+		pc.PhotoFront = valStr(photoFront)
 		pc.PurchaseDate = parseDate(pDate)
 		pc.LastChecked = parseDate(lc)
 		pcs = append(pcs, pc)
