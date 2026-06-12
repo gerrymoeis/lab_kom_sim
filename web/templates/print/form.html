@@ -138,6 +138,7 @@
     justify-content: center;
     font-weight: bold;
     font-family: 'Courier New', monospace;
+    white-space: nowrap;
     transition: all 0.2s;
 }
 </style>
@@ -201,10 +202,6 @@ function updatePreview() {
 
     var preview = document.getElementById('previewSingle');
     var scale = 80;
-    var pW = Math.max(stickerW * scale, 100);
-    var pH = Math.max(stickerH * scale, 60);
-    preview.style.width = pW + 'px';
-    preview.style.height = pH + 'px';
     preview.style.padding = (cfg.padV * scale) + 'px ' + (cfg.padH * scale) + 'px';
 
     var textSpan = document.getElementById('previewText');

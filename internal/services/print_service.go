@@ -107,6 +107,7 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 	}
 
 	pdf.SetFont("Helvetica", "B", fontPt)
+	pdf.SetCellMargin(0)
 
 	maxTextW := 0.0
 	for _, label := range labels {
@@ -167,7 +168,7 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 
 				labelW := pdf.GetStringWidth(label)
 				textX := x + (stickerW-labelW)/2
-				textY := y + cfg.PaddingVCM + cfg.FontSizeCM*0.25
+				textY := y + cfg.PaddingVCM
 				pdf.SetXY(textX, textY)
 				pdf.CellFormat(labelW, cfg.FontSizeCM, label, "", 0, "L", false, 0, "")
 			}
