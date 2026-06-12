@@ -33,7 +33,9 @@
 
       var total = state.filtered.length
 
-      var html = buildSearchBar(total)
+      ensureSearchBar(total)
+
+      var html = ''
       html += buildFilters()
 
       if (groupBy) {
@@ -52,7 +54,13 @@
         html += buildPagination(total, pages)
       }
 
-      container.innerHTML = html
+      var contentEl = container.querySelector('.ps-content')
+      if (!contentEl) {
+        contentEl = document.createElement('div')
+        contentEl.className = 'ps-content'
+        container.appendChild(contentEl)
+      }
+      contentEl.innerHTML = html
       bindEvents()
     }
 
@@ -91,6 +99,29 @@
       }
     }
 
+    function ensureSearchBar(total) {
+      var wrap = container.querySelector('.ps-search-bar-wrap')
+      if (!wrap) {
+        wrap = document.createElement('div')
+        wrap.className = 'ps-search-bar-wrap'
+        container.insertBefore(wrap, container.firstChild)
+      }
+      if (!wrap.hasChildNodes()) {
+        wrap.innerHTML = buildSearchBar(total)
+        var input = document.getElementById('ps-search')
+        if (input) {
+          input.addEventListener('input', function (e) {
+            state.searchTerm = e.target.value
+            state.page = 1
+            render()
+          })
+        }
+      } else {
+        var countEl = wrap.querySelector('.text-muted')
+        if (countEl) countEl.textContent = total + ' total data'
+      }
+    }
+
     function buildSearchBar(total) {
       var h = '<div class="row mb-3 align-items-center">'
       h += '<div class="col-md-6">'
@@ -109,7 +140,6 @@
 
     function buildFilters() {
       var filterCols = columns.filter(function (c) { return c.filterable })
-      if (!filterCols.length) return ''
 
       var h = '<div class="row mb-3 g-2">'
       filterCols.forEach(function (col) {
@@ -128,7 +158,9 @@
         })
         h += '</select></div>'
       })
-      h += '</div>'
+      h += '<div class="col-md-auto d-flex align-items-end ms-auto">'
+      h += '<button type="button" class="btn btn-sm btn-outline-secondary ps-reset"><i class="bi bi-x-circle"></i> Reset</button>'
+      h += '</div></div>'
       return h
     }
 
@@ -224,7 +256,7 @@
               var multiRow = subRows.length > 1
               var courseExpanded = dayExpanded && multiRow
 
-              h += '<tr class="ps-subgroup-header' + (dayExpanded ? '' : ' d-none') + '" data-group-parent="' + esc(key) + '" data-subgroup="' + esc(subKey) + '"' + (multiRow ? '' : ' style="cursor:default"') + '>'
+              h += '<tr class="ps-subgroup-header' + (dayExpanded ? '' : ' d-none') + '" data-subgroup-day="' + esc(key) + '" data-subgroup="' + esc(subKey) + '"' + (multiRow ? '' : ' style="cursor:default"') + '>'
               h += '<td colspan="' + columns.length + '">'
               if (multiRow) {
                 h += '<span class="ps-group-toggle ms-3 me-1"><i class="bi ' + (courseExpanded ? 'bi-chevron-down' : 'bi-chevron-right') + '"></i></span> '
@@ -302,15 +334,6 @@
     }
 
     function bindEvents() {
-      var searchInput = document.getElementById('ps-search')
-      if (searchInput) {
-        searchInput.addEventListener('input', function (e) {
-          state.searchTerm = e.target.value
-          state.page = 1
-          render()
-        })
-      }
-
       container.querySelectorAll('.ps-filter').forEach(function (sel) {
         sel.addEventListener('change', function (e) {
           state.filters[e.target.getAttribute('data-field')] = e.target.value
@@ -347,12 +370,16 @@
         tr.addEventListener('click', function (e) {
           var key = tr.getAttribute('data-group')
           if (!key) return
-          var targets = container.querySelectorAll('[data-group-parent="' + key + '"]')
+          var dataRows = container.querySelectorAll('[data-group-parent="' + key + '"]')
+          var subHeaders = container.querySelectorAll('[data-subgroup-day="' + key + '"]')
           var icon = tr.querySelector('.ps-group-toggle i')
           var allHidden = true
-          targets.forEach(function (el) {
+          dataRows.forEach(function (el) {
             el.classList.toggle('d-none')
             if (!el.classList.contains('d-none')) allHidden = false
+          })
+          subHeaders.forEach(function (el) {
+            el.classList.toggle('d-none')
           })
           if (icon) icon.className = 'bi ' + (allHidden ? 'bi-chevron-right' : 'bi-chevron-down')
         })
@@ -364,6 +391,7 @@
         var dataRows = container.querySelectorAll('[data-subgroup-parent="' + subKey + '"]')
         if (dataRows.length <= 1) return
         tr.addEventListener('click', function (e) {
+          e.stopPropagation()
           var icon = tr.querySelector('.ps-group-toggle i')
           var allHidden = true
           dataRows.forEach(function (el) {
@@ -373,6 +401,20 @@
           if (icon) icon.className = 'bi ' + (allHidden ? 'bi-chevron-right' : 'bi-chevron-down')
         })
       })
+
+      var resetBtn = container.querySelector('.ps-reset')
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function (e) {
+          state.searchTerm = ''
+          state.filters = {}
+          state.sortField = null
+          state.sortDir = SORT_ASC
+          state.page = 1
+          var input = document.getElementById('ps-search')
+          if (input) { input.value = ''; input.focus() }
+          render()
+        })
+      }
     }
 
     render()
