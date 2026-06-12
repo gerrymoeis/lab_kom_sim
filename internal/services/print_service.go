@@ -160,8 +160,8 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 				x := margin + offsetX + float64(c)*(stickerW+gap)
 				y := margin + offsetY + float64(r)*(stickerH+gap)
 
-				pdf.SetLineWidth(0.02)
-				pdf.SetDrawColor(200, 200, 200)
+				pdf.SetLineWidth(0.05)
+				pdf.SetDrawColor(60, 60, 60)
 				pdf.SetFillColor(255, 255, 255)
 				pdf.Rect(x, y, stickerW, stickerH, "FD")
 
