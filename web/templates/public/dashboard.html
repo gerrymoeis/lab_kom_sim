@@ -83,9 +83,9 @@
             {{ end }}
 
             <div class="pc-grid-scroll">
-                <div class="d-flex flex-column align-items-center gap-2">
+                <div class="pc-grid">
                     {{ range $rowIdx, $row := .pcGrid }}
-                    <div class="d-flex gap-2 justify-content-center">
+                    <div class="pc-row">
                         {{ range $colIdx, $pc := $row }}
                         <div class="pc-card-wrapper {{ if eq $pc.Placement "cadangan" }}pc-card-wrapper-cadangan{{ end }}">
                             {{ if gt $pc.ID 0 }}
