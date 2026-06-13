@@ -173,8 +173,24 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 		titleName = "PC Label"
 	case "device":
 		if rawDeviceTypeFilter != "" {
-			labelName = "device_" + rawDeviceTypeFilter
-			titleName = "Device " + rawDeviceTypeFilter
+			prefixes := strings.Split(rawDeviceTypeFilter, ",")
+			cleaned := make([]string, 0, len(prefixes))
+			for _, p := range prefixes {
+				p = strings.TrimSpace(p)
+				if p != "" {
+					cleaned = append(cleaned, p)
+				}
+			}
+			if len(cleaned) >= 5 {
+				labelName = fmt.Sprintf("device_%dtipe", len(cleaned))
+				titleName = fmt.Sprintf("Device (%d tipe)", len(cleaned))
+			} else if len(cleaned) >= 2 {
+				labelName = "device_" + strings.Join(cleaned, "+")
+				titleName = "Device " + strings.Join(cleaned, ", ")
+			} else {
+				labelName = "device_" + cleaned[0]
+				titleName = "Device " + cleaned[0]
+			}
 		} else {
 			labelName = "device_asset_code"
 			titleName = "Device Asset Code"
