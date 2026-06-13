@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
+
+	"inventaris-lab-kom/internal/util"
 )
 
 type dialect struct {
@@ -504,19 +505,8 @@ func runMigrations(db *DB, isPostgres bool) error {
 			if err := rows.Scan(&id, &name); err != nil {
 				continue
 			}
-			// Generate slug using same logic as util.Slugify (inline to avoid import cycle)
-			slug := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(name), " ", "-"))
-			slug = strings.Map(func(r rune) rune {
-				if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
-					return r
-				}
-				return -1
-			}, slug)
-			// Remove consecutive dashes and trim
-			for strings.Contains(slug, "--") {
-				slug = strings.ReplaceAll(slug, "--", "-")
-			}
-			slug = strings.Trim(slug, "-")
+			// Generate slug using util.Slugify (single source of truth)
+			slug := util.Slugify(name)
 
 			if _, err := db.Exec(`UPDATE software_catalog SET slug = ? WHERE id = ?`, slug, id); err != nil {
 				log.Printf("WARN: failed to populate slug for software id=%d: %v", id, err)
@@ -570,49 +560,19 @@ func runMigrations(db *DB, isPostgres bool) error {
 }
 
 func toTitleCaseWithAbbr(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-	re := regexp.MustCompile(`\s+`)
-	s = re.ReplaceAllString(s, " ")
-	words := strings.Fields(s)
-	for i, w := range words {
-		if len(w) > 0 {
-			words[i] = strings.ToUpper(string(w[0])) + strings.ToLower(w[1:])
-		}
-	}
-	r := strings.Join(words, " ")
-	r = regexp.MustCompile(`\b([A-Z])([A-Z])\b`).ReplaceAllString(r, "$1.$2")
-	return strings.TrimSuffix(r, ".")
+	return util.ToTitleCaseWithAbbr(s)
 }
 
 func sanitizeText(s string) string {
-	s = strings.TrimSpace(s)
-	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")
-	return s
+	return util.SanitizeText(s)
 }
 
 func toUpperTrim(s string) string {
-	return strings.ToUpper(strings.TrimSpace(s))
+	return util.ToUpperTrim(s)
 }
 
 func generateSlug(s string) string {
-	s = strings.ToLower(strings.TrimSpace(s))
-	s = strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
-			return r
-		}
-		return -1
-	}, s)
-	for strings.Contains(s, "--") {
-		s = strings.ReplaceAll(s, "--", "-")
-	}
-	s = strings.Trim(s, "-")
-	if s == "" {
-		s = "item"
-	}
-	return s
+	return util.Slugify(s)
 }
 
 func normalizeExistingData(db *DB) error {
@@ -855,7 +815,7 @@ func normalizeSoftwareCatalogs(db *DB) error {
 		return err
 	}
 	defer rows.Close()
-	var count int
+	var updated int
 	for rows.Next() {
 		var id int
 		var name, desc, oldSlug string
@@ -864,20 +824,59 @@ func normalizeSoftwareCatalogs(db *DB) error {
 		}
 		newName := toTitleCaseWithAbbr(name)
 		newDesc := sanitizeText(desc)
-		newSlug := generateSlug(newName)
-		if newName != name || newDesc != desc || newSlug != oldSlug {
-			_, err := db.Exec("UPDATE software_catalog SET name = ?, description = ?, slug = ? WHERE id = ?",
-				newName, newDesc, newSlug, id)
-			if err != nil {
-				log.Printf("WARN: failed to update software id=%d (slug conflict?): %v", id, err)
-			}
-			count++
+		newSlug := util.Slugify(newName)
+		if newName == name && newDesc == desc && newSlug == oldSlug {
+			continue
 		}
+
+		_, err := db.Exec("UPDATE software_catalog SET name = ?, description = ?, slug = ? WHERE id = ?",
+			newName, newDesc, newSlug, id)
+		if err == nil {
+			updated++
+			continue
+		}
+
+		errStr := err.Error()
+
+		if strings.Contains(errStr, "software_catalog.name") {
+			var targetID int
+			if err2 := db.QueryRow("SELECT id FROM software_catalog WHERE name = ? AND id != ?", newName, id).Scan(&targetID); err2 == nil {
+				mergeSoftwareRows(db, id, targetID)
+				updated++
+				continue
+			}
+		}
+
+		if strings.Contains(errStr, "software_catalog.slug") {
+			suffixSlug := newSlug + "-" + fmt.Sprintf("%d", id)
+			if _, err2 := db.Exec("UPDATE software_catalog SET name = ?, description = ?, slug = ? WHERE id = ?",
+				newName, newDesc, suffixSlug, id); err2 == nil {
+				updated++
+				continue
+			}
+		}
+
+		log.Printf("WARN: failed to normalize software id=%d: %v", id, err)
 	}
-	if count > 0 {
-		log.Printf("  Normalized %d software_catalogs", count)
+	if updated > 0 {
+		log.Printf("  Normalized %d software_catalogs", updated)
 	}
 	return nil
+}
+
+func mergeSoftwareRows(db *DB, fromID, intoID int) {
+	rows, err := db.Query("SELECT pc_id FROM pc_software WHERE software_id = ? AND installed = TRUE", fromID)
+	if err == nil {
+		for rows.Next() {
+			var pcID int
+			if rows.Scan(&pcID) == nil {
+				db.Exec("INSERT OR IGNORE INTO pc_software (pc_id, software_id, installed) VALUES (?, ?, TRUE)", pcID, intoID)
+			}
+		}
+		rows.Close()
+	}
+	db.Exec("DELETE FROM software_catalog WHERE id = ?", fromID)
+	log.Printf("  Merged software id=%d into id=%d", fromID, intoID)
 }
 
 func normalizeUsers(db *DB) error {
