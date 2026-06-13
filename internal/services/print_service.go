@@ -168,7 +168,7 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 
 				labelW := pdf.GetStringWidth(label)
 				textX := x + (stickerW-labelW)/2
-				textY := y + cfg.PaddingVCM
+				textY := y + cfg.PaddingVCM + 0.059*cfg.FontSizeCM
 				pdf.SetXY(textX, textY)
 				pdf.CellFormat(labelW, cfg.FontSizeCM, label, "", 0, "L", false, 0, "")
 			}
