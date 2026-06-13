@@ -134,5 +134,3 @@ CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
 - **Image**: HEIC dikonversi di browser via CDN library, server terima JPEG
 - **OCR**: OpenRouter primary (free vision model), Gemini fallback jika gagal
 - **Build**: WAJIB `CGO_ENABLED=0 -tags nodynamic` untuk Termux/Android
-
-<!-- WATERMARK TEST 14062026: baris ini akan tetap di refactoring, tidak akan masuk ke branch deploy -->
