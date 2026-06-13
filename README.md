@@ -331,6 +331,59 @@ sudo systemctl restart inventaris-lab
 
 ---
 
+## Fitur Lanjutan
+
+### PostgreSQL / Neon (Scale Up)
+
+Untuk migrasi dari SQLite ke PostgreSQL (Neon) — pure Go driver `pgx/v5`, `CGO_ENABLED=0` tetap aman:
+
+1. **Buat akun**: [neon.tech](https://neon.tech) → Create project
+2. **Salin DATABASE_URL** dari dashboard Neon
+3. **Set di .env**: `DATABASE_URL=postgres://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`
+4. **Kosongkan** `DATABASE_PATH` — server akan pakai PostgreSQL
+
+Restart server — migrasi skema & data otomatis saat startup.
+
+### PC Photo Seeding (via GitHub Releases)
+
+Seed foto PC dari ZIP di GitHub Release. Cocok untuk setup awal laboratorium.
+
+1. Buat ZIP folder `uploads/` berisi foto PC (nama file = nomor PC, misal `1.jpg`, `2.jpg`)
+2. Upload ke GitHub Release di repo publik/private
+3. **Set di .env**:
+   - `PC_PHOTO_RELEASE_URL=https://github.com/user/repo/releases/download/v1.0.0/photos.zip`
+   - `GITHUB_TOKEN=github_pat_xxx` (generate di GitHub → Settings → Developer → PAT, scope `repo`)
+
+Restart server — foto akan didownload dan diekstrak otomatis. Kosongkan ke 2 variable jika tidak perlu.
+
+### SSG Public Site Auto-Build
+
+Aplikasi auto-generate static site ke `PUBLIC_BUILD_OUT` (default: `dist/`) dan git push ke `PUBLIC_BUILD_REPO_DIR` setiap ada perubahan data.
+
+1. Clone repo public site: `git clone git@github.com:user/public-repo.git /opt/simlab/public/repo`
+2. **Set di .env**:
+   - `PUBLIC_BUILD_ENABLED=true`
+   - `PUBLIC_BUILD_REPO_DIR=/opt/simlab/public/repo`
+   - `PUBLIC_BUILD_BRANCH=main`
+3. **Konfigurasi git auth** (SSH key atau HTTPS PAT) — pastikan push tanpa password
+
+Server akan rebuild & push otomatis tiap CUD operation (debounce `PUBLIC_BUILD_INTERVAL` detik).
+
+### Async Write Mode
+
+- `WRITE_MODE=sync` (default): setiap write langsung ke SQLite — aman, cocok untuk beban normal
+- `WRITE_MODE=async`: queue-based batch writer — lebih cepat untuk burst request, write di-batch dalam 1 transaksi. Gunakan jika ada 50+ PC di-grid dengan concurrent akses tinggi
+
+### Backup Multi-Path
+
+Untuk redundancy, backup bisa dikirim ke multiple direktori sekaligus. Pisahkan dengan koma (spasi di path pakai quotes):
+
+```bash
+BACKUP_DIR="/opt/simlab/app/data/backups, /mnt/nas/backups, /opt/simlab/app/data/backups_secondary"
+```
+
+---
+
 ## Panduan .env Reference
 
 Semua konfigurasi aplikasi via file `.env`. Copy dari `.env.example`.
@@ -486,3 +539,6 @@ PUBLIC_BUILD_BRANCH=main
 | Backup disk penuh | Retention terlalu besar | Kecilkan `BACKUP_RETENTION` atau `BACKUP_MIN_DISK_MB` |
 | OCR gagal terus | API key expired/invalid | Cek `.env` → `GEMINI_API_KEY` dan `OPENROUTER_API_KEY` |
 | Foto tidak muncul di upload | Path upload salah | Pastikan `UPLOAD_PATH` absolute path dan writable |
+| PostgreSQL gagal konek | `DATABASE_URL` salah / IP not allowlisted | Cek Neon dashboard → Connection details. Allowlist IP server di Neon |
+| SSG build tidak push ke git | Git auth belum diatur | Setup SSH key atau HTTPS PAT. Test: `git push --dry-run` dari `PUBLIC_BUILD_REPO_DIR` |
+| Server lambat dengan banyak PC | WRITE_MODE=sync kena bottleneck | Ganti ke `WRITE_MODE=async` di .env
