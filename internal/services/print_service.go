@@ -40,7 +40,7 @@ func (s *PrintService) GetLabels(cfg PrintConfig) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("query pc: %w", err)
 		}
-		sort.Slice(pcs, func(i, j int) bool { return pcs[i].Label < pcs[j].Label })
+		sort.Slice(pcs, func(i, j int) bool { return naturalLess(pcs[i].Label, pcs[j].Label) })
 		labels := make([]string, 0, len(pcs))
 		for _, pc := range pcs {
 			if pc.Label != "" {
@@ -55,7 +55,7 @@ func (s *PrintService) GetLabels(cfg PrintConfig) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("query devices: %w", err)
 		}
-		sort.Slice(devices, func(i, j int) bool { return devices[i].AssetCode < devices[j].AssetCode })
+		sort.Slice(devices, func(i, j int) bool { return naturalLess(devices[i].AssetCode, devices[j].AssetCode) })
 		labels := make([]string, 0, len(devices))
 		for _, d := range devices {
 			if d.AssetCode != "" {
@@ -67,6 +67,34 @@ func (s *PrintService) GetLabels(cfg PrintConfig) ([]string, error) {
 	default:
 		return nil, fmt.Errorf("tipe tidak dikenal: %s", cfg.Type)
 	}
+}
+
+func naturalLess(a, b string) bool {
+	i, j := 0, 0
+	for i < len(a) && j < len(b) {
+		if a[i] >= '0' && a[i] <= '9' && b[j] >= '0' && b[j] <= '9' {
+			numA := 0
+			for i < len(a) && a[i] >= '0' && a[i] <= '9' {
+				numA = numA*10 + int(a[i]-'0')
+				i++
+			}
+			numB := 0
+			for j < len(b) && b[j] >= '0' && b[j] <= '9' {
+				numB = numB*10 + int(b[j]-'0')
+				j++
+			}
+			if numA != numB {
+				return numA < numB
+			}
+		} else {
+			if a[i] != b[j] {
+				return a[i] < b[j]
+			}
+			i++
+			j++
+		}
+	}
+	return len(a) < len(b)
 }
 
 var printPaperSizes = map[string][2]float64{
@@ -106,10 +134,9 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 		pdf.SetTitle(cfg.PDFTitle, true)
 	}
 
-	pdf.SetFont("Helvetica", "B", fontPt)
-	pdf.SetCellMargin(0)
+		pdf.SetFont("Helvetica", "B", fontPt)
 
-	maxTextW := 0.0
+		maxTextW := 0.0
 	for _, label := range labels {
 		w := pdf.GetStringWidth(label)
 		if w > maxTextW {
@@ -168,9 +195,8 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 
 				labelW := pdf.GetStringWidth(label)
 				textX := x + (stickerW-labelW)/2
-				textY := y + cfg.PaddingVCM + 0.059*cfg.FontSizeCM
-				pdf.SetXY(textX, textY)
-				pdf.CellFormat(labelW, cfg.FontSizeCM, label, "", 0, "L", false, 0, "")
+				baselineY := y + cfg.PaddingVCM + 0.7555*cfg.FontSizeCM
+				pdf.Text(textX, baselineY)
 			}
 		}
 	}
