@@ -23,9 +23,17 @@ func (h *Handler) PrintForm(c *gin.Context) {
 	}
 
 	tipe := c.DefaultQuery("type", "pc")
-	defaultFontSize := 0.5
-	defaultPadH := 0.3
-	defaultPadV := 0.3
+
+	var defaultFontSize, defaultPadH, defaultPadV float64
+	if tipe == "device" {
+		defaultFontSize = 0.5
+		defaultPadH = 0.3
+		defaultPadV = 0.3
+	} else {
+		defaultFontSize = 1.0
+		defaultPadH = 0.5
+		defaultPadV = 0.5
+	}
 
 	longestPCLabel := ""
 	if pcLabels, err := h.printService.GetLabels(services.PrintConfig{Type: "pc"}); err == nil {
