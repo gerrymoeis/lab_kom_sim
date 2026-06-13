@@ -1,133 +1,410 @@
-# Sistem Inventaris Laboratorium Komputer — Android (Termux)
+# Sistem Inventaris Laboratorium Komputer — Android (Termux + Tailscale)
 
-Deployment untuk HP Android via Termux. Menggunakan **SQLite** sebagai database lokal via pure Go driver (no C compiler needed). PostgreSQL/Neon code tetap tersedia untuk scale up di masa depan.
+Branch `deploy_android` — khusus deployment ke **HP Android via Termux**. Server dioperasikan sepenuhnya dari terminal Termux, diakses dari laptop/device lain via SSH melalui Tailscale.
 
-## Tech Stack
+Database: **SQLite** (pure Go via `modernc.org/sqlite`, zero CGO, `-tags nodynamic`).
 
-- **Backend**: Go 1.25+ dengan Gin Framework
-- **Database**: SQLite (lokal) — pure Go (modernc.org/sqlite, no CGO)
-- **Frontend**: Bootstrap 5 + vanilla JS
-- **OCR**: OpenRouter (primary) → Google Gemini (fallback)
-- **Image**: WASM-based HEIC decoder (heic-to via CDN)
+---
 
-## Struktur Project
+## Daftar Isi
 
-```
-poc_prototype/
-├── cmd/server/          # Entry point aplikasi
-├── internal/
-│   ├── config/          # Konfigurasi (.env)
-│   ├── database/        # Database (SQLite + PostgreSQL)
-│   ├── models/          # Data models
-│   ├── handlers/        # HTTP handlers
-│   ├── services/        # Business logic
-│   └── middleware/      # Auth, session
-├── web/templates/       # HTML templates (Go templates)
-├── web/static/          # CSS, JS, vendor
-├── uploads/             # Upload foto
-└── scripts/
-    ├── build_termux.sh  # Build untuk Android/Termux
-    ├── deploy.sh        # Auto-deploy via SSH
-    └── download-vendor.sh
-```
+1. [Prasyarat](#prasyarat)
+2. [Instalasi Termux (Wajib dari F-Droid)](#instalasi-termux-wajib-dari-f-droid)
+3. [Setup Termux: Paket & SSH](#setup-termux-paket--ssh)
+4. [Instalasi Tailscale di Termux](#instalasi-tailscale-di-termux)
+5. [Clone Repositori & Konfigurasi .env](#clone-repositori--konfigurasi-env)
+6. [Build & Run](#build--run)
+7. [Auto Deploy (Laptop → HP via Tailscale + SSH)](#auto-deploy-laptop--hp-via-tailscale--ssh)
+8. [Maintenance](#maintenance)
+9. [Auto-Deploy Workflow (GitHub Actions)](#auto-deploy-workflow-github-actions)
+10. [Panduan .env Reference](#panduan-env-reference)
+11. [Troubleshooting](#troubleshooting)
 
-## Deploy ke Android (Termux + SQLite)
+---
 
-### Prasyarat
+## Prasyarat
 
-- HP Android dengan Termux & Tailscale terinstall
-- **Tidak perlu** C compiler (gcc/clang) — SQLite pure Go
-- Go 1.25+ (`pkg install golang`)
+- **HP Android** — minimal Android 11 (API 30), recommended Android 13+
+- **Termux** — install dari **F-Droid** (bukan Play Store — versi Play Store sudah deprecated/tidak update)
+- **Go 1.25+** — install via `pkg install golang`
+- **Tailscale** — install di Termux via `pkg install tailscale`
+- **Akun Tailscale** — [daftar gratis](https://login.tailscale.com)
+- **Laptop/PC kedua** — untuk akses SSH dan development (opsional, server bisa dioperasikan langsung dari HP dengan keyboard eksternal)
+- **Koneksi internet** — untuk download dependencies dan GitHub sync
+- **Baterai/charging** — disarankan HP selalu dicharge saat server berjalan
 
-### Setup di Termux
+---
+
+## Instalasi Termux (Wajib dari F-Droid)
+
+> **⚠️ JANGAN install Termux dari Google Play Store.** Versi Play Store sudah deprecated (tidak update sejak 2023). Gunakan F-Droid.
+
+1. Download F-Droid: buka [f-droid.org](https://f-droid.org) di browser HP → download APK → install
+2. Buka F-Droid, cari "Termux"
+3. Install **Termux** (bukan Termux:API atau yang lain)
+4. Buka Termux, jalankan update:
 
 ```bash
 pkg update && pkg upgrade -y
-pkg install golang git openssh -y
+```
 
+5. Grant storage access (untuk akses file):
+
+```bash
+termux-setup-storage
+```
+
+> **Tips:** Jika keyboard HP tidak nyaman, gunakan pairing keyboard Bluetooth atau akses via SSH dari laptop setelah Tailscale terinstall.
+
+---
+
+## Setup Termux: Paket & SSH
+
+### Install Paket Dasar
+
+```bash
+pkg install golang git openssh nano -y
+```
+
+### Set Password SSH
+
+```bash
+passwd
+```
+
+### Start SSH Server
+
+Termux SSH server berjalan di **port 8022** (bukan 22 — karena Android restriction):
+
+```bash
+sshd
+```
+
+Agar SSH auto-start tiap buka Termux, tambah ke `~/.bashrc`:
+
+```bash
+echo "sshd" >> ~/.bashrc
+```
+
+### Cek Username Termux
+
+```bash
+whoami
+# Output: u0_aXXX (misal u0_a124)
+```
+
+Catat username ini — akan dipakai untuk SSH dari laptop.
+
+---
+
+## Instalasi Tailscale di Termux
+
+### 1. Generate Auth Key (dari laptop browser)
+
+1. Buka [Tailscale Admin Console → Keys](https://login.tailscale.com/admin/settings/keys)
+2. Klik **Generate auth key**
+3. Setting:
+   - **Reusable**: ✅ centang
+   - **Expiry**: 30 days atau Never
+4. Copy auth key: `tskey-auth-xxxxxxxxxxxxxxxxxxxxxxxx`
+
+### 2. Install & Jalankan Tailscale
+
+```bash
+# Install dari repositori Termux
+pkg install tailscale
+
+# Start daemon dengan userspace networking (wajib untuk Android tanpa root)
+tailscaled --tun=userspace-networking --statedir=$PREFIX/var/lib/tailscale &
+
+# Authenticate
+tailscale up --authkey tskey-auth-xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Penjelasan:** Android tidak mengizinkan akses `tun` device tanpa root. `--tun=userspace-networking` membuat Tailscale berfungsi penuh dalam mode userland.
+
+### 3. Verifikasi & Catat IP
+
+```bash
+tailscale status
+tailscale ip
+# Output: 100.x.x.x — ini Tailscale IP HP Anda
+```
+
+### 4. Setup Autostart Tailscale
+
+Agar Tailscale tetap jalan meski Termux di-close (pakai Termux:Boot atau `termux-wake-lock`):
+
+```bash
+# Cegah Termux dimatikan background
+termux-wake-lock
+
+# Tambah ke ~/.bashrc
+echo "termux-wake-lock" >> ~/.bashrc
+echo "tailscaled --tun=userspace-networking --statedir=\$PREFIX/var/lib/tailscale &" >> ~/.bashrc
+echo "sshd" >> ~/.bashrc
+```
+
+> **Catatan:** Untuk uptime server yang andal, aktifkan **Battery Optimization exception** untuk Termux di Settings HP.
+
+---
+
+## Clone Repositori & Konfigurasi .env
+
+```bash
 git clone -b deploy_android https://github.com/gerrymoeis/lab_kom_sim.git
 cd lab_kom_sim
 
-# Buat .env
 cp .env.example .env
 nano .env
 ```
 
-Isi `.env`:
+**Konfigurasi minimal untuk production:**
+
 ```env
 ENVIRONMENT=production
 HOST=0.0.0.0
 PORT=8080
 DATABASE_PATH=inventaris_lab.db
-SESSION_SECRET=random-string
-GEMINI_API_KEY=your-key
-OPENROUTER_API_KEY=sk-or-your-key
+SESSION_SECRET=generate-random-string-panjang-32-64-karakter
+TIMEZONE=Asia/Jakarta
+UPLOAD_PATH=uploads
+GEMINI_API_KEY=your-gemini-api-key
+OPENROUTER_API_KEY=sk-or-your-openrouter-api-key
+ANDROID=true
+BACKUP_ENABLED=true
+BACKUP_DIR=./backups
 ```
 
-### Build & Jalankan
+Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
+
+---
+
+## Build & Run
+
+### Build
 
 ```bash
-# Build (pure Go + nodynamic — cepat, tidak perlu CGO)
-CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go
+# WAJIB: CGO_ENABLED=0 + -tags nodynamic
+# -tags nodynamic mencegah purego menggunakan CGO untuk dynamic library loading
+CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 
 # Atau pakai script
 bash scripts/build_termux.sh
+```
 
-# Jalankan
+### Run
+
+```bash
 ./app-simlab
 ```
 
-Akses: http://localhost:8080
+Akses dari browser HP: `http://localhost:8080`
 
-### Auto Deploy (Laptop → HP Android via Tailscale + SSH)
+Akses dari laptop (via Tailscale): `http://100.x.x.x:8080`
 
-**Setup sekali:**
-```powershell
-# Di laptop (PowerShell)
-git config --global alias.deploy "!git push origin deploy_android && ssh -p 8022 -i C:/Users/Gallan/.ssh/id_sim_lab_mi galaxy-a52s-5g.taila6b5cf.ts.net 'cd ~/lab_kom_sim && bash scripts/deploy.sh'"
-```
+**Default login:** `admin` / `admin123`
 
-**Cara pakai:**
+### Run di Background
+
+Agar server tetap jalan meski terminal ditutup:
+
 ```bash
-git deploy
+nohup ./app-simlab > server.log 2>&1 &
 ```
 
-Satu perintah → push ke GitHub → SSH ke HP → git pull → build → restart server.
+Cek log:
+```bash
+tail -f server.log
+```
 
-## Perbedaan dengan Branch Lain
+Matikan:
+```bash
+pkill app-simlab
+```
 
-| Aspek | deploy_android | deploy_windows | deploy_linux |
-|-------|---------------|----------------|--------------|
-| OS Target | Android (Termux) | Windows | Linux |
-| Database | SQLite (pure Go) | SQLite (pure Go) | SQLite (pure Go) |
-| C Compiler | **Tidak perlu** (modernc) | Tidak perlu (modernc) | Tidak perlu (modernc) |
-| Build | `CGO_ENABLED=0 -tags nodynamic` | `CGO_ENABLED=0` | `CGO_ENABLED=0` |
-| HEIC | WASM via wazero | WASM via wazero | Native libheif |
-| Service | Termux bootstrap | NSSM / background | systemd / nohup |
+---
 
-## Fitur
+## Auto Deploy (Laptop → HP via Tailscale + SSH)
 
-- ✅ Dashboard grid 40 PC (8×5) dengan status color-coded
-- ✅ CRUD PC dengan upload foto serial & front panel
-- ✅ Manajemen perangkat (device types, loans, usages)
-- ✅ Software catalog (required + others)
-- ✅ OCR logbook absensi via OpenRouter → Gemini (retry + fallback)
-- ✅ Activity log / audit trail (success + failure)
-- ✅ Export Excel (PC, device, logbook, software catalog)
-- ✅ HEIC/HEIF photo upload (WASM client-side conversion)
-- ✅ SQLite database (pure Go) — PostgreSQL siap scale up
-- ✅ Auto-deploy via SSH + Tailscale
+### Setup Sekali (di Laptop)
 
-## Default Login
+```powershell
+# PowerShell — simpan script ini sebagai deploy-hp.ps1
+$tsHost = "100.x.x.x"  # Ganti dengan Tailscale IP HP
+$sshPort = 8022
+$sshKey = "C:\Users\Gallan\.ssh\id_sim_lab_mi"  # Path SSH private key
 
-- **Username**: admin
-- **Password**: admin123
+ssh -p $sshPort -i $sshKey "u0_aXXX@${tsHost}" 'cd ~/lab_kom_sim && git pull origin deploy_android && CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go && pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
+```
 
-## Catatan Penting
+### Satu Perintah Deploy
 
-- **Database**: `DATABASE_URL` kosong = SQLite lokal, diisi = PostgreSQL/Neon
-- **CGO**: `CGO_ENABLED=0` — tidak perlu C compiler, SQLite via pure Go (modernc.org/sqlite)
-- **nodynamic**: `-tags nodynamic` WAJIB di Android — mencegah `purego` pakai CGO untuk dynamic library loading
-- **HEIC**: WASM via wazero — library purego belum support Android tanpa CGO
-- **Image**: HEIC dikonversi via WASM browser-side + server-side fallback
-- **OCR**: OpenRouter primary (free vision model), Gemini fallback jika gagal
+```bash
+# Dari laptop (bash/WSL):
+ssh -p 8022 -i ~/.ssh/id_sim_lab_mi u0_aXXX@100.x.x.x \
+  'cd ~/lab_kom_sim && git pull origin deploy_android && \
+   CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go && \
+   pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
+```
+
+### Auto-Deploy via Git Alias (Optional)
+
+```bash
+git config --global alias.deploy-hp "!git push origin refactoring && ssh -p 8022 -i ~/.ssh/id_sim_lab_mi u0_aXXX@100.x.x.x 'cd ~/lab_kom_sim && bash scripts/deploy.sh'"
+```
+
+---
+
+## Maintenance
+
+### Cek Proses Server
+
+```bash
+ps aux | grep app-simlab
+```
+
+### Cek Log
+
+```bash
+tail -f server.log
+```
+
+### Restart Server
+
+```bash
+pkill app-simlab
+nohup ./app-simlab > server.log 2>&1 &
+```
+
+### Cek Disk Usage
+
+```bash
+df -h
+du -sh ~/lab_kom_sim/backups
+```
+
+### Backup Database (Manual)
+
+Backup otomatis sudah berjalan via `BACKUP_ENABLED=true`. Untuk backup manual:
+
+```bash
+cp inventaris_lab.db inventaris_lab.db.manual_$(date +%Y%m%d_%H%M%S)
+```
+
+---
+
+## Auto-Deploy Workflow (GitHub Actions)
+
+Branch `refactoring` memiliki workflow `.github/workflows/auto-deploy.yml` yang otomatis sync ke `deploy_android` setiap ada push.
+
+**Cara trigger update:**
+
+1. Push ke `refactoring` dari laptop
+2. Workflow: test → merge → preserve deploy-specific files → build verify → push ke `deploy_android`
+3. Di HP (Termux): `git pull origin deploy_android` → rebuild → restart
+
+**README.md di branch deploy_android TIDAK akan ditimpa** oleh workflow — workflow mereset README.md ke versi deploy branch (OLD_HEAD) setiap sync, sehingga panduan spesifik Android tetap aman.
+
+---
+
+## Panduan .env Reference
+
+Semua konfigurasi via file `.env`. Copy dari `.env.example`.
+
+```env
+# ============================
+# APLIKASI
+# ============================
+ENVIRONMENT=production
+HOST=0.0.0.0
+PORT=8080
+
+# ============================
+# DATABASE
+# ============================
+# SQLite: path relatif atau absolut
+DATABASE_PATH=inventaris_lab.db
+# PostgreSQL — kosongkan untuk SQLite
+# DATABASE_URL=postgres://user:pass@...
+
+# ============================
+# WRITE MODE
+# ============================
+# sync (default) | async
+WRITE_MODE=sync
+
+# ============================
+# SECURITY
+# ============================
+SESSION_SECRET=change-this-secret-in-production-to-random-string
+
+# ============================
+# TIMEZONE
+# ============================
+TIMEZONE=Asia/Jakarta
+
+# ============================
+# UPLOAD
+# ============================
+UPLOAD_PATH=uploads
+
+# ============================
+# OCR API KEYS
+# ============================
+GEMINI_API_KEY=your-gemini-api-key-here
+OPENROUTER_API_KEY=sk-or-your-openrouter-api-key-here
+
+# ============================
+# ANDROID MODE — WAJIB true untuk Termux
+# ============================
+ANDROID=true
+
+# ============================
+# PC PHOTO SEEDING
+# ============================
+PC_PHOTO_RELEASE_URL=
+GITHUB_TOKEN=
+
+# ============================
+# PAGINATION
+# ============================
+DEFAULT_PAGE_SIZE=25
+
+# ============================
+# BACKUP (SQLite only)
+# ============================
+BACKUP_ENABLED=true
+BACKUP_INTERVAL=30
+BACKUP_DIR=./backups
+BACKUP_RETENTION=20
+BACKUP_MIN_DISK_MB=500
+BACKUP_COMPRESS=true
+
+# ============================
+# PUBLIC SITE (SSG)
+# ============================
+PUBLIC_BUILD_ENABLED=false
+PUBLIC_BUILD_INTERVAL=30
+PUBLIC_BUILD_OUT=dist
+PUBLIC_BUILD_TEMPLATE_DIR=web/templates/public
+PUBLIC_BUILD_STATIC_DIR=web/static
+PUBLIC_BUILD_REPO_DIR=
+PUBLIC_BUILD_BRANCH=main
+```
+
+---
+
+## Troubleshooting
+
+| Masalah | Penyebab | Solusi |
+|---------|----------|--------|
+| `go build` gagal dengan `purego` error | Tidak pakai `-tags nodynamic` | Build: `CGO_ENABLED=0 go build -tags nodynamic ...` |
+| Tailscale tidak bisa `up` | `tailscaled` belum jalan | `tailscaled --tun=userspace-networking --statedir=$PREFIX/var/lib/tailscale &` |
+| SSH connection refused | `sshd` belum jalan | Jalankan `sshd` di Termux. Cek port 8022 |
+| Server mati setelah Termux di-close | Background process killed | Pakai `nohup ./app-simlab > log &` + `termux-wake-lock` |
+| Build lambat | RAM HP terbatas | Tutup app lain. Atau build di laptop, SCP binary ke HP |
+| Foto upload gagal/error | ANDROID=false di .env | Set `ANDROID=true` untuk client-side compress |
+| Database `UNIQUE constraint` | Data duplikat | Normalisasi auto jalan di startup. Restart server |
+| `git pull` conflict | Ada perubahan lokal | `git stash` sebelum pull, atau `git reset --hard origin/deploy_android` |
+| Storage penuh | Backup menumpuk | Kecilkan `BACKUP_RETENTION`. Hapus backup lama: `rm backups/*.gz` |
