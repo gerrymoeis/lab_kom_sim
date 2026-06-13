@@ -3,6 +3,7 @@
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
@@ -70,8 +71,16 @@ func (r *DeviceRepository) buildDeviceClause(filters DeviceFilters) (string, []a
 		args = append(args, filters.Condition)
 	}
 	if filters.DeviceTypeID != "" {
-		clause += ` AND d.device_type_id = ?`
-		args = append(args, filters.DeviceTypeID)
+		ids := strings.Split(filters.DeviceTypeID, ",")
+		if len(ids) == 1 {
+			clause += ` AND d.device_type_id = ?`
+			args = append(args, ids[0])
+		} else {
+			clause += ` AND d.device_type_id IN (` + strings.Repeat("?,", len(ids)-1) + "?)"
+			for _, id := range ids {
+				args = append(args, id)
+			}
+		}
 	}
 	return clause, args
 }
