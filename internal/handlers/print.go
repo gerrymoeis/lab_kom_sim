@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"inventaris-lab-kom/internal/services"
 
@@ -103,13 +104,26 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 
 	rawDeviceTypeFilter := c.Query("device_type")
 
-	if cfg.Type == "device" && cfg.DeviceTypeSlug != "" {
-		dt, err := h.deviceTypeService.GetByPrefixSlug(cfg.DeviceTypeSlug)
-		if err != nil {
-			h.errHTML(c, "Device type tidak ditemukan")
+	if cfg.Type == "device" && rawDeviceTypeFilter != "" {
+		prefixes := strings.Split(rawDeviceTypeFilter, ",")
+		var ids []string
+		for _, p := range prefixes {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			dt, err := h.deviceTypeService.GetByPrefixSlug(p)
+			if err != nil {
+				h.errHTML(c, "Device type tidak ditemukan: "+p)
+				return
+			}
+			ids = append(ids, fmt.Sprintf("%d", dt.ID))
+		}
+		if len(ids) == 0 {
+			h.errHTML(c, "Device type tidak valid")
 			return
 		}
-		cfg.DeviceTypeSlug = fmt.Sprintf("%d", dt.ID)
+		cfg.DeviceTypeSlug = strings.Join(ids, ",")
 	}
 
 	fontSize, err := strconv.ParseFloat(c.DefaultQuery("font_size", "0.5"), 64)
