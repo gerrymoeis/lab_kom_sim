@@ -37,7 +37,7 @@
                         <select class="form-select" name="device_type" id="deviceType" onchange="updatePreview()">
                             <option value="">Semua Device Type</option>
                             {{ range .deviceTypes }}
-                            <option value="{{ .AssetCodePrefix }}" data-prefix="{{ .AssetCodePrefix }}">{{ .Name }}</option>
+                            <option value="{{ .AssetCodePrefix }}">{{ .AssetCodePrefix }}</option>
                             {{ end }}
                         </select>
                         <div class="form-text">Kosongkan untuk print semua device</div>
@@ -143,6 +143,12 @@ var longestSample = {
     'device': '{{ .longestDeviceLabel }}'
 };
 
+var longestPerDeviceType = {
+{{- range $prefix, $longest := .longestPerDeviceType }}
+    '{{ $prefix }}': '{{ $longest }}',
+{{- end }}
+};
+
 function getConfig() {
     var type = document.querySelector('input[name="type"]:checked');
     return {
@@ -175,6 +181,9 @@ function updateDefaults() {
 
 function getSampleText(cfg) {
     if (cfg.type === 'pc') return longestSample.pc || 'PC-99';
+    if (cfg.deviceType && longestPerDeviceType[cfg.deviceType]) {
+        return longestPerDeviceType[cfg.deviceType];
+    }
     return longestSample.device || 'PREFIX-999';
 }
 
