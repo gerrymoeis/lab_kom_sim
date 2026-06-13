@@ -3,9 +3,9 @@ package services
 import (
 	"io"
 	"os"
-	"regexp"
-	"strings"
 	"time"
+
+	"inventaris-lab-kom/internal/util"
 )
 
 func ParseDate(s string) (time.Time, error) {
@@ -24,25 +24,13 @@ func CopyFile(src, dst string) error {
 }
 
 func ToTitleCaseWithAbbr(text string) string {
-	text = strings.TrimSpace(text)
-	if text == "" { return "" }
-	re := regexp.MustCompile(`\s+`)
-	text = re.ReplaceAllString(text, " ")
-	words := strings.Fields(text)
-	for i, w := range words {
-		if len(w) > 0 { words[i] = strings.ToUpper(string(w[0])) + strings.ToLower(w[1:]) }
-	}
-	r := strings.Join(words, " ")
-	r = regexp.MustCompile(`\b([A-Z])([A-Z])\b`).ReplaceAllString(r, "$1.$2")
-	return strings.TrimSuffix(r, ".")
+	return util.ToTitleCaseWithAbbr(text)
 }
 
 func SanitizeText(s string) string {
-	s = strings.TrimSpace(s)
-	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")
-	return s
+	return util.SanitizeText(s)
 }
 
 func ToUpperTrim(s string) string {
-	return strings.ToUpper(strings.TrimSpace(s))
+	return util.ToUpperTrim(s)
 }
