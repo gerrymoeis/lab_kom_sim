@@ -45,18 +45,39 @@ func (h *Handler) PrintForm(c *gin.Context) {
 		}
 	}
 
+	longestPerPrefix := make(map[string]string)
+	for _, dt := range deviceTypes {
+		labels, err := h.printService.GetLabels(services.PrintConfig{
+			Type:           "device",
+			DeviceTypeSlug: fmt.Sprintf("%d", dt.ID),
+		})
+		if err != nil {
+			continue
+		}
+		longest := ""
+		for _, l := range labels {
+			if len(l) > len(longest) {
+				longest = l
+			}
+		}
+		if longest != "" {
+			longestPerPrefix[dt.AssetCodePrefix] = longest
+		}
+	}
+
 	h.renderTemplate(c, http.StatusOK, "print/form.html", gin.H{
-		"title":              "Print Stiker Label",
-		"currentPage":        "print",
-		"username":           username,
-		"role":               role,
-		"deviceTypes":        deviceTypes,
-		"selectedType":       tipe,
-		"defaultFontSize":    defaultFontSize,
-		"defaultPaddingH":    defaultPadH,
-		"defaultPaddingV":    defaultPadV,
-		"longestPCLabel":     longestPCLabel,
-		"longestDeviceLabel": longestDeviceLabel,
+		"title":                "Print Stiker Label",
+		"currentPage":          "print",
+		"username":             username,
+		"role":                 role,
+		"deviceTypes":          deviceTypes,
+		"selectedType":         tipe,
+		"defaultFontSize":      defaultFontSize,
+		"defaultPaddingH":      defaultPadH,
+		"defaultPaddingV":      defaultPadV,
+		"longestPCLabel":       longestPCLabel,
+		"longestDeviceLabel":   longestDeviceLabel,
+		"longestPerDeviceType": longestPerPrefix,
 	})
 }
 
