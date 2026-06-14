@@ -25,28 +25,105 @@ Database: **SQLite** (pure Go via `modernc.org/sqlite`, zero CGO).
 ## Prasyarat
 
 - **Windows 10/11** 64-bit (x86_64 atau ARM64)
-- **Go 1.25+** — download dari [go.dev/dl](https://go.dev/dl/)
 - **Tidak perlu C compiler** — SQLite pure Go (modernc.org/sqlite, `CGO_ENABLED=0`)
-- **Git** — download dari [git-scm.com](https://git-scm.com/)
 - **PowerShell 5.1+** (bawaan Windows 10/11)
 - **Akun Tailscale** — [daftar gratis](https://login.tailscale.com)
 - **Koneksi internet** — untuk download dependencies dan GitHub sync
 
 ---
 
-## Instalasi Go
+## Instalasi Go (Golang)
 
-1. Buka [go.dev/dl](https://go.dev/dl/)
-2. Download **Microsoft Windows** installer ( `.msi` ) — pilih arsitektur sesuai CPU
-3. Jalankan installer — ikuti wizard (default path: `C:\Program Files\Go`)
-4. Buka **PowerShell baru**, verifikasi:
+### 1. Download Installer
+
+Buka [go.dev/dl](https://go.dev/dl/) dan download **Microsoft Windows** installer (`.msi`) sesuai arsitektur:
+
+| Arsitektur | Link Download |
+|-----------|--------------|
+| **x86-64** (Intel/AMD, 64-bit) | [go1.26.4.windows-amd64.msi](https://go.dev/dl/go1.26.4.windows-amd64.msi) |
+| **ARM64** (Snapdragon X, Surface Pro) | [go1.26.4.windows-arm64.msi](https://go.dev/dl/go1.26.4.windows-arm64.msi) |
+| **x86** (32-bit — jarang) | [go1.26.4.windows-386.msi](https://go.dev/dl/go1.26.4.windows-386.msi) |
+
+> Jika ragu, cek arsitektur: `(Get-CimInstance Win32_ComputerSystem).SystemType` di PowerShell.
+
+### 2. Jalankan Installer
+
+1. Double klik file `.msi` yang sudah didownload
+2. Ikuti wizard installer — **default path** (`C:\Program Files\Go`) sudah benar
+3. Klik **Finish** setelah selesai
+
+### 3. Verifikasi
+
+Buka **PowerShell baru** (wajib baru agar PATH terupdate):
 
 ```powershell
 go version
-# Output: go version go1.25.x windows/amd64
+# Output: go version go1.26.4 windows/amd64
 ```
 
-> **Restart PowerShell** setelah install agar PATH terupdate.
+> Jika `go` tidak dikenali, tutup dan buka ulang PowerShell, atau restart Windows.
+
+---
+
+## Instalasi Git
+
+### Metode 1 (Recommended) — Git for Windows
+
+Download dari [git-scm.com/download/win](https://git-scm.com/download/win) — installer akan otomatis mendeteksi arsitektur.
+
+1. Jalankan installer `.exe`
+2. **Wizard settings** (pilih sesuai kebutuhan):
+   - **Select Components** → biarkan default
+   - **Choosing default editor** → pilih editor (Notepad, VS Code, Nano, dll)
+   - **Adjusting PATH** → **"Git from the command line and also from 3rd-party software"** (recommended)
+   - **Choosing SSH executable** → **"Use bundled OpenSSH"**
+   - **Line ending conversions** → **"Checkout as-is, commit as-is"**
+   - **Terminal emulator** → **"Use MinTTY"**
+3. Finish → centang **"Launch Git Bash"** jika ingin cek langsung
+
+### Metode 2 — winget (PowerShell)
+
+```powershell
+winget install --id Git.Git -e --source winget
+```
+
+### Verifikasi
+
+```powershell
+git version
+# Output: git version 2.x.x.windows.1
+```
+
+### Konfigurasi Awal Git
+
+```powershell
+git config --global user.name "Nama Anda"
+git config --global user.email "email@example.com"
+```
+
+---
+
+## Setup SSH Key untuk GitHub (Opsional)
+
+Diperlukan jika ingin menggunakan fitur SSG Public Site Auto-Build (git push otomatis dari Windows).
+
+```powershell
+# Generate SSH key
+ssh-keygen -t ed25519 -C "pc-windows@example.com"
+# Enter file: tekan Enter (default C:\Users\Anda\.ssh\id_ed25519)
+# Enter passphrase: kosongkan atau isi sesuai preferensi
+
+# Tampilkan public key
+Get-Content ~\.ssh\id_ed25519.pub
+```
+
+Copy output `ssh-ed25519 AAAA...` → buka [GitHub → Settings → SSH and GPG keys](https://github.com/settings/keys) → **New SSH key** → paste → save.
+
+Test koneksi:
+```powershell
+ssh -T git@github.com
+# Output: Hi username! You've successfully authenticated...
+```
 
 ---
 
