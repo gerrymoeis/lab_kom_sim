@@ -68,7 +68,7 @@ func (h *Handler) UserCreate(c *gin.Context) {
 		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal menyimpan user. Username mungkin sudah digunakan."})
 		return
 	}
-	c.Redirect(http.StatusFound, "/admin/users")
+	h.redirectWithSuccess(c, "/admin/users", "User berhasil ditambahkan")
 }
 
 func (h *Handler) UserDetail(c *gin.Context) {
@@ -182,7 +182,7 @@ func (h *Handler) UserDelete(c *gin.Context) {
 		h.redirectWithError(c, "/admin/users", msg)
 		return
 	}
-	c.Redirect(http.StatusFound, "/admin/users")
+	h.redirectWithSuccess(c, "/admin/users", "User berhasil dihapus")
 }
 
 func (h *Handler) Profile(c *gin.Context) {
@@ -260,5 +260,5 @@ func (h *Handler) UserBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "User berhasil dihapus"})
 }

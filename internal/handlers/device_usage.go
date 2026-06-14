@@ -103,7 +103,7 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=usages")
+	h.redirectWithSuccess(c, "/devices?tab=usages", "Pemakaian berhasil ditambahkan")
 }
 
 func (h *Handler) DeviceUsageDetail(c *gin.Context) {
@@ -171,7 +171,7 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate pemakaian")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=usages")
+	h.redirectWithSuccess(c, "/devices?tab=usages", "Pemakaian berhasil diperbarui")
 }
 
 func (h *Handler) DeviceUsageDelete(c *gin.Context) {
@@ -183,7 +183,7 @@ func (h *Handler) DeviceUsageDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=usages", "Gagal menghapus pemakaian")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=usages")
+	h.redirectWithSuccess(c, "/devices?tab=usages", "Pemakaian berhasil dihapus")
 }
 
 func (h *Handler) DeviceUsageBatchDelete(c *gin.Context) {
@@ -205,5 +205,5 @@ func (h *Handler) DeviceUsageBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Pemakaian berhasil dihapus"})
 }
