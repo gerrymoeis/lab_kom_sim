@@ -50,20 +50,23 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	}
 
 	dupFlags := make(map[int]bool)
-	for i := 0; i < len(entries); i++ {
-		if dupFlags[entries[i].ID] {
-			continue
-		}
-		for j := i + 1; j < len(entries); j++ {
-			if !entries[i].Date.Equal(entries[j].Date) {
+	allEntries, errAll := h.logbookService.ListAll(f)
+	if errAll == nil {
+		for i := 0; i < len(allEntries); i++ {
+			if dupFlags[allEntries[i].ID] {
 				continue
 			}
-			if services.IsDuplicateEntry(entries[i].Date, entries[j].Date,
-				entries[i].TimeIn, entries[j].TimeIn,
-				entries[i].StudentName, entries[j].StudentName,
-				entries[i].NIM, entries[j].NIM, config.DefaultDuplicateConfig) {
-				dupFlags[entries[i].ID] = true
-				dupFlags[entries[j].ID] = true
+			for j := i + 1; j < len(allEntries); j++ {
+				if !allEntries[i].Date.Equal(allEntries[j].Date) {
+					continue
+				}
+				if services.IsDuplicateEntry(allEntries[i].Date, allEntries[j].Date,
+					allEntries[i].TimeIn, allEntries[j].TimeIn,
+					allEntries[i].StudentName, allEntries[j].StudentName,
+					allEntries[i].NIM, allEntries[j].NIM, config.DefaultDuplicateConfig) {
+					dupFlags[allEntries[i].ID] = true
+					dupFlags[allEntries[j].ID] = true
+				}
 			}
 		}
 	}
@@ -78,11 +81,21 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		query = template.URL("&" + values.Encode())
 	}
 
+	totalDupCount := 0
+	if errAll == nil {
+		for _, e := range allEntries {
+			if dupFlags[e.ID] {
+				totalDupCount++
+			}
+		}
+	}
+
 	h.renderTemplate(c, http.StatusOK, "logbook/list.html", gin.H{
 		"title": "Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
 		"entries":    entries,
 		"dupFlags":   dupFlags,
+		"dupCount":   totalDupCount,
 		"total":      total,
 		"page":       page,
 		"totalPages": totalPages,
