@@ -57,10 +57,6 @@
                             </div>
                         </div>
 
-                        <p class="mb-2 small" id="dupStats" style="color:#856404;">
-                            Terdapat <span id="dupCount">0</span> terindikasi duplikat dari <span id="dupTotalData">0</span> data.
-                        </p>
-
                         <form id="previewForm" action="/logbook/save" method="POST">
                             <input type="hidden" name="source_file" value="{{ .source_file }}">
 
@@ -72,6 +68,10 @@
                                     <i class="bi bi-arrow-counterclockwise"></i> Pulihkan Semua Indikasi
                                 </button>
                             </div>
+
+                            <p class="mb-2 small" id="dupStats" style="color:#856404;">
+                                Terdapat <span id="dupCount">0</span> terindikasi duplikat dari <span id="dupTotalData">0</span> data.
+                            </p>
 
                             <div class="table-responsive">
                                 <div id="previewBatchToolbar" class="d-none d-flex align-items-center gap-2 mb-2 p-2 bg-light border rounded justify-content-end" style="flex-wrap:wrap;">
