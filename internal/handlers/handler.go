@@ -53,6 +53,7 @@ func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifi
 	scheduleRepo := repository.NewScheduleRepository(db)
 	userRepo := repository.NewUserRepository(db)
 	dashboardRepo := repository.NewDashboardRepository(db)
+	stickerTemplateRepo := repository.NewStickerTemplateRepository(db)
 
 	return &Handler{
 		cfg:                cfg,
@@ -72,7 +73,7 @@ func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifi
 		softwareService:           services.NewSoftwareService(softwareRepo, activityLogService),
 		deviceTypeService:         services.NewDeviceTypeService(deviceTypeRepo, activityLogService),
 		categoryService:           services.NewCategoryService(categoryRepo, activityLogService),
-		printService:              services.NewPrintService(pcRepo, deviceRepo),
+		printService:              services.NewPrintService(pcRepo, deviceRepo, stickerTemplateRepo),
 	}
 }
 

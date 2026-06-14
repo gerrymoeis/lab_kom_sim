@@ -6,10 +6,19 @@ import (
 	"strconv"
 	"strings"
 
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
+
+type templateForm struct {
+	Name       string  `json:"name" binding:"required,max=100"`
+	StickerType string `json:"sticker_type" binding:"required,oneof=pc device"`
+	FontSizeCM  float64 `json:"font_size_cm" binding:"required,min=0.3,max=5.0"`
+	PaddingHCM float64 `json:"padding_h_cm" binding:"required,min=0.1,max=5.0"`
+	PaddingVCM float64 `json:"padding_v_cm" binding:"required,min=0.1,max=5.0"`
+}
 
 func (h *Handler) PrintForm(c *gin.Context) {
 	_, username, role, ok := h.user(c)
@@ -223,4 +232,95 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, filename))
 	c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
+}
+
+func (h *Handler) StickerTemplateList(c *gin.Context) {
+	_, _, _, ok := h.user(c)
+	if !ok {
+		return
+	}
+	stickerType := c.DefaultQuery("type", "pc")
+	if stickerType != "pc" && stickerType != "device" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "type harus 'pc' atau 'device'"})
+		return
+	}
+	templates, err := h.printService.ListTemplates(stickerType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal memuat template: " + err.Error()})
+		return
+	}
+	if templates == nil {
+		templates = []models.StickerTemplate{}
+	}
+	c.Header("Cache-Control", "no-cache")
+	c.JSON(http.StatusOK, templates)
+}
+
+func (h *Handler) StickerTemplateCreate(c *gin.Context) {
+	_, _, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya admin yang dapat menyimpan template"})
+		return
+	}
+	var form templateForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid: " + err.Error()})
+		return
+	}
+	tmpl, err := h.printService.SaveTemplate(form.Name, form.StickerType, form.FontSizeCM, form.PaddingHCM, form.PaddingVCM)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan template: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, tmpl)
+}
+
+func (h *Handler) StickerTemplateUpdate(c *gin.Context) {
+	_, _, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya admin yang dapat mengubah template"})
+		return
+	}
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+	var form templateForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid: " + err.Error()})
+		return
+	}
+	if err := h.printService.UpdateTemplate(id, form.Name, form.FontSizeCM, form.PaddingHCM, form.PaddingVCM); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengupdate template: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Template berhasil diupdate"})
+}
+
+func (h *Handler) StickerTemplateDelete(c *gin.Context) {
+	_, _, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya admin yang dapat menghapus template"})
+		return
+	}
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID tidak valid"})
+		return
+	}
+	if err := h.printService.DeleteTemplate(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus template: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Template berhasil dihapus"})
 }
