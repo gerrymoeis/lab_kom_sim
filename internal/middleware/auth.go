@@ -31,7 +31,24 @@ func AuthRequired(db any) gin.HandlerFunc {
 			err := queryDB.QueryRow(`SELECT session_token FROM users WHERE id = ?`, userID.(int)).Scan(&dbToken)
 			if err != nil || dbToken == "" || subtle.ConstantTimeCompare([]byte(dbToken), []byte(sessionToken.(string))) != 1 {
 				session.Clear()
-				session.Save()
+				session.Options(sessions.Options{
+					Path:     "/",
+					MaxAge:   -1,
+					HttpOnly: true,
+					Secure:   c.Request.TLS != nil,
+					SameSite: http.SameSiteLaxMode,
+				})
+				if err := session.Save(); err != nil {
+					http.SetCookie(c.Writer, &http.Cookie{
+						Name:     "inventaris_session",
+						Value:    "",
+						Path:     "/",
+						HttpOnly: true,
+						Secure:   c.Request.TLS != nil,
+						SameSite: http.SameSiteLaxMode,
+						MaxAge:   -1,
+					})
+				}
 				c.Redirect(http.StatusFound, "/login")
 				c.Abort()
 				return
