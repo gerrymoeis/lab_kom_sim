@@ -113,11 +113,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ ids: ids })
             }).then(function(r) {
                 if (r.ok) {
+                    try { sessionStorage.removeItem(BatchSelector._storageKey()); } catch(e) {}
                     r.json().then(function(data) {
-                        if (data.message) showToast(data.message, 'error', 'outline', 'Berhasil');
-                        setTimeout(function() { window.location.reload(); }, 500);
+                        var p = new URLSearchParams(window.location.search);
+                        p.set('success', data.message || '');
+                        p.delete('error');
+                        p.delete('toast');
+                        if (data.message && data.message.indexOf('dihapus') !== -1) {
+                            p.set('toast', 'delete');
+                        }
+                        window.location.href = window.location.pathname + '?' + p.toString();
                     }).catch(function() {
-                        setTimeout(function() { window.location.reload(); }, 500);
+                        window.location.reload();
                     });
                 } else {
                     return r.json().then(function(d) { throw new Error(d.error || 'Gagal menghapus'); }).catch(function() {
