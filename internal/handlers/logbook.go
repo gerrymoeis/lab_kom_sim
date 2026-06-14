@@ -120,9 +120,9 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
 	values.Del("dup")
-	var queryNoDup interface{} = ""
+	var queryBack interface{} = ""
 	if len(values) > 0 {
-		queryNoDup = template.URL("&" + values.Encode())
+		queryBack = template.URL("&" + values.Encode())
 	}
 
 	valuesDup, _ := url.ParseQuery(c.Request.URL.RawQuery)
@@ -131,6 +131,11 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	var queryDup interface{} = ""
 	if len(valuesDup) > 0 {
 		queryDup = template.URL("&" + valuesDup.Encode())
+	}
+
+	var query interface{} = queryBack
+	if dupMode {
+		query = queryDup
 	}
 
 	h.renderTemplate(c, http.StatusOK, "logbook/list.html", gin.H{
@@ -143,7 +148,8 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		"page":       page,
 		"totalPages": totalPages,
 		"startRow":   startRow,
-		"query":      queryNoDup,
+		"query":      query,
+		"queryBack":  queryBack,
 		"queryDup":   queryDup,
 		"dupMode":    dupMode,
 		"filters": gin.H{
