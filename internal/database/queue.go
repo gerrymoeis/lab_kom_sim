@@ -83,7 +83,7 @@ func (db *DB) NewWriteQueue(bufferSize, batchSize int, flushEvery time.Duration)
 		// Bypass async for constraints and critical tables
 		tbl := extractTableName(query)
 		switch tbl {
-		case "devices", "categories", "device_types":
+		case "devices", "categories", "device_types", "users":
 			return db.writer.Exec(query, args...)
 		}
 
