@@ -379,51 +379,42 @@ sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
 
 ---
 
-## Auto-Deploy Workflow (GitHub Actions)
+## Auto-Deploy (Update Server dari Laptop)
 
-Branch `refactoring` memiliki GitHub Actions workflow (`.github/workflows/auto-deploy.yml`) yang:
+**Cara kerja:** Push ke `refactoring` → GitHub Actions otomatis test + sync ke `deploy_linux` (~90 detik) → kamu SSH + deploy.
 
-1. **Trigger**: Setiap push ke branch `refactoring`
-2. **Test**: Run `go test ./...` (unit + integration)
-3. **Sync**: Merge `refactoring` ke `deploy_linux` (dan `deploy_android`, `deploy_windows`)
-4. **Preserve**: README.md, scripts, dan file spesifik deploy_linux tetap dipertahankan
-5. **Build verify**: Run `go build ./...` + `go vet ./...`
-6. **Push**: Jika ada perubahan, push ke `deploy_linux`
+### Setup (Sekali)
 
-**Untuk trigger update dari laptop:**
+**1. Passwordless SSH** — agar bisa SSH tanpa prompt password:
 
 ```bash
-# Push ke refactoring → workflow otomatis sync ke deploy_linux
+# Di laptop (bash/WSL), generate SSH key jika belum punya
+ssh-keygen -t ed25519 -C "laptop@example.com"
+
+# Copy public key ke server
+ssh-copy-id user@100.x.x.x
+
+# Test — login tanpa password prompt
+ssh user@100.x.x.x
+```
+
+**2. (Opsional) Git Alias** — agar deploy cukup 1 perintah dari laptop:
+
+```bash
+git config --global alias.deploy-lin "!git push origin refactoring && ssh user@100.x.x.x 'cd ~/lab_kom_sim && bash scripts/deploy.sh'"
+# Setelah ini: git deploy-lin → push refactoring + deploy ke server
+```
+
+### Satu Perintah Deploy (Setiap Update)
+
+```bash
+# 1. Push perubahan ke refactoring
 git push origin refactoring
 
-# Workflow akan:
-#   1. Run tests
-#   2. Merge refactoring → deploy_linux
-#   3. Restore deploy-specific files (README.md, scripts/)
-#   4. Push deploy_linux
-```
+# 2. Tunggu ~90 detik sampai workflow selesai
+#    (cek progress di GitHub → Actions tab)
 
-**Di server Linux, tarik update:**
-
-```bash
-# SSH ke server
-ssh user@100.x.x.x
-cd ~/lab_kom_sim
-git pull origin deploy_linux
-bash scripts/deploy-linux.sh
-```
-
-### Satu Perintah Deploy (Laptop → Server)
-
-`scripts/deploy.sh` adalah script yang otomatis pull + vendor check + build + restart. Untuk deploy dari laptop cukup sekali SSH:
-
-```bash
-# Setup dulu SSH key agar bisa login tanpa password:
-ssh-keygen -t ed25519 -C "laptop-anda@example.com"
-ssh-copy-id user@100.x.x.x
-# Test: ssh user@100.x.x.x (tanpa password prompt)
-
-# Satu perintah deploy:
+# 3. Deploy ke server — pull + build + restart
 ssh user@100.x.x.x 'cd ~/lab_kom_sim && bash scripts/deploy.sh'
 ```
 
@@ -433,43 +424,84 @@ ssh user@100.x.x.x 'cd ~/lab_kom_sim && bash scripts/deploy.sh'
 
 ### Backup Database
 
-Backup sudah otomatis via `BACKUP_ENABLED=true` — trigger tiap CUD, debounce 30 detik. Lokasi: `BACKUP_DIR`.
+Backup otomatis tiap ada perubahan data (CUD operation, debounce 30 detik). Konfigurasi via `.env`:
 
-Restore manual:
 ```bash
-cp backups/inventaris_lab.db.backup_20260613_120405 inventaris_lab.db
+BACKUP_ENABLED=true        # Aktif
+BACKUP_INTERVAL=30         # 30 detik setelah CUD terakhir
+BACKUP_DIR=/opt/simlab/app/data/backups   # Lokasi backup
+BACKUP_RETENTION=20        # Simpan 20 backup terakhir
+BACKUP_COMPRESS=true       # Kompres .gz
+```
+
+Cek daftar backup:
+```bash
+ls -lh /opt/simlab/app/data/backups/
+```
+
+Restore dari backup:
+```bash
+# 1. Hentikan server
+sudo systemctl stop inventaris-lab
+
+# 2. Backup DB corrupt (untuk investigasi)
+cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db.corrupt
+
+# 3. Copy backup terbaru
+cp /opt/simlab/app/data/backups/inventaris_lab.db.backup_20260613_120405 /opt/simlab/app/data/inventaris_lab.db
+
+# 4. Start server
+sudo systemctl start inventaris-lab
+```
+
+### Database Recovery (Migration Failure)
+
+Server auto-run migration setiap startup. Jika setelah update server langsung crash atau error "migration failed", lakukan:
+
+**1. Cek log untuk tahu penyebab:**
+
+```bash
+sudo journalctl -u inventaris-lab -n 100 --no-pager | grep -i "migration\|error\|fatal"
+```
+
+**2. Restore database dari backup (jika corruption):**
+
+```bash
+# Cari backup terbaru
+ls -t /opt/simlab/app/data/backups/ | head -5
+
+# Hentikan server
+sudo systemctl stop inventaris-lab
+
+# Backup DB corrupt untuk analisis
+cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db.corrupt
+
+# Balikkan ke backup sebelum update
+cp $(ls -t /opt/simlab/app/data/backups/ | head -1) /opt/simlab/app/data/inventaris_lab.db
+
+# Start server (akan re-run migration yang sudah sukses sebelumnya — skip)
+sudo systemctl start inventaris-lab
+```
+
+**3. Rollback binary (jika bug di kode baru):**
+
+```bash
+# Ambil binary lama dari backup git
+cd ~/lab_kom_sim
+git log --oneline -5 origin/deploy_linux
+git checkout COMMIT_HASH_SEBELUMNYA -- cmd/ go.mod go.sum internal/ web/
+CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
+sudo cp app-simlab /opt/simlab/app/app-simlab
 sudo systemctl restart inventaris-lab
 ```
 
-### Logs
+**4. Reset ke database baru (jika semua gagal):**
 
 ```bash
-# Systemd journal
-sudo journalctl -u inventaris-lab -n 200 -f
-
-# Atau log file jika dikonfigurasi
-tail -f /var/log/simlab/app.log
-```
-
-### Update Go Version
-
-Cek `go.mod` untuk version requirement. Install versi baru:
-```bash
-# Download Go binary (misal 1.26.0)
-wget https://go.dev/dl/go1.26.0.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.26.0.linux-amd64.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-source ~/.bashrc
-go version
-```
-
-### Reset Database (Kembali ke Awal)
-
-```bash
-# Hapus database
+sudo systemctl stop inventaris-lab
 rm /opt/simlab/app/data/inventaris_lab.db
-sudo systemctl restart inventaris-lab
-# Database akan auto-create dengan data seed saat pertama kali server jalan
+sudo systemctl start inventaris-lab
+# Database baru akan ter-create + seed data otomatis
 ```
 
 ---
