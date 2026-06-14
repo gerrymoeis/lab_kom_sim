@@ -120,6 +120,9 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
 	values.Del("dup")
+	values.Del("success")
+	values.Del("error")
+	values.Del("toast")
 	var queryBack interface{} = ""
 	if len(values) > 0 {
 		queryBack = template.URL("&" + values.Encode())
@@ -128,6 +131,9 @@ func (h *Handler) LogbookList(c *gin.Context) {
 	valuesDup, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(valuesDup, "page")
 	valuesDup.Set("dup", "1")
+	valuesDup.Del("success")
+	valuesDup.Del("error")
+	valuesDup.Del("toast")
 	var queryDup interface{} = ""
 	if len(valuesDup) > 0 {
 		queryDup = template.URL("&" + valuesDup.Encode())
