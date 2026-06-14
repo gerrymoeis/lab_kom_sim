@@ -119,26 +119,40 @@
                 </div>
 
                 <h5 class="mb-3">Langkah 2: Ukuran Stiker (cm)</h5>
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Template Ukuran</label>
+                        <div class="input-group">
+                            <select class="form-select" id="templateSelect" onchange="onTemplateSelect(this)">
+                                <option value="">-- Pilih template --</option>
+                            </select>
+                            <button class="btn btn-outline-secondary" type="button" onclick="saveTemplate()" id="saveTemplateBtn">
+                                <i class="bi bi-bookmark-plus"></i> Simpan
+                            </button>
+                        </div>
+                        <div class="form-text">Simpan ukuran saat ini sebagai template untuk digunakan kembali</div>
+                    </div>
+                </div>
                 <div class="row mb-4">
                     <div class="col-md-4">
                         <label for="fontSize" class="form-label">Font Size (cm)</label>
                         <input type="number" class="form-control" id="fontSize" name="font_size"
                             value="{{ .defaultFontSize }}" step="0.1" min="0.3" max="5.0"
-                            oninput="updatePreview()">
+                            oninput="onTemplateFieldChange()">
                         <div class="form-text">Ukuran teks pada stiker</div>
                     </div>
                     <div class="col-md-4">
                         <label for="paddingH" class="form-label">Padding Horizontal (cm)</label>
                         <input type="number" class="form-control" id="paddingH" name="padding_h"
                             value="{{ .defaultPaddingH }}" step="0.1" min="0.1" max="5.0"
-                            oninput="updatePreview()">
+                            oninput="onTemplateFieldChange()">
                         <div class="form-text">Ruang kiri-kanan teks</div>
                     </div>
                     <div class="col-md-4">
                         <label for="paddingV" class="form-label">Padding Vertical (cm)</label>
                         <input type="number" class="form-control" id="paddingV" name="padding_v"
                             value="{{ .defaultPaddingV }}" step="0.1" min="0.1" max="5.0"
-                            oninput="updatePreview()">
+                            oninput="onTemplateFieldChange()">
                         <div class="form-text">Ruang atas-bawah teks</div>
                     </div>
                 </div>
@@ -191,6 +205,26 @@
     </div>
 </div>
 
+<div class="modal fade" id="saveTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">Simpan Template</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Nama Template</label>
+                <input type="text" class="form-control" id="templateNameInput" maxlength="100"
+                    placeholder="Misal: Stiker PC Besar" autocomplete="off">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="confirmSaveTemplate">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .sticker-preview-box {
     border: 1px solid #ccc;
@@ -231,6 +265,8 @@ var longestPerDeviceType = {
     '{{ $prefix }}': '{{ $longest }}',
 {{- end }}
 };
+
+var templates = [];
 
 function getSelectedLabels(selector) {
     var checks = document.querySelectorAll(selector + ':checked');
@@ -318,6 +354,8 @@ function updateDefaults() {
         document.getElementById('paddingH').value = 0.5;
         document.getElementById('paddingV').value = 0.8;
     }
+    document.getElementById('templateSelect').value = '';
+    loadTemplates();
     updatePreview();
 }
 
@@ -433,7 +471,96 @@ function generatePrint() {
     window.open('/print/generate?' + params.toString(), '_blank');
 }
 
+function onTemplateFieldChange() {
+    document.getElementById('templateSelect').value = '';
+    updatePreview();
+}
+
+function loadTemplates() {
+    var type = document.querySelector('input[name="type"]:checked');
+    var stickerType = type ? type.value : 'pc';
+
+    fetch('/api/sticker-templates?type=' + stickerType, {
+        headers: {'Accept': 'application/json'}
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        templates = data;
+        var sel = document.getElementById('templateSelect');
+        sel.innerHTML = '<option value="">-- Pilih template --</option>';
+        data.forEach(function(t) {
+            var opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            sel.appendChild(opt);
+        });
+    })
+    .catch(function() {});
+}
+
+function onTemplateSelect(sel) {
+    var id = parseInt(sel.value);
+    if (!id) { return; }
+    for (var i = 0; i < templates.length; i++) {
+        if (templates[i].id === id) {
+            var t = templates[i];
+            document.getElementById('fontSize').value = t.font_size_cm;
+            document.getElementById('paddingH').value = t.padding_h_cm;
+            document.getElementById('paddingV').value = t.padding_v_cm;
+            updatePreview();
+            return;
+        }
+    }
+}
+
+function saveTemplate() {
+    if ('{{ .role }}' !== 'admin') {
+        alert('Hanya admin yang dapat menyimpan template');
+        return;
+    }
+    var modal = new bootstrap.Modal(document.getElementById('saveTemplateModal'));
+    document.getElementById('templateNameInput').value = '';
+    document.getElementById('templateNameInput').focus();
+    modal.show();
+}
+
+document.getElementById('confirmSaveTemplate').addEventListener('click', function() {
+    var name = document.getElementById('templateNameInput').value.trim();
+    if (!name) { alert('Nama template tidak boleh kosong'); return; }
+
+    var type = document.querySelector('input[name="type"]:checked');
+    var stickerType = type ? type.value : 'pc';
+    var fontSize = parseFloat(document.getElementById('fontSize').value) || 0.5;
+    var padH = parseFloat(document.getElementById('paddingH').value) || 0.3;
+    var padV = parseFloat(document.getElementById('paddingV').value) || 0.3;
+
+    fetch('/api/sticker-templates', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: name,
+            sticker_type: stickerType,
+            font_size_cm: fontSize,
+            padding_h_cm: padH,
+            padding_v_cm: padV
+        })
+    })
+    .then(function(r) {
+        if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
+        return r.json();
+    })
+    .then(function() {
+        var modal = bootstrap.Modal.getInstance(document.getElementById('saveTemplateModal'));
+        modal.hide();
+        loadTemplates();
+    })
+    .catch(function(err) {
+        alert('Gagal menyimpan template: ' + err.message);
+    });
+});
+
 document.addEventListener('DOMContentLoaded', function() {
+    loadTemplates();
     updatePreview();
 });
 </script>

@@ -369,6 +369,10 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 		api.POST("/cleanup-temp-files", h.CleanupTempFiles)
 		api.GET("/devices/next-asset-code", h.GetNextAssetCode)
 		api.GET("/devices/next-asset-codes", h.GetNextAssetCodes)
+		api.GET("/sticker-templates", h.StickerTemplateList)
+		api.POST("/sticker-templates", h.StickerTemplateCreate)
+		api.PUT("/sticker-templates/:id", h.StickerTemplateUpdate)
+		api.DELETE("/sticker-templates/:id", h.StickerTemplateDelete)
 	}
 
 	return router, func() { h.Close() }, func() { h.FlushActivityLogs() }
