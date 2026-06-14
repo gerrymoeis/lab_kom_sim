@@ -137,7 +137,7 @@ func (h *Handler) errHTML(c *gin.Context, msg string) {
 	})
 }
 
-func (h *Handler) redirectWithSuccess(c *gin.Context, rawURL, msg string) {
+func (h *Handler) redirectWithSuccess(c *gin.Context, rawURL, msg string, toastType ...string) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		c.Redirect(http.StatusFound, "/")
@@ -145,6 +145,9 @@ func (h *Handler) redirectWithSuccess(c *gin.Context, rawURL, msg string) {
 	}
 	q := u.Query()
 	q.Set("success", msg)
+	if len(toastType) > 0 && toastType[0] != "create" {
+		q.Set("toast", toastType[0])
+	}
 	u.RawQuery = q.Encode()
 	c.Redirect(http.StatusFound, u.String())
 }
