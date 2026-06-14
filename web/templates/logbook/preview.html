@@ -358,6 +358,12 @@
         }
     });
 
+    function hideDeleteModal() {
+        var modalEl = document.getElementById('deleteConfirmModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+
     function deleteSelectedRows() {
         const checked = document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check:checked');
         var items = [];
@@ -385,6 +391,7 @@
                 updateRowNumbers();
                 updateSaveButton();
                 disablePreviewBatch();
+                hideDeleteModal();
             }
         });
     }
@@ -629,15 +636,22 @@
 
     function deleteRow(btn) {
         const row = btn.closest('tr');
-        let next = row.nextElementSibling;
-        while (next && next.classList.contains('table-dup-db-ref')) {
-            const toRemove = next;
-            next = next.nextElementSibling;
-            toRemove.remove();
-        }
-        row.remove();
-        updateRowNumbers();
-        updateSaveButton();
+        var label = row.querySelector('input[name="student_name[]"]').value.trim() || '(tanpa nama)';
+        confirmBatchDelete({
+            items: [{ id: row.dataset.index, label: label }],
+            onConfirm: function() {
+                let next = row.nextElementSibling;
+                while (next && next.classList.contains('table-dup-db-ref')) {
+                    const toRemove = next;
+                    next = next.nextElementSibling;
+                    toRemove.remove();
+                }
+                row.remove();
+                updateRowNumbers();
+                updateSaveButton();
+                hideDeleteModal();
+            }
+        });
     }
 
     function updateRowNumbers() {
