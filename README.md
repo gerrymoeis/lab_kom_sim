@@ -24,18 +24,117 @@ Database: **SQLite** (pure Go via `modernc.org/sqlite`, zero CGO). PostgreSQL/Ne
 ## Prasyarat
 
 - **OS**: Linux 64-bit (x86_64 atau aarch64/ARM64) — Debian, Ubuntu, Fedora, Arch, dll
-- **Go 1.25+** — download dari [go.dev/dl](https://go.dev/dl/) atau via package manager
 - **Tidak perlu C compiler** — SQLite pure Go (modernc.org/sqlite, `CGO_ENABLED=0`)
 - **systemd** — untuk production service (hampir semua distro modern)
-- **Git** — untuk clone repositori
 - **Koneksi internet** — untuk download dependencies dan GitHub sync
 - **Akun Tailscale** — [daftar gratis](https://login.tailscale.com)
 
-**Cek prasyarat:**
+### 1. Install Git
+
+Git diperlukan untuk clone repositori dan auto-update.
+
+**Debian / Ubuntu / Mint:**
 ```bash
-go version    # Harus go1.25+
-systemctl --version  # Harus ada (systemd 250+)
+sudo apt update
+sudo apt install -y git
+```
+
+**Fedora / RHEL / CentOS:**
+```bash
+sudo dnf install -y git
+```
+
+**Arch / Manjaro:**
+```bash
+sudo pacman -S --noconfirm git
+```
+
+**openSUSE:**
+```bash
+sudo zypper install -y git
+```
+
+**Verifikasi:**
+```bash
 git version
+# Output: git version 2.x.x
+```
+
+### 2. Install Go (Golang)
+
+> **Perhatian:** Project ini membutuhkan **Go 1.25+**. Versi package manager bawaan distro mungkin lebih lama — gunakan official tarball dari go.dev untuk hasil terjamin.
+
+**Metode 1 (Recommended) — Official Tarball dari go.dev:**
+
+Cara ini memberikan versi Go terbaru (saat ini **Go 1.26.4**) dan tidak bergantung pada package manager.
+
+```bash
+# Deteksi arsitektur CPU
+ARCH=$(uname -m)
+if [ "$ARCH" = "x86_64" ]; then
+    GOARCH="amd64"
+elif [ "$ARCH" = "aarch64" ]; then
+    GOARCH="arm64"
+else
+    echo "Arsitektur tidak didukung: $ARCH"
+    exit 1
+fi
+
+# Download Go 1.26.4
+wget https://go.dev/dl/go1.26.4.linux-${GOARCH}.tar.gz
+
+# Hapus instalasi lama (jika ada) dan extract
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf go1.26.4.linux-${GOARCH}.tar.gz
+
+# Tambahkan Go ke PATH (tambahkan ke ~/.profile agar permanen)
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.profile
+source ~/.profile
+```
+
+**Metode 2 — Package Manager (Go 1.26 untuk Ubuntu 26.04+):**
+
+Gunakan jika distro Anda sudah menyediakan Go 1.25+.
+
+```bash
+# Debian 13+ / Ubuntu 26.04+:
+sudo apt update
+sudo apt install -y golang-go
+
+# Fedora 42+:
+sudo dnf install -y golang
+
+# Arch:
+sudo pacman -S --noconfirm go
+```
+
+**Verifikasi:**
+```bash
+go version
+# Output: go version go1.26.4 linux/amd64
+```
+
+### 3. Cek systemd
+
+```bash
+systemctl --version
+# Output: systemd 250+ (hampir semua distro modern sudah termasuk)
+```
+
+### 4. Siapkan SSH Key (untuk GitHub)
+
+Diperlukan untuk git push dari server (misal untuk SSG auto-build):
+
+```bash
+ssh-keygen -t ed25519 -C "server-linux@example.com"
+cat ~/.ssh/id_ed25519.pub
+# Copy output → tambahkan ke GitHub → Settings → SSH and GPG keys
+```
+
+Test koneksi:
+```bash
+ssh -T git@github.com
+# Output: Hi username! You've successfully authenticated...
 ```
 
 ---
