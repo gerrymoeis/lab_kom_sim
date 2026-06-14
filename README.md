@@ -326,22 +326,46 @@ pkill app-simlab
 
 ## Auto Deploy (Laptop → HP via Tailscale + SSH)
 
+### Setup Passwordless SSH (Sekali di Laptop)
+
+Agar deploy satu perintah tanpa prompt password:
+
+```bash
+# Di laptop, cek apakah sudah punya SSH key
+ls ~/.ssh/id_ed25519.pub
+# Jika file tidak ada, generate dulu:
+ssh-keygen -t ed25519 -C "laptop@example.com"
+
+# Copy public key ke HP (Termux)
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh -p 8022 u0_aXXX@100.x.x.x "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
+# Atau dari PowerShell: Get-Content ~\.ssh\id_ed25519.pub, lalu manual paste di Termux:
+# echo "ssh-ed25519 AAAA..." >> ~/.ssh/authorized_keys
+
+# Test — login tanpa password
+ssh -p 8022 u0_aXXX@100.x.x.x
+```
+
+> **Cari username HP:** `whoami` di Termux → output `u0_aXXX`. Ganti `u0_aXXX` dengan nilai yang muncul.
+> **Cari SSH key path laptop:** `ls ~\.ssh\id_ed25519.pub` (PowerShell) atau `ls ~/.ssh/id_ed25519.pub` (bash).
+
 ### Setup Sekali (di Laptop)
 
-```powershell
-# PowerShell — simpan script ini sebagai deploy-hp.ps1
-$tsHost = "100.x.x.x"  # Ganti dengan Tailscale IP HP
-$sshPort = 8022
-$sshKey = "C:\Users\Gallan\.ssh\id_sim_lab_mi"  # Path SSH private key
+Simpan script berikut sebagai `deploy-hp.ps1` — isi variable dengan milik Anda:
 
-ssh -p $sshPort -i $sshKey "u0_aXXX@${tsHost}" 'cd ~/lab_kom_sim && git pull origin deploy_android && CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go && pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
+```powershell
+# deploy-hp.ps1
+$tsHost = "100.x.x.x"   # Tailscale IP HP (ganti)
+$sshPort = 8022
+$sshUser = "u0_aXXX"     # Username Termux (ganti)
+
+ssh -p $sshPort "$sshUser@${tsHost}" 'cd ~/lab_kom_sim && git pull origin deploy_android && CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go && pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
 ```
 
 ### Satu Perintah Deploy
 
 ```bash
 # Dari laptop (bash/WSL):
-ssh -p 8022 -i ~/.ssh/id_sim_lab_mi u0_aXXX@100.x.x.x \
+ssh -p 8022 u0_aXXX@100.x.x.x \
   'cd ~/lab_kom_sim && git pull origin deploy_android && \
    CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go && \
    pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
@@ -350,7 +374,7 @@ ssh -p 8022 -i ~/.ssh/id_sim_lab_mi u0_aXXX@100.x.x.x \
 ### Auto-Deploy via Git Alias (Optional)
 
 ```bash
-git config --global alias.deploy-hp "!git push origin refactoring && ssh -p 8022 -i ~/.ssh/id_sim_lab_mi u0_aXXX@100.x.x.x 'cd ~/lab_kom_sim && bash scripts/deploy.sh'"
+git config --global alias.deploy-hp "!git push origin refactoring && ssh -p 8022 u0_aXXX@100.x.x.x 'cd ~/lab_kom_sim && bash scripts/deploy.sh'"
 ```
 
 ---
