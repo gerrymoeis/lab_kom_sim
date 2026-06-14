@@ -33,17 +33,10 @@ func (h *Handler) PrintForm(c *gin.Context) {
 	} else {
 		defaultFontSize = 1.0
 		defaultPadH = 0.5
-		defaultPadV = 0.5
+		defaultPadV = 0.8
 	}
 
-	longestPCLabel := ""
-	if pcLabels, err := h.printService.GetLabels(services.PrintConfig{Type: "pc"}); err == nil {
-		for _, l := range pcLabels {
-			if len(l) > len(longestPCLabel) {
-				longestPCLabel = l
-			}
-		}
-	}
+	pcMahasiswaLabels, pcSpesialLabels, longestPCLabel, _ := h.printService.GetPCLabelGroups()
 
 	longestDeviceLabel := ""
 	if devLabels, err := h.printService.GetLabels(services.PrintConfig{Type: "device"}); err == nil {
@@ -84,6 +77,8 @@ func (h *Handler) PrintForm(c *gin.Context) {
 		"defaultFontSize":      defaultFontSize,
 		"defaultPaddingH":      defaultPadH,
 		"defaultPaddingV":      defaultPadV,
+		"pcMahasiswaLabels":    pcMahasiswaLabels,
+		"pcSpesialLabels":      pcSpesialLabels,
 		"longestPCLabel":       longestPCLabel,
 		"longestDeviceLabel":   longestDeviceLabel,
 		"longestPerDeviceType": longestPerPrefix,
@@ -124,6 +119,18 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 			return
 		}
 		cfg.DeviceTypeSlug = strings.Join(ids, ",")
+	}
+
+	if cfg.Type == "pc" {
+		rawPCLabels := c.Query("pc_labels")
+		if rawPCLabels != "" {
+			for _, l := range strings.Split(rawPCLabels, ",") {
+				l = strings.TrimSpace(l)
+				if l != "" {
+					cfg.PCLabels = append(cfg.PCLabels, l)
+				}
+			}
+		}
 	}
 
 	fontSize, err := strconv.ParseFloat(c.DefaultQuery("font_size", "0.5"), 64)
@@ -169,8 +176,18 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 	var labelName, titleName string
 	switch cfg.Type {
 	case "pc":
-		labelName = "pc_label"
-		titleName = "PC Label"
+		if len(cfg.PCLabels) > 0 {
+			if len(cfg.PCLabels) >= 5 {
+				labelName = fmt.Sprintf("pc_%d", len(cfg.PCLabels))
+			} else if len(cfg.PCLabels) >= 2 {
+				labelName = "pc_" + strings.Join(cfg.PCLabels, "+")
+			} else {
+				labelName = "pc_" + cfg.PCLabels[0]
+			}
+		} else {
+			labelName = "pc"
+		}
+		titleName = "PC"
 	case "device":
 		if rawDeviceTypeFilter != "" {
 			prefixes := strings.Split(rawDeviceTypeFilter, ",")
@@ -182,19 +199,16 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 				}
 			}
 			if len(cleaned) >= 5 {
-				labelName = fmt.Sprintf("device_%dtipe", len(cleaned))
-				titleName = fmt.Sprintf("Device (%d tipe)", len(cleaned))
+				labelName = fmt.Sprintf("device_%d", len(cleaned))
 			} else if len(cleaned) >= 2 {
 				labelName = "device_" + strings.Join(cleaned, "+")
-				titleName = "Device " + strings.Join(cleaned, ", ")
 			} else {
 				labelName = "device_" + cleaned[0]
-				titleName = "Device " + cleaned[0]
 			}
 		} else {
-			labelName = "device_asset_code"
-			titleName = "Device Asset Code"
+			labelName = "device"
 		}
+		titleName = "Device"
 	}
 	cfg.PDFTitle = "Stiker " + titleName
 
@@ -207,7 +221,6 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 	filename := fmt.Sprintf("stiker_%s_%s.pdf", labelName, services.FormatPrintTimestamp())
 	c.Header("Content-Type", "application/pdf")
 	c.Header("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, filename))
-	// Hapus cache agar selalu fresh
 	c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }
