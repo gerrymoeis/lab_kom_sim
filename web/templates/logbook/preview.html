@@ -720,8 +720,7 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
-                    window.location.href = '/logbook';
+                    window.location.href = '/logbook?success=' + encodeURIComponent(data.message);
                 } else {
                     alert('Error: ' + (data.error || 'Gagal menyimpan data'));
                     submitBtn.disabled = false;
