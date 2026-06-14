@@ -36,7 +36,7 @@ var PCLayoutManager = (function() {
         render();
         layoutModal.show();
       })
-      .catch(function() { alert('Gagal memuat data layout'); });
+      .catch(function() { showToast('Gagal memuat data layout', 'error', 'outline'); });
   }
 
   function render() {
@@ -228,10 +228,11 @@ var PCLayoutManager = (function() {
     }
 
     if (selectedSlot.type === 'special') {
-      if (!confirm('Pindahkan ' + selectedSlot.label + ' ke cadangan?')) return;
+      var slabel = selectedSlot.label;
+      if (!confirm('Pindahkan ' + slabel + ' ke cadangan?')) return;
       selectedSlot = null;
       render();
-      executeOperation('move-to-cadangan', { label: selectedSlot.label });
+      executeOperation('move-to-cadangan', { label: slabel });
       return;
     }
 
@@ -260,10 +261,11 @@ var PCLayoutManager = (function() {
     }
 
     if (selectedSlot.type === 'special') {
-      if (!confirm('Tukar ' + selectedSlot.label + ' dengan ' + label + '?')) return;
+      var slabel = selectedSlot.label;
+      if (!confirm('Tukar ' + slabel + ' dengan ' + label + '?')) return;
       selectedSlot = null;
       render();
-      executeOperation('swap', { a: selectedSlot.label, b: label });
+      executeOperation('swap', { a: slabel, b: label });
       return;
     }
   }
@@ -284,20 +286,21 @@ var PCLayoutManager = (function() {
     .then(function(data) {
       busy = false;
       if (data.success) {
-        onDone(data.pcs || null, data.changes || null);
+        onDone(data.pcs || null, data.changes || null, data.message || null);
       } else {
-        alert('Gagal: ' + (data.error || 'unknown error'));
+        showToast(data.error || 'Operasi gagal', 'error', 'outline');
       }
     })
     .catch(function() {
       busy = false;
-      alert('Gagal menghubungi server');
+      showToast('Gagal menghubungi server', 'error', 'outline');
     });
   }
 
-  function onDone(pcs, changes) {
+  function onDone(pcs, changes, msg) {
     selectedSlot = null;
     if (redirectOnChanges(changes)) return;
+    if (msg) showToast(msg, 'success', 'outline');
     fetchLayout();
     refreshOrUpdateDashboard(pcs);
   }
@@ -340,15 +343,16 @@ var PCLayoutManager = (function() {
     }).then(function(r) { return r.json(); }).then(function(data) {
       if (data.success) {
         selectedSlot = null;
+        if (data.message) showToast(data.message, 'success', 'outline');
         if (redirectOnChanges(data.changes || null)) return;
         fetchLayout();
         refreshOrUpdateDashboard(data.pcs || null);
       } else {
-        alert('Gagal memindahkan baris');
+        showToast('Gagal memindahkan baris', 'error', 'outline');
       }
     }).catch(function(err) {
       console.error('moveRowToCadangan error:', err);
-      alert('Gagal menghubungi server');
+      showToast('Gagal menghubungi server', 'error', 'outline');
     });
   }
 
