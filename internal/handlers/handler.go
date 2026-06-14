@@ -137,6 +137,18 @@ func (h *Handler) errHTML(c *gin.Context, msg string) {
 	})
 }
 
+func (h *Handler) redirectWithSuccess(c *gin.Context, rawURL, msg string) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/")
+		return
+	}
+	q := u.Query()
+	q.Set("success", msg)
+	u.RawQuery = q.Encode()
+	c.Redirect(http.StatusFound, u.String())
+}
+
 func (h *Handler) redirectWithError(c *gin.Context, rawURL, msg string) {
 	u, err := url.Parse(rawURL)
 	if err != nil {

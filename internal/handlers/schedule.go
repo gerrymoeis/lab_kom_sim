@@ -87,7 +87,7 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/schedules")
+	h.redirectWithSuccess(c, "/schedules", "Jadwal berhasil ditambahkan")
 }
 
 func (h *Handler) ScheduleEditPage(c *gin.Context) {
@@ -126,7 +126,7 @@ func (h *Handler) ScheduleEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate jadwal")
 		return
 	}
-	c.Redirect(http.StatusFound, "/schedules")
+	h.redirectWithSuccess(c, "/schedules", "Jadwal berhasil diperbarui")
 }
 
 func (h *Handler) ScheduleDelete(c *gin.Context) {
@@ -138,7 +138,7 @@ func (h *Handler) ScheduleDelete(c *gin.Context) {
 		h.redirectWithError(c, "/schedules", "Gagal menghapus jadwal")
 		return
 	}
-	c.Redirect(http.StatusFound, "/schedules")
+	h.redirectWithSuccess(c, "/schedules", "Jadwal berhasil dihapus")
 }
 
 func (h *Handler) ScheduleBatchDelete(c *gin.Context) {
@@ -160,5 +160,5 @@ func (h *Handler) ScheduleBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Jadwal berhasil dihapus"})
 }

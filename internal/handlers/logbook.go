@@ -496,7 +496,7 @@ func (h *Handler) LogbookCreate(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/logbook")
+	h.redirectWithSuccess(c, "/logbook", "Data logbook berhasil ditambahkan")
 }
 
 func (h *Handler) LogbookEditPage(c *gin.Context) {
@@ -550,7 +550,7 @@ func (h *Handler) LogbookEdit(c *gin.Context) {
 		renderEditWithError("Gagal mengupdate data")
 		return
 	}
-	c.Redirect(http.StatusFound, "/logbook")
+	h.redirectWithSuccess(c, "/logbook", "Data logbook berhasil diperbarui")
 }
 
 func (h *Handler) LogbookDelete(c *gin.Context) {
@@ -569,9 +569,9 @@ func (h *Handler) LogbookDelete(c *gin.Context) {
 	}
 
 	if c.GetHeader("Accept") == "application/json" {
-		c.JSON(http.StatusOK, gin.H{"success": true})
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Data logbook berhasil dihapus"})
 	} else {
-		c.Redirect(http.StatusFound, "/logbook")
+		h.redirectWithSuccess(c, "/logbook", "Data logbook berhasil dihapus")
 	}
 }
 
@@ -594,5 +594,5 @@ func (h *Handler) LogbookBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Data logbook berhasil dihapus"})
 }

@@ -274,7 +274,7 @@ func (h *Handler) StickerTemplateCreate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan template: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"message": "Template berhasil disimpan"})
+	c.JSON(http.StatusCreated, gin.H{"success": true, "message": "Template berhasil disimpan"})
 }
 
 func (h *Handler) StickerTemplateUpdate(c *gin.Context) {
@@ -300,7 +300,7 @@ func (h *Handler) StickerTemplateUpdate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengupdate template: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Template berhasil diupdate"})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Template berhasil diupdate"})
 }
 
 func (h *Handler) StickerTemplateDelete(c *gin.Context) {
@@ -321,5 +321,5 @@ func (h *Handler) StickerTemplateDelete(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menghapus template: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Template berhasil dihapus"})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Template berhasil dihapus"})
 }

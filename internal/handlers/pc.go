@@ -123,7 +123,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/pc")
+	h.redirectWithSuccess(c, "/pc", "PC berhasil ditambahkan")
 }
 
 func (h *Handler) PCEditPage(c *gin.Context) {
@@ -206,7 +206,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	}
 
 	h.pcService.SyncSoftware(newLabel, req.RequiredSw, req.OtherName, req.OtherDesc, uid, u, r, ip, ua)
-	c.Redirect(http.StatusFound, fmt.Sprintf("/pc/%s", newLabel))
+	h.redirectWithSuccess(c, fmt.Sprintf("/pc/%s", newLabel), "PC berhasil diperbarui")
 }
 
 func (h *Handler) PCDelete(c *gin.Context) {
@@ -218,7 +218,7 @@ func (h *Handler) PCDelete(c *gin.Context) {
 		h.redirectWithError(c, "/pc", "Gagal menghapus PC. Mungkin PC sedang dipinjam.")
 		return
 	}
-	c.Redirect(http.StatusFound, "/pc")
+	h.redirectWithSuccess(c, "/pc", "PC berhasil dihapus")
 }
 
 func (h *Handler) PCStatusAPI(c *gin.Context) {
@@ -574,5 +574,5 @@ func (h *Handler) PCBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "PC berhasil dihapus"})
 }
