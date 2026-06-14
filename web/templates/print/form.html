@@ -612,9 +612,10 @@ function updateTemplateById(id) {
                 break;
             }
         }
+        showToast('Template berhasil diupdate', 'success');
     })
     .catch(function(err) {
-        alert('Gagal mengupdate template: ' + err.message);
+        showToast('Gagal mengupdate template: ' + err.message, 'error');
     });
 }
 
@@ -643,9 +644,10 @@ function deleteTemplate() {
         });
         sel.value = '';
         resetDefaults();
+        showToast('Template berhasil dihapus', 'success');
     })
     .catch(function(err) {
-        alert('Gagal menghapus template: ' + err.message);
+        showToast('Gagal menghapus template: ' + err.message, 'error');
     });
 }
 
@@ -677,9 +679,10 @@ document.getElementById('confirmSaveTemplate').addEventListener('click', functio
         var modal = bootstrap.Modal.getInstance(document.getElementById('saveTemplateModal'));
         modal.hide();
         loadTemplates();
+        showToast('Template berhasil disimpan', 'success');
     })
     .catch(function(err) {
-        alert('Gagal menyimpan template: ' + err.message);
+        showToast('Gagal menyimpan template: ' + err.message, 'error');
     });
 });
 
