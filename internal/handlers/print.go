@@ -270,12 +270,11 @@ func (h *Handler) StickerTemplateCreate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Data tidak valid: " + err.Error()})
 		return
 	}
-	tmpl, err := h.printService.SaveTemplate(form.Name, form.StickerType, form.FontSizeCM, form.PaddingHCM, form.PaddingVCM)
-	if err != nil {
+	if err := h.printService.SaveTemplate(form.Name, form.StickerType, form.FontSizeCM, form.PaddingHCM, form.PaddingVCM); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan template: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, tmpl)
+	c.JSON(http.StatusCreated, gin.H{"message": "Template berhasil disimpan"})
 }
 
 func (h *Handler) StickerTemplateUpdate(c *gin.Context) {

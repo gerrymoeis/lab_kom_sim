@@ -547,7 +547,6 @@ document.getElementById('confirmSaveTemplate').addEventListener('click', functio
     })
     .then(function(r) {
         if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
-        return r.json();
     })
     .then(function() {
         var modal = bootstrap.Modal.getInstance(document.getElementById('saveTemplateModal'));
