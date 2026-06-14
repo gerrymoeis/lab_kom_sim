@@ -42,7 +42,6 @@ func (h *Handler) UserList(c *gin.Context) {
 		"isSuperAdmin": h.isSuperAdmin(c),
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query, "filters": gin.H{"search": search, "role": roleFilter, "sort_by": sortBy, "sort_order": sortOrder},
-		"error": c.Query("error"),
 	})
 }
 
@@ -157,7 +156,7 @@ func (h *Handler) UserEdit(c *gin.Context) {
 		sess.Save()
 	}
 
-	c.Redirect(http.StatusFound, "/admin/users/"+req.Username+"?success=User berhasil diupdate")
+	h.redirectWithSuccess(c, "/admin/users/"+req.Username, "User berhasil diupdate", "update")
 }
 
 func (h *Handler) UserDelete(c *gin.Context) {
@@ -182,7 +181,7 @@ func (h *Handler) UserDelete(c *gin.Context) {
 		h.redirectWithError(c, "/admin/users", msg)
 		return
 	}
-	h.redirectWithSuccess(c, "/admin/users", "User berhasil dihapus")
+	h.redirectWithSuccess(c, "/admin/users", "User berhasil dihapus", "delete")
 }
 
 func (h *Handler) Profile(c *gin.Context) {
@@ -223,7 +222,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	sess.Set("username", newUsername)
 	sess.Set("full_name", newFullName)
 	sess.Save()
-	c.Redirect(http.StatusFound, "/profile?success=Profil berhasil diupdate")
+	h.redirectWithSuccess(c, "/profile", "Profil berhasil diupdate", "update")
 }
 
 func (h *Handler) ChangePassword(c *gin.Context) {
@@ -243,7 +242,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/profile?error="+msg)
 		return
 	}
-	c.Redirect(http.StatusFound, "/profile?success=Password berhasil diubah")
+	h.redirectWithSuccess(c, "/profile", "Password berhasil diubah", "update")
 }
 
 func (h *Handler) UserBatchDelete(c *gin.Context) {

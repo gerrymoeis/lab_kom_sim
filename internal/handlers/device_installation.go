@@ -181,7 +181,7 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate instalasi")
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil diperbarui")
+	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil diperbarui", "update")
 }
 
 func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
@@ -193,7 +193,7 @@ func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=installations", "Gagal menghapus instalasi")
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil dihapus")
+	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil dihapus", "delete")
 }
 
 func (h *Handler) DeviceInstallationBatchDelete(c *gin.Context) {

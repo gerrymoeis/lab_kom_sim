@@ -458,7 +458,7 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate perangkat")
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=types", "Perangkat berhasil diperbarui")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Perangkat berhasil diperbarui", "update")
 }
 
 func (h *Handler) DeviceDelete(c *gin.Context) {
@@ -476,7 +476,7 @@ func (h *Handler) DeviceDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=types", "Gagal menghapus perangkat")
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=types", "Perangkat berhasil dihapus")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Perangkat berhasil dihapus", "delete")
 }
 
 func (h *Handler) GetNextAssetCode(c *gin.Context) {
@@ -557,7 +557,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		h.renderEditPageWithError(c, dt, err.Error())
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil diperbarui")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil diperbarui", "update")
 }
 
 func (h *Handler) renderEditPageWithError(c *gin.Context, dt *models.DeviceType, errMsg string) {
@@ -587,7 +587,7 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=types", err.Error())
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil dihapus")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil dihapus", "delete")
 }
 
 func (h *Handler) DeviceTypeDetail(c *gin.Context) {
@@ -688,7 +688,7 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 		h.errHTML(c, err.Error())
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=types", "Kategori berhasil diperbarui")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Kategori berhasil diperbarui", "update")
 }
 
 func (h *Handler) CategoryDelete(c *gin.Context) {
@@ -705,7 +705,7 @@ func (h *Handler) CategoryDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=types", err.Error())
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=types", "Kategori berhasil dihapus")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Kategori berhasil dihapus", "delete")
 }
 
 func usageTypePriority(ut string) int {
