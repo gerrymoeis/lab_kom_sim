@@ -11,7 +11,7 @@
     <div class="card shadow-sm">
         <div class="card-body p-4">
             <form id="printForm" onsubmit="return false;">
-                <h5 class="mb-3">Langkah 1: Pilih Tipe Stiker</h5>
+                <h5 class="mb-3">Langkah 1: Pilih Tipe & Data Stiker</h5>
                 <div class="row mb-4">
                     <div class="col-md-6">
                         <label class="form-label">Tipe Stiker</label>
@@ -32,30 +32,89 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6" id="deviceTypeGroup" style="{{ if ne .selectedType "device" }}display:none{{ end }}">
-                        <label class="form-label">Device Type</label>
-                        <div class="device-type-checkboxes" id="deviceTypeCheckboxes">
-                            <div class="form-check mb-1">
-                                <input class="form-check-input" type="checkbox" id="selectAllDeviceTypes"
-                                    onchange="toggleAllDeviceTypes(this)">
-                                <label class="form-check-label fw-semibold" for="selectAllDeviceTypes">
-                                    Pilih Semua
-                                </label>
+                </div>
+
+                <div id="pcGroup" style="{{ if ne .selectedType "pc" }}display:none{{ end }}">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">PC Mahasiswa</label>
+                            <div class="pc-checkbox-group">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="selectAllPCMahasiswa"
+                                        onchange="toggleAllPCMahasiswa(this)">
+                                    <label class="form-check-label fw-semibold" for="selectAllPCMahasiswa">
+                                        Pilih Semua PC Mahasiswa
+                                    </label>
+                                </div>
+                                <hr class="my-1">
+                                {{ range .pcMahasiswaLabels }}
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input pc-mahasiswa-check" type="checkbox"
+                                        name="pc_label" value="{{ . }}" id="pc_mhs_{{ . }}"
+                                        onchange="onPCChange()">
+                                    <label class="form-check-label text-uppercase" for="pc_mhs_{{ . }}">{{ . }}</label>
+                                </div>
+                                {{ end }}
+                                {{ if not .pcMahasiswaLabels }}
+                                <div class="text-muted small">Tidak ada PC mahasiswa</div>
+                                {{ end }}
                             </div>
-                            <hr class="my-1">
-                            {{ range .deviceTypes }}
-                            <div class="form-check mb-1">
-                                <input class="form-check-input device-type-check" type="checkbox"
-                                    name="device_type" value="{{ .AssetCodePrefix }}"
-                                    id="dt_{{ .AssetCodePrefix }}"
-                                    onchange="onDeviceTypeChange()">
-                                <label class="form-check-label" for="dt_{{ .AssetCodePrefix }}">
-                                    {{ .AssetCodePrefix }}
-                                </label>
-                            </div>
-                            {{ end }}
                         </div>
-                        <div class="form-text mt-1">Pilih satu atau lebih device type</div>
+                        <div class="col-md-6">
+                            <label class="form-label">PC Spesial</label>
+                            <div class="pc-checkbox-group">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="selectAllPCSpesial"
+                                        onchange="toggleAllPCSpesial(this)">
+                                    <label class="form-check-label fw-semibold" for="selectAllPCSpesial">
+                                        Pilih Semua PC Spesial
+                                    </label>
+                                </div>
+                                <hr class="my-1">
+                                {{ range .pcSpesialLabels }}
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input pc-spesial-check" type="checkbox"
+                                        name="pc_label" value="{{ . }}" id="pc_sps_{{ . }}"
+                                        onchange="onPCChange()">
+                                    <label class="form-check-label text-uppercase" for="pc_sps_{{ . }}">{{ . }}</label>
+                                </div>
+                                {{ end }}
+                                {{ if not .pcSpesialLabels }}
+                                <div class="text-muted small">Tidak ada PC spesial</div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-text mt-1">Pilih satu atau lebih PC untuk di-print. Kosongkan = print semua PC.</div>
+                </div>
+
+                <div id="deviceTypeGroup" style="{{ if ne .selectedType "device" }}display:none{{ end }}">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Device Type</label>
+                            <div class="device-type-checkboxes">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="selectAllDeviceTypes"
+                                        onchange="toggleAllDeviceTypes(this)">
+                                    <label class="form-check-label fw-semibold" for="selectAllDeviceTypes">
+                                        Pilih Semua
+                                    </label>
+                                </div>
+                                <hr class="my-1">
+                                {{ range .deviceTypes }}
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input device-type-check" type="checkbox"
+                                        name="device_type" value="{{ .AssetCodePrefix }}"
+                                        id="dt_{{ .AssetCodePrefix }}"
+                                        onchange="onDeviceTypeChange()">
+                                    <label class="form-check-label" for="dt_{{ .AssetCodePrefix }}">
+                                        {{ .AssetCodePrefix }}
+                                    </label>
+                                </div>
+                                {{ end }}
+                            </div>
+                            <div class="form-text mt-1">Pilih satu atau lebih device type</div>
+                        </div>
                     </div>
                 </div>
 
@@ -145,6 +204,7 @@
     white-space: nowrap;
     transition: all 0.2s;
 }
+.pc-checkbox-group,
 .device-type-checkboxes {
     max-height: 260px;
     overflow-y: auto;
@@ -172,11 +232,20 @@ var longestPerDeviceType = {
 {{- end }}
 };
 
-function getSelectedDevicePrefixes() {
-    var checks = document.querySelectorAll('.device-type-check:checked');
+function getSelectedLabels(selector) {
+    var checks = document.querySelectorAll(selector + ':checked');
     var vals = [];
     checks.forEach(function(c) { vals.push(c.value); });
-    return vals.join(',');
+    return vals;
+}
+
+function getSelectedDevicePrefixes() {
+    return getSelectedLabels('.device-type-check');
+}
+
+function getSelectedPCLabels() {
+    var vals = getSelectedLabels('.pc-mahasiswa-check');
+    return vals.concat(getSelectedLabels('.pc-spesial-check'));
 }
 
 function getConfig() {
@@ -188,29 +257,57 @@ function getConfig() {
         padV: parseFloat(document.getElementById('paddingV').value) || 0.3,
         paperSize: document.getElementById('paperSize').value || 'A4',
         numSheets: parseInt(document.getElementById('numSheets').value) || 1,
-        deviceType: getSelectedDevicePrefixes()
+        deviceType: getSelectedDevicePrefixes().join(','),
+        pcLabels: getSelectedPCLabels()
     };
 }
 
-function toggleAllDeviceTypes(src) {
-    var checks = document.querySelectorAll('.device-type-check');
+function toggleAll(selector, src) {
+    var checks = document.querySelectorAll(selector);
     checks.forEach(function(c) { c.checked = src.checked; });
+    updatePreview();
+}
+
+function toggleAllPCMahasiswa(src) {
+    toggleAll('.pc-mahasiswa-check', src);
+}
+
+function toggleAllPCSpesial(src) {
+    toggleAll('.pc-spesial-check', src);
+}
+
+function toggleAllDeviceTypes(src) {
+    toggleAll('.device-type-check', src);
     onDeviceTypeChange();
 }
 
-function onDeviceTypeChange() {
-    var total = document.querySelectorAll('.device-type-check').length;
-    var checked = document.querySelectorAll('.device-type-check:checked').length;
-    var selAll = document.getElementById('selectAllDeviceTypes');
-    selAll.checked = total > 0 && checked === total;
-    selAll.indeterminate = checked > 0 && checked < total;
+function onPCChange() {
+    updateSelectAllState('.pc-mahasiswa-check', 'selectAllPCMahasiswa');
+    updateSelectAllState('.pc-spesial-check', 'selectAllPCSpesial');
     updatePreview();
+}
+
+function onDeviceTypeChange() {
+    updateSelectAllState('.device-type-check', 'selectAllDeviceTypes');
+    updatePreview();
+}
+
+function updateSelectAllState(checkSelector, selectAllId) {
+    var total = document.querySelectorAll(checkSelector).length;
+    var checked = document.querySelectorAll(checkSelector + ':checked').length;
+    var selAll = document.getElementById(selectAllId);
+    if (selAll) {
+        selAll.checked = total > 0 && checked === total;
+        selAll.indeterminate = checked > 0 && checked < total;
+    }
 }
 
 function updateDefaults() {
     var type = document.querySelector('input[name="type"]:checked');
     var isDevice = type && type.value === 'device';
+
     document.getElementById('deviceTypeGroup').style.display = isDevice ? '' : 'none';
+    document.getElementById('pcGroup').style.display = isDevice ? 'none' : '';
 
     if (isDevice) {
         document.getElementById('fontSize').value = 0.5;
@@ -219,13 +316,22 @@ function updateDefaults() {
     } else {
         document.getElementById('fontSize').value = 1.0;
         document.getElementById('paddingH').value = 0.5;
-        document.getElementById('paddingV').value = 0.5;
+        document.getElementById('paddingV').value = 0.8;
     }
     updatePreview();
 }
 
 function getSampleText(cfg) {
-    if (cfg.type === 'pc') return longestSample.pc || 'PC-99';
+    if (cfg.type === 'pc') {
+        if (cfg.pcLabels.length > 0) {
+            var longest = '';
+            cfg.pcLabels.forEach(function(l) {
+                if (l.toUpperCase().length > longest.length) longest = l.toUpperCase();
+            });
+            return longest || (longestSample.pc || 'PC-99');
+        }
+        return longestSample.pc || 'PC-99';
+    }
     var prefixes = cfg.deviceType ? cfg.deviceType.split(',') : [];
     var longest = '';
     for (var i = 0; i < prefixes.length; i++) {
@@ -312,12 +418,17 @@ function generatePrint() {
 
     var params = new URLSearchParams();
     params.set('type', cfg.type);
-    params.set('device_type', cfg.deviceType);
     params.set('font_size', cfg.fontSize.toString());
     params.set('padding_h', cfg.padH.toString());
     params.set('padding_v', cfg.padV.toString());
     params.set('paper_size', cfg.paperSize);
     params.set('num_sheets', cfg.numSheets.toString());
+
+    if (cfg.type === 'device') {
+        params.set('device_type', cfg.deviceType);
+    } else if (cfg.type === 'pc' && cfg.pcLabels.length > 0) {
+        params.set('pc_labels', cfg.pcLabels.join(','));
+    }
 
     window.open('/print/generate?' + params.toString(), '_blank');
 }

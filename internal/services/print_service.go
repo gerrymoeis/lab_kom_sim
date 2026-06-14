@@ -14,14 +14,15 @@ import (
 )
 
 type PrintConfig struct {
-	Type           string  // "pc" atau "device"
-	DeviceTypeSlug string  // slug device type (jika type="device")
-	FontSizeCM     float64 // ukuran font dalam cm
-	PaddingHCM     float64 // padding horizontal dalam cm
-	PaddingVCM     float64 // padding vertical dalam cm
-	PaperSize      string  // "A4", "F4", "A3"
-	NumSheets      int     // jumlah copy (1..100)
-	PDFTitle       string  // judul untuk metadata PDF
+	Type           string   // "pc" atau "device"
+	DeviceTypeSlug string   // slug device type (jika type="device")
+	PCLabels       []string // label pc spesifik (kosong = semua)
+	FontSizeCM     float64  // ukuran font dalam cm
+	PaddingHCM     float64  // padding horizontal dalam cm
+	PaddingVCM     float64  // padding vertical dalam cm
+	PaperSize      string   // "A4", "F4", "A3"
+	NumSheets      int      // jumlah copy (1..100)
+	PDFTitle       string   // judul untuk metadata PDF
 }
 
 type PrintService struct {
@@ -33,6 +34,29 @@ func NewPrintService(pcRepo *repository.PCRepository, deviceRepo *repository.Dev
 	return &PrintService{pcRepo: pcRepo, deviceRepo: deviceRepo}
 }
 
+func (s *PrintService) GetPCLabelGroups() (mahasiswa, spesial []string, longest string, err error) {
+	pcs, err := s.pcRepo.List(repository.PCFilters{Placement: "dipakai"})
+	if err != nil {
+		return nil, nil, "", err
+	}
+	sort.Slice(pcs, func(i, j int) bool { return naturalLess(pcs[i].Label, pcs[j].Label) })
+	for _, pc := range pcs {
+		if pc.Label == "" {
+			continue
+		}
+		upper := strings.ToUpper(pc.Label)
+		if len(upper) > len(longest) {
+			longest = upper
+		}
+		if isNumericLabel(pc.Label) {
+			mahasiswa = append(mahasiswa, pc.Label)
+		} else {
+			spesial = append(spesial, pc.Label)
+		}
+	}
+	return
+}
+
 func (s *PrintService) GetLabels(cfg PrintConfig) ([]string, error) {
 	switch cfg.Type {
 	case "pc":
@@ -41,11 +65,19 @@ func (s *PrintService) GetLabels(cfg PrintConfig) ([]string, error) {
 			return nil, fmt.Errorf("query pc: %w", err)
 		}
 		sort.Slice(pcs, func(i, j int) bool { return naturalLess(pcs[i].Label, pcs[j].Label) })
+		includeSet := make(map[string]bool, len(cfg.PCLabels))
+		for _, l := range cfg.PCLabels {
+			includeSet[l] = true
+		}
 		labels := make([]string, 0, len(pcs))
 		for _, pc := range pcs {
-			if pc.Label != "" {
-				labels = append(labels, strings.ToUpper(pc.Label))
+			if pc.Label == "" {
+				continue
 			}
+			if len(includeSet) > 0 && !includeSet[pc.Label] {
+				continue
+			}
+			labels = append(labels, strings.ToUpper(pc.Label))
 		}
 		return labels, nil
 
