@@ -1,111 +1,257 @@
-{{ define "device_type/edit.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Jenis Barang</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="/device-types/{{ .deviceType.ID }}/edit">
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Nama Jenis Barang *</label>
-                            <input type="text" class="form-control" id="name" name="name" value="{{ .deviceType.Name }}" required>
-                        </div>
+    {{ template "layout/card_edit.html" . }}
 
+                    <form method="POST" action="/device-types/{{ .deviceType.AssetCodePrefix | lower }}/edit">
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="category" class="form-label">Kategori *</label>
-                                <select class="form-select" id="category" name="category" required>
-                                    <option value="peripheral" {{ if eq .deviceType.Category "peripheral" }}selected{{ end }}>Peripheral</option>
-                                    <option value="network" {{ if eq .deviceType.Category "network" }}selected{{ end }}>Network</option>
-                                    <option value="consumable" {{ if eq .deviceType.Category "consumable" }}selected{{ end }}>Consumable</option>
-                                    <option value="power" {{ if eq .deviceType.Category "power" }}selected{{ end }}>Power</option>
-                                    <option value="display" {{ if eq .deviceType.Category "display" }}selected{{ end }}>Display</option>
-                                    <option value="printer" {{ if eq .deviceType.Category "printer" }}selected{{ end }}>Printer</option>
-                                </select>
+                                <label for="name" class="form-label">Nama Tipe *</label>
+                                <input type="text" class="form-control" id="name" name="name" value="{{ .deviceType.Name }}" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="item_type" class="form-label">Tipe Item *</label>
-                                <select class="form-select" id="item_type" name="item_type" required>
-                                    <option value="individual" {{ if eq .deviceType.ItemType "individual" }}selected{{ end }}>Individual (1 unit)</option>
-                                    <option value="consumable" {{ if eq .deviceType.ItemType "consumable" }}selected{{ end }}>Consumable (habis pakai)</option>
+                                <label for="category_id" class="form-label">Kategori *</label>
+                                <select class="form-select" id="category_id" name="category_id" required>
+                                    <option value="">Pilih kategori...</option>
+                                    {{ range $c := .categories }}
+                                    <option value="{{ $c.ID }}" {{ if eq $.deviceType.CategoryID $c.ID }}selected{{ end }}>{{ $c.Name }}</option>
+                                    {{ end }}
                                 </select>
                             </div>
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="brand" class="form-label">Merk</label>
+                            <div class="col-md-4 mb-3">
+                                <label for="brand" class="form-label">Brand</label>
                                 <input type="text" class="form-control" id="brand" name="brand" value="{{ .deviceType.Brand }}">
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label for="model" class="form-label">Model</label>
                                 <input type="text" class="form-control" id="model" name="model" value="{{ .deviceType.Model }}">
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="asset_code_prefix" class="form-label">Prefix Asset Code *</label>
-                            <input type="text" class="form-control" id="asset_code_prefix" name="asset_code_prefix" value="{{ .deviceType.AssetCodePrefix }}" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Properti</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_loanable" name="is_loanable" value="1" {{ if .deviceType.IsLoanable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_loanable">
-                                    Dapat dipinjam
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_consumable" name="is_consumable" value="1" {{ if .deviceType.IsConsumable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_consumable">
-                                    Barang habis pakai
-                                </label>
+                            <div class="col-md-4 mb-3">
+                                <label for="asset_code_prefix" class="form-label">Prefix Asset Code</label>
+                                <input type="text" class="form-control" id="asset_code_prefix" name="asset_code_prefix" value="{{ .deviceType.AssetCodePrefix }}">
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="default_location" class="form-label">Lokasi Default</label>
-                            <input type="text" class="form-control" id="default_location" name="default_location" value="{{ .deviceType.DefaultLocation }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="usage_type" class="form-label">Tipe Penggunaan *</label>
+                                <select class="form-select" id="usage_type" name="usage_type" required>
+                                    <option value="loanable" {{ if eq .deviceType.UsageType "loanable" }}selected{{ end }}>Dipinjamkan</option>
+                                    <option value="consumable" {{ if eq .deviceType.UsageType "consumable" }}selected{{ end }}>Habis Pakai</option>
+                                    <option value="installable" {{ if eq .deviceType.UsageType "installable" }}selected{{ end }}>Instalasi</option>
+                                </select>
+                                <small class="text-muted">Mengubah ini akan mempengaruhi semua perangkat dengan tipe ini.</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="default_location" class="form-label">Lokasi Default</label>
+                                <input type="text" class="form-control" id="default_location" name="default_location" value="{{ .deviceType.DefaultLocation }}">
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="notes_template" class="form-label">Template Catatan</label>
-                            <textarea class="form-control" id="notes_template" name="notes_template" rows="3">{{ .deviceType.NotesTemplate }}</textarea>
-                        </div>
+                        <hr class="my-4">
+                        <h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Foto Tipe Perangkat</h6>
 
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-warning">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold mb-3">Foto Tipe Perangkat</label>
+
+                            {{ if .deviceType.Photo }}
+                            <div class="mb-3">
+                                <img src="/uploads/device_types/{{ .deviceType.Photo }}" alt="Foto tipe perangkat" class="img-thumbnail" style="max-width: 300px;">
+                                <p class="text-muted small mb-0 mt-2">Foto saat ini: {{ .deviceType.Photo }}</p>
+                            </div>
+                            {{ end }}
+
+                            <p class="text-muted mb-3">{{ if .deviceType.Photo }}Upload foto baru untuk mengganti foto lama{{ else }}Foto perangkat, pastikan terlihat jelas{{ end }}. Max 5MB, format JPEG/PNG/HEIC</p>
+
+                            <div class="row g-3">
+                                <div class="col-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-camera-fill text-primary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
+                                    </div>
+                                    <input type="file" id="photo_camera" accept="image/*" capture="environment" class="form-control mt-auto">
+                                </div>
+                                <div class="col-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-images text-secondary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
+                                    </div>
+                                    <input type="file" id="photo_gallery" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
+                                </div>
+                            </div>
+
+                            <!-- Preview area -->
+                            <div id="photoPreview" class="mt-3 d-none">
+                                <div class="border rounded-3 p-3 bg-light text-center">
+                                    <img id="photoPreviewImage" src="" alt="Preview" class="img-fluid rounded" style="max-height: 400px; object-fit: contain;">
+                                    <div id="photoLoading" class="d-none mt-2">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <small class="text-muted ms-1">Memproses gambar...</small>
+                                    </div>
+                                    <div id="photoError" class="d-none mt-2 text-danger small"></div>
+                                    <div class="mt-3 text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearPhoto()">
+                                            <i class="bi bi-x-circle me-1"></i> Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" id="photo_file_ref" name="photo_file_ref" value="">
+
+                        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                            <button type="submit" id="submitBtn" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
-                            <a href="/devices?tab=types" class="btn btn-secondary">
+                            <a href="/devices" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{ template "layout/card_close.html" . }}
 </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
-</body>
-</html>
-{{ end }}
+{{ template "layout/footer.html" . }}
+
+<script>window.ANDROID_MODE={{ .android }};</script>
+{{ if .android }}<script src="{{ staticURL "vendor/heic-to.js" }}"></script>{{ end }}
+<script>
+var photoFileRef = '';
+var photoPreviewUrl = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    var cam = document.getElementById('photo_camera');
+    var gal = document.getElementById('photo_gallery');
+    if (cam) cam.addEventListener('change', function(e) { handlePhotoSelect(e.target.files[0], 'camera'); });
+    if (gal) gal.addEventListener('change', function(e) { handlePhotoSelect(e.target.files[0], 'gallery'); });
+});
+
+async function handlePhotoSelect(file, source) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showError('Ukuran file maksimal 5MB'); return; }
+    showLoadingState();
+
+    try {
+        var ext = file.name.split('.').pop().toLowerCase();
+        if ((ext === 'heic' || ext === 'heif') && typeof HeicTo !== 'undefined') {
+            var blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
+            file = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
+        }
+
+        if (window.ANDROID_MODE) {
+            file = await compressImage(file, 1024);
+        }
+
+        var previewUrl = URL.createObjectURL(file);
+        if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+        photoPreviewUrl = previewUrl;
+        showLocalPreview(previewUrl);
+
+        clearOtherInput(source);
+
+        var formData = new FormData();
+        formData.append('image', file);
+        formData.append('type', 'device_type');
+        formData.append('label', '{{ .deviceType.AssetCodePrefix }}');
+        var response = await fetchWithCSRF('/api/upload-image', { method: 'POST', body: formData });
+        var result = await response.json();
+        if (result.success) {
+            photoFileRef = result.file_ref;
+            document.getElementById('photo_file_ref').value = result.file_ref;
+            document.getElementById('photo_' + source).value = '';
+            var submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) submitBtn.disabled = false;
+        } else {
+            showError(result.message || 'Gagal upload');
+        }
+    } catch (error) {
+        showError(error.message || 'Gagal memproses gambar');
+    }
+}
+
+function showLoadingState() {
+    var area = document.getElementById('photoPreview');
+    var loader = document.getElementById('photoLoading');
+    var img = document.getElementById('photoPreviewImage');
+    var err = document.getElementById('photoError');
+    area.classList.remove('d-none');
+    loader.classList.remove('d-none');
+    if (img) img.classList.add('d-none');
+    if (err) err.classList.add('d-none');
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = true;
+}
+
+function showLocalPreview(url) {
+    var img = document.getElementById('photoPreviewImage');
+    var area = document.getElementById('photoPreview');
+    var loader = document.getElementById('photoLoading');
+    var err = document.getElementById('photoError');
+    if (img) { img.src = url; img.classList.remove('d-none'); }
+    area.classList.remove('d-none');
+    loader.classList.add('d-none');
+    if (err) err.classList.add('d-none');
+}
+
+function showError(message) {
+    var area = document.getElementById('photoPreview');
+    var err = document.getElementById('photoError');
+    var loader = document.getElementById('photoLoading');
+    if (err) { err.textContent = message; err.classList.remove('d-none'); }
+    loader.classList.add('d-none');
+    area.classList.remove('d-none');
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = false;
+}
+
+function clearOtherInput(source) {
+    var other = document.getElementById(source === 'camera' ? 'photo_gallery' : 'photo_camera');
+    if (other) other.value = '';
+}
+
+async function compressImage(file, maxDim) {
+    return new Promise(function(resolve, reject) {
+        var img = new Image();
+        img.onload = function() {
+            var width = img.width, height = img.height;
+            if (width > maxDim || height > maxDim) {
+                var ratio = Math.min(maxDim / width, maxDim / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(function(blob) {
+                if (!blob) { reject(new Error('Gagal kompresi gambar')); return; }
+                resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() }));
+            }, 'image/jpeg', 0.75);
+        };
+        img.onerror = function() { reject(new Error('Gagal memuat gambar')); };
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+window.clearPhoto = function() {
+    document.getElementById('photo_camera').value = '';
+    document.getElementById('photo_gallery').value = '';
+    document.getElementById('photoPreview').classList.add('d-none');
+    document.getElementById('photoPreviewImage').src = '';
+    document.getElementById('photo_file_ref').value = '';
+    if (photoFileRef) {
+        fetchWithCSRF('/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: photoFileRef }) }).catch(function(){});
+        photoFileRef = '';
+    }
+};
+
+window.addEventListener('beforeunload', function() {
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+});
+</script>

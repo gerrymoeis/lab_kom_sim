@@ -1,0 +1,98 @@
+name: Auto-Deploy Sync
+
+on:
+  push:
+    branches: [refactoring]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run tests
+        run: go test ./... -count=1
+
+  sync:
+    needs: [test]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux, android, windows]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Merge refactoring into deploy_${{ matrix.platform }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PLATFORM="${{ matrix.platform }}"
+          DEPLOY_BRANCH="deploy_${PLATFORM}"
+
+          echo "=== 1. Switch to ${DEPLOY_BRANCH} ==="
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -B "${DEPLOY_BRANCH}" "origin/${DEPLOY_BRANCH}"
+
+          OLD_HEAD=$(git rev-parse HEAD)
+
+          echo "=== 2. Merge refactoring (theirs for conflicts) ==="
+          git merge origin/refactoring -X theirs --no-commit 2>&1 || true
+
+          echo "=== 3. Resolve modify/delete conflict ==="
+          git rm --ignore-unmatch --force scripts/deploy-local.sh 2>/dev/null || true
+          if [ -n "$(git ls-files -u)" ]; then
+            echo "Fatal: unresolved merge conflicts:"
+            git status
+            exit 1
+          fi
+
+          echo "=== 4. Restore deploy-specific files ==="
+          git checkout "${OLD_HEAD}" -- README.md go.mod go.sum
+          git checkout "${OLD_HEAD}" -- scripts/
+          git rm --ignore-unmatch scripts/deploy-local.sh 2>/dev/null || true
+
+          echo "=== 5. Force .env.example dari refactoring ==="
+          git checkout origin/refactoring -- .env.example
+
+          echo "=== 6. Cleanup Windows scripts on deploy_linux ==="
+          if [ "${PLATFORM}" = "linux" ]; then
+            git rm --ignore-unmatch \
+              scripts/build-windows.ps1 \
+              scripts/deploy-windows.ps1 \
+              scripts/download-vendor.ps1
+          fi
+
+          echo "=== 7. Resolve dependencies ==="
+          go mod tidy
+
+          echo "=== 8. Stage all changes ==="
+          git add -A
+
+          echo "=== 9. Verify build ==="
+          go build ./...
+          go vet ./...
+
+          echo "=== 10. Commit and push ==="
+          if ! git diff --cached --quiet; then
+            git commit -m "sync: merge refactoring into ${DEPLOY_BRANCH}"
+            git push origin "${DEPLOY_BRANCH}"
+            echo "✓ ${DEPLOY_BRANCH} synced and pushed"
+          else
+            echo "· No changes for ${DEPLOY_BRANCH}"
+          fi

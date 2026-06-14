@@ -1,16 +1,4 @@
-{{ define "user/list.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
     <div class="row mb-4">
@@ -19,58 +7,116 @@
             <p class="text-muted">Kelola akun admin dan dosen</p>
         </div>
         <div class="col-md-6 text-end">
-            <a href="/admin/users/create" class="btn btn-primary">
+            {{ template "layout/header_actions_start.html" $ }}
+            <a href="/admin/users/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah User
             </a>
+            {{ template "layout/header_actions_end.html" }}
         </div>
     </div>
 
     <div class="card shadow-sm">
         <div class="card-body">
+            <form method="GET" action="/admin/users" class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari username atau nama..." value="{{ .filters.search }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="role" class="form-label">Role</label>
+                    <select class="form-select" id="role" name="role">
+                        <option value="">Semua Role</option>
+                        <option value="admin" {{ if eq .filters.role "admin" }}selected{{ end }}>Admin</option>
+                        <option value="dosen" {{ if eq .filters.role "dosen" }}selected{{ end }}>Dosen</option>
+                        <option value="mahasiswa" {{ if eq .filters.role "mahasiswa" }}selected{{ end }}>Mahasiswa</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default (Terbaru)</option>
+                        <option value="username" {{ if eq .filters.sort_by "username" }}selected{{ end }}>Username</option>
+                        <option value="full_name" {{ if eq .filters.sort_by "full_name" }}selected{{ end }}>Nama Lengkap</option>
+                        <option value="role" {{ if eq .filters.sort_by "role" }}selected{{ end }}>Role</option>
+                        <option value="created_at" {{ if eq .filters.sort_by "created_at" }}selected{{ end }}>Dibuat</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                    <a href="/admin/users" class="btn btn-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
+            </form>
+
+            {{ if gt (len .users) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .users)) 1 }} dari {{ .totalItems }} user</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table table-hover" data-batch-url="/admin/users/batch-delete">
                     <thead class="table-light">
                         <tr>
+                            <th>#</th>
                             <th>Username</th>
                             <th>Nama Lengkap</th>
                             <th>Role</th>
                             <th>Dibuat</th>
-                            <th>Aksi</th>
+                            <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {{ range .users }}
-                        <tr>
-                            <td><strong>{{ .Username }}</strong></td>
-                            <td>{{ .FullName }}</td>
+                        {{ range $i, $u := .users }}
+                        <tr data-batch-id="{{ .Username }}" data-batch-label="{{ .Username }} - {{ .FullName }}">
+                            <td>{{ add $i $.startRow }}</td>
+                            <td><strong>{{ if eq $.username .Username }}<a href="/admin/users/{{ .Username }}" class="text-decoration-none fw-bold text-primary">{{ end }}{{ .Username }}{{ if eq $.username .Username }}</a>{{ end }}</strong></td>
+                            <td>
+                                {{ .FullName }}
+{{ if .IsProtected }}
+								<span class="badge bg-secondary ms-1">Akun utama</span>
+								{{ end }}
+                            </td>
                             <td>
                                 <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">
                                     {{ .Role }}
                                 </span>
                             </td>
-                            <td>{{ .CreatedAt.Format "02/01/2006" }}</td>
-                            <td>
-                                <form method="POST" action="/admin/users/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus user ini?')">
-                                    <button type="submit" class="btn btn-sm btn-danger">
-                                        <i class="bi bi-trash"></i> Hapus
-                                    </button>
-                                </form>
+                            <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
+                            <td class="batch-action-col text-nowrap text-end">
+                                <span class="batch-mode-off">
+                                {{ if canAccessUser $.username . $.isSuperAdmin }}
+                                <a href="/admin/users/{{ .Username }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/admin/users/{{ .Username }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {{ if and (not .IsProtected) $.isSuperAdmin }}
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Hapus user ini?', formId:'del-user-{{ .Username }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-user-{{ .Username }}" method="POST" action="/admin/users/{{ .Username }}/delete" class="d-none"></form>
+                                {{ end }}
+                                {{ else }}
+                                -
+                                {{ end }}
+                                </span>
                             </td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none">{{ if not .IsProtected }}<input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}">{{ end }}</span></td>
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="5" class="text-center text-muted">Belum ada user</td>
+                            <td colspan="7" class="text-center text-muted">Belum ada user</td>
                         </tr>
                         {{ end }}
                     </tbody>
                 </table>
             </div>
+
+            {{ template "layout/pagination.html" . }}
         </div>
     </div>
 </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
-</body>
-</html>
-{{ end }}
+    {{ template "layout/footer.html" . }}

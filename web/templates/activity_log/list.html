@@ -1,16 +1,4 @@
-{{ define "activity_log/list.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
         <div class="row mb-3">
@@ -19,21 +7,26 @@
                 <p class="text-muted">Riwayat aktivitas sistem</p>
             </div>
             <div class="col-md-6 text-end">
-                <button type="button" class="btn btn-success" onclick="exportActivityLogs()">
+                {{ template "layout/header_actions_start.html" $ }}
+                <button type="button" class="btn btn-success flex-grow-1" onclick="exportActivityLogs()">
                     <i class="bi bi-file-earmark-excel"></i> Export Excel
                 </button>
+                {{ template "layout/header_actions_end.html" }}
             </div>
         </div>
 
-        <!-- Filters -->
-        <div class="card mb-3">
+        <div class="card shadow-sm">
             <div class="card-body">
-                <form method="GET" action="/admin/activity-logs" class="row g-3">
-                    <div class="col-md-3">
+                <form method="GET" action="/admin/activity-logs" class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Cari</label>
+                        <input type="text" class="form-control" id="search" name="search" placeholder="Cari di description, username, entity..." value="{{ .filters.search }}">
+                    </div>
+                    <div class="col-md-2">
                         <label for="date_from" class="form-label">Tanggal Dari</label>
                         <input type="date" class="form-control" id="date_from" name="date_from" value="{{ .filters.date_from }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label for="date_to" class="form-label">Tanggal Sampai</label>
                         <input type="date" class="form-control" id="date_to" name="date_to" value="{{ .filters.date_to }}">
                     </div>
@@ -53,10 +46,9 @@
                         <label for="entity_type" class="form-label">Entity</label>
                         <select class="form-select" id="entity_type" name="entity_type">
                             <option value="">Semua</option>
-                            <option value="pc" {{ if eq .filters.entity_type "pc" }}selected{{ end }}>PC</option>
-                            <option value="device" {{ if eq .filters.entity_type "device" }}selected{{ end }}>Device</option>
-                            <option value="logbook" {{ if eq .filters.entity_type "logbook" }}selected{{ end }}>Logbook</option>
-                            <option value="auth" {{ if eq .filters.entity_type "auth" }}selected{{ end }}>Auth</option>
+                            {{ range .entityTypes }}
+                            <option value="{{ . }}" {{ if eq $.filters.entity_type . }}selected{{ end }}>{{ . }}</option>
+                            {{ end }}
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -76,46 +68,40 @@
                             <option value="failed" {{ if eq .filters.status "failed" }}selected{{ end }}>Failed</option>
                         </select>
                     </div>
-                    <div class="col-md-8">
-                        <label for="search" class="form-label">Search</label>
-                        <input type="text" class="form-control" id="search" name="search" placeholder="Cari di description, username, entity..." value="{{ .filters.search }}">
+                    <div class="col-md-2">
+                        <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                        <select class="form-select" id="sort_by" name="sort_by">
+                            <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default (Waktu)</option>
+                            <option value="username" {{ if eq .filters.sort_by "username" }}selected{{ end }}>User</option>
+                            <option value="action" {{ if eq .filters.sort_by "action" }}selected{{ end }}>Action</option>
+                            <option value="entity_type" {{ if eq .filters.sort_by "entity_type" }}selected{{ end }}>Entity</option>
+                        </select>
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
+                    <div class="col-md-3 d-flex align-items-end gap-2">
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="bi bi-search"></i> Filter
                         </button>
+                        <a href="/admin/activity-logs" class="btn btn-secondary w-100">
+                            <i class="bi bi-x-circle"></i> Reset
+                        </a>
                     </div>
                 </form>
-            </div>
-        </div>
 
-        <!-- Results Summary -->
-        <div class="row mb-3">
-            <div class="col">
-                <p class="text-muted">
-                    Menampilkan {{ len .logs }} dari {{ .totalCount }} entries
-                    {{ if .filters.search }}
-                    (hasil pencarian: "{{ .filters.search }}")
-                    {{ end }}
-                </p>
-            </div>
-        </div>
+        {{ if gt (len .logs) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .logs)) 1 }} dari {{ .totalItems }} entries{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>{{ end }}
 
-        <!-- Activity Logs Table -->
-        <div class="card">
-            <div class="card-body">
+        {{ template "layout/pagination.html" . }}
                 <div class="table-responsive">
                     <table class="table table-hover activity-log-table">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 150px;">Timestamp</th>
-                                <th style="width: 100px;">User</th>
-                                <th style="width: 100px;">Action</th>
-                                <th style="width: 100px;">Entity</th>
+                                <th>Timestamp</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Entity</th>
                                 <th>Description</th>
-                                <th style="width: 80px;">Status</th>
-                                <th style="width: 100px;">IP Address</th>
-                                <th style="width: 80px;">Detail</th>
+                                <th>Status</th>
+                                <th>IP Address</th>
+                                <th>Detail</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -130,25 +116,25 @@
                             {{ range .logs }}
                             <tr>
                                 <td>
-                                    <small>{{ .CreatedAt.Format "02/01/2006" }}</small><br>
-                                    <small class="text-muted">{{ .CreatedAt.Format "15:04:05" }}</small>
+                                    <small>{{ (localTime .CreatedAt).Format "02/01/2006" }}</small><br>
+                                    <small class="text-muted">{{ (localTime .CreatedAt).Format "15:04:05" }} {{ tzCode }}</small>
                                 </td>
                                 <td>
                                     <span class="badge bg-secondary">{{ .Username }}</span>
                                 </td>
                                 <td>
                                     {{ if eq .Action "create" }}
-                                    <span class="badge badge-create">CREATE</span>
+                                    <span class="badge bg-success">CREATE</span>
                                     {{ else if eq .Action "update" }}
-                                    <span class="badge badge-update">UPDATE</span>
+                                    <span class="badge bg-primary">UPDATE</span>
                                     {{ else if eq .Action "delete" }}
-                                    <span class="badge badge-delete">DELETE</span>
+                                    <span class="badge bg-danger">DELETE</span>
                                     {{ else if eq .Action "upload" }}
-                                    <span class="badge badge-upload">UPLOAD</span>
+                                    <span class="badge bg-warning text-dark">UPLOAD</span>
                                     {{ else if eq .Action "login" }}
-                                    <span class="badge badge-login">LOGIN</span>
+                                    <span class="badge bg-info text-dark">LOGIN</span>
                                     {{ else if eq .Action "logout" }}
-                                    <span class="badge badge-logout">LOGOUT</span>
+                                    <span class="badge bg-secondary">LOGOUT</span>
                                     {{ else }}
                                     <span class="badge bg-secondary">{{ .Action }}</span>
                                     {{ end }}
@@ -164,9 +150,9 @@
                                 </td>
                                 <td>
                                     {{ if eq .Status "success" }}
-                                    <span class="badge badge-success">Success</span>
+                                    <span class="badge bg-success">Success</span>
                                     {{ else if eq .Status "failed" }}
-                                    <span class="badge badge-failed">Failed</span>
+                                    <span class="badge bg-danger">Failed</span>
                                     {{ else }}
                                     <span class="badge bg-secondary">{{ .Status }}</span>
                                     {{ end }}
@@ -179,7 +165,7 @@
                                             data-bs-toggle="modal" 
                                             data-bs-target="#detailModal"
                                             data-log-id="{{ .ID }}"
-                                            data-log-timestamp="{{ .CreatedAt.Format "02/01/2006 15:04:05" }}"
+                                            data-log-timestamp="{{ (localTime .CreatedAt).Format "02/01/2006 15:04:05" }} {{ tzCode }}"
                                             data-log-username="{{ .Username }}"
                                             data-log-role="{{ .UserRole }}"
                                             data-log-action="{{ .Action }}"
@@ -202,46 +188,7 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
-                {{ if gt .totalPages 1 }}
-                <nav aria-label="Page navigation" class="mt-3">
-                    <ul class="pagination justify-content-center">
-                        <!-- Previous -->
-                        <li class="page-item {{ if eq .page 1 }}disabled{{ end }}">
-                            <a class="page-link" href="?page={{ sub .page 1 }}{{ if .filters.date_from }}&date_from={{ .filters.date_from }}{{ end }}{{ if .filters.date_to }}&date_to={{ .filters.date_to }}{{ end }}{{ if .filters.action }}&action={{ .filters.action }}{{ end }}{{ if .filters.entity_type }}&entity_type={{ .filters.entity_type }}{{ end }}{{ if .filters.username }}&username={{ .filters.username }}{{ end }}{{ if .filters.status }}&status={{ .filters.status }}{{ end }}{{ if .filters.search }}&search={{ .filters.search }}{{ end }}">
-                                Previous
-                            </a>
-                        </li>
-
-                        <!-- Page numbers -->
-                        {{ $currentPage := .page }}
-                        {{ $totalPages := .totalPages }}
-                        {{ $filters := .filters }}
-                        
-                        {{ range $i := iterate $totalPages }}
-                        {{ $page := add $i 1 }}
-                        {{ if or (le $page 3) (and (ge $page (sub $currentPage 1)) (le $page (add $currentPage 1))) (ge $page (sub $totalPages 2)) }}
-                        <li class="page-item {{ if eq $page $currentPage }}active{{ end }}">
-                            <a class="page-link" href="?page={{ $page }}{{ if $filters.date_from }}&date_from={{ $filters.date_from }}{{ end }}{{ if $filters.date_to }}&date_to={{ $filters.date_to }}{{ end }}{{ if $filters.action }}&action={{ $filters.action }}{{ end }}{{ if $filters.entity_type }}&entity_type={{ $filters.entity_type }}{{ end }}{{ if $filters.username }}&username={{ $filters.username }}{{ end }}{{ if $filters.status }}&status={{ $filters.status }}{{ end }}{{ if $filters.search }}&search={{ $filters.search }}{{ end }}">
-                                {{ $page }}
-                            </a>
-                        </li>
-                        {{ else if or (eq $page 4) (eq $page (sub $totalPages 3)) }}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
-                        {{ end }}
-                        {{ end }}
-
-                        <!-- Next -->
-                        <li class="page-item {{ if eq .page .totalPages }}disabled{{ end }}">
-                            <a class="page-link" href="?page={{ add .page 1 }}{{ if .filters.date_from }}&date_from={{ .filters.date_from }}{{ end }}{{ if .filters.date_to }}&date_to={{ .filters.date_to }}{{ end }}{{ if .filters.action }}&action={{ .filters.action }}{{ end }}{{ if .filters.entity_type }}&entity_type={{ .filters.entity_type }}{{ end }}{{ if .filters.username }}&username={{ .filters.username }}{{ end }}{{ if .filters.status }}&status={{ .filters.status }}{{ end }}{{ if .filters.search }}&search={{ .filters.search }}{{ end }}">
-                                Next
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-                {{ end }}
+                {{ template "layout/pagination.html" . }}
             </div>
         </div>
     </div>
@@ -299,7 +246,7 @@
                     </div>
                     
                     <!-- Error Message (if failed) -->
-                    <div id="error-section" class="row mb-3" style="display: none;">
+                    <div id="error-section" class="row mb-3 d-none">
                         <div class="col-12">
                             <strong class="text-danger">Error Message:</strong>
                             <div class="alert alert-danger" id="detail-error"></div>
@@ -307,7 +254,7 @@
                     </div>
 
                     <!-- Old/New Values Diff -->
-                    <div id="diff-section" style="display: none;">
+                    <div id="diff-section" class="d-none">
                         <h6 class="mb-3">Changes:</h6>
                         <div class="diff-view">
                             <div>
@@ -322,13 +269,13 @@
                     </div>
 
                     <!-- Only Old Values (for delete) -->
-                    <div id="old-only-section" style="display: none;">
+                    <div id="old-only-section" class="d-none">
                         <h6 class="mb-3">Deleted Data:</h6>
                         <div class="json-viewer" id="detail-old-only"></div>
                     </div>
 
                     <!-- Only New Values (for create/upload) -->
-                    <div id="new-only-section" style="display: none;">
+                    <div id="new-only-section" class="d-none">
                         <h6 class="mb-3">Created Data:</h6>
                         <div class="json-viewer" id="detail-new-only"></div>
                     </div>
@@ -340,8 +287,6 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
     <script>
         // Attach event listeners to detail buttons
         document.addEventListener('DOMContentLoaded', function() {
@@ -374,30 +319,30 @@
 
                     // Show error message if failed
                     if (status === 'failed' && errorMessage) {
-                        document.getElementById('error-section').style.display = 'block';
+                        document.getElementById('error-section').classList.remove('d-none');
                         document.getElementById('detail-error').textContent = errorMessage;
                     } else {
-                        document.getElementById('error-section').style.display = 'none';
+                        document.getElementById('error-section').classList.add('d-none');
                     }
 
                     // Hide all value sections first
-                    document.getElementById('diff-section').style.display = 'none';
-                    document.getElementById('old-only-section').style.display = 'none';
-                    document.getElementById('new-only-section').style.display = 'none';
+                    document.getElementById('diff-section').classList.add('d-none');
+                    document.getElementById('old-only-section').classList.add('d-none');
+                    document.getElementById('new-only-section').classList.add('d-none');
 
                     // Show appropriate value section
                     if (oldValues && newValues) {
                         // Update action - show diff
-                        document.getElementById('diff-section').style.display = 'block';
+                        document.getElementById('diff-section').classList.remove('d-none');
                         document.getElementById('detail-old-values').textContent = formatJSON(oldValues);
                         document.getElementById('detail-new-values').textContent = formatJSON(newValues);
                     } else if (oldValues && !newValues) {
                         // Delete action - show old values only
-                        document.getElementById('old-only-section').style.display = 'block';
+                        document.getElementById('old-only-section').classList.remove('d-none');
                         document.getElementById('detail-old-only').textContent = formatJSON(oldValues);
                     } else if (!oldValues && newValues) {
                         // Create/Upload action - show new values only
-                        document.getElementById('new-only-section').style.display = 'block';
+                        document.getElementById('new-only-section').classList.remove('d-none');
                         document.getElementById('detail-new-only').textContent = formatJSON(newValues);
                     }
                 });
@@ -436,7 +381,4 @@
             // Open export URL with filters
             window.location.href = '/admin/activity-logs/export?' + params.toString();
         }
-    </script>
-</body>
-</html>
-{{ end }}
+    </script>{{ template "layout/footer.html" . }}

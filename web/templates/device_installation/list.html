@@ -1,0 +1,138 @@
+{{ template "layout/base.html" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <h2><i class="bi bi-pc-display"></i> Instalasi Perangkat</h2>
+            <p class="text-muted">Daftar lokasi instalasi perangkat</p>
+        </div>
+        <div class="col-md-6 text-end">
+            {{ if eq .role "admin" }}
+            {{ template "layout/header_actions_start.html" $ }}
+            <a href="/installations/create" class="btn btn-primary flex-grow-1">
+                <i class="bi bi-plus-circle"></i> Tambah Instalasi
+            </a>
+            <a href="/devices/export" class="btn btn-success flex-grow-1">
+                <i class="bi bi-file-earmark-excel"></i> Export Excel
+            </a>
+            {{ template "layout/header_actions_end.html" }}
+            {{ end }}
+        </div>
+    </div>
+
+    {{ template "device/_tab_nav" . }}
+
+    <div class="card shadow-sm card-no-hover">
+        <div class="card-body">
+            <form method="GET" action="/devices" class="row g-3 mb-3">
+                <input type="hidden" name="tab" value="installations">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari asset code, lokasi, tipe..." value="{{ .filters.search }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Status Instalasi</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Semua</option>
+                        <option value="selesai" {{ if eq .filters.status "selesai" }}selected{{ end }}>Selesai</option>
+                        <option value="berlangsung" {{ if eq .filters.status "berlangsung" }}selected{{ end }}>Berlangsung</option>
+                        <option value="belum" {{ if eq .filters.status "belum" }}selected{{ end }}>Belum Mulai</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="category" class="form-label">Kategori</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">Semua Kategori</option>
+                        {{ range .categories }}
+                        <option value="{{ .Name }}" {{ if eq $.filters.category .Name }}selected{{ end }}>{{ .Name }}</option>
+                        {{ end }}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label">Urutkan</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
+                        <option value="asset_code" {{ if eq .filters.sort_by "asset_code" }}selected{{ end }}>Asset Code</option>
+                        <option value="location" {{ if eq .filters.sort_by "location" }}selected{{ end }}>Lokasi</option>
+                        <option value="start_date" {{ if eq .filters.sort_by "start_date" }}selected{{ end }}>Tgl Mulai</option>
+                        <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>
+                        <option value="status" {{ if eq .filters.sort_by "status" }}selected{{ end }}>Status</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                    <a href="/devices?tab=installations" class="btn btn-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
+            </form>
+
+            {{ if gt (len .installations) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .installations)) 1 }} dari {{ .totalItems }} instalasi</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" data-batch-url="/installations/batch-delete">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="th-w-50">#</th>
+                            <th>Asset Code</th>
+                            <th>Lokasi Instalasi</th>
+                            <th>Tgl Mulai</th>
+                            <th>Tgl Selesai</th>
+                            <th>Durasi (hari)</th>
+                            <th>Status</th>
+                            <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range $i, $inst := .installations }}
+                        <tr data-batch-id="{{ $inst.ID }}" data-batch-label="{{ $inst.DeviceAssetCode }} - {{ $inst.LocationInstalled }}">
+                            <td class="text-muted">{{ add $i $.startRow }}</td>
+                            <td><code>{{ $inst.DeviceAssetCode }}</code></td>
+                            <td>{{ $inst.LocationInstalled }}</td>
+                            <td>{{ if $inst.InstallationStartDate }}{{ (localTime $inst.InstallationStartDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
+                            <td>{{ if $inst.InstallationFinishDate }}{{ (localTime $inst.InstallationFinishDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
+                            <td class="text-center">{{ daysBetween $inst.InstallationStartDate $inst.InstallationFinishDate }}</td>
+                            <td>
+                                {{ if $inst.InstallationFinishDate }}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Selesai</span>
+                                {{ else if $inst.InstallationStartDate }}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Berlangsung</span>
+                                {{ else }}
+                                <span class="badge bg-secondary"><i class="bi bi-info-circle"></i> Belum Mulai</span>
+                                {{ end }}
+                            </td>
+                            <td class="batch-action-col text-nowrap text-end">
+                                <span class="batch-mode-off">
+                                    <a href="/installations/{{ $inst.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="/installations/{{ $inst.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                        onclick="confirmDelete({message:'Hapus instalasi ini?', formId:'del-{{ $inst.ID }}'})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <form id="del-{{ $inst.ID }}" method="POST" action="/installations/{{ $inst.ID }}/delete" class="d-none"></form>
+                                </span>
+                            </td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $inst.ID }}"></span></td>
+                        </tr>
+                        {{ else }}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">Belum ada data instalasi</td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+
+            {{ template "layout/pagination.html" . }}
+        </div>
+    </div>
+</div>
+
+{{ template "layout/footer.html" . }}

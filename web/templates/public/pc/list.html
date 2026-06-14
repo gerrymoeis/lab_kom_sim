@@ -1,0 +1,50 @@
+{{ template "layout/base.html" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-pc-display"></i> Daftar PC</h2>
+            <p class="text-muted">Seluruh PC di laboratorium</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div id="pc-table-container" class="table-responsive"></div>
+        </div>
+    </div>
+</div>
+
+<script id="data-pc" type="application/json">{{ .dataJSON }}</script>
+<script>
+initPublicTable({
+    containerId: "pc-table-container",
+    data: JSON.parse(document.getElementById("data-pc").textContent),
+    columns: [
+        { field: "label", label: "Label PC", sortable: true,
+          render: function(v) { return v; } },
+        { field: "status", label: "Kondisi", sortable: true, filterable: true,
+          render: function(v) {
+              var badge = {normal: "success", warning: "warning", broken: "danger"}[v] || "secondary";
+              return '<span class="badge bg-' + badge + '">' + v + '</span>';
+          }},
+        { field: "placement", label: "Penempatan", sortable: true, filterable: true,
+          render: function(v) {
+              var badge = {dipakai: "primary", cadangan: "secondary"}[v] || "secondary";
+              var label = {dipakai: "Dipakai", cadangan: "Cadangan"}[v] || v;
+              return '<span class="badge bg-' + badge + '">' + label + '</span>';
+          }},
+        { field: "processor", label: "Processor", sortable: true },
+        { field: "ram", label: "RAM", sortable: true },
+        { field: "operating_system", label: "OS", sortable: true, filterable: true },
+        { field: "detail", label: "", sortable: false,
+          render: function(v, r) {
+            return '<a href="/pc/detail/' + r.label + '.html" class="btn btn-sm btn-info"><i class="bi bi-eye"></i> Detail</a>';
+          } }
+    ],
+    searchFields: ["label", "processor", "ram", "operating_system", "serial_number", "brand_model"],
+    pageSize: 25
+});
+</script>
+
+{{ template "layout/footer.html" . }}

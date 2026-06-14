@@ -1,19 +1,5 @@
-{{ define "logbook/preview.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <!-- Navbar -->
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
-    <!-- Main Content -->
     <div class="container-fluid mt-4">
         <div class="row justify-content-center">
             <div class="col-lg-11">
@@ -24,7 +10,7 @@
                     <div class="card-body">
                         {{ if not .success }}
                         <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle"></i> 
+                            <i class="bi bi-exclamation-triangle"></i>
                             <strong>Perhatian:</strong> {{ .error }}
                             <div class="mt-2">
                                 <details>
@@ -36,134 +22,186 @@
                         {{ end }}
 
                         <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i> 
-                            <strong>Instruksi:</strong> Periksa dan koreksi data di bawah ini jika ada kesalahan OCR. 
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Instruksi:</strong> Periksa dan koreksi data di bawah ini jika ada kesalahan OCR.
                             Anda dapat mengedit langsung di tabel. Klik "Simpan ke Database" untuk menyimpan atau "Export Excel" untuk download.
                         </div>
 
                         <div id="duplicateWarning" class="alert alert-warning d-none">
-                            <i class="bi bi-exclamation-triangle"></i> 
-                            <strong>Peringatan Duplikat:</strong> Terdeteksi entry dengan nama/NIM serupa di tanggal dan jam yang sama. 
-                            Sistem menggunakan deteksi similarity untuk menangkap typo OCR. Periksa dan hapus duplikat sebelum menyimpan.
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Peringatan Duplikat:</strong> Terdeteksi potensi data duplikat (ditandai warna).
+                            Klik <strong>×</strong> pada badge jika data bukan duplikat, atau hapus row yang duplikat.
+                            Tombol simpan akan aktif setelah semua indikasi selesai diverifikasi.
+                            <div class="mt-1 small" id="dupCounterText"></div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                                <span><i class="bi bi-image"></i> Foto Logbook</span>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="zoomOut()" title="Perkecil">
+                                        <i class="bi bi-zoom-out"></i>
+                                    </button>
+                                    <span class="btn btn-outline-secondary disabled" id="zoomLevel">100%</span>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="zoomIn()" title="Perbesar">
+                                        <i class="bi bi-zoom-in"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="zoomReset()" title="Reset">
+                                        <i class="bi bi-arrows-angle-expand"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-2 text-center photo-container">
+                                <img id="previewPhoto" src="/uploads/logbook/{{ .source_file }}"
+                                     alt="Foto logbook" onerror="this.closest('.card').classList.add('d-none')">
+                            </div>
                         </div>
 
                         <form id="previewForm" action="/logbook/save" method="POST">
                             <input type="hidden" name="source_file" value="{{ .source_file }}">
-                            
+
+                            <div id="batchIndikasi" class="mb-2 d-none d-flex gap-2 justify-content-end">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="dismissAllDups()">
+                                    <i class="bi bi-x-circle"></i> Batal Semua Indikasi
+                                </button>
+                                <button type="button" class="btn btn-sm btn-info" onclick="restoreAllDups()">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Pulihkan Semua Indikasi
+                                </button>
+                            </div>
+
+                            <p class="mb-2 small" id="dupStats" style="color:#856404;">
+                                Terdapat <span id="dupCount">0</span> terindikasi duplikat dari <span id="dupTotalData">0</span> data.
+                            </p>
+
                             <div class="table-responsive">
+                                <div id="previewBatchToolbar" class="d-none d-flex align-items-center gap-2 mb-2 p-2 bg-light border rounded justify-content-end" style="flex-wrap:wrap;">
+                                    <span class="fw-semibold me-auto"><i class="bi bi-check-square"></i> <span id="previewSelectedCount">0</span> terpilih</span>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="previewSelectAllBtn"><i class="bi bi-check-all"></i> Pilih Semua</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="previewDeselectAllBtn"><i class="bi bi-x"></i> Batal Semua</button>
+                                    <button type="button" class="btn btn-sm btn-danger" id="deleteSelectedBtn" onclick="deleteSelectedRows()" disabled><i class="bi bi-trash"></i> Hapus Terpilih</button>
+                                    <button type="button" class="btn btn-sm btn-link text-decoration-none" id="previewCancelBatchBtn">Batal Pilih</button>
+                                </div>
                                 <table class="table table-bordered table-hover" id="previewTable">
                                     <thead class="table-light">
                                         <tr>
-                                            <th style="width: 50px;">No</th>
-                                            <th style="width: 130px;">Tanggal <span class="text-danger">*</span></th>
-                                            <th style="width: 200px;">Nama Mahasiswa <span class="text-danger">*</span></th>
-                                            <th style="width: 130px;">NIM <span class="text-danger">*</span></th>
-                                            <th style="width: auto;">Keperluan</th>
-                                            <th style="width: 100px;">Jam Masuk <span class="text-danger">*</span></th>
-                                            <th style="width: 100px;">Jam Keluar</th>
-                                            <th style="width: 80px;">Aksi</th>
+                                            <th class="th-w-50">No</th>
+                                            <th>Tanggal <span class="text-danger">*</span></th>
+                                            <th>Nama Mahasiswa <span class="text-danger">*</span></th>
+                                            <th>NIM <span class="text-danger">*</span></th>
+                                            <th>Keperluan</th>
+                                            <th>Jam Masuk <span class="text-danger">*</span></th>
+                                            <th>Jam Keluar</th>
+                                            <th class="th-w-180">Indikasi</th>
+                                            <th class="th-w-120 text-end" style="white-space:nowrap">
+                                                <span id="batchOff"><button type="button" class="btn btn-sm btn-outline-primary py-0" onclick="enablePreviewBatch()"><i class="bi bi-check-square"></i> Pilih</button></span>
+                                            </th>
+                                            <th style="width:1%" id="batchSelectAllTh" class="d-none"><input type="checkbox" class="form-check-input" id="previewSelectAll" onchange="selectAllPreview(this.checked)"></th>
                                         </tr>
                                     </thead>
                                     <tbody id="entriesTableBody">
                                         {{ if .entries }}
-                                            {{ range $index, $entry := .entries }}
-                                            <tr>
-                                                <td class="text-center">{{ add $index 1 }}</td>
+                                            {{ range $i, $entry := .entries }}
+                                            {{ $info := index $.dupInfo $i }}
+                                            <tr data-index="{{ $i }}" data-dup-group="{{ with $info }}{{ .GroupID }}{{ end }}" data-dup-type="{{ with $info }}{{ .Type }}{{ end }}"
+                                                class="{{ if $info }}{{ if eq $info.Type "intra-batch" }}table-warning{{ else }}table-danger{{ end }}{{ end }}">
+                                                <td class="text-center">{{ add $i 1 }}</td>
                                                 <td>
-                                                    <input type="date" 
-                                                           class="form-control form-control-sm" 
-                                                           name="date[]" 
-                                                           value="{{ $entry.Date }}"
-                                                           required>
+                                                    <input type="date" class="form-control form-control-sm" name="date[]"
+                                                        value="{{ $entry.Date }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="student_name[]" 
-                                                           value="{{ $entry.StudentName }}"
-                                                           required>
+                                                    <input type="text" class="form-control form-control-sm" name="student_name[]"
+                                                        value="{{ $entry.StudentName }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="nim[]" 
-                                                           value="{{ $entry.NIM }}"
-                                                           required>
+                                                    <input type="text" class="form-control form-control-sm" name="nim[]"
+                                                        value="{{ $entry.NIM }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="purpose[]" 
-                                                           value="{{ $entry.Purpose }}">
+                                                    <input type="text" class="form-control form-control-sm" name="purpose[]"
+                                                        value="{{ $entry.Purpose }}">
                                                 </td>
                                                 <td>
-                                                    <input type="time" 
-                                                           class="form-control form-control-sm" 
-                                                           name="time_in[]" 
-                                                           value="{{ $entry.TimeIn }}"
-                                                           required>
+                                                    <input type="time" class="form-control form-control-sm" name="time_in[]"
+                                                        value="{{ $entry.TimeIn }}" required>
                                                 </td>
                                                 <td>
-                                                    <input type="time" 
-                                                           class="form-control form-control-sm" 
-                                                           name="time_out[]" 
-                                                           value="{{ $entry.TimeOut }}">
+                                                    <input type="time" class="form-control form-control-sm" name="time_out[]"
+                                                        value="{{ $entry.TimeOut }}">
+                                                </td>
+                                                <td class="text-center dup-cell">
+                                                    {{ if $info }}
+                                                    <div class="d-inline-flex align-items-center gap-1 dup-wrapper"
+                                                         data-index="{{ $i }}"
+                                                         data-group="{{ $info.GroupID }}"
+                                                         data-type="{{ $info.Type }}"
+                                                         data-state="visible">
+                                                         <span class="badge d-inline-flex align-items-center gap-1 dup-badge
+                                                                      {{ if eq $info.Type "intra-batch" }}bg-warning text-dark{{ else }}bg-danger text-white{{ end }}">
+                                                            <i class="bi {{ if eq $info.Type "intra-batch" }}bi-exclamation-triangle-fill{{ else }}bi-x-circle-fill{{ end }}"></i>
+                                                             {{ if eq $info.Type "intra-batch" }}Group {{ $info.GroupID }}{{ else }}Duplikat DB{{ end }}
+                                                              <button type="button" class="dup-close-btn ms-1" data-dismiss-dup
+                                                                      aria-label="Bukan duplikat" title="Bukan duplikat"><i class="bi bi-x-lg"></i></button>
+                                                         </span>
+                                                         <span class="badge d-inline-flex align-items-center gap-1 bg-info text-white cursor-pointer d-none dup-restore" role="button" tabindex="0">
+                                                             <i class="bi bi-arrow-counterclockwise"></i>
+                                                             Pulihkan
+                                                         </span>
+                                                    </div>
+                                                    {{ else }}
+                                                    <span class="text-muted small">-</span>
+                                                    {{ end }}
                                                 </td>
                                                 <td class="text-center">
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-danger" 
-                                                            onclick="deleteRow(this)"
-                                                            title="Hapus baris">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger batch-row-off" onclick="deleteRow(this)" title="Hapus baris"><i class="bi bi-trash"></i></button>
                                                 </td>
+                                                <td class="text-end batch-check-col d-none" style="width:1%"><input type="checkbox" class="form-check-input preview-check"></td>
                                             </tr>
+                                            {{ if $info }}{{ if eq $info.Type "existing-db" }}
+                                            {{ range $ref := $info.Refs }}
+                                            <tr class="table-dup-db-ref">
+                                                <td class="text-center text-muted small">↳</td>
+                                                <td class="small">{{ $ref.Date }}</td>
+                                                <td class="small">{{ $ref.StudentName }}</td>
+                                                <td class="small">{{ $ref.NIM }}</td>
+                                                <td class="small">{{ $ref.Purpose }}</td>
+                                                <td class="small">{{ $ref.TimeIn }}</td>
+                                                <td class="small">{{ $ref.TimeOut }}</td>
+                                                <td class="text-center small text-muted">
+                                                    <i class="bi bi-arrow-up"></i> Referensi DB
+                                                </td>
+                                                <td class="text-center text-muted small">-</td>
+                                                <td class="batch-check-col d-none"></td>
+                                            </tr>
+                                            {{ end }}
+                                            {{ end }}{{ end }}
                                             {{ end }}
                                         {{ else }}
                                             <tr>
                                                 <td class="text-center">1</td>
                                                 <td>
-                                                    <input type="date" 
-                                                           class="form-control form-control-sm" 
-                                                           name="date[]" 
-                                                           required>
+                                                    <input type="date" class="form-control form-control-sm" name="date[]" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="student_name[]" 
-                                                           required>
+                                                    <input type="text" class="form-control form-control-sm" name="student_name[]" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="nim[]" 
-                                                           required>
+                                                    <input type="text" class="form-control form-control-sm" name="nim[]" required>
                                                 </td>
                                                 <td>
-                                                    <input type="text" 
-                                                           class="form-control form-control-sm" 
-                                                           name="purpose[]">
+                                                    <input type="text" class="form-control form-control-sm" name="purpose[]">
                                                 </td>
                                                 <td>
-                                                    <input type="time" 
-                                                           class="form-control form-control-sm" 
-                                                           name="time_in[]" 
-                                                           required>
+                                                    <input type="time" class="form-control form-control-sm" name="time_in[]" required>
                                                 </td>
                                                 <td>
-                                                    <input type="time" 
-                                                           class="form-control form-control-sm" 
-                                                           name="time_out[]">
+                                                    <input type="time" class="form-control form-control-sm" name="time_out[]">
                                                 </td>
+                                                <td class="text-center text-muted small">-</td>
                                                 <td class="text-center">
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-danger" 
-                                                            onclick="deleteRow(this)"
-                                                            title="Hapus baris">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger batch-row-off" onclick="deleteRow(this)" title="Hapus baris"><i class="bi bi-trash"></i></button>
                                                 </td>
+                                                <td class="batch-check-col d-none" style="width:1%"><input type="checkbox" class="form-check-input preview-check"></td>
                                             </tr>
                                         {{ end }}
                                     </tbody>
@@ -177,10 +215,10 @@
                             </div>
 
                             <div class="d-flex gap-2 flex-wrap">
-                                <button type="submit" class="btn btn-success btn-lg">
+                                <button type="submit" class="btn btn-primary btn-lg" id="saveBtn" disabled>
                                     <i class="bi bi-save"></i> Simpan ke Database
                                 </button>
-                                <button type="button" class="btn btn-primary btn-lg" onclick="exportExcel()">
+                                <button type="button" class="btn btn-success btn-lg" onclick="exportExcel()">
                                     <i class="bi bi-file-earmark-excel"></i> Export Excel
                                 </button>
                                 <a href="/logbook/upload" class="btn btn-secondary btn-lg">
@@ -197,218 +235,420 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
     <script>
-    let rowCounter = {{ if .entries }}{{ len .entries }}{{ else }}1{{ end }};
-
-    // Similarity checking functions (matching backend logic)
-    function countCharDifferences(s1, s2) {
-        s1 = s1.toLowerCase().trim();
-        s2 = s2.toLowerCase().trim();
-        
-        if (s1 === s2) return 0;
-        
-        const len1 = s1.length;
-        const len2 = s2.length;
-        
-        // Levenshtein distance
-        const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
-        
-        for (let i = 0; i <= len1; i++) matrix[i][0] = i;
-        for (let j = 0; j <= len2; j++) matrix[0][j] = j;
-        
-        for (let i = 1; i <= len1; i++) {
-            for (let j = 1; j <= len2; j++) {
-                const cost = s1[i-1] === s2[j-1] ? 0 : 1;
-                matrix[i][j] = Math.min(
-                    matrix[i-1][j] + 1,      // deletion
-                    matrix[i][j-1] + 1,      // insertion
-                    matrix[i-1][j-1] + cost  // substitution
-                );
-            }
-        }
-        
-        return matrix[len1][len2];
+    let currentZoom = 100;
+    function zoomIn() { currentZoom = Math.min(currentZoom * 1.25, 500); applyZoom(); }
+    function zoomOut() { currentZoom = Math.max(currentZoom / 1.25, 25); applyZoom(); }
+    function zoomReset() { currentZoom = 100; applyZoom(); }
+    function applyZoom() {
+        document.getElementById('previewPhoto').style.width = currentZoom + '%';
+        document.getElementById('zoomLevel').textContent = Math.round(currentZoom) + '%';
     }
 
-    function areNamesSimilar(name1, name2) {
-        // Config matching backend
-        const config = {
-            maxDiffShortWord: 1,
-            maxDiffLongWord: 2,
-            maxLengthDiff: 2
-        };
-        
-        name1 = name1.toLowerCase().trim();
-        name2 = name2.toLowerCase().trim();
-        
-        if (name1 === name2) return true;
-        
-        // Check length difference
-        const lenDiff = Math.abs(name1.length - name2.length);
-        if (lenDiff > config.maxLengthDiff) return false;
-        
-        // Split into words
-        const words1 = name1.split(/\s+/);
-        const words2 = name2.split(/\s+/);
-        
-        // Must have same number of words
-        if (words1.length !== words2.length) return false;
-        
-        // Compare each word pair
-        for (let i = 0; i < words1.length; i++) {
-            const word1 = words1[i];
-            const word2 = words2[i];
-            
-            if (word1 === word2) continue;
-            
-            const diff = countCharDifferences(word1, word2);
-            const wordLen = Math.max(word1.length, word2.length);
-            const threshold = wordLen <= 5 ? config.maxDiffShortWord : config.maxDiffLongWord;
-            
-            if (diff > threshold) return false;
-        }
-        
-        return true;
-    }
+    let rowCounter = document.querySelectorAll('#entriesTableBody > tr:not(.table-dup-db-ref)').length;
 
-    function areNIMsSimilar(nim1, nim2) {
-        const config = {
-            maxDiffNIM: 1
-        };
-        
-        nim1 = nim1.toUpperCase().trim().replace(/\s/g, '');
-        nim2 = nim2.toUpperCase().trim().replace(/\s/g, '');
-        
-        if (nim1 === nim2) return true;
-        if (nim1.length !== nim2.length) return false;
-        
-        const diff = countCharDifferences(nim1, nim2);
-        return diff <= config.maxDiffNIM;
-    }
-
-    // Check for duplicates on page load
     document.addEventListener('DOMContentLoaded', function() {
-        checkDuplicates();
+        updateSaveButton();
+        updateDupWarning();
+        updateDupCounters();
+        document.getElementById('previewSelectAllBtn').addEventListener('click', function() {
+            document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check').forEach(function(cb) { cb.checked = true; });
+            updatePreviewSelectedCount();
+            document.getElementById('previewSelectAll').checked = true;
+        });
+        document.getElementById('previewDeselectAllBtn').addEventListener('click', function() {
+            document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check').forEach(function(cb) { cb.checked = false; });
+            updatePreviewSelectedCount();
+            document.getElementById('previewSelectAll').checked = false;
+        });
+        document.getElementById('previewCancelBatchBtn').addEventListener('click', function() {
+            disablePreviewBatch();
+        });
+    });
+
+    function visibleDupCount() {
+        return document.querySelectorAll('.dup-wrapper[data-state="visible"]').length;
+    }
+
+    function updateSaveButton() {
+        const saveBtn = document.getElementById('saveBtn');
+        const active = visibleDupCount() === 0;
+        saveBtn.disabled = !active;
+        saveBtn.title = active ? '' : 'Verifikasi semua indikasi duplikat terlebih dahulu';
+    }
+
+    function updateDupCounters() {
+        var total = document.querySelectorAll('#entriesTableBody > tr:not(.table-dup-db-ref)').length;
+        var dupVisible = visibleDupCount();
+        document.getElementById('dupTotalData').textContent = total;
+        document.getElementById('dupCount').textContent = dupVisible;
+        var warnText = document.getElementById('dupCounterText');
+        if (dupVisible > 0) {
+            warnText.textContent = 'Terdapat ' + dupVisible + ' terindikasi duplikat dari ' + total + ' data.';
+        } else {
+            warnText.textContent = '';
+        }
+    }
+
+    function updateDupWarning() {
+        const warning = document.getElementById('duplicateWarning');
+        warning.classList.toggle('d-none', visibleDupCount() === 0);
+        const toolbar = document.getElementById('batchIndikasi');
+        if (toolbar) {
+            const hasDups = document.querySelectorAll('.dup-wrapper').length > 0;
+            toolbar.classList.toggle('d-none', !hasDups);
+            toolbar.classList.toggle('d-flex', hasDups);
+        }
+        updateDupCounters();
+    }
+
+    function dismissAllDups() {
+        document.querySelectorAll('.dup-wrapper[data-state="visible"]').forEach(function(w) {
+            const row = w.closest('tr');
+            const dupType = w.dataset.type;
+            if (dupType === 'intra-batch') {
+                row.classList.remove('table-warning');
+            } else {
+                row.classList.remove('table-danger');
+                hideRefRows(row);
+            }
+            row.dataset.dismissed = 'true';
+            setDismissed(w, true);
+        });
+        updateDupWarning();
+        updateSaveButton();
+    }
+
+    function restoreAllDups() {
+        document.querySelectorAll('.dup-wrapper[data-state="dismissed"]').forEach(function(w) {
+            const row = w.closest('tr');
+            const dupType = w.dataset.type;
+            if (dupType === 'intra-batch') {
+                row.classList.add('table-warning');
+            } else {
+                row.classList.add('table-danger');
+                showRefRows(row);
+            }
+            row.dataset.dismissed = 'false';
+            setDismissed(w, false);
+        });
+        updateDupWarning();
+        updateSaveButton();
+    }
+
+    function enablePreviewBatch() {
+        document.getElementById('batchOff').classList.add('d-none');
+        document.getElementById('previewBatchToolbar').classList.remove('d-none');
+        document.getElementById('previewBatchToolbar').classList.add('d-flex');
+        document.getElementById('batchSelectAllTh').classList.remove('d-none');
+        document.querySelectorAll('.batch-check-col').forEach(function(el) { el.classList.remove('d-none'); });
+        updatePreviewSelectedCount();
+    }
+
+    function disablePreviewBatch() {
+        document.getElementById('batchOff').classList.remove('d-none');
+        document.getElementById('previewBatchToolbar').classList.add('d-none');
+        document.getElementById('previewBatchToolbar').classList.remove('d-flex');
+        document.getElementById('batchSelectAllTh').classList.add('d-none');
+        document.querySelectorAll('.batch-check-col').forEach(function(el) { el.classList.add('d-none'); });
+        document.querySelectorAll('.preview-check').forEach(function(cb) { cb.checked = false; });
+        document.getElementById('previewSelectAll').checked = false;
+        document.getElementById('deleteSelectedBtn').disabled = true;
+    }
+
+    function updatePreviewSelectedCount() {
+        var count = document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check:checked').length;
+        document.getElementById('previewSelectedCount').textContent = count;
+        document.getElementById('deleteSelectedBtn').disabled = count === 0;
+    }
+
+    function selectAllPreview(checked) {
+        document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check').forEach(function(cb) {
+            cb.checked = checked;
+        });
+        updatePreviewSelectedCount();
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('preview-check')) {
+            updatePreviewSelectedCount();
+            const all = document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check');
+            const checked = document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check:checked');
+            document.getElementById('previewSelectAll').checked = checked.length > 0 && checked.length === all.length;
+        }
+    });
+
+    function hideDeleteModal() {
+        var modalEl = document.getElementById('deleteConfirmModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+
+    function deleteSelectedRows() {
+        const checked = document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check:checked');
+        var items = [];
+        checked.forEach(function(cb) {
+            const row = cb.closest('tr');
+            var label = row.querySelector('input[name="student_name[]"]').value.trim() || '(tanpa nama)';
+            items.push({ id: row.dataset.index, label: label });
+        });
+        if (items.length === 0) return;
+        confirmBatchDelete({
+            items: items,
+            onConfirm: function() {
+                checked.forEach(function(cb) {
+                    const row = cb.closest('tr');
+                    let next = row.nextElementSibling;
+                    while (next && next.classList.contains('table-dup-db-ref')) {
+                        const toRemove = next;
+                        next = next.nextElementSibling;
+                        toRemove.remove();
+                    }
+                    row.remove();
+                });
+                document.getElementById('previewSelectAll').checked = false;
+                document.getElementById('deleteSelectedBtn').disabled = true;
+                updateRowNumbers();
+                updateSaveButton();
+                disablePreviewBatch();
+                hideDeleteModal();
+            }
+        });
+    }
+
+    function setDismissed(wrapper, dismissed) {
+        wrapper.dataset.state = dismissed ? 'dismissed' : 'visible';
+        wrapper.querySelector('.dup-badge').classList.toggle('d-none', dismissed);
+        wrapper.querySelector('.dup-restore').classList.toggle('d-none', !dismissed);
+    }
+
+    function hideRefRows(row) {
+        let next = row.nextElementSibling;
+        while (next && next.classList.contains('table-dup-db-ref')) {
+            next.classList.add('d-none');
+            next = next.nextElementSibling;
+        }
+    }
+
+    function showRefRows(row) {
+        let next = row.nextElementSibling;
+        while (next && next.classList.contains('table-dup-db-ref')) {
+            next.classList.remove('d-none');
+            next = next.nextElementSibling;
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        const target = e.target;
+        const dismissBtn = target.closest('[data-dismiss-dup]');
+        const restoreLink = target.closest('.dup-restore');
+
+        if (dismissBtn) {
+            const wrapper = dismissBtn.closest('.dup-wrapper');
+            const row = wrapper.closest('tr');
+            const group = wrapper.dataset.group;
+            const dupType = wrapper.dataset.type;
+
+            if (dupType === 'intra-batch') {
+                document.querySelectorAll(`.dup-wrapper[data-group="${group}"]`).forEach(function(w) {
+                    setDismissed(w, true);
+                    w.closest('tr').classList.remove('table-warning');
+                    w.closest('tr').dataset.dismissed = 'true';
+                });
+            } else {
+                setDismissed(wrapper, true);
+                row.classList.remove('table-danger');
+                row.dataset.dismissed = 'true';
+                hideRefRows(row);
+            }
+            updateDupWarning();
+            updateSaveButton();
+        }
+
+        if (restoreLink) {
+            const wrapper = restoreLink.closest('.dup-wrapper');
+            const row = wrapper.closest('tr');
+            const group = wrapper.dataset.group;
+            const dupType = wrapper.dataset.type;
+
+            if (dupType === 'intra-batch') {
+                document.querySelectorAll(`.dup-wrapper[data-group="${group}"]`).forEach(function(w) {
+                    setDismissed(w, false);
+                    w.closest('tr').classList.add('table-warning');
+                    w.closest('tr').dataset.dismissed = 'false';
+                });
+            } else {
+                setDismissed(wrapper, false);
+                row.classList.add('table-danger');
+                row.dataset.dismissed = 'false';
+                showRefRows(row);
+            }
+            updateDupWarning();
+            updateSaveButton();
+        }
+    });
+
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('input[name="student_name[]"], input[name="date[]"], input[name="time_in[]"], input[name="nim[]"]')) {
+            checkDuplicates();
+        }
     });
 
     function checkDuplicates() {
         const rows = document.querySelectorAll('#entriesTableBody tr');
         const entries = [];
         let hasDuplicate = false;
-        
-        // Collect all entries
-        rows.forEach((row, index) => {
+
+        rows.forEach((row) => {
+            if (row.classList.contains('table-dup-db-ref')) return;
+            if (row.dataset.dismissed === 'true') return;
             const name = row.querySelector('input[name="student_name[]"]').value.trim();
             const nim = row.querySelector('input[name="nim[]"]').value.trim();
             const date = row.querySelector('input[name="date[]"]').value;
             const timeIn = row.querySelector('input[name="time_in[]"]').value;
-            
-            entries.push({ index, name, nim, date, timeIn, row });
+            entries.push({ name, nim, date, timeIn, row });
         });
-        
-        // Clear previous warnings
+
         rows.forEach(row => {
-            row.classList.remove('table-warning');
-            const existingBadge = row.querySelector('.duplicate-badge');
-            if (existingBadge) existingBadge.remove();
+            if (row.classList.contains('table-dup-db-ref')) return;
+            if (row.dataset.dismissed === 'true') return;
+            const wrapper = row.querySelector('.dup-wrapper');
+            if (!wrapper || wrapper.dataset.type !== 'js') return;
+            if (wrapper.dataset.state !== 'visible') return;
+            wrapper.remove();
+            row.querySelector('.dup-cell').innerHTML = '<span class="text-muted small">-</span>';
+            row.classList.remove('table-warning', 'table-danger');
         });
-        
-        // Check for duplicates using similarity
+
         for (let i = 0; i < entries.length; i++) {
             for (let j = i + 1; j < entries.length; j++) {
-                // Must have same date and time
-                if (entries[i].date !== entries[j].date || 
-                    entries[i].timeIn !== entries[j].timeIn) {
-                    continue;
-                }
-                
-                // Check name similarity OR NIM similarity
-                const nameSimilar = areNamesSimilar(entries[i].name, entries[j].name);
-                const nimSimilar = areNIMsSimilar(entries[i].nim, entries[j].nim);
-                
-                if (nameSimilar || nimSimilar) {
-                    // Mark both rows as potential duplicates
-                    entries[i].row.classList.add('table-warning');
-                    entries[j].row.classList.add('table-warning');
-                    
-                    // Add warning badge if not exists
-                    if (!entries[i].row.querySelector('.duplicate-badge')) {
-                        const badge = document.createElement('span');
-                        badge.className = 'badge bg-warning text-dark duplicate-badge ms-2';
-                        badge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Possible Duplicate';
-                        entries[i].row.querySelector('td:nth-child(2)').appendChild(badge);
-                    }
-                    if (!entries[j].row.querySelector('.duplicate-badge')) {
-                        const badge = document.createElement('span');
-                        badge.className = 'badge bg-warning text-dark duplicate-badge ms-2';
-                        badge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Possible Duplicate';
-                        entries[j].row.querySelector('td:nth-child(2)').appendChild(badge);
-                    }
-                    
-                    hasDuplicate = true;
+                if (entries[i].date !== entries[j].date) continue;
+                if (entries[i].timeIn !== entries[j].timeIn) continue;
+                const nameSim = areNamesSimilar(entries[i].name, entries[j].name);
+                const nimSim = areNIMsSimilar(entries[i].nim, entries[j].nim);
+                if (nameSim && nimSim) {
+                    [entries[i], entries[j]].forEach(function(entry) {
+                        const row = entry.row;
+                        if (row.querySelector('.dup-wrapper')) return;
+                        row.classList.add('table-warning');
+                        const cell = row.querySelector('.dup-cell');
+                        cell.innerHTML = `<div class="d-inline-flex align-items-center gap-1 dup-wrapper" data-type="js" data-state="visible">
+                            <span class="badge d-inline-flex align-items-center gap-1 bg-warning text-dark dup-badge">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                Duplikat (JS)
+                                <button type="button" class="dup-close-btn ms-1" data-dismiss-dup aria-label="Bukan duplikat"><i class="bi bi-x-lg"></i></button>
+                            </span>
+                            <span class="badge d-inline-flex align-items-center gap-1 bg-info text-white cursor-pointer d-none dup-restore" role="button" tabindex="0">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                                Pulihkan
+                            </span>
+                        </div>`;
+                        hasDuplicate = true;
+                    });
                 }
             }
         }
-        
-        // Show/hide warning alert
-        const warningAlert = document.getElementById('duplicateWarning');
-        if (hasDuplicate) {
-            warningAlert.classList.remove('d-none');
-        } else {
-            warningAlert.classList.add('d-none');
+
+        updateSaveButton();
+        updateDupWarning();
+    }
+
+    function areNamesSimilar(name1, name2) {
+        return jaroWinkler(name1, name2) >= 0.88;
+    }
+
+    function jaroWinkler(s1, s2) {
+        s1 = (s1 || '').toLowerCase().trim();
+        s2 = (s2 || '').toLowerCase().trim();
+        if (s1 === s2) return 1.0;
+        if (s1.length === 0 || s2.length === 0) return 0.0;
+
+        const matchDist = Math.floor(Math.max(s1.length, s2.length) / 2) - 1;
+        const maxDist = Math.max(matchDist, 0);
+        const matched1 = new Array(s1.length).fill(false);
+        const matched2 = new Array(s2.length).fill(false);
+        let matches = 0;
+        const transPositions = [];
+
+        for (let i = 0; i < s1.length; i++) {
+            const start = Math.max(0, i - maxDist);
+            const end = Math.min(s2.length, i + maxDist + 1);
+            for (let j = start; j < end; j++) {
+                if (matched2[j]) continue;
+                if (s1[i] !== s2[j]) continue;
+                matched1[i] = true;
+                matched2[j] = true;
+                matches++;
+                transPositions.push(j);
+                break;
+            }
         }
+        if (matches === 0) return 0.0;
+
+        let transpositions = 0;
+        let k = 0;
+        for (let i = 0; i < s1.length; i++) {
+            if (!matched1[i]) continue;
+            while (k < transPositions.length && !matched2[transPositions[k]]) { k++; }
+            if (k < transPositions.length) {
+                if (s1[i] !== s2[transPositions[k]]) transpositions++;
+                k++;
+            }
+        }
+
+        const jaro = (matches / s1.length + matches / s2.length + (matches - transpositions / 2) / matches) / 3.0;
+        let prefix = 0;
+        for (let i = 0; i < Math.min(s1.length, s2.length, 4); i++) {
+            if (s1[i] === s2[i]) prefix++;
+            else break;
+        }
+        return jaro + prefix * 0.1 * (1.0 - jaro);
+    }
+
+    function areNIMsSimilar(nim1, nim2) {
+        nim1 = (nim1 || '').toUpperCase().trim().replace(/\s/g, '');
+        nim2 = (nim2 || '').toUpperCase().trim().replace(/\s/g, '');
+        if (nim1 === nim2) return true;
+        const lenDiff = Math.abs(nim1.length - nim2.length);
+        if (lenDiff > 1) return false;
+        const diff = countCharDifferences(nim1, nim2);
+        return diff <= 2;
+    }
+
+    function countCharDifferences(s1, s2) {
+        s1 = s1.toLowerCase().trim();
+        s2 = s2.toLowerCase().trim();
+        if (s1 === s2) return 0;
+        const len1 = s1.length, len2 = s2.length;
+        const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
+        for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+        for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+        for (let i = 1; i <= len1; i++) {
+            for (let j = 1; j <= len2; j++) {
+                const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+            }
+        }
+        return matrix[len1][len2];
     }
 
     function addRow() {
         rowCounter++;
         const tbody = document.getElementById('entriesTableBody');
+        const batchActive = !document.getElementById('previewBatchToolbar').classList.contains('d-none');
         const newRow = document.createElement('tr');
+        newRow.dataset.index = rowCounter - 1;
         newRow.innerHTML = `
             <td class="text-center">${rowCounter}</td>
-            <td>
-                <input type="date" 
-                       class="form-control form-control-sm" 
-                       name="date[]" 
-                       required>
-            </td>
-            <td>
-                <input type="text" 
-                       class="form-control form-control-sm" 
-                       name="student_name[]" 
-                       required>
-            </td>
-            <td>
-                <input type="text" 
-                       class="form-control form-control-sm" 
-                       name="nim[]" 
-                       required>
-            </td>
-            <td>
-                <input type="text" 
-                       class="form-control form-control-sm" 
-                       name="purpose[]">
-            </td>
-            <td>
-                <input type="time" 
-                       class="form-control form-control-sm" 
-                       name="time_in[]" 
-                       required>
-            </td>
-            <td>
-                <input type="time" 
-                       class="form-control form-control-sm" 
-                       name="time_out[]">
-            </td>
-            <td class="text-center">
-                <button type="button" 
-                        class="btn btn-sm btn-danger" 
-                        onclick="deleteRow(this)"
-                        title="Hapus baris">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
+            <td><input type="date" class="form-control form-control-sm" name="date[]" required></td>
+            <td><input type="text" class="form-control form-control-sm" name="student_name[]" required></td>
+            <td><input type="text" class="form-control form-control-sm" name="nim[]" required></td>
+            <td><input type="text" class="form-control form-control-sm" name="purpose[]"></td>
+            <td><input type="time" class="form-control form-control-sm" name="time_in[]" required></td>
+            <td><input type="time" class="form-control form-control-sm" name="time_out[]"></td>
+            <td class="text-center text-muted small">-</td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-danger batch-row-off" onclick="deleteRow(this)" title="Hapus baris"><i class="bi bi-trash"></i></button></td>
+            <td class="batch-check-col${batchActive ? '' : ' d-none'}" style="width:1%"><input type="checkbox" class="form-check-input preview-check"></td>
         `;
         tbody.appendChild(newRow);
         updateRowNumbers();
@@ -416,50 +656,43 @@
 
     function deleteRow(btn) {
         const row = btn.closest('tr');
-        const tbody = document.getElementById('entriesTableBody');
-        
-        // Don't delete if it's the last row
-        if (tbody.children.length <= 1) {
-            alert('Minimal harus ada 1 baris');
-            return;
-        }
-        
-        row.remove();
-        updateRowNumbers();
-        checkDuplicates(); // Re-check after deletion
+        var label = row.querySelector('input[name="student_name[]"]').value.trim() || '(tanpa nama)';
+        confirmBatchDelete({
+            items: [{ id: row.dataset.index, label: label }],
+            onConfirm: function() {
+                let next = row.nextElementSibling;
+                while (next && next.classList.contains('table-dup-db-ref')) {
+                    const toRemove = next;
+                    next = next.nextElementSibling;
+                    toRemove.remove();
+                }
+                row.remove();
+                updateRowNumbers();
+                updateSaveButton();
+                hideDeleteModal();
+            }
+        });
     }
 
     function updateRowNumbers() {
         const rows = document.querySelectorAll('#entriesTableBody tr');
-        rows.forEach((row, index) => {
-            row.querySelector('td:first-child').textContent = index + 1;
+        let idx = 1;
+        rows.forEach(row => {
+            if (row.classList.contains('table-dup-db-ref')) return;
+            row.querySelector('td:first-child').textContent = idx++;
         });
     }
 
-    // Add event listeners to inputs to check duplicates on change
-    document.addEventListener('input', function(e) {
-        if (e.target.matches('input[name="student_name[]"], input[name="date[]"], input[name="time_in[]"]')) {
-            checkDuplicates();
-        }
-    });
-
     function exportExcel() {
-        // Create form data
         const form = document.getElementById('previewForm');
         const formData = new FormData(form);
-        
-        // Convert to URL params for GET request
         const params = new URLSearchParams();
-        
-        // Get all entries
         const dates = formData.getAll('date[]');
         const names = formData.getAll('student_name[]');
         const nims = formData.getAll('nim[]');
         const timeIns = formData.getAll('time_in[]');
         const timeOuts = formData.getAll('time_out[]');
         const purposes = formData.getAll('purpose[]');
-        
-        // Build query string
         for (let i = 0; i < dates.length; i++) {
             params.append('date[]', dates[i]);
             params.append('student_name[]', names[i]);
@@ -469,45 +702,35 @@
             params.append('purpose[]', purposes[i] || '');
         }
         params.append('source_file', formData.get('source_file'));
-        
-        // Open in new window to trigger download
         window.open('/logbook/export-preview?' + params.toString(), '_blank');
     }
 
-    // Handle form submission with AJAX
     document.getElementById('previewForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        
         const formData = new FormData(this);
-        
-        // Show loading
+        document.querySelectorAll('#entriesTableBody tr[data-dismissed="true"]').forEach(function(row) {
+            formData.append('verified[]', row.dataset.index);
+        });
         const submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn.disabled) return;
         const originalText = submitBtn.innerHTML;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...';
-        
-        fetch('/logbook/save', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                window.location.href = '/logbook';
-            } else {
-                alert('Error: ' + (data.error || 'Gagal menyimpan data'));
+        fetchWithCSRF('/logbook/save', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = '/logbook?success=' + encodeURIComponent(data.message);
+                } else {
+                    alert('Error: ' + (data.error || 'Gagal menyimpan data'));
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
-            }
-        })
-        .catch(error => {
-            alert('Error: ' + error.message);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        });
+            });
     });
-    </script>
-</body>
-</html>
-{{ end }}
+    </script>{{ template "layout/footer.html" . }}

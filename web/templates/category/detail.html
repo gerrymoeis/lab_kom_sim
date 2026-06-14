@@ -1,0 +1,110 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/devices">Perangkat</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ .category.Name }}</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-folder"></i> {{ .category.Name }}</h5>
+            <div>
+                <a href="/categories/{{ .category.DefaultPrefix | lower }}/edit" class="btn btn-sm btn-warning me-1">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <button type="button" class="btn btn-sm btn-danger"
+                    onclick="confirmDelete({message:'Hapus kategori &quot;{{ .category.Name }}&quot;? Semua perangkat dalam kategori ini akan terhapus.', requirePrefix:true, prefix:'{{ .category.DefaultPrefix }}', type:'kategori', formId:'del-cat'})">
+                    <i class="bi bi-trash"></i> Hapus
+                </button>
+                <form id="del-cat" method="POST" action="/categories/{{ .category.DefaultPrefix | lower }}/delete" class="d-none"></form>
+            </div>
+        </div>
+        <div class="card-body">
+            <table class="table table-borderless mb-0">
+                <tr>
+                    <th class="th-w-200">Nama Kategori</th>
+                    <td>{{ .category.Name }}</td>
+                </tr>
+                <tr>
+                    <th>Default Prefix</th>
+                    <td><code>{{ .category.DefaultPrefix }}</code></td>
+                </tr>
+                <tr>
+                    <th>Jumlah Tipe</th>
+                    <td><span class="badge bg-secondary">{{ .typeCount }}</span></td>
+                </tr>
+                <tr>
+                    <th>Jumlah Perangkat</th>
+                    <td><span class="badge bg-info">{{ .deviceCount }}</span></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-box"></i> Tipe Perangkat dalam Kategori Ini</h5>
+            <div></div>
+        </div>
+        <div class="card-body">
+            {{ if gt (len .deviceTypes) 0 }}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" data-batch-url="/device-types/batch-delete">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nama Tipe</th>
+                            <th>Brand</th>
+                            <th>Model</th>
+                            <th>Prefix</th>
+                            <th>Tipe Penggunaan</th>
+                            <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range $t := .deviceTypes }}
+                        <tr data-batch-id="{{ $t.ID }}" data-batch-label="{{ $t.Name }} ({{ $t.AssetCodePrefix }})">
+                            <td><strong>{{ $t.Name }}</strong></td>
+                            <td>{{ if $t.Brand }}{{ $t.Brand }}{{ else }}-{{ end }}</td>
+                            <td>{{ if $t.Model }}{{ $t.Model }}{{ else }}-{{ end }}</td>
+                            <td><code>{{ $t.AssetCodePrefix }}</code></td>
+                            <td>
+                                {{ if eq $t.UsageType "loanable" }}
+                                <span class="badge bg-primary">Dipinjamkan</span>
+                                {{ else if eq $t.UsageType "consumable" }}
+                                <span class="badge bg-warning">Habis Pakai</span>
+                                {{ else }}
+                                <span class="badge bg-info">Instalasi</span>
+                                {{ end }}
+                            </td>
+                            <td class="batch-action-col text-nowrap text-end">
+                                <span class="batch-mode-off">
+                                <a href="/device-types/{{ $t.AssetCodePrefix | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="/device-types/{{ $t.AssetCodePrefix | lower }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Hapus tipe &quot;{{ $t.Name }}&quot;? Semua perangkat dalam tipe ini akan terhapus.', requirePrefix:true, prefix:'{{ $t.AssetCodePrefix }}', type:'tipe', formId:'del-type-{{ $t.ID }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-type-{{ $t.ID }}" method="POST" action="/device-types/{{ $t.AssetCodePrefix | lower }}/delete" class="d-none"></form>
+                                </span>
+                            </td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $t.ID }}"></span></td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+            {{ else }}
+            <p class="text-muted text-center mb-0">Belum ada tipe perangkat dalam kategori ini</p>
+            {{ end }}
+        </div>
+    </div>
+</div>
+
+{{ template "layout/footer.html" . }}

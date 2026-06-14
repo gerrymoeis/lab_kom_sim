@@ -1,0 +1,90 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4 software-page-container">
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-eye"></i> {{ .title }}</h5>
+            <div class="d-flex flex-column flex-sm-row gap-2">
+                {{ if eq .role "admin" }}
+                <a href="/software/{{ .software.Slug }}/edit" class="btn btn-sm btn-warning">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                {{ end }}
+                <a href="/software" class="btn btn-sm btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Kembali
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-4 position-relative">
+                    {{ template "layout/alert.html" . }}
+
+                    <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Informasi Software</h6>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="25%">Nama Software</th>
+                            <td><strong>{{ .software.Name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Kategori</th>
+                            <td>
+                                {{ if eq .software.Category "required" }}<span class="badge bg-primary">Required</span>{{ else }}<span class="badge bg-secondary">Other</span>{{ end }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Deskripsi</th>
+                            <td>{{ if .software.Description }}{{ .software.Description }}{{ else }}<span class="text-muted">-</span>{{ end }}</td>
+                        </tr>
+                    </table>
+
+                    <hr class="my-4">
+
+                    <h6 class="text-primary mb-3"><i class="bi bi-pc-display"></i> Status Instalasi Per PC</h6>
+                    <p>
+                        <span class="badge bg-success fs-6 me-2">{{ .installedCount }} Terinstall</span>
+                        <span class="badge bg-secondary fs-6">{{ sub .totalPCs .installedCount }} Belum</span>
+                    </p>
+
+                    <div class="pc-grid-scroll">
+                        <div class="pc-grid">
+                            {{ range $rowIdx, $row := .pcGrid }}
+                            <div class="pc-row mb-3">
+                                {{ range $colIdx, $pc := $row }}
+                                <div class="pc-card-wrapper pc-card-wrapper-sm">
+                                    {{ if gt $pc.PCID 0 }}
+                                     <div class="pc-card status-{{ $pc.Status }}{{ if not $pc.Installed }} border-secondary{{ end }}" style="cursor:default;">
+                                        <div class="pc-number">{{ $pc.Label }}</div>
+                                        <div class="pc-icon">
+                                            {{ if $pc.Installed }}
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                            {{ else }}
+                                            <i class="bi bi-x-circle-fill text-muted"></i>
+                                            {{ end }}
+                                        </div>
+                                    </div>
+                                    {{ else }}
+                                    <div class="pc-card pc-card-empty" style="cursor:default;">
+                                        <div class="pc-number text-muted">-</div>
+                                    </div>
+                                    {{ end }}
+                                </div>
+                                {{ end }}
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+
+                    <hr>
+                    {{ $created := (localTime .software.CreatedAt) }}{{ $updated := (localTime .software.UpdatedAt) }}
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ if gt $created.Year 1 }}<small class="text-muted">Dibuat: {{ $created.Format "02/01/2006 15:04" }} {{ tzCode }}</small>{{ end }}
+                        </div>
+                        <div class="col-md-6 text-end">
+                            {{ if gt $updated.Year 1 }}<small class="text-muted">Diupdate: {{ $updated.Format "02/01/2006 15:04" }}</small>{{ end }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+{{ template "layout/footer.html" . }}

@@ -1,20 +1,5 @@
-{{ define "dashboard.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <!-- Skip to Main Content Link -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-    
-    <!-- Navbar -->
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
+<a href="#main-content" class="skip-link">Skip to main content</a>
 
     <!-- Main Content -->
     <main id="main-content" tabindex="-1">
@@ -22,7 +7,7 @@
         <div class="row">
             <div class="col-12">
                 <h2><i class="bi bi-grid-3x3-gap"></i> Dashboard Laboratorium Komputer</h2>
-                <p class="text-muted">Visualisasi status 40 PC dalam grid 8 kolom × 5 baris</p>
+                <p class="text-muted">Visualisasi status 40 PC dalam grid 8 baris × 5 kolom</p>
             </div>
         </div>
 
@@ -58,9 +43,9 @@
             <div class="col-md-3">
                 <div class="card bg-secondary text-white">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="bi bi-dash-circle" aria-hidden="true"></i> Inactive</h5>
-                        <h2>{{ index .statusCounts "inactive" }}</h2>
-                        <small>PC tidak aktif</small>
+                        <h5 class="card-title"><i class="bi bi-box-seam" aria-hidden="true"></i> Cadangan</h5>
+                        <h2>{{ .spareCount }}</h2>
+                        <small>PC tidak dipasang</small>
                     </div>
                 </div>
             </div>
@@ -68,24 +53,57 @@
 
         <!-- PC Grid -->
         <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-grid"></i> Grid PC Laboratorium</h5>
+                <button type="button" class="btn btn-sm btn-light" onclick="PCLayoutManager.openManager()">
+                    <i class="bi bi-grid-3x3-gap"></i> Kelola Layout
+                </button>
             </div>
-            <div class="card-body p-4">
+            <div class="card-body p-4 position-relative">
+                <!-- PC Dosen (Lecturer) — right side above grid -->
+                {{ if .pcLecturer.ID }}
+                <div class="container d-flex justify-content-end mb-3">
+                    <div class="pc-card-wrapper pc-card-wrapper-special">
+                        <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLecturer.Status }}"
+                             role="button" tabindex="0"
+                             aria-label="{{ .pcLecturer.Label }}, Status {{ (pcStatusInfo .pcLecturer.Status).VisLabel }}"
+                             data-pc-id="{{ .pcLecturer.ID }}"
+                             data-pc-label="{{ .pcLecturer.Label }}"
+                             data-pc-row="0" data-pc-column="0"
+                             data-pc-status="{{ .pcLecturer.Status }}"
+                             data-pc-processor="{{ .pcLecturer.Processor }}"
+                             data-pc-ram="{{ .pcLecturer.RAM }}"
+                             data-pc-storage="{{ .pcLecturer.Storage }}"
+                             data-pc-os="{{ .pcLecturer.OperatingSystem }}"
+                             data-pc-notes="{{ .pcLecturer.Notes }}"
+                             style="cursor: pointer;">
+                            <div class="pc-number">{{ .pcLecturer.Label }}</div>
+                            <div class="pc-icon"><i class="bi bi-person-badge" aria-hidden="true"></i></div>
+                            <div class="pc-status-badge">
+                                {{ $info := pcStatusInfo .pcLecturer.Status }}
+                                <i class="bi {{ $info.Icon }} {{ $info.Color }}" aria-hidden="true"></i>
+                                <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
+                            </div>
+                        </div>
+                        <div class="pc-windows-text"></div>
+                    </div>
+                </div>
+                {{ end }}
+
                 <div class="pc-grid">
-                    {{ range $rowIndex, $row := .grid }}
+                    {{ range $barisIndex, $baris := .grid }}
                     <div class="pc-row mb-3">
-                        {{ range $colIndex, $pc := $row }}
+                        {{ range $kolomIndex, $pc := $baris }}
                         {{ if $pc.ID }}
                         <div class="pc-card-wrapper">
                             <div class="pc-card status-{{ $pc.Status }} pc-card-clickable" 
                                  role="button"
                                  tabindex="0"
-                                 aria-label="PC {{ printf "%02d" $pc.PCNumber }}, Status {{ $pc.Status }}, Baris {{ $pc.Row }}, Kolom {{ $pc.Column }}"
+								 aria-label="PC {{ $pc.Label }}, Status {{ (pcStatusInfo $pc.Status).VisLabel }}, Baris {{ add $barisIndex 1 }}, Kolom {{ add $kolomIndex 1 }}"
                                  data-pc-id="{{ $pc.ID }}"
-                                 data-pc-number="{{ printf "%02d" $pc.PCNumber }}"
+                                 data-pc-label="{{ $pc.Label }}"
                                  data-pc-row="{{ $pc.Row }}"
-                                 data-pc-column="{{ $pc.Column }}"
+								 data-pc-column="{{ $pc.Column }}"
                                  data-pc-status="{{ $pc.Status }}"
                                  data-pc-processor="{{ $pc.Processor }}"
                                  data-pc-ram="{{ $pc.RAM }}"
@@ -93,32 +111,22 @@
                                  data-pc-os="{{ $pc.OperatingSystem }}"
                                  data-pc-notes="{{ $pc.Notes }}"
                                  style="cursor: pointer;">
-                                <div class="pc-number">PC-{{ printf "%02d" $pc.PCNumber }}</div>
+                                <div class="pc-number">{{ $pc.Label }}</div>
                                 <div class="pc-icon">
                                     <i class="bi bi-pc-display" aria-hidden="true"></i>
                                 </div>
                                 <div class="pc-status-badge">
-                                    {{ if eq $pc.Status "normal" }}
-                                        <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
-                                        <span class="visually-hidden">Status Normal</span>
-                                    {{ else if eq $pc.Status "warning" }}
-                                        <i class="bi bi-exclamation-triangle-fill text-warning" aria-hidden="true"></i>
-                                        <span class="visually-hidden">Status Warning</span>
-                                    {{ else if eq $pc.Status "broken" }}
-                                        <i class="bi bi-x-circle-fill text-danger" aria-hidden="true"></i>
-                                        <span class="visually-hidden">Status Rusak</span>
-                                    {{ else }}
-                                        <i class="bi bi-dash-circle-fill text-secondary" aria-hidden="true"></i>
-                                        <span class="visually-hidden">Status Inactive</span>
-                                    {{ end }}
+                                    {{ $info := pcStatusInfo $pc.Status }}
+                                    <i class="bi {{ $info.Icon }} {{ $info.Color }}" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
                                 </div>
                                 <!-- Windows Version Badge -->
-                                <div class="pc-windows-badge" id="win-badge-{{ $pc.PCNumber }}">
+                                <div class="pc-windows-badge" id="win-badge-{{ $pc.Label }}">
                                     <span class="visually-hidden">Windows Version</span>
                                 </div>
                             </div>
                             <!-- Windows Version Text -->
-                            <div class="pc-windows-text" id="win-text-{{ $pc.PCNumber }}"></div>
+                            <div class="pc-windows-text" id="win-text-{{ $pc.Label }}"></div>
                         </div>
                         {{ else }}
                         <div class="pc-card-wrapper">
@@ -135,13 +143,106 @@
                     {{ end }}
                 </div>
 
+                <!-- PC Laboran (bottom left) + PC CCTV (below Laboran) -->
+                <div class="mt-4">
+                    {{ if .pcLaboran.ID }}
+                    <div class="container d-flex">
+                        <div class="pc-card-wrapper pc-card-wrapper-special">
+                            <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLaboran.Status }}"
+                                 role="button" tabindex="0"
+                                 aria-label="{{ .pcLaboran.Label }}, Status {{ (pcStatusInfo .pcLaboran.Status).VisLabel }}"
+                                 data-pc-id="{{ .pcLaboran.ID }}"
+                                 data-pc-label="{{ .pcLaboran.Label }}"
+                                 data-pc-row="0" data-pc-column="0"
+                                 data-pc-status="{{ .pcLaboran.Status }}"
+                                 data-pc-processor="{{ .pcLaboran.Processor }}"
+                                 data-pc-ram="{{ .pcLaboran.RAM }}"
+                                 data-pc-storage="{{ .pcLaboran.Storage }}"
+                                 data-pc-os="{{ .pcLaboran.OperatingSystem }}"
+                                 data-pc-notes="{{ .pcLaboran.Notes }}"
+                                 style="cursor: pointer;">
+                                <div class="pc-number">{{ .pcLaboran.Label }}</div>
+                                <div class="pc-icon"><i class="bi bi-tools" aria-hidden="true"></i></div>
+                                <div class="pc-status-badge">
+                                    {{ $info := pcStatusInfo .pcLaboran.Status }}
+                                    <i class="bi {{ $info.Icon }} {{ $info.Color }}" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
+                                </div>
+                            </div>
+                            <div class="pc-windows-text"></div>
+                        </div>
+                    </div>
+                    {{ end }}
+                    {{ if .pcCCTV.ID }}
+                    <div class="container d-flex mt-2">
+                        <div class="pc-card-wrapper pc-card-wrapper-special">
+                            <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcCCTV.Status }}"
+                                 role="button" tabindex="0"
+                                 aria-label="{{ .pcCCTV.Label }}, Status {{ (pcStatusInfo .pcCCTV.Status).VisLabel }}"
+                                 data-pc-id="{{ .pcCCTV.ID }}"
+                                 data-pc-label="{{ .pcCCTV.Label }}"
+                                 data-pc-row="0" data-pc-column="0"
+                                 data-pc-status="{{ .pcCCTV.Status }}"
+                                 data-pc-processor="{{ .pcCCTV.Processor }}"
+                                 data-pc-ram="{{ .pcCCTV.RAM }}"
+                                 data-pc-storage="{{ .pcCCTV.Storage }}"
+                                 data-pc-os="{{ .pcCCTV.OperatingSystem }}"
+                                 data-pc-notes="{{ .pcCCTV.Notes }}"
+                                 style="cursor: pointer;">
+                                <div class="pc-number">{{ .pcCCTV.Label }}</div>
+                                <div class="pc-icon"><i class="bi bi-camera-video" aria-hidden="true"></i></div>
+                                <div class="pc-status-badge">
+                                    {{ $info := pcStatusInfo .pcCCTV.Status }}
+                                    <i class="bi {{ $info.Icon }} {{ $info.Color }}" aria-hidden="true"></i>
+                                    <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
+                                </div>
+                            </div>
+                            <div class="pc-windows-text"></div>
+                        </div>
+                    </div>
+                    {{ end }}
+                </div>
+
+                {{ if .specialPCs }}
+                <hr class="my-3">
+                <h6 class="text-muted mb-2"><i class="bi bi-star"></i> PC Spesial Lainnya</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    {{ range .specialPCs }}
+                    <div class="pc-card-wrapper pc-card-wrapper-special">
+                        <div class="pc-card pc-card-special pc-card-clickable status-{{ .Status }}"
+                             role="button" tabindex="0"
+                             aria-label="{{ .Label }}"
+                             data-pc-id="{{ .ID }}"
+                             data-pc-label="{{ .Label }}"
+                             data-pc-row="0" data-pc-column="0"
+                             data-pc-status="{{ .Status }}"
+                             data-pc-processor="{{ .Processor }}"
+                             data-pc-ram="{{ .RAM }}"
+                             data-pc-storage="{{ .Storage }}"
+                             data-pc-os="{{ .OperatingSystem }}"
+                             data-pc-notes="{{ .Notes }}"
+                             style="cursor: pointer;">
+                            <div class="pc-number">{{ .Label }}</div>
+                            <div class="pc-icon"><i class="bi bi-star" aria-hidden="true"></i></div>
+                            <div class="pc-status-badge">
+                                {{ $info := pcStatusInfo .Status }}
+                                <i class="bi {{ $info.Icon }} {{ $info.Color }}" aria-hidden="true"></i>
+                                <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
+                            </div>
+                        </div>
+                        <div class="pc-windows-text"></div>
+                    </div>
+                    {{ end }}
+                </div>
+                {{ end }}
+
                 <div class="mt-4">
                     <h6>Keterangan:</h6>
                     <div class="d-flex gap-3 flex-wrap">
                         <span><i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i> Normal</span>
                         <span><i class="bi bi-exclamation-triangle-fill text-warning" aria-hidden="true"></i> Warning</span>
                         <span><i class="bi bi-x-circle-fill text-danger" aria-hidden="true"></i> Rusak</span>
-                        <span><i class="bi bi-dash-circle-fill text-secondary" aria-hidden="true"></i> Inactive</span>
+                        <span><i class="bi bi-box-seam-fill text-secondary" aria-hidden="true"></i> Cadangan</span>
                     </div>
                 </div>
             </div>
@@ -232,8 +333,6 @@
     </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
     <script>
     // Parse Windows Version and return badge class + short text
     function parseWindowsVersion(osString) {
@@ -296,105 +395,134 @@
         };
     }
     
-    // Initialize Windows Version Badges
-    document.addEventListener('DOMContentLoaded', function() {
-        const pcCards = document.querySelectorAll('.pc-card-clickable');
-        
-        pcCards.forEach(card => {
-            const pcNumber = card.dataset.pcNumber;
-            const osString = card.dataset.pcOs;
-            
-            const winInfo = parseWindowsVersion(osString);
-            
-            // Update badge
-            const badge = document.getElementById('win-badge-' + parseInt(pcNumber));
-            if (badge && winInfo.shortText !== '-') {
-                badge.textContent = winInfo.shortText;
-                badge.className = 'pc-windows-badge ' + winInfo.badgeClass;
-            } else if (badge) {
-                badge.style.display = 'none';
-            }
-            
-            // Update text
-            const text = document.getElementById('win-text-' + parseInt(pcNumber));
-            if (text && winInfo.fullText !== '-') {
-                text.textContent = winInfo.fullText;
-            }
-        });
-    });
+    var pcDetailModal = null;
+    function getPCDetailModal() {
+        if (!pcDetailModal) { var el = document.getElementById('pcDetailModal'); if (el) pcDetailModal = new bootstrap.Modal(el); }
+        return pcDetailModal;
+    }
     
-    // Handle PC Card Click - Populate Modal with Dynamic Content
-    document.addEventListener('DOMContentLoaded', function() {
-        const pcCards = document.querySelectorAll('.pc-card-clickable');
-        const modal = new bootstrap.Modal(document.getElementById('pcDetailModal'));
-        
-        // Function to open modal with PC data
-        function openPCModal(card) {
-            // Get data from card attributes
-            const pcId = card.dataset.pcId;
-            const pcNumber = card.dataset.pcNumber;
-            const pcRow = card.dataset.pcRow;
-            const pcColumn = card.dataset.pcColumn;
-            const pcStatus = card.dataset.pcStatus;
-            const pcProcessor = card.dataset.pcProcessor || '-';
-            const pcRam = card.dataset.pcRam || '-';
-            const pcStorage = card.dataset.pcStorage || '-';
-            const pcOs = card.dataset.pcOs || '-';
-            const pcNotes = card.dataset.pcNotes || '-';
-            
-            // Update modal title
-            document.getElementById('pcDetailModalLabel').textContent = 'PC-' + pcNumber + ' Detail';
-            
-            // Update modal content
-            document.getElementById('modal-position').textContent = 'Baris ' + pcRow + ', Kolom ' + pcColumn;
-            document.getElementById('modal-processor').textContent = pcProcessor;
-            document.getElementById('modal-ram').textContent = pcRam;
-            document.getElementById('modal-storage').textContent = pcStorage;
-            document.getElementById('modal-os').textContent = pcOs;
-            document.getElementById('modal-notes').textContent = pcNotes;
-            
-            // Update status badge
-            const statusBadge = document.getElementById('modal-status-badge');
-            statusBadge.textContent = pcStatus;
-            statusBadge.className = 'badge';
-            
-            if (pcStatus === 'normal') {
-                statusBadge.classList.add('bg-success');
-            } else if (pcStatus === 'warning') {
-                statusBadge.classList.add('bg-warning');
-            } else if (pcStatus === 'broken') {
-                statusBadge.classList.add('bg-danger');
-            } else {
-                statusBadge.classList.add('bg-secondary');
-            }
-            
-            // Update action links
-            document.getElementById('modal-detail-link').href = '/pc/' + pcId;
-            const editLink = document.getElementById('modal-edit-link');
-            if (editLink) {
-                editLink.href = '/pc/' + pcId + '/edit';
-            }
-            
-            // Show modal
-            modal.show();
-        }
-        
-        pcCards.forEach(card => {
-            // Mouse click
-            card.addEventListener('click', function() {
-                openPCModal(this);
-            });
-            
-            // Keyboard navigation (Enter or Space)
-            card.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    openPCModal(this);
-                }
-            });
+    function initWindowsBadges() {
+        document.querySelectorAll('.pc-card-clickable').forEach(function(card) {
+            var label = card.dataset.pcLabel;
+            var os = card.dataset.pcOs || '';
+            var winInfo = parseWindowsVersion(os);
+            var badge = document.getElementById('win-badge-' + label);
+            if (badge && winInfo.shortText !== '-') { badge.textContent = winInfo.shortText; badge.className = 'pc-windows-badge ' + winInfo.badgeClass; }
+            else if (badge) { badge.classList.add('d-none'); }
+            var text = document.getElementById('win-text-' + label);
+            if (text && winInfo.fullText !== '-') { text.textContent = winInfo.fullText; }
         });
+    }
+    
+    window.openPCModal = function(card) {
+        var pcLabel = card.dataset.pcLabel;
+        var pcRow = card.dataset.pcRow;
+        var pcColumn = card.dataset.pcColumn;
+        var pcStatus = card.dataset.pcStatus;
+        var pcProcessor = card.dataset.pcProcessor || '-';
+        var pcRam = card.dataset.pcRam || '-';
+        var pcStorage = card.dataset.pcStorage || '-';
+        var pcOs = card.dataset.pcOs || '-';
+        var pcNotes = card.dataset.pcNotes || '-';
+        
+        document.getElementById('pcDetailModalLabel').textContent = pcLabel + ' Detail';
+        document.getElementById('modal-position').textContent = 'Baris ' + pcColumn + ', Kolom ' + pcRow;
+        document.getElementById('modal-processor').textContent = pcProcessor;
+        document.getElementById('modal-ram').textContent = pcRam;
+        document.getElementById('modal-storage').textContent = pcStorage;
+        document.getElementById('modal-os').textContent = pcOs;
+        document.getElementById('modal-notes').textContent = pcNotes;
+        
+        var statusBadge = document.getElementById('modal-status-badge');
+        var statusLabel = {normal: 'Normal', warning: 'Warning', broken: 'Rusak'}[pcStatus] || pcStatus;
+        statusBadge.textContent = statusLabel;
+        statusBadge.className = 'badge';
+        if (pcStatus === 'normal') { statusBadge.classList.add('bg-success'); }
+        else if (pcStatus === 'warning') { statusBadge.classList.add('bg-warning'); }
+        else if (pcStatus === 'broken') { statusBadge.classList.add('bg-danger'); }
+        else { statusBadge.classList.add('bg-secondary'); }
+        
+        document.getElementById('modal-detail-link').href = '/pc/' + pcLabel;
+        var editLink = document.getElementById('modal-edit-link');
+        if (editLink) { editLink.href = '/pc/' + pcLabel + '/edit'; }
+        
+        var modal = getPCDetailModal();
+        if (modal) modal.show();
+    }
+    
+    function bindPCCards() {
+        document.querySelectorAll('.pc-card-clickable').forEach(function(card) {
+            card.addEventListener('click', function() { openPCModal(this); });
+            card.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPCModal(this); } });
+        });
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        initWindowsBadges();
+        bindPCCards();
     });
     </script>
-</body>
-</html>
-{{ end }}
+
+<script>
+window.updateDashboardFromData = function(pcs) {
+    var maxRow = 5;
+    pcs.forEach(function(pc) {
+        if (pc.placement === 'dipakai' && /^pc-[0-9]+$/.test(pc.label) && pc.row > maxRow) {
+            maxRow = pc.row;
+        }
+    });
+    var grid = [];
+    for (var r = 0; r < maxRow; r++) {
+        grid[r] = [];
+        for (var c = 0; c < 8; c++) {
+            grid[r][c] = null;
+        }
+    }
+    pcs.forEach(function(pc) {
+        if (pc.placement !== 'dipakai') return;
+        if (/^pc-[0-9]+$/.test(pc.label) && pc.row >= 1 && pc.row <= maxRow && pc.column >= 1 && pc.column <= 8) {
+            grid[pc.row - 1][pc.column - 1] = pc;
+        }
+    });
+    var html = '';
+    for (var r = 0; r < grid.length; r++) {
+        html += '<div class="pc-row mb-3">';
+        for (var c = 0; c < grid[r].length; c++) {
+            var pc = grid[r][c];
+            if (pc && pc.id) {
+                var statusClass = pc.status || 'normal';
+                html += '<div class="pc-card-wrapper"><div class="pc-card status-' + statusClass + ' pc-card-clickable" role="button" tabindex="0" aria-label="PC ' + pc.label + ', Status ' + statusClass + '" data-pc-id="' + pc.id + '" data-pc-label="' + pc.label + '" data-pc-row="' + pc.row + '" data-pc-column="' + pc.column + '" data-pc-status="' + statusClass + '" data-pc-processor="' + (pc.processor || '') + '" data-pc-ram="' + (pc.ram || '') + '" data-pc-storage="' + (pc.storage || '') + '" data-pc-os="' + (pc.operating_system || '') + '" data-pc-notes="' + (pc.notes || '') + '" style="cursor:pointer"><div class="pc-number">' + pc.label + '</div><div class="pc-icon"><i class="bi bi-pc-display"></i></div><div class="pc-status-badge"><i class="bi ' + (statusClass === 'warning' ? 'bi-exclamation-triangle text-white' : statusClass === 'broken' ? 'bi-x-circle text-white' : 'bi-check-circle text-white') + '"></i><span class="visually-hidden">Status ' + (statusClass === 'warning' ? 'Warning' : statusClass === 'broken' ? 'Rusak' : 'Normal') + '</span></div><div class="pc-windows-badge" id="win-badge-' + pc.label + '"><span class="visually-hidden">Windows Version</span></div></div><div class="pc-windows-text" id="win-text-' + pc.label + '"></div></div>';
+            } else {
+                html += '<div class="pc-card-wrapper"><div class="pc-card pc-empty"><div class="pc-number">-</div><div class="pc-icon text-muted"><i class="bi bi-dash"></i></div></div></div>';
+            }
+        }
+        html += '</div>';
+    }
+    var gridContainer = document.querySelector('.pc-grid');
+    if (gridContainer) {
+        gridContainer.innerHTML = html;
+        initWindowsBadges();
+        bindPCCards();
+    }
+};
+
+window.refreshDashboardGrid = function(optCallback) {
+    fetch('/api/pc/status')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.pcs) {
+                if (optCallback) optCallback(false);
+                return;
+            }
+            window.updateDashboardFromData(data.pcs);
+            if (optCallback) optCallback(true);
+        })
+        .catch(function(err) {
+            console.error('refreshDashboardGrid error:', err);
+            if (optCallback) optCallback(false);
+        });
+};
+</script>
+<script src="{{ staticURL "js/layout-manager.js" }}"></script>
+{{ template "pc/layout_modal.html" . }}
+{{ template "layout/footer.html" . }}

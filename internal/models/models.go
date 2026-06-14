@@ -4,140 +4,196 @@ import "time"
 
 // User represents a system user
 type User struct {
-	ID        int       `json:"id"`
-	Username  string    `json:"username"`
-	Password  string    `json:"-"` // Never expose password in JSON
-	FullName  string    `json:"full_name"`
-	Role      string    `json:"role"` // "admin" or "dosen"
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           int       `json:"id"`
+	Username     string    `json:"username"`
+	Password     string    `json:"-"` // Never expose password in JSON
+	FullName     string    `json:"full_name"`
+	Role         string    `json:"role"` // "admin" or "dosen"
+	IsProtected  bool      `json:"is_protected"`
+	IsSuperAdmin bool      `json:"is_super_admin"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // PC represents a computer in the lab
 type PC struct {
-	ID                int        `json:"id"`
-	PCNumber          int        `json:"pc_number"`      // 1-40
-	Row               int        `json:"row"`            // 1-5
-	Column            int        `json:"column"`         // 1-8
-	Status            string     `json:"status"`         // "normal", "warning", "broken", "inactive"
-	Processor         string     `json:"processor"`
-	RAM               string     `json:"ram"`
-	Storage           string     `json:"storage"`
-	PurchaseDate      *time.Time `json:"purchase_date"`
-	Notes             string     `json:"notes"`
-	LastChecked       *time.Time `json:"last_checked"`
-	// Asset management fields
-	AssetID           string     `json:"asset_id"`
-	SerialNumber      string     `json:"serial_number"`
-	Brand             string     `json:"brand"`             // Deprecated, use BrandModel
-	Model             string     `json:"model"`             // Deprecated, use BrandModel
-	OperatingSystem   string     `json:"operating_system"`
-	PhysicalCondition string     `json:"physical_condition"` // "baik", "cukup", "rusak"
-	// New fields for PC refinement
-	DeviceType        string     `json:"device_type"`       // "PC All-in-one", etc
-	BrandModel        string     `json:"brand_model"`       // Combined brand + model
-	Accessories       string     `json:"accessories"`       // "Keyboard & Mouse Axioo (Wired Set)"
-	ActionNotes       string     `json:"action_notes"`      // Catatan tindakan perbaikan
-	PhotoSerial       string     `json:"photo_serial"`      // Filename foto S/N + barcode
-	PhotoFront        string     `json:"photo_front"`       // Filename foto tampilan depan
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	ID              int        `json:"id"`
+	Row             int        `json:"row"`              // 1-5 (0 for special/cadangan)
+	Column          int        `json:"column"`           // 1-8 (0 for special/cadangan)
+	Status          string     `json:"status"`           // "normal", "warning", "broken"
+	Placement       string     `json:"placement"`        // "dipakai", "cadangan"
+	Processor       string     `json:"processor"`
+	RAM             string     `json:"ram"`
+	Storage         string     `json:"storage"`
+	PurchaseDate    *time.Time `json:"purchase_date"`
+	Notes           string     `json:"notes"`
+	LastChecked     *time.Time `json:"last_checked"`
+	AssetID         string     `json:"asset_id"`
+	SerialNumber    string     `json:"serial_number"`
+	OperatingSystem string     `json:"operating_system"`
+	PCType          string     `json:"pc_type"`          // "PC All-in-one", etc
+	Label           string     `json:"label"`            // Lowercase unique slug (e.g. "pc-8", "pc-dosen")
+	BrandModel      string     `json:"brand_model"`      // Combined brand + model
+	Accessories     string     `json:"accessories"`      // "Keyboard & Mouse Axioo (Wired Set)"
+	PhotoSerial     string     `json:"photo_serial"`     // Filename foto S/N + barcode
+	PhotoFront      string     `json:"photo_front"`      // Filename foto tampilan depan
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
-// DeviceType represents a template/preset for device types
+// Category represents a device category/group
+type Category struct {
+	ID            int       `json:"id"`
+	Name          string    `json:"name"`           // TitleCase: "Mouse", "CCTV"
+	DefaultPrefix string    `json:"default_prefix"` // UPPERCASE: "MOUSE", "CCTV"
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+// DeviceType represents a variant/template for a category of devices
 type DeviceType struct {
-	ID               int       `json:"id"`
-	Name             string    `json:"name"`
-	Category         string    `json:"category"`
-	Brand            string    `json:"brand"`
-	Model            string    `json:"model"`
-	ItemType         string    `json:"item_type"`          // "individual" or "consumable"
-	IsLoanable       bool      `json:"is_loanable"`        // Can be borrowed?
-	IsConsumable     bool      `json:"is_consumable"`      // Can be consumed (habis pakai)?
-	AssetCodePrefix  string    `json:"asset_code_prefix"`  // "PENTAB", "SWITCH-RJ", etc
-	DefaultLocation  string    `json:"default_location"`
-	NotesTemplate    string    `json:"notes_template"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID              int       `json:"id"`
+	CategoryID      int       `json:"category_id"`
+	Name            string    `json:"name"`             // TitleCase — variant: "Axioo"
+	Brand           string    `json:"brand"`
+	Model           string    `json:"model"`
+	AssetCodePrefix string    `json:"asset_code_prefix"` // UPPERCASE UNIQUE: "MOUSE-AXIOO"
+	UsageType       string    `json:"usage_type"`        // 'loanable'|'consumable'|'installable'
+	DefaultLocation string    `json:"default_location"`
+	Photo           string    `json:"photo"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	// Joined fields
+	CategoryName   string `json:"category_name,omitempty"`
+	CategoryPrefix string `json:"category_prefix,omitempty"`
 }
 
-// Device represents other devices in the lab (UPDATED - Category removed, DeviceTypeID required)
+// Device represents a unique physical device with its own asset code
 type Device struct {
-	ID                int        `json:"id"`
-	DeviceTypeID      int        `json:"device_type_id"`      // Reference to DeviceType (REQUIRED)
-	AssetCode         string     `json:"asset_code"`          // Unique code: "PENTAB-001"
-	Name              string     `json:"name"`
-	Brand             string     `json:"brand"`
-	Model             string     `json:"model"`
-	SerialNumber      string     `json:"serial_number"`
-	ItemType          string     `json:"item_type"`           // "individual" or "consumable"
-	IsLoanable        bool       `json:"is_loanable"`         // Can be borrowed?
-	IsConsumable      bool       `json:"is_consumable"`       // Can be consumed?
-	QuantityTotal     int        `json:"quantity_total"`      // Total quantity (for consumables)
-	QuantityAvailable int        `json:"quantity_available"`  // Available quantity
-	Condition         string     `json:"condition"`           // "baik", "rusak", "maintenance"
-	Location          string     `json:"location"`
-	PurchaseDate      *time.Time `json:"purchase_date"`
-	Notes             string     `json:"notes"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
-}
-
-// DeviceWithCategory represents Device with Category from DeviceType (for queries with JOIN)
-type DeviceWithCategory struct {
-	Device
-	Category string `json:"category"` // From device_types table
+	ID           int        `json:"id"`
+	DeviceTypeID int        `json:"device_type_id"`
+	AssetCode    string     `json:"asset_code"`     // UNIQUE: "MOUSE-AXIOO-001"
+	SerialNumber string     `json:"serial_number"`
+	Condition    string     `json:"condition"`      // 'normal'|'warning'|'rusak'
+	Location     string     `json:"location"`
+	PurchaseDate *time.Time `json:"purchase_date"`
+	Notes        string     `json:"notes"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	// Joined fields
+	CategoryName     string `json:"category_name,omitempty"`
+	CategoryPrefix   string `json:"category_prefix,omitempty"`
+	DeviceTypeName   string `json:"device_type_name,omitempty"`
+	DeviceTypePrefix string `json:"device_type_prefix,omitempty"`
+	UsageType        string `json:"usage_type,omitempty"`          // EFFECTIVE: device override > device type
+	UsageTypeOverride string `json:"usage_type_override,omitempty"` // raw d.usage_type (empty = inherit from type)
+	DeviceTypePhoto  string `json:"device_type_photo,omitempty"`
 }
 
 // DeviceLoan represents a device loan/borrowing record
 type DeviceLoan struct {
-	ID                 int        `json:"id"`
-	DeviceID           int        `json:"device_id"`
-	BorrowerName       string     `json:"borrower_name"`
-	BorrowerType       string     `json:"borrower_type"`       // "dosen", "mahasiswa", "staff", "lainnya"
-	LoanDate           time.Time  `json:"loan_date"`
-	ExpectedReturnDate *time.Time `json:"expected_return_date"`
-	ActualReturnDate   *time.Time `json:"actual_return_date"`
-	Quantity           int        `json:"quantity"`
-	Status             string     `json:"status"`              // "active", "returned", "overdue"
-	Purpose            string     `json:"purpose"`
-	Notes              string     `json:"notes"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
-	// Display fields (not in database)
-	DeviceAssetCode    string     `json:"device_asset_code,omitempty"`
-	DeviceName         string     `json:"device_name,omitempty"`
-	ComputedStatus     string     `json:"computed_status,omitempty"` // Real-time computed status
+	ID               int        `json:"id"`
+	DeviceID         int        `json:"device_id"`
+	BorrowerName     string     `json:"borrower_name"`
+	BorrowerType     string     `json:"borrower_type"`      // 'dosen'|'mahasiswa'|'staff'|'lainnya'
+	LoanDate         time.Time  `json:"loan_date"`
+	ReturnDate       time.Time  `json:"return_date"`        // Deadline harus kembali
+	ActualReturnDate *time.Time `json:"actual_return_date"` // Diisi saat benar-benar kembali
+	Purpose          string     `json:"purpose"`
+	Notes            string     `json:"notes"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	// Joined fields
+	DeviceAssetCode string `json:"device_asset_code,omitempty"`
+	DeviceTypeName  string `json:"device_type_name,omitempty"`
+	CategoryName    string `json:"category_name,omitempty"`
+	ExtensionCount  int    `json:"extension_count,omitempty"`
+}
+
+// LoanExtension tracks return date extension history (backend-only)
+type LoanExtension struct {
+	ID                 int       `json:"id"`
+	LoanID             int       `json:"loan_id"`
+	PreviousReturnDate time.Time `json:"previous_return_date"`
+	NewReturnDate      time.Time `json:"new_return_date"`
+	ExtendedAt         time.Time `json:"extended_at"`
 }
 
 // DeviceUsage represents a device usage/consumption record
 type DeviceUsage struct {
-	ID        int       `json:"id"`
-	DeviceID  int       `json:"device_id"`
-	UserName  string    `json:"user_name"`
-	UserType  string    `json:"user_type"`  // "dosen", "mahasiswa", "staff", "lainnya"
-	UsageDate time.Time `json:"usage_date"`
-	Quantity  int       `json:"quantity"`
-	Purpose   string    `json:"purpose"`
-	Notes     string    `json:"notes"`
-	CreatedAt time.Time `json:"created_at"`
-	// Display fields (not in database)
+	ID          int       `json:"id"`
+	DeviceID    int       `json:"device_id"`
+	UserName    string    `json:"user_name"`
+	UserType    string    `json:"user_type"`     // 'dosen'|'mahasiswa'|'staff'|'lainnya'
+	UsageDate   time.Time `json:"usage_date"`
+	IsAvailable string    `json:"is_available"`  // 'yes' (masih ada) or 'no' (habis)
+	Purpose     string    `json:"purpose"`
+	Notes       string    `json:"notes"`
+	CreatedAt   time.Time `json:"created_at"`
+	// Joined fields
 	DeviceAssetCode string `json:"device_asset_code,omitempty"`
-	DeviceName      string `json:"device_name,omitempty"`
+	DeviceTypeName  string `json:"device_type_name,omitempty"`
+	CategoryName    string `json:"category_name,omitempty"`
+}
+
+// DeviceInstallation represents where a device is installed
+type DeviceInstallation struct {
+	ID                    int        `json:"id"`
+	DeviceID              int        `json:"device_id"`               // UNIQUE
+	LocationInstalled     string     `json:"location_installed"`      // Sentence case
+	InstallationStartDate *time.Time `json:"installation_start_date"`
+	InstallationFinishDate *time.Time `json:"installation_finish_date"`
+	Photo                 string     `json:"photo"`
+	Notes                 string     `json:"notes"`
+	CreatedAt             time.Time  `json:"created_at"`
+	UpdatedAt             time.Time  `json:"updated_at"`
+	// Joined fields
+	DeviceAssetCode string `json:"device_asset_code,omitempty"`
+	DeviceTypeName  string `json:"device_type_name,omitempty"`
+	CategoryName    string `json:"category_name,omitempty"`
+}
+
+// DeviceStatus represents the real-time computed status for UI display
+type DeviceStatus struct {
+	DeviceID int
+	Status   string // 'available'|'loaned'|'depleted'|'installed'
+	Detail   string // Human-readable detail
 }
 
 
-// Software represents software installed on PCs
-type Software struct {
+// SoftwareCatalog represents a software entry in the master catalog
+type SoftwareCatalog struct {
 	ID          int       `json:"id"`
-	PCID        int       `json:"pc_id"`
-	Name        string    `json:"name"`
-	Version     string    `json:"version"`
-	License     string    `json:"license"`
-	InstallDate *time.Time `json:"install_date"`
-	Notes       string    `json:"notes"`
+	Name        string    `json:"name"`     // UNIQUE
+	Category    string    `json:"category"` // "required" or "other"
+	Description string    `json:"description"`
+	Slug        string    `json:"slug"`     // URL slug from name
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// PCSoftware represents the many-to-many relation between PCs and software
+type PCSoftware struct {
+	PCID       int    `json:"pc_id"`
+	SoftwareID int    `json:"software_id"`
+	Installed  bool   `json:"installed"`
+	// Joined fields (not in DB)
+	SoftwareName string `json:"software_name,omitempty"`
+	Category     string `json:"category,omitempty"`
+	Description  string `json:"description,omitempty"`
+}
+
+// CourseSchedule represents a course schedule in the lab
+type CourseSchedule struct {
+	ID         int       `json:"id"`
+	CourseName string    `json:"course_name"`
+	Lecturer   string    `json:"lecturer"`
+	Day        string    `json:"day"`
+	Class      string    `json:"class"`
+	TimeStart  string    `json:"time_start"`
+	TimeEnd    string    `json:"time_end"`
+	Notes      string    `json:"notes"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // LogbookEntry represents an attendance logbook entry
@@ -152,24 +208,6 @@ type LogbookEntry struct {
 	SourceFile string    `json:"source_file"` // Original uploaded file
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
-}
-
-// MaintenanceLog represents maintenance history for PCs
-type MaintenanceLog struct {
-	ID          int       `json:"id"`
-	PCID        int       `json:"pc_id"`
-	Date        time.Time `json:"date"`
-	Type        string    `json:"type"` // "repair", "upgrade", "cleaning", "check"
-	Description string    `json:"description"`
-	Technician  string    `json:"technician"`
-	Cost        float64   `json:"cost"`
-	CreatedAt   time.Time `json:"created_at"`
-}
-
-// StatusCount represents count of PCs by status
-type StatusCount struct {
-	Status string `json:"status"`
-	Count  int    `json:"count"`
 }
 
 // ActivityLog represents an audit trail entry
@@ -189,4 +227,43 @@ type ActivityLog struct {
 	UserAgent    string    `json:"user_agent"`
 	Status       string    `json:"status"`        // "success", "failed", "error"
 	ErrorMessage string    `json:"error_message"` // If status = "failed"
+}
+
+// Grouped view for device list page
+type DeviceTypeGroup struct {
+	TypeID     int
+	TypeName   string
+	TypePrefix string
+	UsageType  string
+	TypePhoto  string
+	Devices    []Device
+}
+
+type CategoryGroup struct {
+	CategoryID     int
+	CategoryName   string
+	CategoryPrefix string
+	Types          []DeviceTypeGroup
+}
+
+type UsageTypeGroup struct {
+	UsageType  string
+	Categories []CategoryGroup
+}
+
+type StickerTemplate struct {
+	ID          int       `json:"id"`
+	Name        string    `json:"name"`
+	StickerType string    `json:"sticker_type"` // "pc" | "device"
+	FontSizeCM  float64   `json:"font_size_cm"`
+	PaddingHCM  float64   `json:"padding_h_cm"`
+	PaddingVCM  float64   `json:"padding_v_cm"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type DeviceGroupedData struct {
+	UsageGroups   []UsageTypeGroup
+	ActiveLoanIDs map[int]bool
+	DepletedIDs   map[int]bool
 }

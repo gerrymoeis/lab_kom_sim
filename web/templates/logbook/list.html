@@ -1,229 +1,215 @@
-{{ define "logbook/list.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <!-- Navbar -->
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
-    <!-- Main Content -->
-    <div class="container-fluid mt-4">
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <h2><i class="bi bi-journal-text"></i> Logbook Absensi</h2>
-                <p class="text-muted">Data absensi mahasiswa di laboratorium</p>
-            </div>
-            <div class="col-md-6">
-                {{ if eq .role "admin" }}
-                <div class="d-flex flex-wrap gap-2 justify-content-end mt-3 mt-md-0">
-                    <a href="/logbook/create" class="btn btn-primary">
-                        <i class="bi bi-plus-circle"></i> Tambah Manual
-                    </a>
-                    <a href="/logbook/upload" class="btn btn-info">
-                        <i class="bi bi-upload"></i> Upload (OCR)
-                    </a>
-                    <button type="button" class="btn btn-success" onclick="exportLogbook()">
-                        <i class="bi bi-file-earmark-excel"></i> Export Excel
-                    </button>
-                </div>
-                {{ end }}
-            </div>
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-journal-text"></i> Logbook Absensi</h2>
+            <p class="text-muted">Data absensi mahasiswa di laboratorium</p>
         </div>
-
-        <!-- Filters, Search & Sort -->
-        <div class="card mb-3">
-            <div class="card-body">
-                <form method="GET" action="/logbook" class="row g-3">
-                    <!-- Date Range Filter -->
-                    <div class="col-md-3">
-                        <label for="date_from" class="form-label">Tanggal Dari</label>
-                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ .filters.date_from }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label for="date_to" class="form-label">Tanggal Sampai</label>
-                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ .filters.date_to }}">
-                    </div>
-                    
-                    <!-- Search -->
-                    <div class="col-md-6">
-                        <label for="search" class="form-label">Cari</label>
-                        <input type="text" class="form-control" id="search" name="search" 
-                               placeholder="Cari nama, NIM, atau keperluan..." 
-                               value="{{ .filters.search }}">
-                    </div>
-                    
-                    <!-- Sort Options -->
-                    <div class="col-md-3">
-                        <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
-                        <select class="form-select" id="sort_by" name="sort_by">
-                            <option value="date" {{ if eq .filters.sort_by "date" }}selected{{ end }}>Tanggal</option>
-                            <option value="student_name" {{ if eq .filters.sort_by "student_name" }}selected{{ end }}>Nama Mahasiswa</option>
-                            <option value="nim" {{ if eq .filters.sort_by "nim" }}selected{{ end }}>NIM</option>
-                            <option value="time_in" {{ if eq .filters.sort_by "time_in" }}selected{{ end }}>Jam Masuk</option>
-                            <option value="created_at" {{ if eq .filters.sort_by "created_at" }}selected{{ end }}>Waktu Input</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="sort_order" class="form-label">Urutan</label>
-                        <select class="form-select" id="sort_order" name="sort_order">
-                            <option value="DESC" {{ if eq .filters.sort_order "DESC" }}selected{{ end }}>Terbaru</option>
-                            <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>Terlama</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="size" class="form-label">Per Halaman</label>
-                        <select class="form-select" id="size" name="size">
-                            <option value="25" {{ if eq .pageSize 25 }}selected{{ end }}>25</option>
-                            <option value="50" {{ if eq .pageSize 50 }}selected{{ end }}>50</option>
-                            <option value="100" {{ if eq .pageSize 100 }}selected{{ end }}>100</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-search"></i> Filter
-                        </button>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <a href="/logbook" class="btn btn-secondary w-100">
-                            <i class="bi bi-x-circle"></i> Reset Filter
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Results Summary -->
-        <div class="row mb-3">
-            <div class="col">
-                <p class="text-muted">
-                    Menampilkan {{ len .entries }} dari {{ .totalCount }} entries
-                    {{ if .filters.search }}
-                    (hasil pencarian: "{{ .filters.search }}")
-                    {{ end }}
-                </p>
-            </div>
-        </div>
-
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Tanggal</th>
-                                <th>Nama Mahasiswa</th>
-                                <th>NIM</th>
-                                <th>Keperluan</th>
-                                <th>Jam Masuk</th>
-                                <th>Jam Keluar</th>
-                                {{ if eq .role "admin" }}
-                                <th width="120">Aksi</th>
-                                {{ end }}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{ range .entries }}
-                            <tr>
-                                <td>{{ .Date.Format "02/01/2006" }}</td>
-                                <td>{{ .StudentName }}</td>
-                                <td>{{ .NIM }}</td>
-                                <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>
-                                <td>{{ .TimeIn }}</td>
-                                <td>{{ if .TimeOut }}{{ .TimeOut }}{{ else }}-{{ end }}</td>
-                                {{ if eq $.role "admin" }}
-                                <td>
-                                    <a href="/logbook/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form method="POST" action="/logbook/{{ .ID }}/delete" style="display: inline;" 
-                                          onsubmit="return confirm('Yakin ingin menghapus entry ini?');">
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                </td>
-                                {{ end }}
-                            </tr>
-                            {{ else }}
-                            <tr>
-                                <td colspan="{{ if eq $.role "admin" }}7{{ else }}6{{ end }}" class="text-center text-muted py-4">
-                                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                                    <p class="mt-2">Belum ada data logbook</p>
-                                </td>
-                            </tr>
-                            {{ end }}
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
-                {{ if gt .totalPages 1 }}
-                <nav aria-label="Page navigation" class="mt-3">
-                    <ul class="pagination justify-content-center">
-                        <!-- Previous -->
-                        <li class="page-item {{ if eq .page 1 }}disabled{{ end }}">
-                            <a class="page-link" href="?page={{ sub .page 1 }}{{ if .filters.date_from }}&date_from={{ .filters.date_from }}{{ end }}{{ if .filters.date_to }}&date_to={{ .filters.date_to }}{{ end }}{{ if .filters.search }}&search={{ .filters.search }}{{ end }}{{ if .filters.sort_by }}&sort_by={{ .filters.sort_by }}{{ end }}{{ if .filters.sort_order }}&sort_order={{ .filters.sort_order }}{{ end }}&size={{ .pageSize }}">
-                                Previous
-                            </a>
-                        </li>
-
-                        <!-- Page numbers -->
-                        {{ $currentPage := .page }}
-                        {{ $totalPages := .totalPages }}
-                        {{ $filters := .filters }}
-                        {{ $pageSize := .pageSize }}
-                        
-                        {{ range $i := iterate $totalPages }}
-                        {{ $page := add $i 1 }}
-                        {{ if or (le $page 3) (and (ge $page (sub $currentPage 1)) (le $page (add $currentPage 1))) (ge $page (sub $totalPages 2)) }}
-                        <li class="page-item {{ if eq $page $currentPage }}active{{ end }}">
-                            <a class="page-link" href="?page={{ $page }}{{ if $filters.date_from }}&date_from={{ $filters.date_from }}{{ end }}{{ if $filters.date_to }}&date_to={{ $filters.date_to }}{{ end }}{{ if $filters.search }}&search={{ $filters.search }}{{ end }}{{ if $filters.sort_by }}&sort_by={{ $filters.sort_by }}{{ end }}{{ if $filters.sort_order }}&sort_order={{ $filters.sort_order }}{{ end }}&size={{ $pageSize }}">
-                                {{ $page }}
-                            </a>
-                        </li>
-                        {{ else if or (eq $page 4) (eq $page (sub $totalPages 3)) }}
-                        <li class="page-item disabled">
-                            <span class="page-link">...</span>
-                        </li>
-                        {{ end }}
-                        {{ end }}
-
-                        <!-- Next -->
-                        <li class="page-item {{ if eq .page .totalPages }}disabled{{ end }}">
-                            <a class="page-link" href="?page={{ add .page 1 }}{{ if .filters.date_from }}&date_from={{ .filters.date_from }}{{ end }}{{ if .filters.date_to }}&date_to={{ .filters.date_to }}{{ end }}{{ if .filters.search }}&search={{ .filters.search }}{{ end }}{{ if .filters.sort_by }}&sort_by={{ .filters.sort_by }}{{ end }}{{ if .filters.sort_order }}&sort_order={{ .filters.sort_order }}{{ end }}&size={{ .pageSize }}">
-                                Next
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-                {{ end }}
-            </div>
+        <div class="col-md-6 text-end">
+            {{ if eq .role "admin" }}
+            {{ template "layout/header_actions_start.html" $ }}
+            <a href="/logbook/create" class="btn btn-primary flex-grow-1">
+                <i class="bi bi-plus-circle"></i> Tambah Manual
+            </a>
+            <a href="/logbook/upload" class="btn btn-primary flex-grow-1">
+                <i class="bi bi-upload"></i> Upload (OCR)
+            </a>
+            <button type="button" class="btn btn-success flex-grow-1" onclick="exportLogbook()">
+                <i class="bi bi-file-earmark-excel"></i> Export Excel
+            </button>
+            {{ template "layout/header_actions_end.html" }}
+            {{ end }}
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
-    <script>
-        // Export logbook dengan current filters
-        function exportLogbook() {
-            const params = new URLSearchParams();
-            
-            const dateFrom = document.getElementById('date_from').value;
-            const dateTo = document.getElementById('date_to').value;
-            
-            if (dateFrom) params.append('start_date', dateFrom);
-            if (dateTo) params.append('end_date', dateTo);
-            
-            window.location.href = '/logbook/export?' + params.toString();
-        }
-    </script>
-</body>
-</html>
-{{ end }}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="GET" action="/logbook" class="row g-3 mb-3">
+                {{ if $.dupMode }}<input type="hidden" name="dup" value="1">{{ end }}
+                <div class="col-md-6">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search"
+                           placeholder="Cari nama, NIM, atau keperluan..."
+                           value="{{ .filters.search }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">Tanggal Dari</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" value="{{ .filters.date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">Tanggal Sampai</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" value="{{ .filters.date_to }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="date" {{ if eq .filters.sort_by "date" }}selected{{ end }}>Tanggal</option>
+                        <option value="student_name" {{ if eq .filters.sort_by "student_name" }}selected{{ end }}>Nama Mahasiswa</option>
+                        <option value="nim" {{ if eq .filters.sort_by "nim" }}selected{{ end }}>NIM</option>
+                        <option value="time_in" {{ if eq .filters.sort_by "time_in" }}selected{{ end }}>Jam Masuk</option>
+                        <option value="created_at" {{ if eq .filters.sort_by "created_at" }}selected{{ end }}>Waktu Input</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_order" class="form-label">Urutan</label>
+                    <select class="form-select" id="sort_order" name="sort_order">
+                        <option value="DESC" {{ if eq .filters.sort_order "DESC" }}selected{{ end }}>Terbaru</option>
+                        <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>Terlama</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="size" class="form-label">Per Halaman</label>
+                    <select class="form-select" id="size" name="size">
+                        <option value="25" {{ if eq .pageSize 25 }}selected{{ end }}>25</option>
+                        <option value="50" {{ if eq .pageSize 50 }}selected{{ end }}>50</option>
+                        <option value="100" {{ if eq .pageSize 100 }}selected{{ end }}>100</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                    <a href="/logbook{{ if $.dupMode }}?dup=1{{ end }}" class="btn btn-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
+            </form>
+
+            {{ if gt (len .entries) 0 }}<div class="d-flex justify-content-between align-items-center my-2">
+                <p class="mb-0{{ if not $.dupMode }} text-muted{{ end }}"{{ if $.dupMode }} style="color:#856404;"{{ end }}>Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }} dari {{ .total }} entries{{ if $.dupMode }} duplikat{{ end }}{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>
+                <div>
+                    {{ if $.dupMode }}
+                    <a href="/logbook{{ if $.queryBack }}?{{ $.queryBack }}{{ end }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Tampilkan Semua
+                    </a>
+                    {{ else }}
+                    <a href="/logbook{{ if $.queryDup }}?{{ $.queryDup }}{{ end }}" class="btn btn-outline-warning{{ if eq .dupCount 0 }} disabled{{ end }}">
+                        <i class="bi bi-exclamation-triangle"></i> Duplikat <span class="badge bg-warning text-dark{{ if eq .dupCount 0 }} d-none{{ end }}">{{ .dupCount }}</span>
+                    </a>
+                    {{ end }}
+                </div>
+            </div>{{ end }}
+
+            <p class="mb-0 small{{ if or (eq .dupCount 0) $.dupMode }} d-none{{ end }}" id="dupStatsList" style="color:#856404;">
+                Terdapat {{ .dupCount }} terindikasi duplikat dari {{ .total }} entries.
+            </p>
+
+            {{ template "layout/pagination.html" . }}
+
+            <div class="table-responsive">
+                <table class="table table-hover" data-batch-url="/logbook/batch-delete">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="th-w-50">#</th>
+                            <th>Tanggal</th>
+                            <th>Nama Mahasiswa</th>
+                            <th>NIM</th>
+                            <th>Keperluan</th>
+                            <th>Jam Masuk</th>
+                            <th>Jam Keluar</th>
+                            <th class="th-w-120">Indikasi</th>
+                            {{ if eq .role "admin" }}
+                            <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
+                            {{ end }}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range $i, $entry := .entries }}
+                        <tr data-batch-id="{{ $entry.ID }}" data-batch-label="{{ $entry.StudentName }} - {{ $entry.NIM }} ({{ ($entry.Date).Format "02/01/2006" }})" data-dup="{{ if index $.dupFlags $entry.ID }}1{{ else }}0{{ end }}">
+                            <td class="text-muted">{{ add $i $.startRow }}</td>
+                            <td>{{ (localTime $entry.Date).Format "02/01/2006" }} {{ tzCode }}</td>
+                            <td><strong>{{ $entry.StudentName }}</strong></td>
+                            <td>{{ $entry.NIM }}</td>
+                            <td>{{ if $entry.Purpose }}{{ $entry.Purpose }}{{ else }}-{{ end }}</td>
+                            <td>{{ $entry.TimeIn }}</td>
+                            <td>{{ if $entry.TimeOut }}{{ $entry.TimeOut }}{{ else }}-{{ end }}</td>
+                            <td class="text-center">
+                                {{ if index $.dupFlags $entry.ID }}
+                                <div class="d-inline-flex align-items-center gap-1 dup-wrapper"
+                                     data-entry-id="{{ $entry.ID }}"
+                                     data-state="visible">
+                                    <span class="badge d-inline-flex align-items-center gap-1 bg-warning text-dark dup-badge">
+                                        <i class="bi bi-exclamation-triangle-fill"></i>
+                                        Potensi Duplikat
+                                        <button type="button" class="dup-close-btn ms-1" data-dismiss-dup
+                                                aria-label="Bukan duplikat" title="Bukan duplikat"><i class="bi bi-x-lg"></i></button>
+                                    </span>
+                                    <span class="badge d-inline-flex align-items-center gap-1 bg-info text-white cursor-pointer d-none dup-restore" role="button" tabindex="0">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                        Pulihkan
+                                    </span>
+                                </div>
+                                {{ else }}
+                                <span class="text-muted small">-</span>
+                                {{ end }}
+                            </td>
+                            {{ if eq $.role "admin" }}
+                            <td class="batch-action-col text-nowrap text-end">
+                                <span class="batch-mode-off">
+                                    <a href="/logbook/{{ $entry.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="/logbook/{{ $entry.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                        onclick="confirmDelete({message:'Yakin ingin menghapus entry ini?', formId:'del-log-{{ $entry.ID }}'})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <form id="del-log-{{ $entry.ID }}" method="POST" action="/logbook/{{ $entry.ID }}/delete" class="d-none"></form>
+                                </span>
+                            </td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $entry.ID }}"></span></td>
+                            {{ end }}
+                        </tr>
+                        {{ else }}
+                        <tr>
+                            <td colspan="{{ if eq $.role "admin" }}10{{ else }}9{{ end }}" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                <p class="mt-2">Belum ada data logbook</p>
+                            </td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+
+            {{ template "layout/pagination.html" . }}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('click', function(e) {
+    function setDismissed(wrapper, dismissed) {
+        wrapper.dataset.state = dismissed ? 'dismissed' : 'visible';
+        wrapper.querySelector('.dup-badge').classList.toggle('d-none', dismissed);
+        wrapper.querySelector('.dup-restore').classList.toggle('d-none', !dismissed);
+    }
+    function visibleDupCount() {
+        return document.querySelectorAll('.dup-wrapper[data-state="visible"]').length;
+    }
+    const target = e.target;
+    const wrapper = target.closest('.dup-wrapper');
+    if (!wrapper) return;
+    if (target.matches('[data-dismiss-dup]')) {
+        setDismissed(wrapper, true);
+    }
+    if (target.closest('.dup-restore')) {
+        setDismissed(wrapper, false);
+    }
+});
+
+function exportLogbook() {
+    const params = new URLSearchParams();
+    const dateFrom = document.getElementById('date_from').value;
+    const dateTo = document.getElementById('date_to').value;
+    if (dateFrom) params.append('start_date', dateFrom);
+    if (dateTo) params.append('end_date', dateTo);
+    window.location.href = '/logbook/export?' + params.toString();
+}
+
+
+</script>
+{{ template "layout/footer.html" . }}

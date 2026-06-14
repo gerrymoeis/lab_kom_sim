@@ -1,0 +1,262 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4">
+    {{ template "layout/card_create.html" . }}
+
+                    <form method="POST" action="/installations/create">
+                        <div class="mb-3">
+                            <label for="device_id" class="form-label">Perangkat *</label>
+                            <select class="form-select" id="device_id" name="device_id" required>
+                                <option value="">Pilih perangkat...</option>
+                                {{ range $d := .devices }}
+                                <option value="{{ $d.ID }}" data-asset-code="{{ $d.AssetCode }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.AssetCode }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
+                                {{ end }}
+                            </select>
+                            <small class="text-muted">Hanya menampilkan perangkat instalasi yang tersedia</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="location_installed" class="form-label">Lokasi Instalasi *</label>
+                            <input type="text" class="form-control" id="location_installed" name="location_installed" required>
+                            <small class="text-muted">Contoh: Lab Kom 1, Ruang Server, Gedung A Lantai 2</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="installation_start_date" class="form-label">Tanggal Mulai</label>
+                                <input type="date" class="form-control" id="installation_start_date" name="installation_start_date">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="installation_finish_date" class="form-label">Tanggal Selesai</label>
+                                <input type="date" class="form-control" id="installation_finish_date" name="installation_finish_date">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Catatan</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                            <small class="text-muted">Catatan terkait instalasi</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold mb-3">Foto Instalasi</label>
+                            <p class="text-muted mb-3">Dokumentasi pemasangan selesai dan berhasil. Max 5MB, format JPEG/PNG/HEIC</p>
+
+                            <div class="row g-3">
+                                <div class="col-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-camera-fill text-primary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Ambil Foto Langsung</label>
+                                    </div>
+                                    <input type="file" id="photo_camera" name="photo" accept="image/*" capture="environment" class="form-control mt-auto">
+                                </div>
+                                <div class="col-6 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-images text-secondary me-2"></i>
+                                        <label class="form-label mb-0 small fw-medium">Pilih dari Galeri</label>
+                                    </div>
+                                    <input type="file" id="photo_gallery" name="photo" accept="image/jpeg,image/png,image/heic,image/heif" class="form-control mt-auto">
+                                </div>
+                            </div>
+
+                            <div id="previewPhoto" class="mt-3 d-none">
+                                <div class="border rounded-3 p-3 bg-light text-center">
+                                    <img id="imagePreviewPhoto" src="" alt="Preview" class="img-fluid rounded" style="max-height:400px;object-fit:contain;">
+                                    <div id="loadingPhoto" class="d-none mt-2">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <small class="text-muted ms-1">Memproses gambar...</small>
+                                    </div>
+                                    <div id="errorPhoto" class="d-none mt-2 text-danger small"></div>
+                                    <div class="mt-3 text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearPhoto()">
+                                            <i class="bi bi-x-circle me-1"></i> Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <input type="hidden" id="photo_file_ref" name="photo_file_ref" value="">
+
+                        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                            <button type="submit" id="submitBtn" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Simpan
+                            </button>
+                            <a href="/devices?tab=installations" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Batal
+                            </a>
+                        </div>
+                    </form>
+    {{ template "layout/card_close.html" . }}
+</div>
+
+<script>window.ANDROID_MODE={{ .android }};</script>
+<script src="{{ staticURL "vendor/heic-to.js" }}"></script>
+<script>
+var photoFileRef = null;
+var photoPreviewUrl = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    var cam = document.getElementById('photo_camera');
+    var gal = document.getElementById('photo_gallery');
+    if (cam) cam.addEventListener('change', function(e) { handlePhotoSelect(e.target.files[0], 'camera'); });
+    if (gal) gal.addEventListener('change', function(e) { handlePhotoSelect(e.target.files[0], 'gallery'); });
+});
+
+async function handlePhotoSelect(file, source) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran file maksimal 5MB');
+        return;
+    }
+    showLoadingState();
+
+    try {
+        var ext = file.name.split('.').pop().toLowerCase();
+        if ((ext === 'heic' || ext === 'heif') && typeof HeicTo !== 'undefined') {
+            var blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
+            file = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
+        }
+
+        if (window.ANDROID_MODE) {
+            file = await compressImage(file);
+        }
+
+        var previewUrl = URL.createObjectURL(file);
+        if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+        photoPreviewUrl = previewUrl;
+        showLocalPreview(previewUrl);
+
+        clearOtherInput(source);
+
+        var result = await uploadForProcessing(file);
+        if (result.success) {
+            storeFileReference(result.file_ref);
+            document.getElementById('photo_' + source).value = '';
+        } else {
+            showError(result.message || 'Gagal upload foto');
+        }
+    } catch (error) {
+        console.error('Photo upload error:', error.message);
+        showError(error.message);
+    }
+}
+
+function showLoadingState() {
+    var area = document.getElementById('previewPhoto');
+    var loader = document.getElementById('loadingPhoto');
+    var img = document.getElementById('imagePreviewPhoto');
+    var err = document.getElementById('errorPhoto');
+    area.classList.remove('d-none');
+    loader.classList.remove('d-none');
+    if (img) img.classList.add('d-none');
+    if (err) err.classList.add('d-none');
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = true;
+}
+
+function showLocalPreview(url) {
+    var img = document.getElementById('imagePreviewPhoto');
+    var area = document.getElementById('previewPhoto');
+    var loader = document.getElementById('loadingPhoto');
+    var err = document.getElementById('errorPhoto');
+    if (img) { img.src = url; img.classList.remove('d-none'); }
+    area.classList.remove('d-none');
+    loader.classList.add('d-none');
+    if (err) err.classList.add('d-none');
+}
+
+function showError(message) {
+    var area = document.getElementById('previewPhoto');
+    var err = document.getElementById('errorPhoto');
+    var loader = document.getElementById('loadingPhoto');
+    if (err) { err.textContent = message; err.classList.remove('d-none'); }
+    loader.classList.add('d-none');
+    area.classList.remove('d-none');
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = false;
+}
+
+function storeFileReference(fileRef) {
+    photoFileRef = fileRef;
+    var hiddenInput = document.getElementById('photo_file_ref');
+    if (!hiddenInput) {
+        hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.id = 'photo_file_ref';
+        hiddenInput.name = 'photo_file_ref';
+        var form = document.querySelector('form');
+        if (form) form.appendChild(hiddenInput);
+    }
+    hiddenInput.value = fileRef;
+    var submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) submitBtn.disabled = false;
+}
+
+function clearPhoto() {
+    var cam = document.getElementById('photo_camera');
+    var gal = document.getElementById('photo_gallery');
+    if (cam) cam.value = '';
+    if (gal) gal.value = '';
+    document.getElementById('previewPhoto').classList.add('d-none');
+    if (photoPreviewUrl) { URL.revokeObjectURL(photoPreviewUrl); photoPreviewUrl = null; }
+    if (photoFileRef) {
+        fetchWithCSRF('/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: photoFileRef }) }).catch(function(){});
+    }
+    photoFileRef = null;
+    var hiddenInput = document.getElementById('photo_file_ref');
+    if (hiddenInput) hiddenInput.value = '';
+}
+
+function clearOtherInput(source) {
+    var other = document.getElementById(source === 'camera' ? 'photo_gallery' : 'photo_camera');
+    if (other) other.value = '';
+}
+
+async function uploadForProcessing(file) {
+    var formData = new FormData();
+    formData.append('image', file);
+    formData.append('type', 'installation');
+    var devSelect = document.getElementById('device_id');
+    if (devSelect && devSelect.selectedIndex > 0) {
+        var opt = devSelect.options[devSelect.selectedIndex];
+        if (opt.dataset.assetCode) { formData.append('label', opt.dataset.assetCode); }
+    }
+    var response = await fetchWithCSRF('/api/upload-image', { method: 'POST', body: formData });
+    return await response.json();
+}
+
+async function compressImage(file) {
+    return new Promise(function(resolve, reject) {
+        var img = new Image();
+        img.onload = function() {
+            var width = img.width, height = img.height;
+            var maxDim = 1920;
+            if (width > maxDim || height > maxDim) {
+                var ratio = Math.min(maxDim / width, maxDim / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+            var canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(function(blob) {
+                if (!blob) { reject(new Error('Gagal kompresi gambar')); return; }
+                resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() }));
+            }, 'image/jpeg', 0.75);
+        };
+        img.onerror = function() { reject(new Error('Gagal memuat gambar')); };
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+window.addEventListener('beforeunload', function() {
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+});
+</script>
+
+{{ template "layout/footer.html" . }}

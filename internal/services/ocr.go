@@ -1,4 +1,4 @@
-package services
+﻿package services
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -13,16 +14,20 @@ import (
 	"time"
 )
 
-// OCRService handles OCR operations using Google Gemini API
+// OCRService handles OCR operations using AI vision APIs
 type OCRService struct {
-	apiKey string
-	client *http.Client
+	geminiKey     string
+	openRouterKey string
+	client        *http.Client
 }
 
 // NewOCRService creates a new OCR service
-func NewOCRService(apiKey string) *OCRService {
+// geminiKey: Google Gemini API key (used as fallback)
+// openRouterKey: OpenRouter API key (used as primary via openrouter/free)
+func NewOCRService(geminiKey, openRouterKey string) *OCRService {
 	return &OCRService{
-		apiKey: apiKey,
+		geminiKey:     geminiKey,
+		openRouterKey: openRouterKey,
 		client: &http.Client{
 			Timeout: 60 * time.Second,
 		},
@@ -41,10 +46,10 @@ type LogbookEntry struct {
 
 // OCRResult represents the result of OCR processing
 type OCRResult struct {
-	Success bool            `json:"success"`
-	Entries []LogbookEntry  `json:"entries"`
-	RawText string          `json:"raw_text"`
-	Error   string          `json:"error,omitempty"`
+	Success bool           `json:"success"`
+	Entries []LogbookEntry `json:"entries"`
+	RawText string         `json:"raw_text"`
+	Error   string         `json:"error,omitempty"`
 }
 
 // GeminiRequest represents request to Gemini API
@@ -77,25 +82,241 @@ type GeminiResponse struct {
 	} `json:"candidates"`
 }
 
-// ExtractLogbookFromImage extracts logbook data from image using Gemini API
+// ExtractLogbookFromImage extracts logbook data from image using AI vision API
+// Strategy: Gemini (primary)  ->  OpenRouter (fallback)
 func (s *OCRService) ExtractLogbookFromImage(imagePath string) (*OCRResult, error) {
-	// Read image file
+	totalStart := time.Now()
+	log.Printf("[OCR] Starting OCR for %s", imagePath)
+
+	if s.geminiKey == "" && s.openRouterKey == "" {
+		return nil, fmt.Errorf("OCR tidak dapat diproses: API key tidak dikonfigurasi")
+	}
+
 	imageData, err := os.ReadFile(imagePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read image: %w", err)
 	}
 
-	// Encode image to base64
 	base64Image := base64.StdEncoding.EncodeToString(imageData)
 
-	// Determine mime type
 	mimeType := "image/jpeg"
-	if strings.HasSuffix(strings.ToLower(imagePath), ".png") {
+	lower := strings.ToLower(imagePath)
+	if strings.HasSuffix(lower, ".png") {
 		mimeType = "image/png"
+	} else if strings.HasSuffix(lower, ".heic") || strings.HasSuffix(lower, ".heif") {
+		mimeType = "image/heic"
 	}
 
-	// Create prompt for Gemini
-	prompt := `Analyze this image of a handwritten logbook/attendance table. 
+	var responseText string
+
+	if s.geminiKey != "" {
+		log.Printf("[OCR] Trying Gemini primary...")
+		responseText, err = s.tryProvider(s.callGemini, "Gemini", base64Image, mimeType, totalStart)
+		if err == nil {
+			return s.parseOCRResponse(responseText)
+		}
+		log.Printf("[OCR] Gemini failed, falling back to OpenRouter: %v", err)
+	}
+
+	if s.openRouterKey != "" {
+		responseText, err = s.tryProvider(s.callOpenRouter, "OpenRouter", base64Image, mimeType, totalStart)
+		if err == nil {
+			return s.parseOCRResponse(responseText)
+		}
+	}
+
+	return nil, fmt.Errorf("OCR failed after %v: %w", time.Since(totalStart), err)
+}
+
+// tryProvider runs the provided callFn in a retry loop
+func (s *OCRService) tryProvider(callFn func(string, string) (string, error), name, base64Image, mimeType string, totalStart time.Time) (string, error) {
+	maxRetries := 3
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			time.Sleep(backoff)
+		}
+
+		responseText, err := callFn(base64Image, mimeType)
+		if err == nil {
+			return responseText, nil
+		}
+
+		if !isTransientError(err) {
+			return "", err
+		}
+		lastErr = err
+	}
+	return "", lastErr
+}
+
+// parseOCRResponse parses Gemini/OpenRouter response text into OCRResult
+func (s *OCRService) parseOCRResponse(responseText string) (*OCRResult, error) {
+	jsonText := responseText
+	if strings.Contains(responseText, "```json") {
+		start := strings.Index(responseText, "```json")
+		if start != -1 {
+			start += 7
+			end := strings.Index(responseText[start:], "```")
+			if end != -1 {
+				jsonText = responseText[start : start+end]
+			}
+		}
+	} else if strings.Contains(responseText, "```") {
+		start := strings.Index(responseText, "```")
+		if start != -1 {
+			start += 3
+			end := strings.Index(responseText[start:], "```")
+			if end != -1 {
+				jsonText = responseText[start : start+end]
+			}
+		}
+	}
+	jsonText = strings.TrimSpace(jsonText)
+
+	var result struct {
+		Entries []LogbookEntry `json:"entries"`
+	}
+	result.Entries = []LogbookEntry{}
+
+	if err := json.Unmarshal([]byte(jsonText), &result); err != nil {
+		return &OCRResult{
+			Success: false,
+			Entries: []LogbookEntry{},
+			RawText: responseText,
+			Error:   fmt.Sprintf("Gagal parse JSON: %v", err),
+		}, nil
+	}
+
+	if len(result.Entries) == 0 {
+		return &OCRResult{
+			Success: false,
+			Entries: []LogbookEntry{},
+			RawText: responseText,
+			Error:   "JSON valid tapi tidak ada entry ditemukan.",
+		}, nil
+	}
+
+	stripRowPrefix := regexp.MustCompile(`^\d+\s+`)
+	var lastPurpose string
+	for i := range result.Entries {
+		result.Entries[i].Date = stripRowPrefix.ReplaceAllString(strings.TrimSpace(result.Entries[i].Date), "")
+		normalizeTimeEntry(&result.Entries[i])
+		result.Entries[i].StudentName = ToTitleCaseWithAbbr(result.Entries[i].StudentName)
+		if p := strings.TrimSpace(result.Entries[i].Purpose); p != "" {
+			lastPurpose = p
+			result.Entries[i].Purpose = ToTitleCaseWithAbbr(p)
+		} else {
+			result.Entries[i].Purpose = ToTitleCaseWithAbbr(lastPurpose)
+		}
+		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
+		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
+	}
+
+	return &OCRResult{
+		Success: true,
+		Entries: result.Entries,
+		RawText: responseText,
+	}, nil
+}
+
+// callGemini sends image to Gemini API and returns response text
+func (s *OCRService) callGemini(base64Image, mimeType string) (string, error) {
+	prompt := buildOCRPrompt()
+	reqBody := GeminiRequest{
+		Contents: []GeminiContent{{Parts: []GeminiPart{
+			{Text: prompt},
+			{InlineData: &GeminiInlineData{MimeType: mimeType, Data: base64Image}},
+		}}},
+	}
+	jsonData, _ := json.Marshal(reqBody)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=%s", s.geminiKey)
+	body, err := s.doAPIRequest("POST", url, jsonData, nil)
+	if err != nil {
+		return "", err
+	}
+
+	var geminiResp GeminiResponse
+	if err := json.Unmarshal(body, &geminiResp); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("no response from Gemini API")
+	}
+	return geminiResp.Candidates[0].Content.Parts[0].Text, nil
+}
+
+// OpenRouterResponse represents response from OpenRouter API (OpenAI-compatible)
+type OpenRouterResponse struct {
+	Choices []struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	} `json:"choices"`
+}
+
+// callOpenRouter sends image to OpenRouter API and returns response text
+func (s *OCRService) callOpenRouter(base64Image, mimeType string) (string, error) {
+	prompt := buildOCRPrompt()
+	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image)
+	reqBody := map[string]any{
+		"model": "openrouter/auto",
+		"messages": []map[string]any{{
+			"role": "user",
+			"content": []map[string]any{
+				{"type": "text", "text": prompt},
+				{"type": "image_url", "image_url": map[string]string{"url": dataURL}},
+			},
+		}},
+	}
+	jsonData, _ := json.Marshal(reqBody)
+	body, err := s.doAPIRequest("POST", "https://openrouter.ai/api/v1/chat/completions", jsonData, map[string]string{"Authorization": "Bearer " + s.openRouterKey})
+	if err != nil {
+		return "", err
+	}
+
+	var orResp OpenRouterResponse
+	if err := json.Unmarshal(body, &orResp); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+	if len(orResp.Choices) == 0 {
+		return "", fmt.Errorf("no response from OpenRouter")
+	}
+	return orResp.Choices[0].Message.Content, nil
+}
+
+func (s *OCRService) doAPIRequest(method, url string, jsonData []byte, extraHeaders map[string]string) ([]byte, error) {
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range extraHeaders {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+	}
+	return body, nil
+}
+
+func buildOCRPrompt() string {
+	return 	`Analyze this image of a handwritten logbook/attendance table.
+
+This is a logbook table with columns: No, Date, Student Name, NIM, Time In, Time Out, Purpose.
+
 Extract the data and return it in JSON format with the following structure:
 
 {
@@ -116,221 +337,61 @@ CRITICAL RULES - READ CAREFULLY:
 1. EXTRACT ALL ROWS from the table
 
 2. SMART CONTEXT UNDERSTANDING:
-   - If a field is empty or shows ditto marks ("~~~", "\\", "''", or similar), COPY the value from the row above
+   - In handwritten tables, people often use continuation marks to mean "same as above":
+     * Horizontal dashed/squiggly lines (---, ~~~, ~~, --, etc.)
+     * Vertical bar separators (||, |) between dashes (---||---, --|--, etc.)
+     * Quotation marks ('' , "") 
+     * Backslashes (\)
+     * Truly empty cells (especially in the middle/end of a table)
+   - The exact shape varies wildly in handwriting — a faint line, a squiggle, a dash, or just blank space all mean "repeat the value above"
+   - If a cell is EMPTY or contains ANY kind of continuation/ditto mark, COPY the value from the cell directly above in the same column
+   - If a whole row has only continuation marks, it means EVERY field repeats from the row above
    - If date is empty but other rows have dates, INFER the date from context (usually same date for consecutive entries)
    - If you see spelling errors or typos, CORRECT them intelligently based on context
-   - Examples:
-     * "Pemrograman Web lanjut" with typo → Correct to "Pemrograman Web Lanjut"
-     * Empty date but previous row is "05/05/2026" → Use "05/05/2026"
-     * "~~~" in purpose field → Copy purpose from row above
-     * "Rian Dwi Hermawan" with inconsistent capitalization → Standardize to proper Title Case
 
 3. NAME ABBREVIATIONS:
-   - For middle abbreviations (initials), add dots between letters: "Herman SW" → "Herman S.W"
-   - NEVER add trailing dot at the end: "Herman S.W." → "Herman S.W"
-   - Examples:
-     * "Rian DH" → "Rian D.H"
-     * "Herman SW" → "Herman S.W"
-     * "Najwa AS" → "Najwa A.S"
+   - For middle abbreviations (initials), add dots between letters: "Herman SW"  ->  "Herman S.W"
+   - NEVER add trailing dot at the end: "Herman S.W."  ->  "Herman S.W"
    - Apply this consistently to all names
 
 4. DATE HANDLING:
    - Parse to YYYY-MM-DD format
    - Accept formats: DD/MM/YYYY, DD-MM-YYYY, D/M/YYYY
-   - If date is missing but can be inferred from context, fill it in
-   - If completely unclear, use empty string ""
+   - Ignore leading row numbers (e.g., "4  05/05/2026" -> date="2026-05-05")
 
 5. NIM (STUDENT ID) VALIDATION:
    - NIM format: 11 digits (example: 24091397XXX)
-   - First 7-8 digits usually same for same batch/program
-   - Last 3 digits are unique per student
-   - CRITICAL: If same student name appears multiple times in the table, NIM MUST be EXACTLY the same
-   - Common OCR errors to watch for:
-     * 4 ↔ 9 (very common confusion)
-     * 3 ↔ 8 (similar shapes)
-     * 1 ↔ 7 (handwriting variation)
-     * 0 ↔ 6 (similar shapes)
-   - Cross-reference strategy:
-     * If "Ulul Rosyad R" has NIM "24091397101" in row 1
-     * And "Ulul Rosyad R" appears again in row 5 with unclear NIM
-     * Use "24091397101" from row 1 (same person = same NIM)
-   - If uncertain about a digit, prefer the most common pattern in the table
+   - If same student name appears multiple times, NIM MUST be EXACTLY the same
+   - Common OCR errors: 4 -> 9, 3 -> 8, 1 -> 7, 0 -> 6
 
 6. TIME FIELDS:
-   - If you see a COMBINED time range like "13.00 - 14.40" or "13:00 - 14:40":
-     * SPLIT it into two separate times
-     * Put the START time in "time_in" field
-     * Put the END time in "time_out" field
-   - If you see dots (.) in time format, CONVERT them to colons (:)
-   - Examples:
-     * Input: "13.00 - 14.40" → Output: time_in="13:00", time_out="14:40"
-     * Input: "09.00 - 10.20" → Output: time_in="09:00", time_out="10:20"
-     * Input: "~~~" → Copy from row above
+   - If you see a combined time range like "13.00 - 14.40":
+     * SPLIT it: time_in="13:00", time_out="14:40"
+   - Convert dots (.) to colons (:)
    - Always use HH:MM format (24-hour)
 
 7. TEXT QUALITY:
    - Fix obvious spelling mistakes
-   - Standardize capitalization (proper names should be Title Case)
-   - Remove extra spaces
-   - Be intelligent about abbreviations (e.g., "Pemrog Web" → "Pemrograman Web")
+   - Standardize capitalization (Title Case)
+   - Be intelligent about abbreviations (e.g., "Pemrog Web"  ->  "Pemrograman Web")
 
 8. RETURN ONLY valid JSON, no additional text or explanations
 
+9. SELF-VERIFICATION: Double-check uncertain characters. If any digit in NIM or any character in a name is unclear, make your best guess and flag the value with [UNCERTAIN].
+
+10. NIM VALIDATION: NIM format is exactly 11 digits (example: 23091397001). If the extracted NIM is not 11 digits, pad or truncate to 11 digits.
+
 Please extract the data now with smart context understanding:`
+}
 
-	// Create request
-	reqBody := GeminiRequest{
-		Contents: []GeminiContent{
-			{
-				Parts: []GeminiPart{
-					{
-						Text: prompt,
-					},
-					{
-						InlineData: &GeminiInlineData{
-							MimeType: mimeType,
-							Data:     base64Image,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	// Call Gemini API
-	// Using gemini-3-flash-preview which works correctly
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=%s", s.apiKey)
-	
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call Gemini API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Gemini API error (status %d): %s", resp.StatusCode, string(body))
-	}
-
-	// Parse response
-	var geminiResp GeminiResponse
-	if err := json.Unmarshal(body, &geminiResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if len(geminiResp.Candidates) == 0 || len(geminiResp.Candidates[0].Content.Parts) == 0 {
-		return nil, fmt.Errorf("no response from Gemini API")
-	}
-
-	// Extract text from response
-	responseText := geminiResp.Candidates[0].Content.Parts[0].Text
-
-	// Try to parse JSON from response
-	// Sometimes Gemini wraps JSON in markdown code blocks
-	jsonText := responseText
-	
-	// Remove markdown code blocks if present
-	if strings.Contains(responseText, "```json") {
-		// Find the start after ```json
-		start := strings.Index(responseText, "```json")
-		if start != -1 {
-			start += 7 // length of "```json"
-			// Find the closing ```
-			end := strings.Index(responseText[start:], "```")
-			if end != -1 {
-				jsonText = responseText[start : start+end]
-			}
-		}
-	} else if strings.Contains(responseText, "```") {
-		// Generic code block
-		start := strings.Index(responseText, "```")
-		if start != -1 {
-			start += 3 // length of "```"
-			end := strings.Index(responseText[start:], "```")
-			if end != -1 {
-				jsonText = responseText[start : start+end]
-			}
-		}
-	}
-
-	jsonText = strings.TrimSpace(jsonText)
-
-	// Parse extracted data
-	var result struct {
-		Entries []LogbookEntry `json:"entries"`
-	}
-
-	// Initialize with empty slice to avoid nil
-	result.Entries = []LogbookEntry{}
-
-	if err := json.Unmarshal([]byte(jsonText), &result); err != nil {
-		// If JSON parsing fails, return raw text for manual processing
-		return &OCRResult{
-			Success: false,
-			Entries: []LogbookEntry{}, // Empty array instead of nil
-			RawText: responseText,
-			Error:   fmt.Sprintf("Failed to parse JSON: %v. Raw JSON text length: %d chars. Please check the raw text.", err, len(jsonText)),
-		}, nil
-	}
-
-	// Check if entries were actually parsed
-	if len(result.Entries) == 0 {
-		return &OCRResult{
-			Success: false,
-			Entries: []LogbookEntry{}, // Empty array
-			RawText: responseText,
-			Error:   "JSON parsed successfully but no entries found. Check if JSON structure matches expected format.",
-		}, nil
-	}
-
-	// Normalize time format for all entries (post-processing fallback)
-	for i := range result.Entries {
-		normalizeTimeEntry(&result.Entries[i])
-		
-		// Apply text normalization
-		result.Entries[i].StudentName = toTitleCase(result.Entries[i].StudentName)
-		result.Entries[i].Purpose = toTitleCase(result.Entries[i].Purpose)
-		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
-		
-		// Remove extra whitespace from NIM
-		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")
-	}
-
-	// Check for potential duplicates within the extracted entries
-	// Mark entries that have same name + date + time
-	duplicateWarnings := make(map[int][]int) // map[index][]duplicate_indices
-	for i := 0; i < len(result.Entries); i++ {
-		for j := i + 1; j < len(result.Entries); j++ {
-			// Same name (case-insensitive) + same date + same time_in
-			if strings.EqualFold(strings.TrimSpace(result.Entries[i].StudentName), strings.TrimSpace(result.Entries[j].StudentName)) &&
-				result.Entries[i].Date == result.Entries[j].Date &&
-				result.Entries[i].TimeIn == result.Entries[j].TimeIn {
-				duplicateWarnings[i] = append(duplicateWarnings[i], j)
-			}
-		}
-	}
-
-	return &OCRResult{
-		Success: true,
-		Entries: result.Entries,
-		RawText: responseText,
-	}, nil
+// isTransientError returns true if the error is retryable
+func isTransientError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "status 429") ||
+		strings.Contains(msg, "status 500") ||
+		strings.Contains(msg, "status 502") ||
+		strings.Contains(msg, "status 503") ||
+		strings.Contains(msg, "status 504")
 }
 
 // normalizeTimeEntry normalizes time format in logbook entry
@@ -348,11 +409,11 @@ func normalizeTimeEntry(entry *LogbookEntry) {
 			}
 		}
 	}
-	
+
 	// Convert dots to colons in both fields
 	entry.TimeIn = strings.ReplaceAll(entry.TimeIn, ".", ":")
 	entry.TimeOut = strings.ReplaceAll(entry.TimeOut, ".", ":")
-	
+
 	// Validate and pad time format (ensure HH:MM)
 	entry.TimeIn = normalizeTimeFormat(entry.TimeIn)
 	entry.TimeOut = normalizeTimeFormat(entry.TimeOut)
@@ -363,22 +424,22 @@ func normalizeTimeFormat(timeStr string) string {
 	if timeStr == "" {
 		return ""
 	}
-	
+
 	// Remove any extra spaces
 	timeStr = strings.TrimSpace(timeStr)
-	
+
 	// If already in HH:MM format, return as is
 	if matched, _ := regexp.MatchString(`^\d{2}:\d{2}$`, timeStr); matched {
 		return timeStr
 	}
-	
+
 	// Try to parse and reformat
-	// Handle formats like "9:00" → "09:00"
+	// Handle formats like "9:00"  ->  "09:00"
 	parts := strings.Split(timeStr, ":")
 	if len(parts) == 2 {
 		hour := strings.TrimSpace(parts[0])
 		minute := strings.TrimSpace(parts[1])
-		
+
 		// Pad with zero if needed
 		if len(hour) == 1 {
 			hour = "0" + hour
@@ -386,7 +447,7 @@ func normalizeTimeFormat(timeStr string) string {
 		if len(minute) == 1 {
 			minute = "0" + minute
 		}
-		
+
 		// Validate hour and minute are numeric
 		if matched, _ := regexp.MatchString(`^\d+$`, hour); matched {
 			if matched, _ := regexp.MatchString(`^\d+$`, minute); matched {
@@ -394,75 +455,7 @@ func normalizeTimeFormat(timeStr string) string {
 			}
 		}
 	}
-	
+
 	// If cannot parse, return as is
 	return timeStr
-}
-
-// normalizeText normalizes text by:
-// - Trimming leading/trailing whitespace
-// - Removing double spaces
-// - Converting to Title Case for proper names
-func normalizeText(text string) string {
-	if text == "" {
-		return ""
-	}
-	
-	// Trim leading and trailing whitespace
-	text = strings.TrimSpace(text)
-	
-	// Replace multiple spaces with single space
-	re := regexp.MustCompile(`\s+`)
-	text = re.ReplaceAllString(text, " ")
-	
-	return text
-}
-
-// toTitleCase converts text to Title Case (proper capitalization)
-func toTitleCase(text string) string {
-	if text == "" {
-		return ""
-	}
-	
-	// Normalize first
-	text = normalizeText(text)
-	
-	// Split by space and capitalize each word
-	words := strings.Fields(text)
-	for i, word := range words {
-		if len(word) > 0 {
-			// Convert to lowercase first, then capitalize first letter
-			words[i] = strings.ToUpper(string(word[0])) + strings.ToLower(word[1:])
-		}
-	}
-	
-	result := strings.Join(words, " ")
-	
-	// Normalize abbreviations (singkatan)
-	result = normalizeAbbreviations(result)
-	
-	return result
-}
-
-// normalizeAbbreviations normalizes abbreviations in names
-// Rules:
-// - Middle abbreviations get dots: "Herman SW" → "Herman S.W"
-// - No trailing dot at end: "Herman S.W." → "Herman S.W"
-func normalizeAbbreviations(text string) string {
-	if text == "" {
-		return ""
-	}
-	
-	// Pattern: single uppercase letter followed by space or another uppercase letter
-	// This handles cases like "SW", "SH", "A", etc.
-	re := regexp.MustCompile(`\b([A-Z])([A-Z])\b`)
-	
-	// Add dots between consecutive uppercase letters
-	// "SW" → "S.W", "SH" → "S.H"
-	text = re.ReplaceAllString(text, "$1.$2")
-	
-	// Remove trailing dot at the end of text
-	text = strings.TrimSuffix(text, ".")
-	
-	return text
 }

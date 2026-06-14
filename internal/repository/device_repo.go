@@ -1,0 +1,408 @@
+﻿package repository
+
+import (
+	"database/sql"
+	"fmt"
+	"strings"
+
+	"inventaris-lab-kom/internal/database"
+	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/search"
+)
+
+type DeviceRepository struct {
+	db     DBTX
+	search *search.Builder
+}
+
+func NewDeviceRepository(db *database.DB) *DeviceRepository {
+	return &DeviceRepository{db: db, search: search.New(db)}
+}
+
+func (r *DeviceRepository) WithTx(tx *database.Tx) *DeviceRepository {
+	return &DeviceRepository{db: tx, search: r.search}
+}
+
+type DeviceFilters struct {
+	Search       string
+	Category     string
+	Condition    string
+	DeviceTypeID string
+	SortBy       string
+	SortOrder    string
+}
+
+func (r *DeviceRepository) List(filters DeviceFilters) ([]models.Device, error) {
+	return r.listWithQuery(filters, "", 0, 0)
+}
+
+func (r *DeviceRepository) ListPaginated(filters DeviceFilters, page, pageSize int) ([]models.Device, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 25
+	}
+
+	var total int
+	r.db.QueryRow(r.buildDeviceCountQuery(filters), r.buildDeviceArgs(filters)...).Scan(&total)
+
+	devices, err := r.listWithQuery(filters, ` LIMIT ? OFFSET ?`, pageSize, (page-1)*pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	return devices, total, nil
+}
+
+func (r *DeviceRepository) buildDeviceClause(filters DeviceFilters) (string, []any) {
+	var clause string
+	var args []any
+	if filters.Search != "" {
+		sClause, sArgs := r.search.Where("device", filters.Search)
+		clause += sClause
+		args = append(args, sArgs...)
+	}
+	if filters.Category != "" {
+		clause += ` AND c.name = ?`
+		args = append(args, filters.Category)
+	}
+	if filters.Condition != "" {
+		clause += ` AND d.condition = ?`
+		args = append(args, filters.Condition)
+	}
+	if filters.DeviceTypeID != "" {
+		ids := strings.Split(filters.DeviceTypeID, ",")
+		if len(ids) == 1 {
+			clause += ` AND d.device_type_id = ?`
+			args = append(args, ids[0])
+		} else {
+			clause += ` AND d.device_type_id IN (` + strings.Repeat("?,", len(ids)-1) + "?)"
+			for _, id := range ids {
+				args = append(args, id)
+			}
+		}
+	}
+	return clause, args
+}
+
+func (r *DeviceRepository) buildDeviceCountQuery(filters DeviceFilters) string {
+	clause, _ := r.buildDeviceClause(filters)
+	return `SELECT COUNT(*) FROM devices d
+		JOIN device_types dt ON d.device_type_id = dt.id
+		JOIN categories c ON c.id = dt.category_id WHERE 1=1` + clause
+}
+
+func (r *DeviceRepository) buildDeviceArgs(filters DeviceFilters) []any {
+	_, args := r.buildDeviceClause(filters)
+	return args
+}
+
+func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, limit, offset int) ([]models.Device, error) {
+	query := `SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
+		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
+		d.created_at, d.updated_at,
+		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
+		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
+		COALESCE(d.usage_type, '') AS usage_type_override,
+		COALESCE(dt.photo,'')
+		FROM devices d
+		JOIN device_types dt ON d.device_type_id = dt.id
+		JOIN categories c ON c.id = dt.category_id WHERE 1=1`
+	clause, args := r.buildDeviceClause(filters)
+	query += clause
+
+	sortBy := map[string]string{
+		"asset_code": "d.asset_code",
+		"category":   "c.name",
+		"condition":  "d.condition",
+		"created_at": "d.created_at",
+	}[filters.SortBy]
+	if sortBy == "" {
+		sortBy = "c.name, dt.name, d.asset_code"
+	}
+	sortOrder := "ASC"
+	if filters.SortOrder == "DESC" {
+		sortOrder = "DESC"
+	}
+	query += ` ORDER BY ` + sortBy + ` ` + sortOrder
+
+	query += suffix
+	if suffix != "" {
+		args = append(args, limit, offset)
+	}
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var devices []models.Device
+	for rows.Next() {
+		var d models.Device
+		var pDate sql.NullString
+		if err := rows.Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
+			&d.Condition, &d.Location, &pDate, &d.Notes,
+			&d.CreatedAt, &d.UpdatedAt,
+			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
+			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto); err != nil {
+			return nil, err
+		}
+		d.PurchaseDate = parseDate(pDate)
+		devices = append(devices, d)
+	}
+	return devices, nil
+}
+
+func (r *DeviceRepository) GetByID(id int) (*models.Device, error) {
+	return scanDeviceRow(r.db, "d.id = ?", id)
+}
+
+func (r *DeviceRepository) GetBySlug(slug string) (*models.Device, error) {
+	return r.getByField("slug", slug)
+}
+
+func (r *DeviceRepository) GetByAssetCodeSlug(slug string) (*models.Device, error) {
+	return scanDeviceRow(r.db, "LOWER(d.asset_code) = LOWER(?)", slug)
+}
+
+func (r *DeviceRepository) getByField(field, value string) (*models.Device, error) {
+	return scanDeviceRow(r.db, fmt.Sprintf("d.%s = ?", field), value)
+}
+
+func (r *DeviceRepository) GetByAssetCode(code string) (*models.Device, error) {
+	return scanDeviceRow(r.db, "d.asset_code = ?", code)
+}
+
+func (r *DeviceRepository) GetNextAssetCode(prefix string) string {
+	var next int
+	r.db.QueryRow(`WITH RECURSIVE nums(n) AS (
+		SELECT 1
+		UNION ALL
+		SELECT n+1 FROM nums WHERE n < (
+			SELECT COALESCE(MAX(CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)), 0)
+			FROM devices WHERE asset_code LIKE ? || '-%'
+		)
+	)
+	SELECT COALESCE(
+		(SELECT n FROM nums WHERE n NOT IN (
+			SELECT CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)
+			FROM devices WHERE asset_code LIKE ? || '-%'
+		) LIMIT 1),
+		(SELECT COALESCE(MAX(CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)), 0) + 1
+		 FROM devices WHERE asset_code LIKE ? || '-%')
+	)`, prefix, prefix, prefix, prefix, prefix, prefix).Scan(&next)
+	return fmt.Sprintf("%s-%03d", prefix, next)
+}
+
+func (r *DeviceRepository) GetNextAssetCodes(prefix string, count int) []string {
+	existing := make(map[int]bool)
+	rows, err := r.db.Query(`SELECT CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER) FROM devices WHERE asset_code LIKE ? || '-%'`, prefix, prefix)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var n int
+			rows.Scan(&n)
+			existing[n] = true
+		}
+	}
+
+	codes := make([]string, 0, count)
+	n := 1
+	for len(codes) < count {
+		if !existing[n] {
+			codes = append(codes, fmt.Sprintf("%s-%03d", prefix, n))
+		}
+		n++
+	}
+	return codes
+}
+
+type BatchCreateInput struct {
+	DeviceTypeID int
+	AssetCode    string
+	SerialNumber string
+	Condition    string
+	Location     string
+	PurchaseDate string
+	Notes        string
+}
+
+func (r *DeviceRepository) Create(deviceTypeID int, assetCode, serial, condition, location, pDate, notes string) (sql.Result, error) {
+	var pDateArg, notesArg interface{}
+	if pDate != "" { pDateArg = pDate }
+	if notes != "" { notesArg = notes }
+	return r.db.Exec(`INSERT INTO devices (device_type_id, asset_code, serial_number, condition, location, purchase_date, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, deviceTypeID, assetCode, serial, condition, location, pDateArg, notesArg)
+}
+
+func (r *DeviceRepository) BatchCreate(inputs []BatchCreateInput) error {
+	rawDB, ok := r.db.(*database.DB)
+	if !ok {
+		return fmt.Errorf("batch create requires direct database access")
+	}
+	tx, err := rawDB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for _, in := range inputs {
+		var pDateArg, notesArg interface{}
+		if in.PurchaseDate != "" { pDateArg = in.PurchaseDate }
+		if in.Notes != "" { notesArg = in.Notes }
+		if _, err := tx.Exec(`INSERT INTO devices (device_type_id, asset_code, serial_number, condition, location, purchase_date, notes)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, pDateArg, notesArg); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (r *DeviceRepository) Update(id, deviceTypeID int, assetCode, serial, condition, location, pDate, notes, usageType string) error {
+	var pDateArg, notesArg, usageArg interface{}
+	if pDate != "" { pDateArg = pDate }
+	if notes != "" { notesArg = notes }
+	if usageType != "" { usageArg = usageType }
+	_, err := r.db.Exec(`UPDATE devices SET device_type_id=?, asset_code=?, serial_number=?,
+		condition=?, location=?, purchase_date=?, notes=?, usage_type=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+		deviceTypeID, assetCode, serial, condition, location, pDateArg, notesArg, usageArg, id)
+	return err
+}
+
+func (r *DeviceRepository) Delete(id int) error {
+	_, err := r.db.Exec("DELETE FROM devices WHERE id = ?", id)
+	return err
+}
+
+// --- Batch status queries (1 query each, not per-device) ---
+
+func (r *DeviceRepository) GetActiveLoanDeviceIDs() (map[int]bool, error) {
+	rows, err := r.db.Query("SELECT device_id FROM device_loans WHERE actual_return_date IS NULL")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int]bool)
+	for rows.Next() {
+		var id int
+		if rows.Scan(&id) == nil {
+			result[id] = true
+		}
+	}
+	return result, nil
+}
+
+func (r *DeviceRepository) GetDepletedDeviceIDs() (map[int]bool, error) {
+	rows, err := r.db.Query(`SELECT du.device_id FROM device_usages du
+		INNER JOIN (SELECT device_id, MAX(id) as mid FROM device_usages GROUP BY device_id) latest
+		ON latest.device_id = du.device_id AND latest.mid = du.id
+		WHERE du.is_available = 'no'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int]bool)
+	for rows.Next() {
+		var id int
+		if rows.Scan(&id) == nil {
+			result[id] = true
+		}
+	}
+	return result, nil
+}
+
+func (r *DeviceRepository) GetInstallationStatuses() (map[int]string, error) {
+	rows, err := r.db.Query(`SELECT device_id,
+		CASE
+			WHEN installation_finish_date IS NOT NULL THEN 'selesai'
+			WHEN installation_start_date IS NOT NULL THEN 'berlangsung'
+			ELSE 'belum_mulai'
+		END
+		FROM device_installations`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int]string)
+	for rows.Next() {
+		var id int
+		var status string
+		if rows.Scan(&id, &status) == nil {
+			result[id] = status
+		}
+	}
+	return result, nil
+}
+
+func (r *DeviceRepository) GetInstalledDeviceIDs() (map[int]bool, error) {
+	rows, err := r.db.Query("SELECT device_id FROM device_installations")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int]bool)
+	for rows.Next() {
+		var id int
+		if rows.Scan(&id) == nil {
+			result[id] = true
+		}
+	}
+	return result, nil
+}
+
+// --- Export helpers ---
+
+type DeviceExportRow struct {
+	models.Device
+}
+
+func (r *DeviceRepository) ExportAll() ([]DeviceExportRow, error) {
+	rows, err := r.db.Query(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
+		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
+		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
+		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
+		COALESCE(d.usage_type, '') AS usage_type_override,
+		COALESCE(dt.photo,'')
+		FROM devices d
+		JOIN device_types dt ON d.device_type_id = dt.id
+		JOIN categories c ON c.id = dt.category_id
+		ORDER BY d.asset_code`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var devices []DeviceExportRow
+	for rows.Next() {
+		var d DeviceExportRow
+		var pDate sql.NullString
+		if err := rows.Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
+			&d.Condition, &d.Location, &pDate, &d.Notes,
+			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
+			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto); err != nil {
+			return nil, err
+		}
+		d.PurchaseDate = parseDate(pDate)
+		devices = append(devices, d)
+	}
+	return devices, nil
+}
+
+func (r *DeviceRepository) CountByDeviceTypeID(deviceTypeID int) (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM devices WHERE device_type_id = ?", deviceTypeID).Scan(&count)
+	return count, err
+}
+
+func (r *DeviceRepository) CountByCategoryID(categoryID int) (int, error) {
+	var count int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM devices d
+		JOIN device_types dt ON dt.id = d.device_type_id
+		WHERE dt.category_id = ?`, categoryID).Scan(&count)
+	return count, err
+}

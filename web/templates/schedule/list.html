@@ -1,0 +1,185 @@
+{{ template "layout/base.html" . }}
+
+<div class="container-fluid mt-4">
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2><i class="bi bi-calendar-event"></i> Jadwal Mata Kuliah</h2>
+        <p class="mb-0"><span class="badge bg-primary-subtle text-primary-emphasis rounded-pill px-3 py-2 fs-6"><i class="bi bi-calendar-check me-1"></i> Hari ini: <strong>{{ .today }}</strong></span></p>
+    </div>
+    <div class="col-md-6 text-end">
+        {{ if eq .role "admin" }}
+        {{ template "layout/header_actions_start.html" $ }}
+        <a href="/schedules/create" class="btn btn-primary flex-grow-1"><i class="bi bi-plus-circle"></i> Tambah Jadwal</a>
+        {{ template "layout/header_actions_end.html" }}
+        {{ end }}
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="GET" action="/schedules" class="row g-3 mb-3">
+            <div class="col-md-3">
+                <label for="search" class="form-label">Cari</label>
+                <input type="text" class="form-control" id="search" name="search" placeholder="Cari mata kuliah, dosen..." value="{{ .filters.search }}">
+            </div>
+            <div class="col-md-2">
+                <label for="day" class="form-label">Hari</label>
+                <select id="day" name="day" class="form-select">
+                    <option value="">Semua Hari</option>
+                    {{ range .days }}<option value="{{ . }}" {{ if eq $.filters.day . }}selected{{ end }}>{{ . }}</option>{{ end }}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="sort_by" class="form-label">Urutkan Berdasarkan</label>
+                <select id="sort_by" name="sort_by" class="form-select">
+                    <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
+                    <option value="course_name" {{ if eq .filters.sort_by "course_name" }}selected{{ end }}>Mata Kuliah</option>
+                    <option value="day" {{ if eq .filters.sort_by "day" }}selected{{ end }}>Hari</option>
+                    <option value="time_start" {{ if eq .filters.sort_by "time_start" }}selected{{ end }}>Jam Mulai</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filter</button>
+                <a href="/schedules" class="btn btn-secondary w-100"><i class="bi bi-x-circle"></i> Reset</a>
+            </div>
+        </form>
+        {{ if gt (len .schedules) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .schedules)) 1 }} dari {{ .totalItems }} jadwal</p>{{ end }}
+        {{ template "layout/pagination.html" . }}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" data-batch-url="/schedules/batch-delete">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th><th>Hari</th><th>Mata Kuliah</th><th>Kelas</th><th>Dosen</th><th>Jam Mulai</th><th>Jam Selesai</th>
+{{ if eq .role "admin" }}<th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>{{ end }}
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range $i, $s := .schedules }}
+                    <tr class="{{ if eq $s.Day $.today }}table-primary{{ end }}" data-day="{{ $s.Day }}" data-course="{{ $s.CourseName }}" data-batch-id="{{ $s.ID }}" data-batch-label="{{ $s.CourseName }} - {{ $s.Day }} {{ $s.TimeStart }}">
+                        <td>{{ add $i $.startRow }}</td>
+                        <td>{{ $s.Day }}</td>
+                        <td>{{ $s.CourseName }}</td>
+                        <td>{{ $s.Class }}</td>
+                        <td>{{ $s.Lecturer }}</td>
+                        <td>{{ $s.TimeStart }}</td>
+                        <td>{{ $s.TimeEnd }}</td>
+                        {{ if eq $.role "admin" }}
+                        <td class="batch-action-col text-nowrap text-end">
+                            <span class="batch-mode-off">
+                                <a href="/schedules/{{ $s.ID }}/edit" class="btn btn-sm btn-warning me-1"><i class="bi bi-pencil"></i></a>
+                                <button type="button" class="btn btn-sm btn-danger"
+                                    onclick="confirmDelete({message:'Hapus jadwal ini?', formId:'del-{{ $s.ID }}'})"><i class="bi bi-trash"></i></button>
+                                <form id="del-{{ $s.ID }}" method="POST" action="/schedules/{{ $s.ID }}/delete" class="d-none"></form>
+                            </span>
+                        </td>
+                        <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $s.ID }}"></span></td>
+                        {{ end }}
+                    </tr>
+                    {{ else }}
+                    <tr><td colspan="{{ if eq .role "admin" }}9{{ else }}8{{ end }}" class="text-center text-muted">Belum ada jadwal</td></tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+
+        {{ template "layout/pagination.html" . }}
+    </div>
+</div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var tbody = document.querySelector('table.table tbody');
+    if (!tbody) return;
+    var bodyRows = Array.from(tbody.querySelectorAll('tr:not(.group-header)'));
+    if (bodyRows.length === 0) return;
+
+    var today = "{{ .today }}";
+    var dayOrder = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+
+    // Build day→course→rows map
+    var days = {};
+    bodyRows.forEach(function(row) {
+        var d = row.getAttribute('data-day');
+        var c = row.getAttribute('data-course');
+        if (!days[d]) days[d] = {};
+        if (!days[d][c]) days[d][c] = [];
+        days[d][c].push(row);
+    });
+
+    tbody.innerHTML = '';
+
+    dayOrder.forEach(function(day) {
+        var courses = days[day];
+        if (!courses) return;
+        var courseNames = Object.keys(courses).sort();
+        var colspan = document.querySelector('table.table thead tr').children.length;
+
+        // Day header
+        var totalRows = 0;
+        courseNames.forEach(function(n) { totalRows += courses[n].length; });
+        var dh = document.createElement('tr');
+        dh.className = 'group-header-day';
+        dh.innerHTML = '<td colspan="' + colspan + '"><div class="d-flex align-items-center py-2"><i class="bi bi-chevron-down me-2"></i><span class="fw-bold">' + day + '</span><span class="badge bg-secondary ms-2">' + totalRows + '</span></div></td>';
+        if (day === today) dh.querySelector('div').classList.add('text-primary');
+        dh.style.cursor = 'pointer';
+        tbody.appendChild(dh);
+
+        // Toggle day rows & course headers
+        var dayToggle = function(hide) {
+            var els = tbody.querySelectorAll('tr[data-day="' + day + '"], tr[data-day-header="' + day + '"]');
+            els.forEach(function(el) {
+                el.classList.toggle('d-none', hide);
+                var icon = el.querySelector('.bi');
+                if (icon && el.classList.contains('group-header-course')) {
+                    icon.className = hide ? 'bi bi-chevron-right me-1' : 'bi bi-chevron-down me-1';
+                }
+            });
+            var icon = dh.querySelector('.bi');
+            icon.className = hide ? 'bi bi-chevron-right me-2' : 'bi bi-chevron-down me-2';
+        };
+        dh.addEventListener('click', function() {
+            var first = tbody.querySelector('tr[data-day="' + day + '"]');
+            dayToggle(first && !first.classList.contains('d-none'));
+        });
+
+        // Course headers + rows
+        courseNames.forEach(function(course) {
+            var ch = document.createElement('tr');
+            ch.className = 'group-header-course';
+            ch.setAttribute('data-day', day);
+            ch.setAttribute('data-day-header', day);
+            ch.setAttribute('data-course', course);
+            var cnt = courses[course].length;
+            var icon = cnt > 1
+                ? '<i class="bi bi-chevron-down me-1"></i>'
+                : '<i class="bi bi-dot me-1"></i>';
+            ch.innerHTML = '<td colspan="' + colspan + '"><div class="d-flex align-items-center py-1 ps-4"><span class="fw-semibold text-secondary">' + icon + course + '</span><span class="badge bg-light text-muted ms-2">' + cnt + '</span></div></td>';
+            ch.style.cursor = cnt > 1 ? 'pointer' : '';
+            tbody.appendChild(ch);
+
+            // Course rows
+            courses[course].forEach(function(r) {
+                r.classList.remove('d-none'); // ensure visible
+                tbody.appendChild(r);
+            });
+
+            // Toggle course rows
+            if (cnt > 1) {
+                ch.addEventListener('click', function() {
+                    var courseRows = tbody.querySelectorAll('tr[data-day="' + day + '"][data-course="' + course + '"]:not(.group-header)');
+                    var hidden = courseRows[0] && courseRows[0].classList.contains('d-none');
+                    courseRows.forEach(function(r) { r.classList.toggle('d-none', !hidden); });
+                    var iconEl = ch.querySelector('.bi');
+                    iconEl.className = hidden ? 'bi bi-chevron-down me-1' : 'bi bi-chevron-right me-1';
+                });
+            }
+        });
+
+        // Default collapsed, only expand today
+        if (day !== today) {
+            dayToggle(true);
+        }
+    });
+});
+</script>
+{{ template "layout/footer.html" . }}

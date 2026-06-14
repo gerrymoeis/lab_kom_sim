@@ -1,16 +1,4 @@
-{{ define "pc/list.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
     <div class="row mb-4">
@@ -20,26 +8,77 @@
         </div>
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
-            <a href="/pc/create" class="btn btn-primary">
+            {{ template "layout/header_actions_start.html" $ }}
+            <a href="/pc/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah PC Baru
             </a>
-            <a href="/pc/export" class="btn btn-success">
+            <a href="/pc/export" class="btn btn-success flex-grow-1">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
+            <a href="/print?type=pc" class="btn btn-dark flex-grow-1 text-white">
+                <i class="bi bi-printer"></i> Print Stiker
+            </a>
+            {{ template "layout/header_actions_end.html" }}
             {{ end }}
         </div>
     </div>
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <input type="text" id="searchInput" class="form-control" placeholder="Cari PC..." onkeyup="filterTable('searchInput', 'pcTable')">
+            <form method="GET" action="/pc" class="row g-3 mb-3">
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari PC..." value="{{ .filters.search }}">
                 </div>
-            </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Kondisi</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">Semua</option>
+                        <option value="normal" {{ if eq .filters.status "normal" }}selected{{ end }}>Normal</option>
+                        <option value="warning" {{ if eq .filters.status "warning" }}selected{{ end }}>Warning</option>
+                        <option value="broken" {{ if eq .filters.status "broken" }}selected{{ end }}>Rusak</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="placement" class="form-label">Penempatan</label>
+                    <select class="form-select" id="placement" name="placement">
+                        <option value="">Semua</option>
+                        <option value="dipakai" {{ if eq .filters.placement "dipakai" }}selected{{ end }}>Dipakai</option>
+                        <option value="cadangan" {{ if eq .filters.placement "cadangan" }}selected{{ end }}>Cadangan</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="os" class="form-label">Sistem Operasi</label>
+                    <select class="form-select" id="os" name="os">
+                        <option value="">Semua</option>
+                        {{ range .operatingSystems }}
+                        <option value="{{ . }}" {{ if eq $.filters.os . }}selected{{ end }}>{{ . }}</option>
+                        {{ end }}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label">Urut Berdasar</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="label" {{ if eq .filters.sort_by "label" }}selected{{ end }}>No. PC</option>
+                        <option value="status" {{ if eq .filters.sort_by "status" }}selected{{ end }}>Status</option>
+                        <option value="brand_model" {{ if eq .filters.sort_by "brand_model" }}selected{{ end }}>Merek</option>
+                        <option value="operating_system" {{ if eq .filters.sort_by "operating_system" }}selected{{ end }}>Windows Version</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filter
+                    </button>
+                    <a href="/pc" class="btn btn-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
+            </form>
 
+            {{ if gt (len .pcs) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .pcs)) 1 }} dari {{ .totalItems }} PC</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
             <div class="table-responsive">
-                <table class="table table-hover" id="pcTable">
+                <table class="table table-hover" data-batch-url="/pc/batch-delete">
                     <thead class="table-light">
                         <tr>
                             <th>No. PC</th>
@@ -48,56 +87,56 @@
                             <th>Posisi</th>
                             <th>Status</th>
                             <th>Spesifikasi</th>
-                            <th>Aksi</th>
+                            <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                         </tr>
                     </thead>
                     <tbody>
                         {{ range .pcs }}
-                        <tr>
-                            <td><strong>PC-{{ printf "%02d" .PCNumber }}</strong></td>
+                        <tr data-batch-id="{{ .Label }}" data-batch-label="{{ .Label }}">
+                            <td><strong>{{ .Label }}</strong>{{ if isSpecialLabel .Label .Placement }} <span class="badge bg-info ms-1">Spesial</span>{{ end }}</td>
                             <td>{{ if .SerialNumber }}<small><code>{{ .SerialNumber }}</code></small>{{ else }}-{{ end }}</td>
-                            <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else if .Brand }}{{ .Brand }}{{ if .Model }} {{ .Model }}{{ end }}{{ else }}-{{ end }}</td>
-                            <td>Baris {{ .Row }}, Kolom {{ .Column }}</td>
+                            <td>{{ if .BrandModel }}{{ .BrandModel }}{{ else }}-{{ end }}</td>
+                            <td>{{ if eq .Placement "dipakai" }}{{ if isSpecialLabel .Label .Placement }}Spesial{{ else }}Baris {{ .Row }}, Kolom {{ .Column }}{{ end }}{{ else }}-{{ end }}</td>
                             <td>
-                                <span class="badge bg-{{ if eq .Status "normal" }}success{{ else if eq .Status "warning" }}warning{{ else if eq .Status "broken" }}danger{{ else }}secondary{{ end }}">
-                                    {{ .Status }}
-                                </span>
+<span class="badge bg-{{ (pcStatusInfo .Status).BadgeClass }} me-1">{{ (pcStatusInfo .Status).VisLabel }}</span>
+<span class="badge bg-{{ (pcPlacementInfo .Placement).BadgeClass }}">{{ (pcPlacementInfo .Placement).VisLabel }}</span>
                             </td>
                             <td>
                                 <small>
                                 {{ if .Processor }}{{ .Processor }}{{ else }}-{{ end }}{{ if .RAM }} | {{ .RAM }}{{ end }}{{ if .Storage }} | {{ .Storage }}{{ end }}{{ if .OperatingSystem }}<br>{{ .OperatingSystem }}{{ end }}
                                 </small>
                             </td>
-                            <td>
-                                <a href="/pc/{{ .PCNumber }}" class="btn btn-sm btn-info" title="Detail">
+                            <td class="batch-action-col text-nowrap text-end">
+                                <span class="batch-mode-off">
+                                <a href="/pc/{{ .Label }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {{ if eq $.role "admin" }}
-                                <a href="/pc/{{ .PCNumber }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/pc/{{ .Label }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/pc/{{ .PCNumber }}/delete" style="display: inline;" onsubmit="return confirmDelete()">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                    onclick="confirmDelete({message:'Apakah Anda yakin ingin menghapus data ini?', formId:'del-pc-{{ .Label }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-pc-{{ .Label }}" method="POST" action="/pc/{{ .Label }}/delete" class="d-none"></form>
                                 {{ end }}
+                                </span>
                             </td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ .Label }}"></span></td>
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="7" class="text-center text-muted">Belum ada data PC</td>
+                            <td colspan="8" class="text-center text-muted">Belum ada data PC</td>
                         </tr>
                         {{ end }}
                     </tbody>
                 </table>
             </div>
+
+            {{ template "layout/pagination.html" . }}
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/static/js/main.js"></script>
-</body>
-</html>
-{{ end }}
+{{ template "layout/footer.html" . }}

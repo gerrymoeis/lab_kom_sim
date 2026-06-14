@@ -1,17 +1,14 @@
 package services
 
 import (
-	"bytes"
 	"fmt"
 	"image"
 	"image/jpeg"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/disintegration/imaging"
-	"github.com/jdeng/goheif"
 	"github.com/rwcarlsen/goexif/exif"
 )
 
@@ -27,167 +24,73 @@ func NewImageService() *ImageService {
 	return &ImageService{
 		maxWidth:  1920,
 		maxHeight: 1920,
-		quality:   75, // JPEG quality 75% for good balance
+		quality:   75,
 	}
 }
 
-// CompressAndSave compresses an image and saves it to the destination path
-// Supports JPEG, PNG, and HEIC formats with automatic EXIF orientation correction
-// maxDimension: maximum width or height (maintains aspect ratio)
-// Returns error if compression fails
+// CompressAndSave compresses an image and saves it to the destination path.
+// Supports JPEG, PNG, and HEIC formats (HEIC only on !android builds).
+// maxDimension: maximum width or height (maintains aspect ratio).
 func (s *ImageService) CompressAndSave(sourcePath, destPath string, maxDimension int) error {
-	// Open source image
 	srcFile, err := os.Open(sourcePath)
 	if err != nil {
 		return fmt.Errorf("failed to open source image: %w", err)
 	}
 	defer srcFile.Close()
 
-	// Detect file format by extension
 	ext := strings.ToLower(filepath.Ext(sourcePath))
-	var img image.Image
-	var orientation int = 1 // Default orientation (normal)
 
-	log.Printf("[ImageService] Processing file: %s (ext: %s)", sourcePath, ext)
-
-	// Decode based on format
-	if ext == ".heic" || ext == ".heif" {
-		// Decode HEIC using goheif
-		img, err = goheif.Decode(srcFile)
-		if err != nil {
-			return fmt.Errorf("failed to decode HEIC image: %w", err)
-		}
-		log.Printf("[ImageService] HEIC decoded successfully, dimensions: %dx%d", img.Bounds().Dx(), img.Bounds().Dy())
-
-		// Extract EXIF orientation from HEIC
-		// Need to reopen file for EXIF extraction
-		srcFile.Close()
-		srcFile, err = os.Open(sourcePath)
-		if err == nil {
-			exifData, err := goheif.ExtractExif(srcFile)
-			if err == nil && len(exifData) > 0 {
-				log.Printf("[ImageService] EXIF data extracted, length: %d bytes", len(exifData))
-				// Parse EXIF to get orientation
-				orientation = s.getOrientationFromExif(exifData)
-				log.Printf("[ImageService] EXIF orientation detected: %d", orientation)
-			} else {
-				log.Printf("[ImageService] Failed to extract EXIF or empty: %v", err)
-				// For iPhone HEIC, assume orientation 6 (most common)
-				// This is a fallback when EXIF extraction fails
-				orientation = 6
-				log.Printf("[ImageService] Using fallback orientation: %d (iPhone portrait)", orientation)
-			}
-		}
-	} else {
-		// For JPEG/PNG, try to extract EXIF orientation before decoding
-		orientation = s.getOrientationFromFile(srcFile)
-		log.Printf("[ImageService] JPEG/PNG orientation detected: %d", orientation)
-		
-		// Reset file pointer after EXIF read
-		srcFile.Seek(0, 0)
-		
-		// Decode JPEG/PNG using standard library
-		img, _, err = image.Decode(srcFile)
-		if err != nil {
-			return fmt.Errorf("failed to decode image: %w", err)
-		}
-		log.Printf("[ImageService] JPEG/PNG decoded successfully, dimensions: %dx%d", img.Bounds().Dx(), img.Bounds().Dy())
+	img, orientation, err := decodeImage(srcFile, ext)
+	if err != nil {
+		return fmt.Errorf("failed to decode image: %w", err)
 	}
 
-	// Apply EXIF orientation transformation
-	log.Printf("[ImageService] Applying orientation transformation: %d", orientation)
 	img = s.applyOrientation(img, orientation)
-	log.Printf("[ImageService] After orientation, dimensions: %dx%d", img.Bounds().Dx(), img.Bounds().Dy())
 
-	// Get dimensions after orientation correction
 	bounds := img.Bounds()
 	width := bounds.Dx()
 	height := bounds.Dy()
 
-	// Resize if needed (maintain aspect ratio)
 	var resized image.Image
 	if width > maxDimension || height > maxDimension {
-		resized = imaging.Fit(img, maxDimension, maxDimension, imaging.Lanczos)
-		log.Printf("[ImageService] Resized to fit %d, new dimensions: %dx%d", maxDimension, resized.Bounds().Dx(), resized.Bounds().Dy())
+		resized = imaging.Fit(img, maxDimension, maxDimension, imaging.MitchellNetravali)
 	} else {
 		resized = img
-		log.Printf("[ImageService] No resize needed (within %d)", maxDimension)
 	}
 
-	// Create destination directory if not exists
 	destDir := filepath.Dir(destPath)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	// Create destination file
 	destFile, err := os.Create(destPath)
 	if err != nil {
 		return fmt.Errorf("failed to create destination file: %w", err)
 	}
 	defer destFile.Close()
 
-	// Encode to JPEG with quality setting
 	options := &jpeg.Options{Quality: s.quality}
 	if err := jpeg.Encode(destFile, resized, options); err != nil {
 		return fmt.Errorf("failed to encode JPEG: %w", err)
 	}
 
-	log.Printf("[ImageService] Successfully saved to: %s", destPath)
 	return nil
 }
 
-// getOrientationFromFile extracts EXIF orientation from JPEG/PNG file
-func (s *ImageService) getOrientationFromFile(file *os.File) int {
-	// Try to decode EXIF
+// readEXIFOrientation extracts EXIF orientation from JPEG/PNG file
+func readEXIFOrientation(file *os.File) int {
 	x, err := exif.Decode(file)
 	if err != nil {
-		return 1 // Default orientation if EXIF not found
+		return 1
 	}
-
-	// Get orientation tag
 	tag, err := x.Get(exif.Orientation)
 	if err != nil {
-		return 1 // Default orientation if tag not found
+		return 1
 	}
-
 	orient, err := tag.Int(0)
 	if err != nil {
 		return 1
 	}
-
-	return orient
-}
-
-// getOrientationFromExif extracts orientation from EXIF byte data
-func (s *ImageService) getOrientationFromExif(exifData []byte) int {
-	// Parse EXIF data using goexif library
-	// goheif.ExtractExif returns raw EXIF data that can be parsed
-	
-	// Create a reader from the EXIF byte data
-	reader := bytes.NewReader(exifData)
-	
-	// Try to decode EXIF
-	x, err := exif.Decode(reader)
-	if err != nil {
-		log.Printf("[ImageService] Failed to decode EXIF from byte data: %v", err)
-		return 1 // Default orientation if EXIF parsing fails
-	}
-
-	// Get orientation tag
-	tag, err := x.Get(exif.Orientation)
-	if err != nil {
-		log.Printf("[ImageService] Orientation tag not found in EXIF: %v", err)
-		return 1 // Default orientation if tag not found
-	}
-
-	orient, err := tag.Int(0)
-	if err != nil {
-		log.Printf("[ImageService] Failed to parse orientation value: %v", err)
-		return 1
-	}
-
-	log.Printf("[ImageService] Successfully extracted orientation from EXIF: %d", orient)
 	return orient
 }
 
@@ -195,31 +98,22 @@ func (s *ImageService) getOrientationFromExif(exifData []byte) int {
 func (s *ImageService) applyOrientation(img image.Image, orientation int) image.Image {
 	switch orientation {
 	case 1:
-		// Normal - no transformation needed
 		return img
 	case 2:
-		// Flip horizontal
 		return imaging.FlipH(img)
 	case 3:
-		// Rotate 180°
 		return imaging.Rotate180(img)
 	case 4:
-		// Flip vertical
 		return imaging.FlipV(img)
 	case 5:
-		// Rotate 90° CW + Flip horizontal
 		return imaging.FlipH(imaging.Rotate270(img))
 	case 6:
-		// Rotate 90° CW (most common for iPhone portrait)
 		return imaging.Rotate270(img)
 	case 7:
-		// Rotate 90° CCW + Flip horizontal
 		return imaging.FlipH(imaging.Rotate90(img))
 	case 8:
-		// Rotate 90° CCW
 		return imaging.Rotate90(img)
 	default:
-		// Unknown orientation - return as is
 		return img
 	}
 }
@@ -229,17 +123,12 @@ func (s *ImageService) DeleteImage(filePath string) error {
 	if filePath == "" {
 		return nil
 	}
-
-	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return nil // File doesn't exist, nothing to delete
+		return nil
 	}
-
-	// Delete file
 	if err := os.Remove(filePath); err != nil {
 		return fmt.Errorf("failed to delete image: %w", err)
 	}
-
 	return nil
 }
 

@@ -1,0 +1,151 @@
+{{ template "layout/base.html" . }}
+
+<div class="container mt-4 software-page-container">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-pencil"></i> {{ .title }}</h5>
+        </div>
+        <div class="card-body p-4 position-relative">
+            {{ template "layout/alert.html" . }}
+
+                    <form method="POST" action="/software/{{ .software.Slug }}/edit">
+
+                        <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Edit Informasi Software</h6>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nama Software</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ .software.Name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Kategori</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="required" {{ if eq .software.Category "required" }}selected{{ end }}>Required</option>
+                                <option value="other" {{ if eq .software.Category "other" }}selected{{ end }}>Other</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Deskripsi</label>
+                            <textarea class="form-control" id="description" name="description" rows="2">{{ .software.Description }}</textarea>
+                        </div>
+
+                        <hr>
+
+                        <h6 class="text-primary mb-3"><i class="bi bi-pc-display"></i> Status Instalasi Per PC</h6>
+                        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+                            <span class="fw-bold">Installed: <span id="install-count" class="text-success">{{ .installedCount }}</span> / {{ .totalPCs }} PC</span>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="select-all"><i class="bi bi-check-all"></i> Pilih Semua</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="deselect-all"><i class="bi bi-x"></i> Hapus Semua</button>
+                        </div>
+
+                        <div class="pc-grid-scroll" id="pc-grid">
+                            <div class="pc-grid">
+                                {{ range $rowIdx, $row := .pcGrid }}
+                                <div class="pc-row mb-3">
+                                    {{ range $colIdx, $pc := $row }}
+                                    <div class="pc-card-wrapper pc-card-wrapper-sm">
+                                        {{ if gt $pc.PCID 0 }}
+                                        <div class="pc-card pc-toggle status-{{ $pc.Status }}{{ if not $pc.Installed }} border-secondary{{ end }}"
+                                             role="button" tabindex="0"
+                                             data-pc-id="{{ $pc.PCID }}"
+                                             data-installed="{{ $pc.Installed }}"
+                                             data-status="{{ $pc.Status }}">
+                                            <div class="pc-number">{{ $pc.Label }}</div>
+                                            <div class="pc-icon toggle-icon">
+                                                {{ if $pc.Installed }}
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                                {{ else }}
+                                                <i class="bi bi-x-circle-fill text-muted"></i>
+                                                {{ end }}
+                                            </div>
+                                            <input type="checkbox" name="pc_ids[]" value="{{ $pc.PCID }}" {{ if $pc.Installed }}checked{{ end }} hidden>
+                                        </div>
+                                        {{ else }}
+                                        <div class="pc-card pc-card-empty" style="cursor:default;">
+                                            <div class="pc-number text-muted">-</div>
+                                        </div>
+                                        {{ end }}
+                                    </div>
+                                    {{ end }}
+                                </div>
+                                {{ else }}
+                                <p class="text-muted">Belum ada data PC</p>
+                                {{ end }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+                        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                            <button type="submit" class="btn btn-warning"><i class="bi bi-save"></i> Update</button>
+                            <a href="/software/{{ .software.Slug }}" class="btn btn-info"><i class="bi bi-eye"></i> Lihat Detail</a>
+                            <a href="/software" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+                        </div>
+                    </form>
+
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const grid = document.getElementById('pc-grid');
+    const countEl = document.getElementById('install-count');
+
+    function updateCount() {
+        const checked = grid.querySelectorAll('input[name="pc_ids[]"]:checked').length;
+        countEl.textContent = checked;
+    }
+
+    function updateCardBorder(el, installed) {
+        const status = el.dataset.status || 'normal';
+        el.classList.remove('status-normal', 'status-warning', 'status-broken', 'border-secondary');
+        if (installed) {
+            el.classList.add('status-' + status);
+        } else {
+            el.classList.add('border-secondary');
+        }
+    }
+
+    function setAll(checked) {
+        grid.querySelectorAll('.pc-toggle').forEach(function(el) {
+            const cb = el.querySelector('input[name="pc_ids[]"]');
+            if (!cb) return;
+            cb.checked = checked;
+            const icon = el.querySelector('.toggle-icon i');
+            if (checked) {
+                icon.className = 'bi bi-check-circle-fill text-success';
+            } else {
+                icon.className = 'bi bi-x-circle-fill text-muted';
+            }
+            updateCardBorder(el, checked);
+        });
+        updateCount();
+    }
+
+    grid.addEventListener('click', function(e) {
+        const el = e.target.closest('.pc-toggle');
+        if (!el) return;
+        const cb = el.querySelector('input[name="pc_ids[]"]');
+        if (!cb) return;
+        cb.checked = !cb.checked;
+        const icon = el.querySelector('.toggle-icon i');
+        if (cb.checked) {
+            icon.className = 'bi bi-check-circle-fill text-success';
+        } else {
+            icon.className = 'bi bi-x-circle-fill text-muted';
+        }
+        updateCardBorder(el, cb.checked);
+        updateCount();
+    });
+
+    grid.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            const el = e.target.closest('.pc-toggle');
+            if (el) { e.preventDefault(); el.click(); }
+        }
+    });
+
+    document.getElementById('select-all').addEventListener('click', function() { setAll(true); });
+    document.getElementById('deselect-all').addEventListener('click', function() { setAll(false); });
+});
+</script>
+
+{{ template "layout/footer.html" . }}

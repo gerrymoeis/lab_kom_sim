@@ -1,203 +1,95 @@
-{{ define "device/edit.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Perangkat</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="/devices/{{ .device.ID }}/edit">
-                        <div class="mb-3">
-                            <label class="form-label">Kategori (dari template)</label>
-                            <input type="text" class="form-control" value="{{ .device.Category }}" readonly disabled>
-                            <small class="text-muted">Kategori tidak dapat diubah (ditentukan oleh template)</small>
-                        </div>
+<div class="container-fluid mt-4 px-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-pencil"></i> {{ .title }}</h5>
+        </div>
+        <div class="card-body">
+            {{ template "layout/alert.html" . }}
 
-                        <div class="mb-3">
-                            <label for="asset_code" class="form-label">Asset Code *</label>
-                            <input type="text" class="form-control" id="asset_code" name="asset_code" value="{{ .device.AssetCode }}" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Nama Perangkat *</label>
-                            <input type="text" class="form-control" id="name" name="name" value="{{ .device.Name }}" required>
-                        </div>
-
-                        <!-- Hidden field for device_type_id (required but not editable) -->
-                        <input type="hidden" name="device_type_id" value="{{ .device.DeviceTypeID }}">
-
-                        <div class="mb-3">
-                            <label for="item_type" class="form-label">Tipe Item *</label>
-                            <select class="form-select" id="item_type" name="item_type" required>
-                                <option value="individual" {{ if eq .device.ItemType "individual" }}selected{{ end }}>Individual (1 unit)</option>
-                                <option value="consumable" {{ if eq .device.ItemType "consumable" }}selected{{ end }}>Consumable (habis pakai)</option>
-                            </select>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="brand" class="form-label">Merk</label>
-                                <input type="text" class="form-control" id="brand" name="brand" value="{{ .device.Brand }}">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="model" class="form-label">Model</label>
-                                <input type="text" class="form-control" id="model" name="model" value="{{ .device.Model }}">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="serial_number" class="form-label">Serial Number</label>
-                            <input type="text" class="form-control" id="serial_number" name="serial_number" value="{{ .device.SerialNumber }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Properti</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_loanable" name="is_loanable" value="1" {{ if .device.IsLoanable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_loanable">
-                                    Dapat dipinjam
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_consumable" name="is_consumable" value="1" {{ if .device.IsConsumable }}checked{{ end }}>
-                                <label class="form-check-label" for="is_consumable">
-                                    Barang habis pakai
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="quantity_total" class="form-label">Jumlah Total *</label>
-                                <input type="number" class="form-control" id="quantity_total" name="quantity_total" 
-                                       min="{{ if eq .device.ItemType "individual" }}1{{ else }}0{{ end }}" 
-                                       value="{{ .device.QuantityTotal }}" required>
-                                <small class="text-muted">
-                                    <span id="qty_help_individual" style="display: {{ if eq .device.ItemType "individual" }}inline{{ else }}none{{ end }};">
-                                        Jumlah unit yang dimiliki
-                                    </span>
-                                    <span id="qty_help_consumable" style="display: {{ if eq .device.ItemType "consumable" }}inline{{ else }}none{{ end }};">
-                                        Total stok barang habis pakai
-                                    </span>
-                                </small>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="quantity_available" class="form-label">Jumlah Tersedia *</label>
-                                <input type="number" class="form-control" id="quantity_available" name="quantity_available" 
-                                       min="0" value="{{ .device.QuantityAvailable }}" required>
-                                <small class="text-muted">
-                                    <span id="avail_help_individual" style="display: {{ if eq .device.ItemType "individual" }}inline{{ else }}none{{ end }};">
-                                        Jumlah yang bisa dipinjam
-                                    </span>
-                                    <span id="avail_help_consumable" style="display: {{ if eq .device.ItemType "consumable" }}inline{{ else }}none{{ end }};">
-                                        Stok yang tersedia saat ini
-                                    </span>
-                                </small>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="condition" class="form-label">Kondisi *</label>
-                            <select class="form-select" id="condition" name="condition" required>
-                                <option value="baik" {{ if eq .device.Condition "baik" }}selected{{ end }}>Baik</option>
-                                <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
-                                <option value="maintenance" {{ if eq .device.Condition "maintenance" }}selected{{ end }}>Maintenance</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="location" class="form-label">Lokasi</label>
-                            <input type="text" class="form-control" id="location" name="location" value="{{ .device.Location }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="purchase_date" class="form-label">Tanggal Pembelian</label>
-                            {{ if .purchaseDate }}
-                            <div class="text-muted small mb-1">Tanggal saat ini: {{ .purchaseDate }}</div>
+            <form method="POST" action="/devices/{{ .device.AssetCode | lower }}/edit">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="device_type_id" class="form-label">Tipe Perangkat *</label>
+                        <select class="form-select" id="device_type_id" name="device_type_id" required>
+                            <option value="">Pilih tipe perangkat...</option>
+                            {{ range $dt := .deviceTypes }}
+                            <option value="{{ $dt.ID }}" {{ if eq $.device.DeviceTypeID $dt.ID }}selected{{ end }}>
+                                {{ $dt.CategoryName }} — {{ $dt.Name }} ({{ $dt.AssetCodePrefix }}) — {{ if eq $dt.UsageType "loanable" }}Dipinjamkan{{ else if eq $dt.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }}
+                            </option>
                             {{ end }}
-                            <input type="date" class="form-control" id="purchase_date" name="purchase_date" value="{{ .purchaseDate }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Catatan</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ .device.Notes }}</textarea>
-                        </div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-warning">
-                                <i class="bi bi-save"></i> Update
-                            </button>
-                            <a href="/devices" class="btn btn-secondary">
-                                <i class="bi bi-x-circle"></i> Batal
-                            </a>
-                        </div>
-                    </form>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="usage_type" class="form-label">Tipe Penggunaan *</label>
+                        <select class="form-select" id="usage_type" name="usage_type">
+                            <option value="">Ikuti Tipe Perangkat ({{ if eq .device.UsageType "loanable" }}Dipinjamkan{{ else if eq .device.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }})</option>
+                            <option value="loanable" {{ if eq .device.UsageTypeOverride "loanable" }}selected{{ end }}>Dipinjamkan</option>
+                            <option value="consumable" {{ if eq .device.UsageTypeOverride "consumable" }}selected{{ end }}>Habis Pakai</option>
+                            <option value="installable" {{ if eq .device.UsageTypeOverride "installable" }}selected{{ end }}>Instalasi</option>
+                        </select>
+                        <small class="text-muted">Kosongkan untuk mengikuti tipe perangkat. Isi jika ingin override untuk perangkat ini saja.</small>
+                    </div>
                 </div>
-            </div>
+
+                <div class="mb-3">
+                    <label for="asset_code" class="form-label">Asset Code *</label>
+                    <input type="text" class="form-control" id="asset_code" name="asset_code" value="{{ .device.AssetCode }}" required>
+                    <small class="form-text text-muted">Format: PREFIX-NNN (contoh: MOUSE-AXIOO-001)</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="serial_number" class="form-label">Serial Number</label>
+                    <input type="text" class="form-control" id="serial_number" name="serial_number" value="{{ .device.SerialNumber }}">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="condition" class="form-label">Kondisi *</label>
+                        <select class="form-select" id="condition" name="condition" required>
+                            <option value="normal" {{ if eq .device.Condition "normal" }}selected{{ end }}>Normal</option>
+                            <option value="rusak" {{ if eq .device.Condition "rusak" }}selected{{ end }}>Rusak</option>
+                            <option value="warning" {{ if eq .device.Condition "warning" }}selected{{ end }}>Warning</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="purchase_date" class="form-label">Tanggal Beli</label>
+                        <input type="date" class="form-control" id="purchase_date" name="purchase_date" 
+                            value="{{ if .device.PurchaseDate }}{{ (localTime .device.PurchaseDate).Format "2006-01-02" }}{{ end }}">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="location" class="form-label">Lokasi</label>
+                    <input type="text" class="form-control" id="location" name="location" value="{{ .device.Location }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Catatan</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3">{{ .device.Notes }}</textarea>
+                </div>
+
+                {{ if .device.DeviceTypePhoto }}
+                <hr class="my-4">
+                <h6 class="text-primary mb-3"><i class="bi bi-camera"></i> Foto Tipe Perangkat</h6>
+                <div class="mb-3">
+                    <p class="text-muted small">Foto ini milik tipe perangkat ({{ .device.DeviceTypeName }}), bukan perangkat individual.</p>
+                    <img src="/uploads/device_types/{{ .device.DeviceTypePhoto }}" class="img-thumbnail" style="max-width: 300px;" alt="Foto tipe perangkat">
+                </div>
+                {{ end }}
+
+                <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-save"></i> Update
+                    </button>
+                    <a href="/devices" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Batal
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
-    <script>
-        // Show/hide quantity fields based on item type
-        document.getElementById('item_type').addEventListener('change', function() {
-            const qtyHelpIndividual = document.getElementById('qty_help_individual');
-            const qtyHelpConsumable = document.getElementById('qty_help_consumable');
-            const availHelpIndividual = document.getElementById('avail_help_individual');
-            const availHelpConsumable = document.getElementById('avail_help_consumable');
-            const qtyTotalInput = document.getElementById('quantity_total');
-            
-            if (this.value === 'consumable') {
-                // Consumable: show consumable help text
-                qtyHelpIndividual.style.display = 'none';
-                qtyHelpConsumable.style.display = 'inline';
-                availHelpIndividual.style.display = 'none';
-                availHelpConsumable.style.display = 'inline';
-                
-                document.getElementById('is_consumable').checked = true;
-                qtyTotalInput.min = '0';
-            } else {
-                // Individual: show individual help text
-                qtyHelpIndividual.style.display = 'inline';
-                qtyHelpConsumable.style.display = 'none';
-                availHelpIndividual.style.display = 'inline';
-                availHelpConsumable.style.display = 'none';
-                
-                document.getElementById('is_consumable').checked = false;
-                qtyTotalInput.min = '1';
-                
-                // Ensure minimum 1 for individual
-                if (parseInt(qtyTotalInput.value) < 1) {
-                    qtyTotalInput.value = '1';
-                    document.getElementById('quantity_available').value = '1';
-                }
-            }
-        });
-
-        // Sync is_consumable checkbox with item_type
-        document.getElementById('is_consumable').addEventListener('change', function() {
-            if (this.checked) {
-                document.getElementById('item_type').value = 'consumable';
-                document.getElementById('item_type').dispatchEvent(new Event('change'));
-            }
-        });
-    </script>
-</body>
-</html>
-{{ end }}
+{{ template "layout/footer.html" . }}

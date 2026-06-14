@@ -1,0 +1,364 @@
+{{ template "layout/base.html" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="bi bi-grid-3x3-gap"></i> Dashboard Laboratorium Komputer</h2>
+            <p class="text-muted">Visualisasi status PC dalam grid</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-check-circle"></i> Normal</h5>
+                    <h2>{{ index .statusCounts "normal" }}</h2>
+                    <small>PC dalam kondisi baik</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-exclamation-triangle"></i> Warning</h5>
+                    <h2>{{ index .statusCounts "warning" }}</h2>
+                    <small>PC perlu perhatian</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-x-circle"></i> Rusak</h5>
+                    <h2>{{ index .statusCounts "broken" }}</h2>
+                    <small>PC tidak berfungsi</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-box-seam"></i> Cadangan</h5>
+                    <h2>{{ .spareCount }}</h2>
+                    <small>PC tidak dipasang</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-grid"></i> Grid PC Laboratorium</h5>
+        </div>
+        <div class="card-body p-4 position-relative">
+            {{ if .pcLecturer.ID }}
+            <div class="container d-flex justify-content-end mb-3">
+                <div class="pc-card-wrapper pc-card-wrapper-special">
+                    <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLecturer.Status }}"
+                         role="button" tabindex="0"
+                         aria-label="PC {{ .pcLecturer.Label }}, Status {{ .pcLecturer.Status }}"
+                         data-pc-id="{{ .pcLecturer.ID }}"
+                         data-pc-label="{{ .pcLecturer.Label }}"
+                         data-pc-row="{{ .pcLecturer.Row }}"
+                         data-pc-column="{{ .pcLecturer.Column }}"
+                         data-pc-status="{{ .pcLecturer.Status }}"
+                         data-pc-processor="{{ .pcLecturer.Processor }}"
+                         data-pc-ram="{{ .pcLecturer.RAM }}"
+                         data-pc-storage="{{ .pcLecturer.Storage }}"
+                         data-pc-os="{{ .pcLecturer.OperatingSystem }}"
+                         data-pc-notes="{{ .pcLecturer.Notes }}"
+                         style="cursor: pointer;">
+                        <div class="pc-number">{{ .pcLecturer.Label }}</div>
+                        <div class="pc-icon"><i class="bi bi-person-badge"></i></div>
+                        <div class="pc-status-badge">
+                            {{ $info := pcStatusInfo .pcLecturer.Status }}
+                            <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                        </div>
+                        <div class="pc-windows-badge" id="win-badge-{{ .pcLecturer.Label }}"></div>
+                        <div class="pc-windows-text" id="win-text-{{ .pcLecturer.Label }}"></div>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+
+            <div class="pc-grid-scroll">
+                <div class="pc-grid">
+                    {{ range $rowIdx, $row := .pcGrid }}
+                    <div class="pc-row">
+                        {{ range $colIdx, $pc := $row }}
+                        <div class="pc-card-wrapper {{ if eq $pc.Placement "cadangan" }}pc-card-wrapper-cadangan{{ end }}">
+                            {{ if gt $pc.ID 0 }}
+                            <div class="pc-card pc-card-clickable status-{{ $pc.Status }}"
+                                 role="button" tabindex="0"
+                                 aria-label="PC {{ $pc.Label }}, Status {{ $pc.Status }}"
+                                 data-pc-id="{{ $pc.ID }}"
+                                 data-pc-label="{{ $pc.Label }}"
+                                 data-pc-row="{{ $pc.Row }}"
+                                 data-pc-column="{{ $pc.Column }}"
+                                 data-pc-status="{{ $pc.Status }}"
+                                 data-pc-processor="{{ $pc.Processor }}"
+                                 data-pc-ram="{{ $pc.RAM }}"
+                                 data-pc-storage="{{ $pc.Storage }}"
+                                 data-pc-os="{{ $pc.OperatingSystem }}"
+                                 data-pc-notes="{{ $pc.Notes }}"
+                                 style="cursor: pointer;">
+                                <div class="pc-number">{{ $pc.Label }}</div>
+                                <div class="pc-icon"><i class="bi bi-pc-display"></i></div>
+                                <div class="pc-status-badge">
+                                    {{ $info := pcStatusInfo $pc.Status }}
+                                    <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i></span>
+                                </div>
+                                <div class="pc-windows-badge" id="win-badge-{{ $pc.Label }}"></div>
+                                <div class="pc-windows-text" id="win-text-{{ $pc.Label }}"></div>
+                            </div>
+                            {{ else }}
+                            <div class="pc-card pc-card-empty">
+                                <div class="pc-number text-muted">{{ $pc.Label }}</div>
+                            </div>
+                            {{ end }}
+                        </div>
+                        {{ end }}
+                    </div>
+                    {{ end }}
+                </div>
+            </div>
+
+            <div class="mt-4">
+                {{ if .pcLaboran.ID }}
+                <div class="container d-flex">
+                    <div class="pc-card-wrapper pc-card-wrapper-special">
+                    <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcLaboran.Status }}"
+                         role="button" tabindex="0"
+                         aria-label="PC {{ .pcLaboran.Label }}, Status {{ .pcLaboran.Status }}"
+                         data-pc-id="{{ .pcLaboran.ID }}"
+                         data-pc-label="{{ .pcLaboran.Label }}"
+                         data-pc-row="{{ .pcLaboran.Row }}"
+                         data-pc-column="{{ .pcLaboran.Column }}"
+                         data-pc-status="{{ .pcLaboran.Status }}"
+                         data-pc-processor="{{ .pcLaboran.Processor }}"
+                         data-pc-ram="{{ .pcLaboran.RAM }}"
+                         data-pc-storage="{{ .pcLaboran.Storage }}"
+                         data-pc-os="{{ .pcLaboran.OperatingSystem }}"
+                         data-pc-notes="{{ .pcLaboran.Notes }}"
+                         style="cursor: pointer;">
+                        <div class="pc-number">{{ .pcLaboran.Label }}</div>
+                        <div class="pc-icon"><i class="bi bi-tools"></i></div>
+                        <div class="pc-status-badge">
+                            {{ $info := pcStatusInfo .pcLaboran.Status }}
+                            <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                        </div>
+                        <div class="pc-windows-badge" id="win-badge-{{ .pcLaboran.Label }}"></div>
+                        <div class="pc-windows-text" id="win-text-{{ .pcLaboran.Label }}"></div>
+                    </div>
+                    </div>
+                </div>
+                {{ end }}
+                {{ if .pcCCTV.ID }}
+                <div class="container d-flex mt-2">
+                    <div class="pc-card-wrapper pc-card-wrapper-special">
+                    <div class="pc-card pc-card-special pc-card-clickable status-{{ .pcCCTV.Status }}"
+                         role="button" tabindex="0"
+                         aria-label="PC {{ .pcCCTV.Label }}, Status {{ .pcCCTV.Status }}"
+                         data-pc-id="{{ .pcCCTV.ID }}"
+                         data-pc-label="{{ .pcCCTV.Label }}"
+                         data-pc-row="{{ .pcCCTV.Row }}"
+                         data-pc-column="{{ .pcCCTV.Column }}"
+                         data-pc-status="{{ .pcCCTV.Status }}"
+                         data-pc-processor="{{ .pcCCTV.Processor }}"
+                         data-pc-ram="{{ .pcCCTV.RAM }}"
+                         data-pc-storage="{{ .pcCCTV.Storage }}"
+                         data-pc-os="{{ .pcCCTV.OperatingSystem }}"
+                         data-pc-notes="{{ .pcCCTV.Notes }}"
+                         style="cursor: pointer;">
+                        <div class="pc-number">{{ .pcCCTV.Label }}</div>
+                        <div class="pc-icon"><i class="bi bi-camera-video"></i></div>
+                        <div class="pc-status-badge">
+                            {{ $info := pcStatusInfo .pcCCTV.Status }}
+                            <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                        </div>
+                        <div class="pc-windows-badge" id="win-badge-{{ .pcCCTV.Label }}"></div>
+                        <div class="pc-windows-text" id="win-text-{{ .pcCCTV.Label }}"></div>
+                    </div>
+                    </div>
+                </div>
+                {{ end }}
+
+                {{ if .extraPCs }}
+                <div class="mt-4">
+                    <h6>PC Mahasiswa Tambahan:</h6>
+                    <div class="container d-flex flex-wrap gap-2">
+                        {{ range .extraPCs }}
+                        <div class="pc-card-wrapper">
+                        <div class="pc-card pc-card-special pc-card-clickable status-{{ .Status }}"
+                             role="button" tabindex="0"
+                             aria-label="PC {{ .Label }}, Status {{ .Status }}"
+                             data-pc-id="{{ .ID }}"
+                             data-pc-label="{{ .Label }}"
+                             data-pc-row="{{ .Row }}"
+                             data-pc-column="{{ .Column }}"
+                             data-pc-status="{{ .Status }}"
+                             data-pc-processor="{{ .Processor }}"
+                             data-pc-ram="{{ .RAM }}"
+                             data-pc-storage="{{ .Storage }}"
+                             data-pc-os="{{ .OperatingSystem }}"
+                             data-pc-notes="{{ .Notes }}"
+                             style="cursor: pointer;">
+                            <div class="pc-number">{{ .Label }}</div>
+                            <div class="pc-status-badge">
+                                {{ $info := pcStatusInfo .Status }}
+                                <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                            </div>
+                            <div class="pc-windows-badge" id="win-badge-{{ .Label }}"></div>
+                            <div class="pc-windows-text" id="win-text-{{ .Label }}"></div>
+                        </div>
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+                {{ end }}
+
+                {{ if .specialPCs }}
+                <div class="mt-4">
+                    <h6>PC Spesial Lainnya:</h6>
+                    <div class="container d-flex flex-wrap gap-2">
+                        {{ range .specialPCs }}
+                        <div class="pc-card-wrapper pc-card-wrapper-special">
+                            <div class="pc-card pc-card-special pc-card-clickable status-{{ .Status }}"
+                                 role="button" tabindex="0"
+                                 aria-label="PC {{ .Label }}, Status {{ .Status }}"
+                                 data-pc-id="{{ .ID }}"
+                                 data-pc-label="{{ .Label }}"
+                                 data-pc-row="{{ .Row }}"
+                                 data-pc-column="{{ .Column }}"
+                                 data-pc-status="{{ .Status }}"
+                                 data-pc-processor="{{ .Processor }}"
+                                 data-pc-ram="{{ .RAM }}"
+                                 data-pc-storage="{{ .Storage }}"
+                                 data-pc-os="{{ .OperatingSystem }}"
+                                 data-pc-notes="{{ .Notes }}"
+                                 style="cursor: pointer;">
+                                <div class="pc-number">{{ .Label }}</div>
+                                <div class="pc-icon"><i class="bi bi-star"></i></div>
+                                <div class="pc-status-badge">
+                                    {{ $info := pcStatusInfo .Status }}
+                                    <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i> {{ $info.VisLabel }}</span>
+                                </div>
+                                <div class="pc-windows-badge" id="win-badge-{{ .Label }}"></div>
+                                <div class="pc-windows-text" id="win-text-{{ .Label }}"></div>
+                            </div>
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="pcDetailModal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="pcDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pcDetailModalLabel">PC Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm">
+                    <tr><th width="40%">Posisi:</th><td id="modal-position">-</td></tr>
+                    <tr><th>Status:</th><td><span id="modal-status-badge" class="badge">-</span></td></tr>
+                    <tr><th>Processor:</th><td id="modal-processor">-</td></tr>
+                    <tr><th>RAM:</th><td id="modal-ram">-</td></tr>
+                    <tr><th>Storage:</th><td id="modal-storage">-</td></tr>
+                    <tr><th>Sistem Operasi:</th><td id="modal-os">-</td></tr>
+                    <tr><th>Catatan:</th><td id="modal-notes">-</td></tr>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <a href="javascript:void(0)" id="modal-detail-link" class="btn btn-primary btn-sm"><i class="bi bi-eye"></i> Lihat Detail</a>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var pcDetailModal = null;
+function getPCDetailModal() {
+    if (!pcDetailModal) { var el = document.getElementById('pcDetailModal'); if (el) pcDetailModal = new bootstrap.Modal(el); }
+    return pcDetailModal;
+}
+
+function parseWindowsVersion(osString) {
+    if (!osString || osString === '-') return { badgeClass: 'windows-other', shortText: '-', fullText: osString };
+    var os = osString.toLowerCase();
+    if (os.indexOf('windows 11') !== -1 && os.indexOf('25h2') !== -1) return { badgeClass: 'windows-11-25h2', shortText: 'W11', fullText: 'Win 11 Pro 25H2' };
+    if (os.indexOf('windows 11') !== -1 && os.indexOf('23h2') !== -1) return { badgeClass: 'windows-11-23h2', shortText: 'W11', fullText: 'Win 11 Pro 23H2' };
+    if (os.indexOf('windows 10') !== -1 && os.indexOf('22h2') !== -1) return { badgeClass: 'windows-10-22h2', shortText: 'W10', fullText: 'Win 10 Pro 22H2' };
+    return { badgeClass: 'windows-other', shortText: 'OS', fullText: osString };
+}
+
+function initWindowsBadges() {
+    document.querySelectorAll('.pc-card-clickable').forEach(function(card) {
+        var label = card.getAttribute('data-pc-label');
+        var os = card.getAttribute('data-pc-os') || '';
+        var winInfo = parseWindowsVersion(os);
+        var badge = document.getElementById('win-badge-' + label);
+        if (badge && winInfo.shortText !== '-') { badge.textContent = winInfo.shortText; badge.className = 'pc-windows-badge ' + winInfo.badgeClass; }
+        else if (badge) { badge.className = 'pc-windows-badge d-none'; }
+        var text = document.getElementById('win-text-' + label);
+        if (text && winInfo.fullText !== '-') { text.textContent = winInfo.fullText; }
+    });
+}
+
+window.openPCModal = function(card) {
+    var pcLabel = card.getAttribute('data-pc-label');
+    var pcRow = card.getAttribute('data-pc-row') || '-';
+    var pcColumn = card.getAttribute('data-pc-column') || '-';
+    var pcStatus = card.getAttribute('data-pc-status');
+    var pcProcessor = card.getAttribute('data-pc-processor') || '-';
+    var pcRam = card.getAttribute('data-pc-ram') || '-';
+    var pcStorage = card.getAttribute('data-pc-storage') || '-';
+    var pcOs = card.getAttribute('data-pc-os') || '-';
+    var pcNotes = card.getAttribute('data-pc-notes') || '-';
+
+    document.getElementById('pcDetailModalLabel').textContent = pcLabel + ' Detail';
+    document.getElementById('modal-position').textContent = 'Baris ' + pcRow + ', Kolom ' + pcColumn;
+    document.getElementById('modal-processor').textContent = pcProcessor;
+    document.getElementById('modal-ram').textContent = pcRam;
+    document.getElementById('modal-storage').textContent = pcStorage;
+    document.getElementById('modal-os').textContent = pcOs;
+    document.getElementById('modal-notes').textContent = pcNotes;
+
+    var statusBadge = document.getElementById('modal-status-badge');
+    var statusLabel = {normal: 'Normal', warning: 'Warning', broken: 'Rusak'}[pcStatus] || pcStatus;
+    statusBadge.textContent = statusLabel;
+    statusBadge.className = 'badge';
+    if (pcStatus === 'normal') statusBadge.classList.add('bg-success');
+    else if (pcStatus === 'warning') statusBadge.classList.add('bg-warning');
+    else if (pcStatus === 'broken') statusBadge.classList.add('bg-danger');
+    else statusBadge.classList.add('bg-secondary');
+
+    document.getElementById('modal-detail-link').href = '/pc/detail/' + pcLabel + '.html';
+
+    var modal = getPCDetailModal();
+    if (modal) modal.show();
+};
+
+function bindPCCards() {
+    document.querySelectorAll('.pc-card-clickable').forEach(function(card) {
+        card.addEventListener('click', function() { openPCModal(this); });
+        card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPCModal(this); }
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initWindowsBadges();
+    bindPCCards();
+});
+</script>
+
+{{ template "layout/footer.html" . }}

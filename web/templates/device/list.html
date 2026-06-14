@@ -1,440 +1,261 @@
-{{ define "device/list.html" }}
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    {{ template "layout/navbar.html" . }}
+{{ template "layout/base.html" . }}
 
 <div class="container-fluid mt-4">
-    <!-- Header -->
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-md-6">
             <h2><i class="bi bi-hdd-rack"></i> Manajemen Perangkat</h2>
-            <p class="text-muted">Kelola perangkat, jenis barang, peminjaman, dan pemakaian</p>
+            <p class="text-muted">Daftar seluruh perangkat inventaris</p>
         </div>
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
-            {{ if eq .activeTab "list" }}
-            <a href="/devices/create" class="btn btn-primary">
+            {{ template "layout/header_actions_start.html" $ }}
+            <a href="/devices/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Perangkat
             </a>
-            {{ else if eq .activeTab "types" }}
-            <a href="/device-types/create" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Tambah Jenis Barang
-            </a>
-            {{ else if eq .activeTab "loans" }}
-            <a href="/device-loans/create" class="btn btn-primary">
-                <i class="bi bi-box-arrow-right"></i> Pinjam Perangkat
-            </a>
-            {{ else if eq .activeTab "usages" }}
-            <a href="/device-usages/create" class="btn btn-primary">
-                <i class="bi bi-clipboard-check"></i> Catat Pemakaian
-            </a>
-            {{ end }}
-            <a href="/devices/export" class="btn btn-success">
+            <a href="/devices/export" class="btn btn-success flex-grow-1">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
+            <a href="/print?type=device" class="btn btn-dark flex-grow-1 text-white">
+                <i class="bi bi-printer"></i> Print Stiker
+            </a>
+            {{ template "layout/header_actions_end.html" }}
             {{ end }}
         </div>
     </div>
 
-    <!-- Tab Navigation -->
-    <ul class="nav nav-tabs mb-3">
-        <li class="nav-item">
-            <a class="nav-link {{ if eq .activeTab "list" }}active{{ end }}" href="/devices?tab=list">
-                <i class="bi bi-list-ul"></i> Daftar Perangkat
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ if eq .activeTab "types" }}active{{ end }}" href="/devices?tab=types">
-                <i class="bi bi-tags"></i> Jenis Barang
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ if eq .activeTab "loans" }}active{{ end }}" href="/devices?tab=loans">
-                <i class="bi bi-box-arrow-right"></i> Peminjaman
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link {{ if eq .activeTab "usages" }}active{{ end }}" href="/devices?tab=usages">
-                <i class="bi bi-clipboard-check"></i> Pemakaian
-            </a>
-        </li>
-    </ul>
+    {{ template "device/_tab_nav" . }}
 
-    <!-- Tab Content -->
-    <div class="card shadow-sm">
+    <div class="card shadow-sm card-no-hover">
         <div class="card-body">
-            {{ if eq .activeTab "list" }}
-            <!-- TAB 1: Daftar Perangkat -->
-            <!-- Filter & Search -->
-            <form method="GET" action="/devices" class="row g-3 mb-3">
-                <input type="hidden" name="tab" value="list">
-                <div class="col-md-3">
-                    <input type="text" class="form-control" name="search" placeholder="Cari..." value="{{ .filters.search }}">
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" name="category">
-                        <option value="">Semua Kategori</option>
-                        <option value="peripheral" {{ if eq .filters.category "peripheral" }}selected{{ end }}>Peripheral</option>
-                        <option value="network" {{ if eq .filters.category "network" }}selected{{ end }}>Network</option>
-                        <option value="consumable" {{ if eq .filters.category "consumable" }}selected{{ end }}>Consumable</option>
-                        <option value="power" {{ if eq .filters.category "power" }}selected{{ end }}>Power</option>
-                        <option value="display" {{ if eq .filters.category "display" }}selected{{ end }}>Display</option>
-                        <option value="printer" {{ if eq .filters.category "printer" }}selected{{ end }}>Printer</option>
-                        <option value="audio" {{ if eq .filters.category "audio" }}selected{{ end }}>Audio</option>
-                        <option value="tools" {{ if eq .filters.category "tools" }}selected{{ end }}>Tools</option>
-                        <option value="server" {{ if eq .filters.category "server" }}selected{{ end }}>Server</option>
-                        <option value="security" {{ if eq .filters.category "security" }}selected{{ end }}>Security</option>
-                        <option value="stationery" {{ if eq .filters.category "stationery" }}selected{{ end }}>Stationery</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" name="condition">
-                        <option value="">Semua Kondisi</option>
-                        <option value="baik" {{ if eq .filters.condition "baik" }}selected{{ end }}>Baik</option>
-                        <option value="rusak" {{ if eq .filters.condition "rusak" }}selected{{ end }}>Rusak</option>
-                        <option value="maintenance" {{ if eq .filters.condition "maintenance" }}selected{{ end }}>Maintenance</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <select class="form-select" name="sort_by">
-                        <option value="name" {{ if eq .filters.sort_by "name" }}selected{{ end }}>Nama</option>
-                        <option value="asset_code" {{ if eq .filters.sort_by "asset_code" }}selected{{ end }}>Asset Code</option>
-                        <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>
-                        <option value="created_at" {{ if eq .filters.sort_by "created_at" }}selected{{ end }}>Tanggal</option>
-                    </select>
-                </div>
-                <div class="col-md-1">
-                    <select class="form-select" name="sort_order">
-                        <option value="ASC" {{ if eq .filters.sort_order "ASC" }}selected{{ end }}>A-Z</option>
-                        <option value="DESC" {{ if eq .filters.sort_order "DESC" }}selected{{ end }}>Z-A</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filter
-                    </button>
-                </div>
-            </form>
-
-            <!-- Table -->
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Asset Code</th>
-                            <th>Nama</th>
-                            <th>Kategori</th>
-                            <th>Tipe</th>
-                            <th>Stock</th>
-                            <th>Kondisi</th>
-                            <th>Lokasi</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{ range .devices }}
-                        <tr>
-                            <td><code>{{ .AssetCode }}</code></td>
-                            <td><strong>{{ .Name }}</strong></td>
-                            <td><span class="badge bg-secondary">{{ .Category }}</span></td>
-                            <td><span class="badge bg-info">{{ .ItemType }}</span></td>
-                            <td>
-                                {{ if eq .ItemType "consumable" }}
-                                    <span class="badge bg-warning text-dark">{{ .QuantityAvailable }} / {{ .QuantityTotal }}</span>
-                                {{ else }}
-                                    <span class="badge bg-primary">{{ .QuantityAvailable }} / {{ .QuantityTotal }}</span>
-                                {{ end }}
-                            </td>
-                            <td>
-                                <span class="badge bg-{{ if eq .Condition "baik" }}success{{ else if eq .Condition "maintenance" }}warning{{ else }}danger{{ end }}">
-                                    {{ .Condition }}
-                                </span>
-                            </td>
-                            <td>{{ if .Location }}{{ .Location }}{{ else }}-{{ end }}</td>
-                            <td>
-                                <a href="/devices/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                {{ if eq $.role "admin" }}
-                                <a href="/devices/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form method="POST" action="/devices/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus perangkat ini?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                {{ end }}
-                            </td>
-                        </tr>
-                        {{ else }}
-                        <tr>
-                            <td colspan="8" class="text-center text-muted">Belum ada data perangkat</td>
-                        </tr>
-                        {{ end }}
-                    </tbody>
-                </table>
-            </div>
-
-            {{ else if eq .activeTab "types" }}
-            <!-- TAB 2: Jenis Barang -->
-            <!-- Filter & Search -->
             <form method="GET" action="/devices" class="row g-3 mb-3">
                 <input type="hidden" name="tab" value="types">
-                <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Cari jenis barang..." value="{{ .filters.search }}">
-                </div>
                 <div class="col-md-3">
-                    <select class="form-select" name="category">
+                    <label for="search" class="form-label">Cari</label>
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari asset code, serial number..." value="{{ .filters.search }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="category" class="form-label">Kategori</label>
+                    <select class="form-select" id="category" name="category">
                         <option value="">Semua Kategori</option>
-                        <option value="peripheral" {{ if eq .filters.category "peripheral" }}selected{{ end }}>Peripheral</option>
-                        <option value="network" {{ if eq .filters.category "network" }}selected{{ end }}>Network</option>
-                        <option value="consumable" {{ if eq .filters.category "consumable" }}selected{{ end }}>Consumable</option>
-                        <option value="power" {{ if eq .filters.category "power" }}selected{{ end }}>Power</option>
-                        <option value="display" {{ if eq .filters.category "display" }}selected{{ end }}>Display</option>
-                        <option value="printer" {{ if eq .filters.category "printer" }}selected{{ end }}>Printer</option>
-                        <option value="audio" {{ if eq .filters.category "audio" }}selected{{ end }}>Audio</option>
-                        <option value="tools" {{ if eq .filters.category "tools" }}selected{{ end }}>Tools</option>
-                        <option value="server" {{ if eq .filters.category "server" }}selected{{ end }}>Server</option>
-                        <option value="security" {{ if eq .filters.category "security" }}selected{{ end }}>Security</option>
-                        <option value="stationery" {{ if eq .filters.category "stationery" }}selected{{ end }}>Stationery</option>
+                        {{ range .categories }}
+                        <option value="{{ .Name }}" {{ if eq $.filters.category .Name }}selected{{ end }}>{{ .Name }}</option>
+                        {{ end }}
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label for="condition" class="form-label">Kondisi</label>
+                    <select class="form-select" id="condition" name="condition">
+                        <option value="">Semua Kondisi</option>
+                        <option value="normal" {{ if eq .filters.condition "normal" }}selected{{ end }}>Normal</option>
+                        <option value="rusak" {{ if eq .filters.condition "rusak" }}selected{{ end }}>Rusak</option>
+                        <option value="warning" {{ if eq .filters.condition "warning" }}selected{{ end }}>Warning</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label">Urutkan</label>
+                    <select class="form-select" id="sort_by" name="sort_by">
+                        <option value="">Default</option>
+                        <option value="asset_code" {{ if eq .filters.sort_by "asset_code" }}selected{{ end }}>Asset Code</option>
+                        <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>
+                        <option value="condition" {{ if eq .filters.sort_by "condition" }}selected{{ end }}>Kondisi</option>
+                        <option value="created_at" {{ if eq .filters.sort_by "created_at" }}selected{{ end }}>Tgl Ditambah</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
+                    <a href="/devices" class="btn btn-secondary w-100">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
                 </div>
             </form>
 
-            <!-- Table -->
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 50px;">#</th>
-                            <th>Nama</th>
-                            <th>Kategori</th>
-                            <th>Merk/Model</th>
-                            <th>Tipe</th>
-                            <th>Prefix</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{ $index := 0 }}
-                        {{ range .deviceTypes }}
-                        {{ $index = add $index 1 }}
-                        <tr>
-                            <td class="text-muted">{{ $index }}</td>
-                            <td><strong>{{ .Name }}</strong></td>
-                            <td><span class="badge bg-secondary">{{ .Category }}</span></td>
-                            <td>{{ if .Brand }}{{ .Brand }} {{ .Model }}{{ else }}-{{ end }}</td>
-                            <td>
-                                <span class="badge bg-{{ if eq .ItemType "individual" }}primary{{ else }}warning{{ end }}">
-                                    {{ .ItemType }}
-                                </span>
-                            </td>
-                            <td><code>{{ .AssetCodePrefix }}</code></td>
-                            <td>
-                                <a href="/device-types/{{ .ID }}" class="btn btn-sm btn-info" title="Detail">
+            {{ if gt (len .groupedData.UsageGroups) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ .endRow }} dari {{ .totalItems }} perangkat</p>{{ end }}
+            {{ template "layout/pagination.html" . }}
+
+            <div id="deviceBatchContainer">
+            {{ if eq .role "admin" }}
+            <div class="mb-2 text-end">
+                <span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn" onclick="BatchSelector.toggleAll()">
+                    <i class="bi bi-check-square"></i> Pilih
+                </button></span>
+            </div>
+            {{ end }}
+            {{ range $ui, $ug := .groupedData.UsageGroups }}
+            {{ if gt (len $ug.Categories) 0 }}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex align-items-center py-2 px-3 
+                    {{ if eq $ug.UsageType "loanable" }}bg-primary text-white
+                    {{ else if eq $ug.UsageType "consumable" }}bg-warning text-dark
+                    {{ else }}bg-info text-white{{ end }}">
+                    <i class="bi {{ if eq $ug.UsageType "loanable" }}bi-journal-arrow-up
+                        {{ else if eq $ug.UsageType "consumable" }}bi-clipboard-data
+                        {{ else }}bi-pc-display{{ end }} me-2 fs-5"></i>
+                    <span class="fw-semibold fs-6">
+                        {{ if eq $ug.UsageType "loanable" }}Device Peminjaman
+                        {{ else if eq $ug.UsageType "consumable" }}Device Pemakaian
+                        {{ else }}Device Instalasi{{ end }}
+                    </span>
+                </div>
+                <div class="card-body p-3">
+                    {{ range $ci, $cat := $ug.Categories }}
+                    <div class="category-group mb-3 border rounded">
+                        <div class="category-header d-flex align-items-center py-2 px-3 rounded-top bg-light">
+                            <div class="d-flex align-items-center flex-grow-1" onclick="toggleGroup(this)" style="cursor:pointer" data-target="#ug-{{ $ui }}-cat-{{ $ci }}-body">
+                                <i class="bi bi-chevron-right me-2 chevron fs-6"></i>
+                                <span class="fw-semibold fs-6">{{ $cat.CategoryName }}</span>
+                                <span class="badge bg-secondary ms-2">{{ len $cat.Types }} tipe</span>
+                            </div>
+                            <div class="d-flex gap-1 ms-2 flex-shrink-0">
+                                <a href="/categories/{{ $cat.CategoryPrefix | lower }}" class="btn btn-sm btn-info" title="Detail Kategori">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {{ if eq $.role "admin" }}
-                                <a href="/device-types/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
+                                <a href="/categories/{{ $cat.CategoryPrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Kategori">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <form method="POST" action="/device-types/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus jenis barang ini?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus Kategori"
+                                    onclick="confirmDelete({message:'Hapus kategori &quot;{{ $cat.CategoryName }}&quot;? Semua perangkat dalam kategori ini akan terhapus.', requirePrefix:true, prefix:'{{ $cat.CategoryPrefix }}', type:'kategori', formId:'del-cat-{{ $ui }}-{{ $ci }}'})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <form id="del-cat-{{ $ui }}-{{ $ci }}" method="POST" action="/categories/{{ $cat.CategoryPrefix | lower }}/delete" class="d-none"></form>
                                 {{ end }}
-                            </td>
-                        </tr>
-                        {{ else }}
-                        <tr>
-                            <td colspan="7" class="text-center text-muted">Belum ada data jenis barang</td>
-                        </tr>
-                        {{ end }}
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Total Count -->
-            <div class="mt-2 text-muted">
-                <small>Total: <strong>{{ len .deviceTypes }}</strong> jenis barang</small>
-            </div>
-
-            {{ else if eq .activeTab "loans" }}
-            <!-- TAB 3: Peminjaman -->
-            <!-- Filter & Search -->
-            <form method="GET" action="/devices" class="row g-3 mb-3">
-                <input type="hidden" name="tab" value="loans">
-                <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Cari peminjam atau perangkat..." value="{{ .filters.search }}">
+                            </div>
+                        </div>
+                        <div id="ug-{{ $ui }}-cat-{{ $ci }}-body" class="p-2 d-none">
+                            {{ $typeCount := len $cat.Types }}
+                            {{ range $ti, $type := $cat.Types }}
+                            <div class="device-type-group mb-2 border-bottom pb-2">
+                                <div class="type-header d-flex align-items-center py-1 px-2">
+                                    <div class="d-flex align-items-center flex-grow-1" onclick="toggleGroup(this)" style="cursor:pointer" data-target="#ug-{{ $ui }}-cat-{{ $ci }}-type-{{ $ti }}-body">
+                                        <i class="bi bi-chevron-{{ if gt $typeCount 1 }}right{{ else }}down{{ end }} me-2 chevron fs-6"></i>
+                                        <span class="fw-medium fs-6">{{ $type.TypeName }}</span>
+                                        <span class="badge bg-secondary ms-1">{{ len $type.Devices }} perangkat</span>
+                                    </div>
+                                    <div class="d-flex gap-1 ms-2 flex-shrink-0">
+                                        <a href="/device-types/{{ $type.TypePrefix | lower }}" class="btn btn-sm btn-info" title="Detail Tipe">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {{ if eq $.role "admin" }}
+                                        <a href="/device-types/{{ $type.TypePrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Tipe">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-danger" title="Hapus Tipe"
+                                            onclick="confirmDelete({message:'Hapus tipe &quot;{{ $type.TypeName }}&quot;? Semua perangkat dalam tipe ini akan terhapus.', requirePrefix:true, prefix:'{{ $type.TypePrefix }}', type:'tipe', formId:'del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}'})">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        <form id="del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}" method="POST" action="/device-types/{{ $type.TypePrefix | lower }}/delete" class="d-none"></form>
+                                        {{ end }}
+                                    </div>
+                                </div>
+                                <div id="ug-{{ $ui }}-cat-{{ $ci }}-type-{{ $ti }}-body" class="px-2{{ if gt $typeCount 1 }} d-none{{ end }}">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-sm mb-0" data-batch-url="/devices/batch-delete">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Asset Code</th>
+                                                    <th>Serial Number</th>
+                                                    <th>Kondisi</th>
+                                                    <th>Lokasi</th>
+                                                    <th>Status</th>
+                                                    <th class="text-end batch-action-col" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {{ range $idx, $d := $type.Devices }}
+                                                <tr data-batch-id="{{ $d.ID }}" data-batch-label="{{ $d.AssetCode }}">
+                                                    <td class="text-muted">{{ add $idx $.startRow }}</td>
+                                                    <td><code>{{ $d.AssetCode }}</code></td>
+                                                    <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
+                                                    <td>
+                                                        <span class="badge bg-{{ if eq $d.Condition "normal" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
+                                                            {{ if eq $d.Condition "normal" }}Normal{{ else if eq $d.Condition "rusak" }}Rusak{{ else }}Warning{{ end }}
+                                                        </span>
+                                                    </td>
+                                                    <td><small>{{ if $d.Location }}{{ $d.Location }}{{ else }}-{{ end }}</small></td>
+                                                    <td>
+                                                        {{ if index $.activeLoanIDs $d.ID }}
+                                                        <span class="badge bg-warning">Dipinjam</span>
+                                                        {{ else if index $.depletedIDs $d.ID }}
+                                                        <span class="badge bg-danger">Habis</span>
+                                                        {{ else }}
+                                                        {{ $instStatus := index $.installationStatuses $d.ID }}
+                                                        {{ if eq $instStatus "selesai" }}
+                                                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Selesai</span>
+                                                        {{ else if eq $instStatus "berlangsung" }}
+                                                        <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Berlangsung</span>
+                                                        {{ else if eq $instStatus "belum_mulai" }}
+                                                        <span class="badge bg-secondary"><i class="bi bi-info-circle"></i> Belum Mulai</span>
+                                                        {{ else }}
+                                                        <span class="badge bg-success">Tersedia</span>
+                                                        {{ end }}
+                                                        {{ end }}
+                                                    </td>
+                                                    <td class="text-nowrap text-end batch-action-col">
+                                                        <span class="batch-mode-off">
+                                                        <a href="/devices/{{ $d.CategoryPrefix | lower }}/{{ $d.DeviceTypePrefix | lower }}/{{ $d.AssetCode | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                                            <i class="bi bi-eye"></i>
+                                                        </a>
+                                                        {{ if eq $.role "admin" }}
+                                                        <a href="/devices/{{ $d.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </a>
+                                                        <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                                                            onclick="confirmDelete({message:'Hapus perangkat {{ $d.AssetCode }}?', formId:'del-dev-{{ $d.ID }}'})">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                        <form id="del-dev-{{ $d.ID }}" method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" class="d-none"></form>
+                                                        {{ end }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $d.ID }}"></span></td>
+                                                </tr>
+                                                {{ else }}
+                                                <tr>
+                                                    <td colspan="8" class="text-center text-muted py-3">Tidak ada perangkat dalam grup ini</td>
+                                                </tr>
+                                                {{ end }}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                    {{ end }}
                 </div>
-                <div class="col-md-2">
-                    <select class="form-select" name="status">
-                        <option value="">Semua Status</option>
-                        <option value="active" {{ if eq .filters.status "active" }}selected{{ end }}>Aktif</option>
-                        <option value="returned" {{ if eq .filters.status "returned" }}selected{{ end }}>Dikembalikan</option>
-                        <option value="overdue" {{ if eq .filters.status "overdue" }}selected{{ end }}>Terlambat</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filter
-                    </button>
-                </div>
-            </form>
-
-            <!-- Table -->
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Perangkat</th>
-                            <th>Asset Code</th>
-                            <th>Peminjam</th>
-                            <th>Tipe</th>
-                            <th>Tanggal Pinjam</th>
-                            <th>Target Kembali</th>
-                            <th>Jumlah</th>
-                            <th>Status</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{ range .deviceLoans }}
-                        <tr>
-                            <td><strong>{{ .DeviceName }}</strong></td>
-                            <td><code>{{ .DeviceAssetCode }}</code></td>
-                            <td>{{ .BorrowerName }}</td>
-                            <td><span class="badge bg-secondary">{{ .BorrowerType }}</span></td>
-                            <td>{{ .LoanDate.Format "02/01/2006" }}</td>
-                            <td>
-                                {{ if .ExpectedReturnDate }}
-                                    {{ .ExpectedReturnDate.Format "02/01/2006" }}
-                                {{ else }}
-                                    -
-                                {{ end }}
-                            </td>
-                            <td>{{ .Quantity }}</td>
-                            <td>
-                                {{ if eq .ComputedStatus "overdue" }}
-                                    <span class="badge bg-danger">
-                                        <i class="bi bi-exclamation-triangle"></i> Terlambat
-                                    </span>
-                                {{ else if eq .ComputedStatus "active" }}
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-check-circle"></i> Aktif
-                                    </span>
-                                {{ else }}
-                                    <span class="badge bg-secondary">
-                                        <i class="bi bi-box-arrow-in-left"></i> Dikembalikan
-                                    </span>
-                                {{ end }}
-                            </td>
-                            <td>
-                                {{ if eq $.role "admin" }}
-                                <a href="/device-loans/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form method="POST" action="/device-loans/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data peminjaman ini?')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                {{ end }}
-                            </td>
-                        </tr>
-                        {{ else }}
-                        <tr>
-                            <td colspan="9" class="text-center text-muted">Belum ada data peminjaman</td>
-                        </tr>
-                        {{ end }}
-                    </tbody>
-                </table>
-            </div>
-
-            {{ else if eq .activeTab "usages" }}
-            <!-- TAB 4: Pemakaian -->
-            <!-- Filter & Search -->
-            <form method="GET" action="/devices" class="row g-3 mb-3">
-                <input type="hidden" name="tab" value="usages">
-                <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Cari pengguna atau perangkat..." value="{{ .filters.search }}">
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filter
-                    </button>
-                </div>
-            </form>
-
-            <!-- Table -->
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Perangkat</th>
-                            <th>Asset Code</th>
-                            <th>Pengguna</th>
-                            <th>Tipe</th>
-                            <th>Tanggal Pemakaian</th>
-                            <th>Jumlah</th>
-                            <th>Keperluan</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{ range .deviceUsages }}
-                        <tr>
-                            <td><strong>{{ .DeviceName }}</strong></td>
-                            <td><code>{{ .DeviceAssetCode }}</code></td>
-                            <td>{{ .UserName }}</td>
-                            <td><span class="badge bg-secondary">{{ .UserType }}</span></td>
-                            <td>{{ .UsageDate.Format "02/01/2006" }}</td>
-                            <td><span class="badge bg-warning">{{ .Quantity }}</span></td>
-                            <td>{{ if .Purpose }}{{ .Purpose }}{{ else }}-{{ end }}</td>
-                            <td>
-                                {{ if eq $.role "admin" }}
-                                <a href="/device-usages/{{ .ID }}/edit" class="btn btn-sm btn-warning" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form method="POST" action="/device-usages/{{ .ID }}/delete" style="display: inline;" onsubmit="return confirm('Hapus data pemakaian ini? Stok akan dikembalikan.')">
-                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                                {{ end }}
-                            </td>
-                        </tr>
-                        {{ else }}
-                        <tr>
-                            <td colspan="8" class="text-center text-muted">Belum ada data pemakaian</td>
-                        </tr>
-                        {{ end }}
-                    </tbody>
-                </table>
             </div>
             {{ end }}
+            {{ else }}
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-inbox" style="font-size:2rem"></i>
+                <p class="mt-2">Belum ada data perangkat</p>
+            </div>
+            {{ end }}
+            </div>
+
+            {{ template "layout/pagination.html" . }}
+
+            <script>
+            function toggleGroup(el) {
+                var targetId = el.dataset.target;
+                var body = document.querySelector(targetId);
+                if (!body) return;
+                var chevron = el.querySelector('.chevron');
+                if (body.classList.contains('d-none')) {
+                    body.classList.remove('d-none');
+                    if (chevron) chevron.className = 'bi bi-chevron-down me-2 chevron fs-6';
+                } else {
+                    body.classList.add('d-none');
+                    if (chevron) chevron.className = 'bi bi-chevron-right me-2 chevron fs-6';
+                }
+            }
+            </script>
         </div>
     </div>
 </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/main.js"></script>
-</body>
-</html>
-{{ end }}
+{{ template "layout/footer.html" . }}

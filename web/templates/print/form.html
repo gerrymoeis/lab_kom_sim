@@ -1,0 +1,708 @@
+{{ template "layout/base.html" . }}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-printer"></i> Print Stiker Label</h2>
+            <p class="text-muted">Generate PDF stiker untuk PC label atau asset code perangkat</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <form id="printForm" onsubmit="return false;">
+                <h5 class="mb-3">Langkah 1: Pilih Tipe & Data Stiker</h5>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label">Tipe Stiker</label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="type" id="typePc" value="pc" {{ if eq .selectedType "pc" }}checked{{ end }}
+                                    onchange="updateDefaults()">
+                                <label class="form-check-label" for="typePc">
+                                    <i class="bi bi-pc-display"></i> PC Label
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="type" id="typeDevice" value="device" {{ if eq .selectedType "device" }}checked{{ end }}
+                                    onchange="updateDefaults()">
+                                <label class="form-check-label" for="typeDevice">
+                                    <i class="bi bi-hdd-rack"></i> Device Asset Code
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pcGroup" style="{{ if ne .selectedType "pc" }}display:none{{ end }}">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">PC Mahasiswa</label>
+                            <div class="pc-checkbox-group">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="selectAllPCMahasiswa"
+                                        onchange="toggleAllPCMahasiswa(this)">
+                                    <label class="form-check-label fw-semibold" for="selectAllPCMahasiswa">
+                                        Pilih Semua PC Mahasiswa
+                                    </label>
+                                </div>
+                                <hr class="my-1">
+                                {{ range .pcMahasiswaLabels }}
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input pc-mahasiswa-check" type="checkbox"
+                                        name="pc_label" value="{{ . }}" id="pc_mhs_{{ . }}"
+                                        onchange="onPCChange()">
+                                    <label class="form-check-label text-uppercase" for="pc_mhs_{{ . }}">{{ . }}</label>
+                                </div>
+                                {{ end }}
+                                {{ if not .pcMahasiswaLabels }}
+                                <div class="text-muted small">Tidak ada PC mahasiswa</div>
+                                {{ end }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">PC Spesial</label>
+                            <div class="pc-checkbox-group">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="selectAllPCSpesial"
+                                        onchange="toggleAllPCSpesial(this)">
+                                    <label class="form-check-label fw-semibold" for="selectAllPCSpesial">
+                                        Pilih Semua PC Spesial
+                                    </label>
+                                </div>
+                                <hr class="my-1">
+                                {{ range .pcSpesialLabels }}
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input pc-spesial-check" type="checkbox"
+                                        name="pc_label" value="{{ . }}" id="pc_sps_{{ . }}"
+                                        onchange="onPCChange()">
+                                    <label class="form-check-label text-uppercase" for="pc_sps_{{ . }}">{{ . }}</label>
+                                </div>
+                                {{ end }}
+                                {{ if not .pcSpesialLabels }}
+                                <div class="text-muted small">Tidak ada PC spesial</div>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-text mt-1">Pilih satu atau lebih PC untuk di-print. Kosongkan = print semua PC.</div>
+                </div>
+
+                <div id="deviceTypeGroup" style="{{ if ne .selectedType "device" }}display:none{{ end }}">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Device Type</label>
+                            <div class="device-type-checkboxes">
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="selectAllDeviceTypes"
+                                        onchange="toggleAllDeviceTypes(this)">
+                                    <label class="form-check-label fw-semibold" for="selectAllDeviceTypes">
+                                        Pilih Semua
+                                    </label>
+                                </div>
+                                <hr class="my-1">
+                                {{ range .deviceTypes }}
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input device-type-check" type="checkbox"
+                                        name="device_type" value="{{ .AssetCodePrefix }}"
+                                        id="dt_{{ .AssetCodePrefix }}"
+                                        onchange="onDeviceTypeChange()">
+                                    <label class="form-check-label" for="dt_{{ .AssetCodePrefix }}">
+                                        {{ .AssetCodePrefix }}
+                                    </label>
+                                </div>
+                                {{ end }}
+                            </div>
+                            <div class="form-text mt-1">Pilih satu atau lebih device type. Kosongkan = print semua device.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">Langkah 2: Ukuran Stiker (cm)</h5>
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Template Ukuran</label>
+                        <div class="input-group">
+                            <select class="form-select" id="templateSelect" onchange="onTemplateSelect(this)">
+                                <option value="">-- Pilih template --</option>
+                            </select>
+                            <button class="btn btn-primary" type="button" onclick="saveTemplate()" id="saveTemplateBtn">
+                                <i class="bi bi-bookmark-plus"></i> Simpan
+                            </button>
+                            <button class="btn btn-outline-danger" type="button" onclick="deleteTemplate()" id="deleteTemplateBtn" style="display:none">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="resetDefaults()">
+                                <i class="bi bi-arrow-counterclockwise"></i> Default
+                            </button>
+                        </div>
+                        <div class="form-text">Pilih template untuk memuat ukuran. Simpan = template baru, Update = timpa template terpilih.</div>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="fontSize" class="form-label">Font Size (cm)</label>
+                        <input type="number" class="form-control" id="fontSize" name="font_size"
+                            value="{{ .defaultFontSize }}" step="0.1" min="0.3" max="5.0"
+                            oninput="onTemplateFieldChange()">
+                        <div class="form-text">Ukuran teks pada stiker</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="paddingH" class="form-label">Padding Horizontal (cm)</label>
+                        <input type="number" class="form-control" id="paddingH" name="padding_h"
+                            value="{{ .defaultPaddingH }}" step="0.1" min="0.1" max="5.0"
+                            oninput="onTemplateFieldChange()">
+                        <div class="form-text">Ruang kiri-kanan teks</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="paddingV" class="form-label">Padding Vertical (cm)</label>
+                        <input type="number" class="form-control" id="paddingV" name="padding_v"
+                            value="{{ .defaultPaddingV }}" step="0.1" min="0.1" max="5.0"
+                            oninput="onTemplateFieldChange()">
+                        <div class="form-text">Ruang atas-bawah teks</div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="form-label">Preview Stiker:</label>
+                        <div class="border rounded p-3 bg-light" id="previewContainer">
+                            <div class="d-flex flex-wrap gap-2" id="previewGrid">
+                                <div class="sticker-preview-box mx-auto" id="previewSingle">
+                                    <span id="previewText">{{ if eq .selectedType "pc" }}{{ .longestPCLabel }}{{ else }}{{ .longestDeviceLabel }}{{ end }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text mt-1">
+                            Ukuran stiker: <strong id="stickerSizeLabel">-</strong> &nbsp;|&nbsp;
+                            Perkiraan per lembar <span id="paperSizeLabelForm">A4</span>: <strong id="perPageEstimate">-</strong> stiker
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3">Langkah 3: Pengaturan Kertas</h5>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="paperSize" class="form-label">Ukuran Kertas</label>
+                        <select class="form-select" id="paperSize" name="paper_size" onchange="updatePreview()">
+                            <option value="A4">A4 (21 × 29.7 cm)</option>
+                            <option value="F4">F4 (21 × 33 cm)</option>
+                            <option value="A3">A3 (29.7 × 42 cm)</option>
+                        </select>
+                        <div class="form-text">Kertas stiker yang tersedia</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="numSheets" class="form-label">Jumlah Copy</label>
+                        <input type="number" class="form-control" id="numSheets" name="num_sheets"
+                            value="1" min="1" max="100" oninput="updatePreview()">
+                        <div class="form-text">Total copy cetakan</div>
+                    </div>
+                    <div class="col-md-4"></div>
+                </div>
+
+                <hr>
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-primary btn-lg" onclick="generatePrint()">
+                        <i class="bi bi-filetype-pdf"></i> Generate Print
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="saveTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">Simpan Template</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Nama Template</label>
+                <input type="text" class="form-control" id="templateNameInput" maxlength="100"
+                    placeholder="Misal: Stiker PC Besar" autocomplete="off">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="confirmSaveTemplate">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#previewContainer {
+    overflow-x: auto;
+}
+.sticker-preview-box {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+.pc-checkbox-group,
+.device-type-checkboxes {
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+}
+</style>
+
+<script>
+var paperSizes = {
+    'A4': [21.0, 29.7],
+    'F4': [21.0, 33.0],
+    'A3': [29.7, 42.0]
+};
+
+var longestSample = {
+    'pc': '{{ .longestPCLabel }}',
+    'device': '{{ .longestDeviceLabel }}'
+};
+
+var longestPerDeviceType = {
+{{- range $prefix, $longest := .longestPerDeviceType }}
+    '{{ $prefix }}': '{{ $longest }}',
+{{- end }}
+};
+
+var templates = [];
+
+function getSelectedLabels(selector) {
+    var checks = document.querySelectorAll(selector + ':checked');
+    var vals = [];
+    checks.forEach(function(c) { vals.push(c.value); });
+    return vals;
+}
+
+function getSelectedDevicePrefixes() {
+    return getSelectedLabels('.device-type-check');
+}
+
+function getSelectedPCLabels() {
+    var vals = getSelectedLabels('.pc-mahasiswa-check');
+    return vals.concat(getSelectedLabels('.pc-spesial-check'));
+}
+
+function getConfig() {
+    var type = document.querySelector('input[name="type"]:checked');
+    return {
+        type: type ? type.value : 'pc',
+        fontSize: parseFloat(document.getElementById('fontSize').value) || 0.5,
+        padH: parseFloat(document.getElementById('paddingH').value) || 0.3,
+        padV: parseFloat(document.getElementById('paddingV').value) || 0.3,
+        paperSize: document.getElementById('paperSize').value || 'A4',
+        numSheets: parseInt(document.getElementById('numSheets').value) || 1,
+        deviceType: getSelectedDevicePrefixes().join(','),
+        pcLabels: getSelectedPCLabels()
+    };
+}
+
+function toggleAll(selector, src) {
+    var checks = document.querySelectorAll(selector);
+    checks.forEach(function(c) { c.checked = src.checked; });
+    updatePreview();
+}
+
+function toggleAllPCMahasiswa(src) {
+    toggleAll('.pc-mahasiswa-check', src);
+}
+
+function toggleAllPCSpesial(src) {
+    toggleAll('.pc-spesial-check', src);
+}
+
+function toggleAllDeviceTypes(src) {
+    toggleAll('.device-type-check', src);
+    onDeviceTypeChange();
+}
+
+function onPCChange() {
+    updateSelectAllState('.pc-mahasiswa-check', 'selectAllPCMahasiswa');
+    updateSelectAllState('.pc-spesial-check', 'selectAllPCSpesial');
+    updatePreview();
+}
+
+function onDeviceTypeChange() {
+    updateSelectAllState('.device-type-check', 'selectAllDeviceTypes');
+    updatePreview();
+}
+
+function updateSelectAllState(checkSelector, selectAllId) {
+    var total = document.querySelectorAll(checkSelector).length;
+    var checked = document.querySelectorAll(checkSelector + ':checked').length;
+    var selAll = document.getElementById(selectAllId);
+    if (selAll) {
+        selAll.checked = total > 0 && checked === total;
+        selAll.indeterminate = checked > 0 && checked < total;
+    }
+}
+
+function updateDefaults() {
+    var type = document.querySelector('input[name="type"]:checked');
+    var isDevice = type && type.value === 'device';
+
+    document.getElementById('deviceTypeGroup').style.display = isDevice ? '' : 'none';
+    document.getElementById('pcGroup').style.display = isDevice ? 'none' : '';
+
+    if (isDevice) {
+        document.getElementById('fontSize').value = 0.5;
+        document.getElementById('paddingH').value = 0.3;
+        document.getElementById('paddingV').value = 0.3;
+    } else {
+        document.getElementById('fontSize').value = 1.0;
+        document.getElementById('paddingH').value = 0.5;
+        document.getElementById('paddingV').value = 0.8;
+    }
+    document.getElementById('templateSelect').value = '';
+    loadTemplates();
+    updateTemplateButtons();
+    updatePreview();
+}
+
+function getSampleText(cfg) {
+    if (cfg.type === 'pc') {
+        if (cfg.pcLabels.length > 0) {
+            var longest = '';
+            cfg.pcLabels.forEach(function(l) {
+                if (l.toUpperCase().length > longest.length) longest = l.toUpperCase();
+            });
+            return longest || (longestSample.pc || 'PC-99');
+        }
+        return longestSample.pc || 'PC-99';
+    }
+    var prefixes = cfg.deviceType ? cfg.deviceType.split(',') : [];
+    var longest = '';
+    for (var i = 0; i < prefixes.length; i++) {
+        var s = longestPerDeviceType[prefixes[i]];
+        if (s && s.length > longest.length) longest = s;
+    }
+    if (longest) return longest;
+    if (longestPerDeviceType[''] !== undefined) return longestPerDeviceType[''];
+    return longestSample.device || 'PREFIX-999';
+}
+
+function updatePreview() {
+    var cfg = getConfig();
+
+    var sample = getSampleText(cfg);
+
+    var approxCharW = cfg.fontSize * 0.35;
+    var textW = sample.length * approxCharW;
+    var stickerW = textW + 2 * cfg.padH;
+    var stickerH = cfg.fontSize + 2 * cfg.padV;
+
+    var preview = document.getElementById('previewSingle');
+    var scale = 80;
+    preview.style.padding = (cfg.padV * scale) + 'px ' + (cfg.padH * scale) + 'px';
+
+    var textSpan = document.getElementById('previewText');
+    textSpan.textContent = sample;
+    textSpan.style.fontSize = (cfg.fontSize * scale) + 'px';
+
+    var container = document.getElementById('previewContainer');
+    var maxW = container.clientWidth - 32;
+    var pw = sample.length * approxCharW * scale + 2 * cfg.padH * scale + 4;
+    if (pw > maxW) {
+        scale = Math.floor(scale * (maxW / pw));
+        preview.style.padding = (cfg.padV * scale) + 'px ' + (cfg.padH * scale) + 'px';
+        textSpan.style.fontSize = (cfg.fontSize * scale) + 'px';
+    }
+
+    var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
+    var margin = 0.5;
+    var gap = 0.3;
+    var printW = ps[0] - 2 * margin;
+    var printH = ps[1] - 2 * margin;
+
+    var cols = Math.floor((printW + gap) / (stickerW + gap));
+    var rows = Math.floor((printH + gap) / (stickerH + gap));
+
+    document.getElementById('stickerSizeLabel').textContent =
+        stickerW.toFixed(1) + ' × ' + stickerH.toFixed(1) + ' cm';
+    document.getElementById('paperSizeLabelForm').textContent = cfg.paperSize;
+
+    var perPage = (cols > 0 && rows > 0) ? (cols * rows) : 0;
+    document.getElementById('perPageEstimate').textContent =
+        perPage > 0 ? perPage : 'stiker terlalu besar';
+}
+
+function generatePrint() {
+    var cfg = getConfig();
+
+    var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
+    var margin = 0.5;
+    var gap = 0.3;
+    var approxCharW = cfg.fontSize * 0.35;
+    var sample = getSampleText(cfg);
+    var textW = sample.length * approxCharW;
+    var stickerW = textW + 2 * cfg.padH;
+    var stickerH = cfg.fontSize + 2 * cfg.padV;
+    var printW = ps[0] - 2 * margin;
+    var printH = ps[1] - 2 * margin;
+    var cols = Math.floor((printW + gap) / (stickerW + gap));
+    var rows = Math.floor((printH + gap) / (stickerH + gap));
+
+    if (cols < 1 || rows < 1) {
+        alert('Ukuran stiker terlalu besar untuk kertas ' + cfg.paperSize + '. Perkecil font size atau padding.');
+        return;
+    }
+    if (cfg.fontSize < 0.3 || cfg.fontSize > 5.0) {
+        alert('Font size harus antara 0.3 - 5.0 cm');
+        return;
+    }
+    if (cfg.padH < 0.1 || cfg.padH > 5.0 || cfg.padV < 0.1 || cfg.padV > 5.0) {
+        alert('Padding harus antara 0.1 - 5.0 cm');
+        return;
+    }
+    if (cfg.numSheets < 1 || cfg.numSheets > 100) {
+        alert('Jumlah copy harus antara 1 - 100');
+        return;
+    }
+    if (!paperSizes[cfg.paperSize]) {
+        alert('Ukuran kertas tidak valid');
+        return;
+    }
+
+    var params = new URLSearchParams();
+    params.set('type', cfg.type);
+    params.set('font_size', cfg.fontSize.toString());
+    params.set('padding_h', cfg.padH.toString());
+    params.set('padding_v', cfg.padV.toString());
+    params.set('paper_size', cfg.paperSize);
+    params.set('num_sheets', cfg.numSheets.toString());
+
+    if (cfg.type === 'device') {
+        params.set('device_type', cfg.deviceType);
+    } else if (cfg.type === 'pc' && cfg.pcLabels.length > 0) {
+        params.set('pc_labels', cfg.pcLabels.join(','));
+    }
+
+    window.open('/print/generate?' + params.toString(), '_blank');
+}
+
+function onTemplateFieldChange() {
+    var sel = document.getElementById('templateSelect');
+    var prevVal = sel.value;
+    updatePreview();
+    sel.value = prevVal;
+    updateTemplateButtons();
+}
+
+function updateTemplateButtons() {
+    var sel = document.getElementById('templateSelect');
+    var id = parseInt(sel.value);
+    var delBtn = document.getElementById('deleteTemplateBtn');
+    var saveBtn = document.getElementById('saveTemplateBtn');
+    if (id) {
+        delBtn.style.display = '';
+        saveBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Update';
+    } else {
+        delBtn.style.display = 'none';
+        saveBtn.innerHTML = '<i class="bi bi-bookmark-plus"></i> Simpan';
+    }
+}
+
+function getTypeDefaults() {
+    var type = document.querySelector('input[name="type"]:checked');
+    if (type && type.value === 'device') {
+        return {fontSize: 0.5, padH: 0.3, padV: 0.3};
+    }
+    return {fontSize: 1.0, padH: 0.5, padV: 0.8};
+}
+
+function resetDefaults() {
+    var def = getTypeDefaults();
+    document.getElementById('fontSize').value = def.fontSize;
+    document.getElementById('paddingH').value = def.padH;
+    document.getElementById('paddingV').value = def.padV;
+    document.getElementById('templateSelect').value = '';
+    updateTemplateButtons();
+    updatePreview();
+}
+
+function loadTemplates() {
+    var type = document.querySelector('input[name="type"]:checked');
+    var stickerType = type ? type.value : 'pc';
+
+    fetchWithCSRF('/api/sticker-templates?type=' + stickerType, {
+        headers: {'Accept': 'application/json'}
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        templates = data;
+        var sel = document.getElementById('templateSelect');
+        var prevVal = sel.value;
+        sel.innerHTML = '<option value="">-- Pilih template --</option>';
+        data.forEach(function(t) {
+            var opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            sel.appendChild(opt);
+        });
+        sel.value = prevVal;
+        if (!sel.value) { sel.value = ''; }
+        updateTemplateButtons();
+    })
+    .catch(function() {});
+}
+
+function onTemplateSelect(sel) {
+    var id = parseInt(sel.value);
+    if (!id) {
+        resetDefaults();
+        return;
+    }
+    for (var i = 0; i < templates.length; i++) {
+        if (templates[i].id === id) {
+            var t = templates[i];
+            document.getElementById('fontSize').value = t.font_size_cm;
+            document.getElementById('paddingH').value = t.padding_h_cm;
+            document.getElementById('paddingV').value = t.padding_v_cm;
+            updateTemplateButtons();
+            updatePreview();
+            return;
+        }
+    }
+}
+
+function saveTemplate() {
+    if ('{{ .role }}' !== 'admin') {
+        alert('Hanya admin yang dapat menyimpan template');
+        return;
+    }
+    var sel = document.getElementById('templateSelect');
+    var id = parseInt(sel.value);
+    if (id) {
+        updateTemplateById(id);
+        return;
+    }
+    var modal = new bootstrap.Modal(document.getElementById('saveTemplateModal'));
+    document.getElementById('templateNameInput').value = '';
+    document.getElementById('templateNameInput').focus();
+    modal.show();
+}
+
+function updateTemplateById(id) {
+    var fontSize = parseFloat(document.getElementById('fontSize').value) || 0.5;
+    var padH = parseFloat(document.getElementById('paddingH').value) || 0.3;
+    var padV = parseFloat(document.getElementById('paddingV').value) || 0.3;
+
+    var type = document.querySelector('input[name="type"]:checked');
+    var stickerType = type ? type.value : 'pc';
+    var name = '';
+    for (var i = 0; i < templates.length; i++) {
+        if (templates[i].id === id) { name = templates[i].name; break; }
+    }
+
+    fetchWithCSRF('/api/sticker-templates/' + id, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({
+            name: name, sticker_type: stickerType,
+            font_size_cm: fontSize, padding_h_cm: padH, padding_v_cm: padV
+        })
+    })
+    .then(function(r) {
+        if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
+    })
+    .then(function() {
+        for (var i = 0; i < templates.length; i++) {
+            if (templates[i].id === id) {
+                templates[i].font_size_cm = fontSize;
+                templates[i].padding_h_cm = padH;
+                templates[i].padding_v_cm = padV;
+                break;
+            }
+        }
+        showToast('Template berhasil diupdate', 'success', 'outline', 'Template Diupdate');
+    })
+    .catch(function(err) {
+        showToast(err.message || 'Gagal mengupdate template', 'error', 'solid', 'Gagal');
+    });
+}
+
+function deleteTemplate() {
+    var sel = document.getElementById('templateSelect');
+    var id = parseInt(sel.value);
+    if (!id) { return; }
+    if (!confirm('Hapus template ini?')) { return; }
+
+    fetchWithCSRF('/api/sticker-templates/' + id, {
+        method: 'DELETE',
+        headers: {'Accept': 'application/json'}
+    })
+    .then(function(r) {
+        if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
+    })
+    .then(function() {
+        templates = templates.filter(function(t) { return t.id !== id; });
+        var sel = document.getElementById('templateSelect');
+        sel.innerHTML = '<option value="">-- Pilih template --</option>';
+        templates.forEach(function(t) {
+            var opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            sel.appendChild(opt);
+        });
+        sel.value = '';
+        resetDefaults();
+        showToast('Template berhasil dihapus', 'error', 'outline', 'Template Dihapus');
+    })
+    .catch(function(err) {
+        showToast(err.message || 'Gagal menghapus template', 'error', 'solid', 'Gagal');
+    });
+}
+
+document.getElementById('confirmSaveTemplate').addEventListener('click', function() {
+    var name = document.getElementById('templateNameInput').value.trim();
+    if (!name) { alert('Nama template tidak boleh kosong'); return; }
+
+    var type = document.querySelector('input[name="type"]:checked');
+    var stickerType = type ? type.value : 'pc';
+    var fontSize = parseFloat(document.getElementById('fontSize').value) || 0.5;
+    var padH = parseFloat(document.getElementById('paddingH').value) || 0.3;
+    var padV = parseFloat(document.getElementById('paddingV').value) || 0.3;
+
+    fetchWithCSRF('/api/sticker-templates', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({
+            name: name,
+            sticker_type: stickerType,
+            font_size_cm: fontSize,
+            padding_h_cm: padH,
+            padding_v_cm: padV
+        })
+    })
+    .then(function(r) {
+        if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
+    })
+    .then(function() {
+        var modal = bootstrap.Modal.getInstance(document.getElementById('saveTemplateModal'));
+        modal.hide();
+        loadTemplates();
+        showToast('Template berhasil disimpan', 'success', 'solid', 'Template Baru');
+    })
+    .catch(function(err) {
+        showToast(err.message || 'Gagal menyimpan template', 'error', 'solid', 'Gagal');
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTemplates();
+    updatePreview();
+    updateTemplateButtons();
+});
+</script>
+
+{{ template "layout/footer.html" . }}

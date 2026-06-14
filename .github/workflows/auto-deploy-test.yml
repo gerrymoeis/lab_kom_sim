@@ -1,0 +1,75 @@
+name: Auto-Sync deploy_test
+
+on:
+  push:
+    branches: [refactoring]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Sync refactoring → deploy_test (preserve deploy_test-only files)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== 1. Switch to deploy_test ==="
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -B deploy_test origin/deploy_test
+
+          echo "=== 2. Save deploy_test-specific files (different from refactoring) ==="
+          SAVEDIR=$(mktemp -d)
+          declare -a deploy_only_files
+          for f in $(git diff --diff-filter=AM --name-only origin/refactoring HEAD -- .); do
+            if [[ "$f" != .github/workflows/* ]] && [ -f "$f" ]; then
+              mkdir -p "$SAVEDIR/$(dirname "$f")"
+              cp "$f" "$SAVEDIR/$f"
+              deploy_only_files+=("$f")
+            fi
+          done
+          if [ ${#deploy_only_files[@]} -gt 0 ]; then
+            echo "Saved ${#deploy_only_files[@]} deploy_test-specific file(s):"
+            printf '  %s\n' "${deploy_only_files[@]}"
+          fi
+
+          echo "=== 3. Reset index to refactoring ==="
+          git rm -r --cached .
+          git checkout origin/refactoring -- .
+
+          echo "=== 4. Restore deploy_test-only files ==="
+          for f in "${deploy_only_files[@]}"; do
+            mkdir -p "$(dirname "$f")"
+            cp "$SAVEDIR/$f" "$f"
+            git add "$f"
+          done
+          rm -rf "$SAVEDIR"
+
+          echo "=== 5. Run tests ==="
+          go test ./... -count=1
+
+          echo "=== 6. Verify build ==="
+          go build ./...
+          go vet ./...
+
+          echo "=== 7. Commit and push ==="
+          if ! git diff --cached --quiet; then
+            git commit -m "sync: align deploy_test with refactoring"
+            git push origin deploy_test
+            echo "✓ deploy_test synced and pushed"
+          else
+            echo "· No changes for deploy_test"
+          fi

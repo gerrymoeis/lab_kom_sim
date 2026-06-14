@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+bin/
 inventaris-lab-kom
 inventaris-lab-kom.exe
 
@@ -15,6 +16,7 @@ inventaris-lab-kom.exe
 
 # Dependency directories
 vendor/
+!web/static/vendor/
 
 # Go workspace file
 go.work
@@ -25,8 +27,11 @@ go.work
 
 # Database files
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
+full_testing.db
 
 # Logs
 *.log
@@ -50,3 +55,16 @@ uploads/*
 # Temporary files
 tmp/
 temp/
+
+# Build artifacts
+*.zip
+
+app-simlab
+
+# SSG Public Site Build Output
+dist/
+
+# Docs & backups (moved to root docs_and_backup/)
+docs_and_backup/
+
+local_logbook_*

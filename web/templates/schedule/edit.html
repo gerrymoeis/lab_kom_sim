@@ -1,0 +1,47 @@
+{{ template "layout/base.html" . }}
+{{ template "layout/card_edit.html" . }}
+                <form method="POST" action="/schedules/{{ .s.ID }}/edit">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="course_name" class="form-label">Mata Kuliah *</label>
+                            <input type="text" class="form-control" id="course_name" name="course_name" value="{{ .s.CourseName }}" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="class" class="form-label">Kelas *</label>
+                            <input type="text" class="form-control" id="class" name="class" value="{{ .s.Class }}" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="lecturer" class="form-label">Dosen *</label>
+                            <input type="text" class="form-control" id="lecturer" name="lecturer" value="{{ .s.Lecturer }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="day" class="form-label">Hari *</label>
+                            <select class="form-select" id="day" name="day" required>
+                                <option value="">Pilih hari</option>
+                                {{ range .days }}<option value="{{ . }}" {{ if eq $.s.Day . }}selected{{ end }}>{{ . }}</option>{{ end }}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="time_start" class="form-label">Jam Mulai *</label>
+                            <input type="time" class="form-control" id="time_start" name="time_start" value="{{ .s.TimeStart }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="time_end" class="form-label">Jam Selesai *</label>
+                            <input type="time" class="form-control" id="time_end" name="time_end" value="{{ .s.TimeEnd }}" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Catatan</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2">{{ .s.Notes }}</textarea>
+                    </div>
+                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-end">
+                        <button type="submit" class="btn btn-warning"><i class="bi bi-save"></i> Update</button>
+                        <a href="/schedules" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Kembali</a>
+                    </div>
+                </form>
+{{ template "layout/card_close.html" . }}
+{{ template "layout/footer.html" . }}
