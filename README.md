@@ -68,9 +68,12 @@ pkg update && pkg upgrade -y
 
 ### 2. Install Git
 
-Git untuk clone repositori dan update kode:
+Git untuk clone repositori dan update kode. Cek dulu apakah sudah terinstall:
 
 ```bash
+which git
+# Jika output: /data/data/com.termux/files/usr/bin/git → sudah terinstall (skip)
+# Jika tidak ada output → lanjut install
 pkg install git -y
 ```
 
@@ -86,7 +89,17 @@ git config --global user.name "Nama Anda"
 git config --global user.email "email@example.com"
 ```
 
+📎 [Official docs: git-scm.com](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+
 ### 3. Install Go (Golang)
+
+Cek dulu apakah sudah terinstall:
+
+```bash
+go version
+# Jika output: go version go1.25+ → sudah terinstall (skip)
+# Jika command not found → lanjut install
+```
 
 Termux menyediakan Go versi terbaru (saat ini **Go 1.26.3**) langsung dari repositori resmi:
 
@@ -103,6 +116,8 @@ go version
 ```
 
 > **Catatan:** Go di Termux sudah terkonfigurasi dengan `CGO_ENABLED=0` secara default. Tidak perlu konfigurasi PATH tambahan.
+
+📎 [Official docs: go.dev/doc/install](https://go.dev/doc/install)
 
 ### 4. Install SSH Server
 
@@ -232,17 +247,23 @@ git clone -b deploy_android https://github.com/gerrymoeis/lab_kom_sim.git
 cd lab_kom_sim
 
 cp .env.example .env
+
+# Generate SESSION_SECRET random (64 karakter alfanumerik)
+SESSION_SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+echo "SESSION_SECRET=$SESSION_SECRET"
+
+# Edit .env — set SESSION_SECRET, GEMINI_API_KEY, OPENROUTER_API_KEY
 nano .env
 ```
 
-**Konfigurasi minimal untuk production:**
+**Konfigurasi minimal untuk production (copy-paste dengan nilai Anda):**
 
 ```env
 ENVIRONMENT=production
 HOST=0.0.0.0
 PORT=8080
 DATABASE_PATH=inventaris_lab.db
-SESSION_SECRET=generate-random-string-panjang-32-64-karakter
+SESSION_SECRET=isi-dengan-output-perintah-generate
 TIMEZONE=Asia/Jakarta
 UPLOAD_PATH=uploads
 GEMINI_API_KEY=your-gemini-api-key
@@ -251,6 +272,8 @@ ANDROID=true
 BACKUP_ENABLED=true
 BACKUP_DIR=./backups
 ```
+
+> **Catatan:** Perintah `cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64` menghasilkan 64 karakter random. Simpan outputnya dan paste ke `SESSION_SECRET` di `.env`. Jangan gunakan string yang sama dengan contoh — setiap server harus punya secret unik.
 
 Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
 
