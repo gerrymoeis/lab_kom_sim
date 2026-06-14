@@ -86,6 +86,10 @@
                 </div>
             </div>{{ end }}
 
+            <p class="mb-0 small d-none" id="dupStatsList" style="color:#856404;">
+                Terdapat <span id="dupCountList">0</span> terindikasi duplikat dari <span id="dupTotalList">{{ .total }}</span> entries.
+            </p>
+
             {{ template "layout/pagination.html" . }}
 
             <div class="table-responsive">
@@ -240,6 +244,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (n > 0) {
         dupBadge.textContent = n;
         dupBadge.classList.remove('d-none');
+    }
+    var dupStatsList = document.getElementById('dupStatsList');
+    if (dupStatsList) {
+        document.getElementById('dupCountList').textContent = n;
+        dupStatsList.classList.toggle('d-none', n === 0);
     }
 });
 </script>
