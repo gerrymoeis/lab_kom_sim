@@ -232,6 +232,9 @@
 </div>
 
 <style>
+#previewContainer {
+    overflow-x: auto;
+}
 .sticker-preview-box {
     border: 1px solid #ccc;
     border-radius: 6px;
@@ -405,6 +408,15 @@ function updatePreview() {
     var textSpan = document.getElementById('previewText');
     textSpan.textContent = sample;
     textSpan.style.fontSize = (cfg.fontSize * scale) + 'px';
+
+    var container = document.getElementById('previewContainer');
+    var maxW = container.clientWidth - 32;
+    var pw = sample.length * approxCharW * scale + 2 * cfg.padH * scale + 4;
+    if (pw > maxW) {
+        scale = Math.floor(scale * (maxW / pw));
+        preview.style.padding = (cfg.padV * scale) + 'px ' + (cfg.padH * scale) + 'px';
+        textSpan.style.fontSize = (cfg.fontSize * scale) + 'px';
+    }
 
     var ps = paperSizes[cfg.paperSize] || paperSizes['A4'];
     var margin = 0.5;
@@ -612,10 +624,10 @@ function updateTemplateById(id) {
                 break;
             }
         }
-        showToast('Template berhasil diupdate', 'success');
+        showToast('Template berhasil diupdate', 'success', 'outline', 'Template Diupdate');
     })
     .catch(function(err) {
-        showToast('Gagal mengupdate template: ' + err.message, 'error');
+        showToast(err.message || 'Gagal mengupdate template', 'error', 'solid', 'Gagal');
     });
 }
 
@@ -644,10 +656,10 @@ function deleteTemplate() {
         });
         sel.value = '';
         resetDefaults();
-        showToast('Template berhasil dihapus', 'success');
+        showToast('Template berhasil dihapus', 'success', 'solid', 'Template Dihapus');
     })
     .catch(function(err) {
-        showToast('Gagal menghapus template: ' + err.message, 'error');
+        showToast(err.message || 'Gagal menghapus template', 'error', 'solid', 'Gagal');
     });
 }
 
@@ -679,10 +691,10 @@ document.getElementById('confirmSaveTemplate').addEventListener('click', functio
         var modal = bootstrap.Modal.getInstance(document.getElementById('saveTemplateModal'));
         modal.hide();
         loadTemplates();
-        showToast('Template berhasil disimpan', 'success');
+        showToast('Template berhasil disimpan', 'success', 'solid', 'Template Baru');
     })
     .catch(function(err) {
-        showToast('Gagal menyimpan template: ' + err.message, 'error');
+        showToast(err.message || 'Gagal menyimpan template', 'error', 'solid', 'Gagal');
     });
 });
 
