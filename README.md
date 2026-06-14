@@ -58,18 +58,72 @@ termux-setup-storage
 
 ---
 
-## Setup Termux: Paket & SSH
+## Setup Termux: Paket Dasar
 
-### Install Paket Dasar
+### 1. Update Package Manager
 
 ```bash
-pkg install golang git openssh nano -y
+pkg update && pkg upgrade -y
 ```
 
-### Set Password SSH
+### 2. Install Git
+
+Git untuk clone repositori dan update kode:
+
+```bash
+pkg install git -y
+```
+
+**Verifikasi:**
+```bash
+git version
+# Output: git version 2.x.x
+```
+
+**Konfigurasi Git (wajib untuk commit):**
+```bash
+git config --global user.name "Nama Anda"
+git config --global user.email "email@example.com"
+```
+
+### 3. Install Go (Golang)
+
+Termux menyediakan Go versi terbaru (saat ini **Go 1.26.3**) langsung dari repositori resmi:
+
+```bash
+pkg install golang -y
+```
+
+Proses instalasi memakan waktu karena Go di-compile dari source oleh Termux. Pastikan koneksi internet stabil.
+
+**Verifikasi:**
+```bash
+go version
+# Output: go version go1.26.3 android/arm64
+```
+
+> **Catatan:** Go di Termux sudah terkonfigurasi dengan `CGO_ENABLED=0` secara default. Tidak perlu konfigurasi PATH tambahan.
+
+### 4. Install SSH Server
+
+Diperlukan untuk akses remote dari laptop:
+
+```bash
+pkg install openssh -y
+```
+
+### 5. Install Text Editor (Opsional)
+
+```bash
+pkg install nano -y
+# Atau: pkg install vim -y
+```
+
+### 6. Set Password SSH
 
 ```bash
 passwd
+# Ketik password (tidak akan terlihat di layar), konfirmasi sekali lagi
 ```
 
 ### Start SSH Server
@@ -94,6 +148,28 @@ whoami
 ```
 
 Catat username ini — akan dipakai untuk SSH dari laptop.
+
+### Setup SSH Key untuk GitHub (Opsional)
+
+Diperlukan jika ingin menggunakan fitur SSG Public Site Auto-Build (git push otomatis dari HP).
+
+```bash
+# Generate SSH key
+ssh-keygen -t ed25519 -C "hp-termux@example.com"
+# Enter file: tekan Enter (default)
+# Enter passphrase: kosongkan atau isi sesuai preferensi
+
+# Tampilkan public key
+cat ~/.ssh/id_ed25519.pub
+```
+
+Copy output `ssh-ed25519 AAAA...` → buka [GitHub → Settings → SSH and GPG keys](https://github.com/settings/keys) → **New SSH key** → paste → save.
+
+Test koneksi:
+```bash
+ssh -T git@github.com
+# Output: Hi username! You've successfully authenticated...
+```
 
 ---
 
