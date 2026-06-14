@@ -474,7 +474,7 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) {
-                window.location.href = '/devices';
+                window.location.href = '/devices?success=' + encodeURIComponent(data.message || 'Batch perangkat berhasil ditambahkan');
             } else {
                 errorDiv.textContent = data.error || 'Gagal menyimpan batch';
                 errorDiv.classList.remove('d-none');
