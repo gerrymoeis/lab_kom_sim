@@ -378,6 +378,7 @@ func (h *Handler) PCSwap(c *gin.Context) {
 	pcs, _ := h.pcService.List(repository.PCFilters{})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"message": fmt.Sprintf("PC %s dan %s berhasil ditukar", req.A, req.B),
 		"pcs":     pcs,
 		"changes": []gin.H{
 			{"old_label": req.A, "new_label": req.B},
@@ -407,6 +408,7 @@ func (h *Handler) PCReplace(c *gin.Context) {
 	pcs, _ := h.pcService.List(repository.PCFilters{})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"message": fmt.Sprintf("PC %s berhasil diganti dengan %s", req.Target, req.Spare),
 		"pcs":     pcs,
 		"changes": []gin.H{
 			{"old_label": req.Target, "new_label": req.Spare},
@@ -439,7 +441,12 @@ func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
 	}
 
 	pcs, _ := h.pcService.List(repository.PCFilters{})
-	c.JSON(http.StatusOK, gin.H{"success": true, "pcs": pcs, "changes": changes})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": fmt.Sprintf("Baris %d berhasil dipindahkan ke cadangan", req.Row),
+		"pcs":     pcs,
+		"changes": changes,
+	})
 }
 
 func (h *Handler) PCMove(c *gin.Context) {
@@ -465,6 +472,7 @@ func (h *Handler) PCMove(c *gin.Context) {
 	pcs, _ := h.pcService.List(repository.PCFilters{})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"message": "PC berhasil dipindahkan",
 		"pcs":     pcs,
 		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
 	})
@@ -493,6 +501,7 @@ func (h *Handler) PCPlace(c *gin.Context) {
 	pcs, _ := h.pcService.List(repository.PCFilters{})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"message": "PC cadangan berhasil ditempatkan",
 		"pcs":     pcs,
 		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
 	})
@@ -519,6 +528,7 @@ func (h *Handler) PCMoveToCadangan(c *gin.Context) {
 	pcs, _ := h.pcService.List(repository.PCFilters{})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"message": "PC berhasil dipindahkan ke cadangan",
 		"pcs":     pcs,
 		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
 	})
