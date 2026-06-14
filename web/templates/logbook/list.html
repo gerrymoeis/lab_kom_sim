@@ -81,7 +81,7 @@
                 <p class="text-muted mb-0">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }} dari {{ .total }} entries{{ if $.dupMode }} duplikat{{ end }}{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>
                 <div>
                     {{ if $.dupMode }}
-                    <a href="/logbook{{ if $.query }}?{{ $.query }}{{ end }}" class="btn btn-outline-secondary">
+                    <a href="/logbook{{ if $.queryBack }}?{{ $.queryBack }}{{ end }}" class="btn btn-outline-secondary">
                         <i class="bi bi-x-circle"></i> Tampilkan Semua
                     </a>
                     {{ else }}
