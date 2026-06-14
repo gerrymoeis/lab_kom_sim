@@ -52,7 +52,6 @@ func (h *Handler) ScheduleList(c *gin.Context) {
 		"days": []string{"Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
-		"error": c.Query("error"),
 	})
 }
 
@@ -126,7 +125,7 @@ func (h *Handler) ScheduleEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate jadwal")
 		return
 	}
-	h.redirectWithSuccess(c, "/schedules", "Jadwal berhasil diperbarui")
+	h.redirectWithSuccess(c, "/schedules", "Jadwal berhasil diperbarui", "update")
 }
 
 func (h *Handler) ScheduleDelete(c *gin.Context) {
@@ -138,7 +137,7 @@ func (h *Handler) ScheduleDelete(c *gin.Context) {
 		h.redirectWithError(c, "/schedules", "Gagal menghapus jadwal")
 		return
 	}
-	h.redirectWithSuccess(c, "/schedules", "Jadwal berhasil dihapus")
+	h.redirectWithSuccess(c, "/schedules", "Jadwal berhasil dihapus", "delete")
 }
 
 func (h *Handler) ScheduleBatchDelete(c *gin.Context) {

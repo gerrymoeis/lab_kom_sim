@@ -811,14 +811,24 @@ function initToastFromURL() {
     var params = new URLSearchParams(window.location.search);
     var success = params.get('success');
     var error = params.get('error');
+    var toast = params.get('toast');
     if (success) {
-        showToast(success, 'success', 'solid', 'Berhasil');
+        var type = 'success';
+        var variant = 'solid';
+        if (toast === 'delete') {
+            type = 'error';
+            variant = 'outline';
+        } else if (toast === 'update') {
+            variant = 'outline';
+        }
+        showToast(success, type, variant, 'Berhasil');
         params.delete('success');
     } else if (error) {
         showToast(error, 'error', 'solid', 'Gagal');
         params.delete('error');
     }
     if (success || error) {
+        params.delete('toast');
         var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
         history.replaceState(null, '', newUrl);
     }
