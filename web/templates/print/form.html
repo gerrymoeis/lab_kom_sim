@@ -167,8 +167,8 @@
                     <div class="col-12">
                         <label class="form-label">Preview Stiker:</label>
                         <div class="border rounded p-3 bg-light" id="previewContainer">
-                            <div class="d-flex flex-wrap gap-2 justify-content-center" id="previewGrid">
-                                <div class="sticker-preview-box" id="previewSingle">
+                            <div class="d-flex flex-wrap gap-2" id="previewGrid">
+                                <div class="sticker-preview-box mx-auto" id="previewSingle">
                                     <span id="previewText">{{ if eq .selectedType "pc" }}{{ .longestPCLabel }}{{ else }}{{ .longestDeviceLabel }}{{ end }}</span>
                                 </div>
                             </div>
@@ -656,7 +656,7 @@ function deleteTemplate() {
         });
         sel.value = '';
         resetDefaults();
-        showToast('Template berhasil dihapus', 'success', 'solid', 'Template Dihapus');
+        showToast('Template berhasil dihapus', 'error', 'outline', 'Template Dihapus');
     })
     .catch(function(err) {
         showToast(err.message || 'Gagal menghapus template', 'error', 'solid', 'Gagal');
