@@ -526,7 +526,7 @@
                 if (entries[i].timeIn !== entries[j].timeIn) continue;
                 const nameSim = areNamesSimilar(entries[i].name, entries[j].name);
                 const nimSim = areNIMsSimilar(entries[i].nim, entries[j].nim);
-                if (nameSim || nimSim) {
+                if (nameSim && nimSim) {
                     [entries[i], entries[j]].forEach(function(entry) {
                         const row = entry.row;
                         if (row.querySelector('.dup-wrapper')) return;
