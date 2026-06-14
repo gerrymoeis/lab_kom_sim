@@ -34,9 +34,6 @@
                             Tombol simpan akan aktif setelah semua indikasi selesai diverifikasi.
                             <div class="mt-1 small" id="dupCounterText"></div>
                         </div>
-                        <div class="mb-2 text-muted small" id="dupStats">
-                            <span id="dupTotalData">0</span> data, <span id="dupCount">0</span> terindikasi duplikat
-                        </div>
 
                         <div class="card mb-3">
                             <div class="card-header d-flex justify-content-between align-items-center py-2">
@@ -59,6 +56,10 @@
                                      alt="Foto logbook" onerror="this.closest('.card').classList.add('d-none')">
                             </div>
                         </div>
+
+                        <p class="mb-2 small" id="dupStats" style="color:#856404;">
+                            Terdapat <span id="dupCount">0</span> terindikasi duplikat dari <span id="dupTotalData">0</span> data.
+                        </p>
 
                         <form id="previewForm" action="/logbook/save" method="POST">
                             <input type="hidden" name="source_file" value="{{ .source_file }}">
@@ -283,7 +284,7 @@
         document.getElementById('dupCount').textContent = dupVisible;
         var warnText = document.getElementById('dupCounterText');
         if (dupVisible > 0) {
-            warnText.textContent = dupVisible + ' dari ' + total + ' data terindikasi duplikat';
+            warnText.textContent = 'Terdapat ' + dupVisible + ' terindikasi duplikat dari ' + total + ' data.';
         } else {
             warnText.textContent = '';
         }
