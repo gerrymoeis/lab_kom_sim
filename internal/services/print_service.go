@@ -257,16 +257,9 @@ func (s *PrintService) GetTemplate(id int) (*models.StickerTemplate, error) {
 	return s.templateRepo.GetByID(id)
 }
 
-func (s *PrintService) SaveTemplate(name, stickerType string, fontSize, padH, padV float64) (*models.StickerTemplate, error) {
-	res, err := s.templateRepo.Create(name, stickerType, fontSize, padH, padV)
-	if err != nil {
-		return nil, err
-	}
-	id, err := res.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-	return s.templateRepo.GetByID(int(id))
+func (s *PrintService) SaveTemplate(name, stickerType string, fontSize, padH, padV float64) error {
+	_, err := s.templateRepo.Create(name, stickerType, fontSize, padH, padV)
+	return err
 }
 
 func (s *PrintService) UpdateTemplate(id int, name string, fontSize, padH, padV float64) error {
