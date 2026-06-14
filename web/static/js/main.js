@@ -753,7 +753,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', variant = 'solid', title) {
     const toastContainer = document.getElementById('toastContainer');
     if (!toastContainer) {
         const container = document.createElement('div');
@@ -763,13 +763,27 @@ function showToast(message, type = 'info') {
     }
 
     const toastId = 'toast-' + Date.now();
-    const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    var bgClass, borderClass, textClass, headerStyle;
+
+    if (variant === 'outline') {
+        borderClass = type === 'success' ? 'border-success' : type === 'error' ? 'border-danger' : 'border-info';
+        bgClass = 'bg-white';
+        textClass = type === 'success' ? 'text-success' : type === 'error' ? 'text-danger' : 'text-info';
+        headerStyle = 'border-bottom: 1px solid;';
+    } else {
+        bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+        borderClass = '';
+        textClass = 'text-white';
+        headerStyle = '';
+    }
     
+    var header = title || (type === 'success' ? 'Berhasil' : type === 'error' ? 'Gagal' : 'Info');
+
     const toastHTML = `
-        <div id="${toastId}" class="toast ${bgClass} text-white" role="alert">
-            <div class="toast-header ${bgClass} text-white">
-                <strong class="me-auto">Notifikasi</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        <div id="${toastId}" class="toast ${bgClass} ${borderClass} ${textClass}" role="alert">
+            <div class="toast-header ${bgClass} ${borderClass} ${textClass}" style="${headerStyle}">
+                <strong class="me-auto">${header}</strong>
+                <button type="button" class="btn-close ${variant === 'outline' ? '' : 'btn-close-white'}" data-bs-dismiss="toast"></button>
             </div>
             <div class="toast-body">
                 ${message}
