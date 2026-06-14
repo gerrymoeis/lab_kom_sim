@@ -28,6 +28,7 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <form method="GET" action="/logbook" class="row g-3 mb-3">
+                {{ if $.dupMode }}<input type="hidden" name="dup" value="1">{{ end }}
                 <div class="col-md-6">
                     <label for="search" class="form-label">Cari</label>
                     <input type="text" class="form-control" id="search" name="search"
@@ -71,14 +72,14 @@
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
-                    <a href="/logbook" class="btn btn-secondary w-100">
+                    <a href="/logbook{{ if $.dupMode }}?dup=1{{ end }}" class="btn btn-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>
                 </div>
             </form>
 
             {{ if gt (len .entries) 0 }}<div class="d-flex justify-content-between align-items-center my-2">
-                <p class="text-muted mb-0">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }} dari {{ .total }} entries{{ if $.dupMode }} duplikat{{ end }}{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>
+                <p class="mb-0{{ if not $.dupMode }} text-muted{{ end }}"{{ if $.dupMode }} style="color:#856404;"{{ end }}>Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }} dari {{ .total }} entries{{ if $.dupMode }} duplikat{{ end }}{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>
                 <div>
                     {{ if $.dupMode }}
                     <a href="/logbook{{ if $.queryBack }}?{{ $.queryBack }}{{ end }}" class="btn btn-outline-secondary">
