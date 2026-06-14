@@ -479,8 +479,6 @@ function generatePrint() {
 }
 
 function onTemplateFieldChange() {
-    document.getElementById('templateSelect').value = '';
-    updateTemplateButtons();
     updatePreview();
 }
 
@@ -626,8 +624,18 @@ function deleteTemplate() {
         if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
     })
     .then(function() {
-        resetDefaults();
-        loadTemplates();
+        templates = templates.filter(function(t) { return t.id !== id; });
+        var sel = document.getElementById('templateSelect');
+        var wasSelected = parseInt(sel.value) === id;
+        sel.innerHTML = '<option value="">-- Pilih template --</option>';
+        templates.forEach(function(t) {
+            var opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            sel.appendChild(opt);
+        });
+        if (wasSelected) { resetDefaults(); }
+        else { updateTemplateButtons(); updatePreview(); }
     })
     .catch(function(err) {
         alert('Gagal menghapus template: ' + err.message);
