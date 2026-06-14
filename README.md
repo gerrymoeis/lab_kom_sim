@@ -220,6 +220,19 @@ ssh user@100.x.x.x
 ssh user@hostname.tail-network.ts.net
 ```
 
+**Setup passwordless SSH (agar deploy satu perintah tanpa password):**
+
+```bash
+# Di laptop, generate SSH key (jika belum punya)
+ssh-keygen -t ed25519 -C "laptop@example.com"
+
+# Copy public key ke server
+ssh-copy-id user@100.x.x.x
+
+# Test — login tanpa password prompt
+ssh user@100.x.x.x
+```
+
 ---
 
 ## Clone & Konfigurasi .env
@@ -400,11 +413,18 @@ git pull origin deploy_linux
 bash scripts/deploy-linux.sh
 ```
 
-Atau setup `deploy.sh` (yang sudah ada) untuk auto-pull + build + restart:
+### Satu Perintah Deploy (Laptop → Server)
+
+`scripts/deploy.sh` adalah script yang otomatis pull + vendor check + build + restart. Untuk deploy dari laptop cukup sekali SSH:
 
 ```bash
-# Di laptop, satu perintah:
-ssh -p 8022 user@tailscale-ip 'cd ~/lab_kom_sim && bash scripts/deploy.sh'
+# Setup dulu SSH key agar bisa login tanpa password:
+ssh-keygen -t ed25519 -C "laptop-anda@example.com"
+ssh-copy-id user@100.x.x.x
+# Test: ssh user@100.x.x.x (tanpa password prompt)
+
+# Satu perintah deploy:
+ssh user@100.x.x.x 'cd ~/lab_kom_sim && bash scripts/deploy.sh'
 ```
 
 ---
