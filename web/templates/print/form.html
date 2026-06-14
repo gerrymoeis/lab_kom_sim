@@ -581,12 +581,12 @@ function saveTemplate() {
 }
 
 function updateTemplateById(id) {
-    var type = document.querySelector('input[name="type"]:checked');
-    var stickerType = type ? type.value : 'pc';
     var fontSize = parseFloat(document.getElementById('fontSize').value) || 0.5;
     var padH = parseFloat(document.getElementById('paddingH').value) || 0.3;
     var padV = parseFloat(document.getElementById('paddingV').value) || 0.3;
 
+    var type = document.querySelector('input[name="type"]:checked');
+    var stickerType = type ? type.value : 'pc';
     var name = '';
     for (var i = 0; i < templates.length; i++) {
         if (templates[i].id === id) { name = templates[i].name; break; }
@@ -596,18 +596,22 @@ function updateTemplateById(id) {
         method: 'PUT',
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: JSON.stringify({
-            name: name,
-            sticker_type: stickerType,
-            font_size_cm: fontSize,
-            padding_h_cm: padH,
-            padding_v_cm: padV
+            name: name, sticker_type: stickerType,
+            font_size_cm: fontSize, padding_h_cm: padH, padding_v_cm: padV
         })
     })
     .then(function(r) {
         if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
     })
     .then(function() {
-        loadTemplates();
+        for (var i = 0; i < templates.length; i++) {
+            if (templates[i].id === id) {
+                templates[i].font_size_cm = fontSize;
+                templates[i].padding_h_cm = padH;
+                templates[i].padding_v_cm = padV;
+                break;
+            }
+        }
     })
     .catch(function(err) {
         alert('Gagal mengupdate template: ' + err.message);
@@ -628,16 +632,10 @@ function deleteTemplate() {
         if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
     })
     .then(function() {
-        var stickerType = document.querySelector('input[name="type"]:checked')?.value || 'pc';
-        return fetchWithCSRF('/api/sticker-templates?type=' + stickerType, {
-            headers: {'Accept': 'application/json'}
-        }).then(function(r) { return r.json(); });
-    })
-    .then(function(data) {
-        templates = data;
+        templates = templates.filter(function(t) { return t.id !== id; });
         var sel = document.getElementById('templateSelect');
         sel.innerHTML = '<option value="">-- Pilih template --</option>';
-        data.forEach(function(t) {
+        templates.forEach(function(t) {
             var opt = document.createElement('option');
             opt.value = t.id;
             opt.textContent = t.name;
