@@ -339,21 +339,13 @@ nssm edit SimLabServer        # Edit konfigurasi (GUI)
 
 ---
 
-## Auto-Deploy Workflow (GitHub Actions)
+## Auto-Deploy (Update Server dari Laptop)
 
-Branch `refactoring` memiliki workflow `.github/workflows/auto-deploy.yml` yang otomatis sync ke `deploy_windows` setiap ada push.
+**Cara kerja:** Push ke `refactoring` → GitHub Actions otomatis test + sync ke `deploy_windows` (~90 detik) → SSH ke Windows server → deploy.
 
-**Cara trigger update:**
+### Setup OpenSSH Server (Sekali di Windows)
 
-1. Push perubahan ke `refactoring` dari laptop development
-2. GitHub Actions: test → merge ke `deploy_windows` → restore deploy-specific files → build verify → push
-3. Di Windows: `git pull origin deploy_windows` → rebuild → restart service
-
-**README.md di branch deploy_windows TIDAK akan ditimpa** — workflow mereset README.md ke versi deploy branch (OLD_HEAD) setiap sync.
-
-### Remote Deploy dari Laptop (via SSH)
-
-Untuk deploy dari laptop ke Windows server tanpa harus RDP, aktifkan **OpenSSH Server** di Windows:
+Untuk deploy jarak jauh tanpa RDP, aktifkan **OpenSSH Server** di Windows:
 
 ```powershell
 # Di Windows server (PowerShell sebagai Administrator)
@@ -371,7 +363,7 @@ Set-Service -Name sshd -StartupType 'Automatic'
 New-NetFirewallRule -DisplayName 'OpenSSH Server' -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow
 ```
 
-**Setup passwordless SSH dari laptop:**
+### Setup Passwordless SSH (Sekali dari Laptop)
 
 ```powershell
 # Di laptop (PowerShell)
@@ -386,14 +378,26 @@ type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh user@100.x.x.x "mkdir -p ~\.ssh 
 ssh user@100.x.x.x
 ```
 
-**Satu perintah deploy dari laptop:**
+### (Opsional) Git Alias — 1 Perintah dari Laptop
+
+```bash
+git config --global alias.deploy-win "!git push origin refactoring && ssh user@100.x.x.x 'cd C:\path\to\lab_kom_sim && .\scripts\deploy-windows.ps1'"
+# Setelah ini: git deploy-win → push refactoring + deploy ke Windows
+```
+
+### Satu Perintah Deploy (Setiap Update)
 
 ```powershell
-# PowerShell (laptop)
+# 1. Push ke refactoring
+git push origin refactoring
+
+# 2. Tunggu ~90 detik (workflow selesai)
+
+# 3. Deploy ke Windows — pull + build + restart
 ssh user@100.x.x.x 'cd C:\path\to\lab_kom_sim && git pull origin deploy_windows && $env:CGO_ENABLED="0"; go build -ldflags="-s -w" -o app-simlab.exe .\cmd\server\main.go; nssm restart SimLabServer'
 ```
 
-Atau jalankan script deploy lokal di Windows server via SSH:
+Atau jalankan script deploy yang sudah ada:
 
 ```powershell
 ssh user@100.x.x.x 'cd C:\path\to\lab_kom_sim && .\scripts\deploy-windows.ps1'
@@ -419,12 +423,82 @@ Get-EventLog -LogName Application -Source "SimLabServer" -Newest 20
 nssm restart SimLabServer
 ```
 
-### Backup Database
+### Backup & Restore Database
 
-Backup otomatis via `BACKUP_ENABLED=true`. Manual:
+Backup otomatis tiap ada perubahan data (CUD operation, debounce 30 detik). Konfigurasi via `.env`:
 
 ```powershell
-Copy-Item inventaris_lab.db "inventaris_lab.db.backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+BACKUP_ENABLED=true        # Aktif
+BACKUP_INTERVAL=30         # 30 detik setelah CUD terakhir
+BACKUP_DIR=./backups       # Lokasi backup (bisa multi-path)
+BACKUP_RETENTION=20        # Simpan 20 backup terakhir
+BACKUP_COMPRESS=true       # Kompres .gz
+```
+
+Cek daftar backup:
+```powershell
+Get-ChildItem .\backups\ | Sort-Object LastWriteTime -Descending | Select-Object -First 10
+```
+
+Restore dari backup:
+```powershell
+# 1. Hentikan service
+nssm stop SimLabServer
+
+# 2. Backup DB corrupt untuk investigasi
+Copy-Item inventaris_lab.db inventaris_lab.db.corrupt
+
+# 3. Cari backup terbaru dan copy ke database aktif
+Get-ChildItem .\backups\ | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+# Copy manual: Copy-Item .\backups\inventaris_lab.db.backup_20260613_120405 inventaris_lab.db
+
+# 4. Start service
+nssm start SimLabServer
+```
+
+### Database Recovery (Migration Failure)
+
+Server auto-run migration setiap startup. Jika setelah update server langsung crash:
+
+**1. Cek log untuk tahu penyebab:**
+```powershell
+Get-Content server.log -Tail 50 | Select-String "migration|error|fatal"
+# Atau via Event Viewer:
+Get-EventLog -LogName Application -Source "SimLabServer" -Newest 20
+```
+
+**2. Restore database dari backup:**
+```powershell
+# Hentikan service
+nssm stop SimLabServer
+
+# Backup DB corrupt
+Copy-Item inventaris_lab.db inventaris_lab.db.corrupt.$(Get-Date -Format 'yyyyMMdd_HHmmss')
+
+# Balikkan ke backup terbaru
+$latest = Get-ChildItem .\backups\ | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+Copy-Item $latest.FullName inventaris_lab.db
+
+# Start ulang
+nssm start SimLabServer
+```
+
+**3. Rollback binary (jika bug di kode baru):**
+```powershell
+cd C:\path\to\lab_kom_sim
+git log --oneline -5 origin/deploy_windows
+git checkout COMMIT_HASH_SEBELUMNYA -- cmd/ go.mod go.sum internal/ web/
+$env:CGO_ENABLED = "0"
+go build -ldflags="-s -w" -o app-simlab.exe .\cmd\server\main.go
+nssm restart SimLabServer
+```
+
+**4. Reset database baru (jika semua gagal):**
+```powershell
+nssm stop SimLabServer
+Remove-Item inventaris_lab.db
+nssm start SimLabServer
+# Database baru + seed data otomatis
 ```
 
 ### Update Aplikasi
