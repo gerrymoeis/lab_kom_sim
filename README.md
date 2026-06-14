@@ -351,6 +351,54 @@ Branch `refactoring` memiliki workflow `.github/workflows/auto-deploy.yml` yang 
 
 **README.md di branch deploy_windows TIDAK akan ditimpa** — workflow mereset README.md ke versi deploy branch (OLD_HEAD) setiap sync.
 
+### Remote Deploy dari Laptop (via SSH)
+
+Untuk deploy dari laptop ke Windows server tanpa harus RDP, aktifkan **OpenSSH Server** di Windows:
+
+```powershell
+# Di Windows server (PowerShell sebagai Administrator)
+# Cek apakah sudah terinstall
+Get-WindowsCapability -Online | Where-Object Name -like 'OpenSSH.Server*'
+
+# Jika belum, install
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+
+# Start service
+Start-Service sshd
+Set-Service -Name sshd -StartupType 'Automatic'
+
+# Konfirmasi firewall
+New-NetFirewallRule -DisplayName 'OpenSSH Server' -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow
+```
+
+**Setup passwordless SSH dari laptop:**
+
+```powershell
+# Di laptop (PowerShell)
+# Cek SSH key
+ls ~\.ssh\id_ed25519.pub
+# Jika tidak ada: ssh-keygen -t ed25519 -C "laptop@example.com"
+
+# Copy public key ke Windows server
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh user@100.x.x.x "mkdir -p ~\.ssh && cat >> ~\.ssh\authorized_keys"
+
+# Test (login tanpa password)
+ssh user@100.x.x.x
+```
+
+**Satu perintah deploy dari laptop:**
+
+```powershell
+# PowerShell (laptop)
+ssh user@100.x.x.x 'cd C:\path\to\lab_kom_sim && git pull origin deploy_windows && $env:CGO_ENABLED="0"; go build -ldflags="-s -w" -o app-simlab.exe .\cmd\server\main.go; nssm restart SimLabServer'
+```
+
+Atau jalankan script deploy lokal di Windows server via SSH:
+
+```powershell
+ssh user@100.x.x.x 'cd C:\path\to\lab_kom_sim && .\scripts\deploy-windows.ps1'
+```
+
 ---
 
 ## Maintenance
