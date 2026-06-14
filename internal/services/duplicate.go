@@ -160,5 +160,5 @@ func IsDuplicateEntry(date1, date2 time.Time, time1, time2, name1, name2, nim1, 
 	if time1 != time2 {
 		return false
 	}
-	return areNamesSimilar(name1, name2, cfg) && areNIMsSimilar(nim1, nim2, cfg)
+	return areNamesSimilar(name1, name2, cfg) || areNIMsSimilar(nim1, nim2, cfg)
 }
