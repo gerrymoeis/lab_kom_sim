@@ -171,7 +171,7 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/software")
+	h.redirectWithSuccess(c, "/software", "Software berhasil diperbarui")
 }
 
 func (h *Handler) SoftwareDelete(c *gin.Context) {
@@ -188,7 +188,7 @@ func (h *Handler) SoftwareDelete(c *gin.Context) {
 		h.redirectWithError(c, "/software", err.Error())
 		return
 	}
-	c.Redirect(http.StatusFound, "/software")
+	h.redirectWithSuccess(c, "/software", "Software berhasil dihapus")
 }
 
 func (h *Handler) SoftwareCreate(c *gin.Context) {
@@ -211,7 +211,7 @@ func (h *Handler) SoftwareCreate(c *gin.Context) {
 		h.redirectWithError(c, "/software", "Gagal menyimpan software")
 		return
 	}
-	c.Redirect(http.StatusFound, "/software")
+	h.redirectWithSuccess(c, "/software", "Software berhasil ditambahkan")
 }
 
 func (h *Handler) SoftwareExport(c *gin.Context) {
@@ -274,5 +274,5 @@ func (h *Handler) SoftwareBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Software berhasil dihapus"})
 }

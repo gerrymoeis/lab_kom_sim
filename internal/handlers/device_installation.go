@@ -105,7 +105,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=installations")
+	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil ditambahkan")
 }
 
 func (h *Handler) DeviceInstallationDetail(c *gin.Context) {
@@ -181,7 +181,7 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate instalasi")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=installations")
+	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil diperbarui")
 }
 
 func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
@@ -193,7 +193,7 @@ func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=installations", "Gagal menghapus instalasi")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=installations")
+	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil dihapus")
 }
 
 func (h *Handler) DeviceInstallationBatchDelete(c *gin.Context) {
@@ -215,6 +215,6 @@ func (h *Handler) DeviceInstallationBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Instalasi berhasil dihapus"})
 }
 

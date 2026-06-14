@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-default-date]').forEach(el => {
         el.valueAsDate = new Date();
     });
+
+    initToastFromURL();
 });
 
 // --- Delete confirmation modal ---
@@ -111,8 +113,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ ids: ids })
             }).then(function(r) {
                 if (r.ok) {
-                    try { sessionStorage.removeItem(BatchSelector._storageKey()); } catch(e) {}
-                    window.location.reload();
+                    r.json().then(function(data) {
+                        if (data.message) showToast(data.message, 'success', 'solid', 'Berhasil');
+                        window.location.reload();
+                    }).catch(function() {
+                        window.location.reload();
+                    });
                 } else {
                     return r.json().then(function(d) { throw new Error(d.error || 'Gagal menghapus'); }).catch(function() {
                         throw new Error('Gagal menghapus data');
@@ -799,4 +805,21 @@ function showToast(message, type = 'info', variant = 'solid', title) {
     toastElement.addEventListener('hidden.bs.toast', () => {
         toastElement.remove();
     });
+}
+
+function initToastFromURL() {
+    var params = new URLSearchParams(window.location.search);
+    var success = params.get('success');
+    var error = params.get('error');
+    if (success) {
+        showToast(success, 'success', 'solid', 'Berhasil');
+        params.delete('success');
+    } else if (error) {
+        showToast(error, 'error', 'solid', 'Gagal');
+        params.delete('error');
+    }
+    if (success || error) {
+        var newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        history.replaceState(null, '', newUrl);
+    }
 }
