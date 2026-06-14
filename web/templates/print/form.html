@@ -479,7 +479,11 @@ function generatePrint() {
 }
 
 function onTemplateFieldChange() {
+    var sel = document.getElementById('templateSelect');
+    var prevVal = sel.value;
     updatePreview();
+    sel.value = prevVal;
+    updateTemplateButtons();
 }
 
 function updateTemplateButtons() {
@@ -624,18 +628,23 @@ function deleteTemplate() {
         if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
     })
     .then(function() {
-        templates = templates.filter(function(t) { return t.id !== id; });
+        var stickerType = document.querySelector('input[name="type"]:checked')?.value || 'pc';
+        return fetchWithCSRF('/api/sticker-templates?type=' + stickerType, {
+            headers: {'Accept': 'application/json'}
+        }).then(function(r) { return r.json(); });
+    })
+    .then(function(data) {
+        templates = data;
         var sel = document.getElementById('templateSelect');
-        var wasSelected = parseInt(sel.value) === id;
         sel.innerHTML = '<option value="">-- Pilih template --</option>';
-        templates.forEach(function(t) {
+        data.forEach(function(t) {
             var opt = document.createElement('option');
             opt.value = t.id;
             opt.textContent = t.name;
             sel.appendChild(opt);
         });
-        if (wasSelected) { resetDefaults(); }
-        else { updateTemplateButtons(); updatePreview(); }
+        sel.value = '';
+        resetDefaults();
     })
     .catch(function(err) {
         alert('Gagal menghapus template: ' + err.message);
