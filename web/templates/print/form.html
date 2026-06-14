@@ -480,7 +480,7 @@ function loadTemplates() {
     var type = document.querySelector('input[name="type"]:checked');
     var stickerType = type ? type.value : 'pc';
 
-    fetch('/api/sticker-templates?type=' + stickerType, {
+    fetchWithCSRF('/api/sticker-templates?type=' + stickerType, {
         headers: {'Accept': 'application/json'}
     })
     .then(function(r) { return r.json(); })
@@ -534,9 +534,9 @@ document.getElementById('confirmSaveTemplate').addEventListener('click', functio
     var padH = parseFloat(document.getElementById('paddingH').value) || 0.3;
     var padV = parseFloat(document.getElementById('paddingV').value) || 0.3;
 
-    fetch('/api/sticker-templates', {
+    fetchWithCSRF('/api/sticker-templates', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: JSON.stringify({
             name: name,
             sticker_type: stickerType,
