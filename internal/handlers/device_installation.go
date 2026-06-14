@@ -26,6 +26,9 @@ func (h *Handler) DeviceInstallationList(c *gin.Context) {
 
 	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
 	delete(values, "page")
+	values.Del("success")
+	values.Del("error")
+	values.Del("toast")
 	var query interface{} = ""
 	if len(values) > 0 {
 		query = template.URL("&" + values.Encode())
