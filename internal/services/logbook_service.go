@@ -60,6 +60,10 @@ func (s *LogbookService) List(filters repository.LogbookFilters) ([]models.Logbo
 	return s.logbookRepo.List(filters)
 }
 
+func (s *LogbookService) ListAll(filters repository.LogbookFilters) ([]models.LogbookEntry, error) {
+	return s.logbookRepo.ListAll(filters)
+}
+
 func (s *LogbookService) ListCursor(filters repository.LogbookFilters) ([]models.LogbookEntry, bool, error) {
 	return s.logbookRepo.ListCursor(filters)
 }
