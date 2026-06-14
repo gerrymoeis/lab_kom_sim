@@ -19,7 +19,8 @@ func SecurityHeaders(environment string) gin.HandlerFunc {
 			"default-src 'self'; "+
 				"style-src 'self' 'unsafe-inline'; "+
 				"script-src 'self' 'unsafe-inline'; "+
-				"img-src 'self' data:; "+
+				"worker-src 'self' blob:; "+
+				"img-src 'self' data: blob:; "+
 				"frame-ancestors 'none'")
 
 		c.Next()
