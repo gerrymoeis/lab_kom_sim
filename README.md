@@ -324,7 +324,9 @@ pkill app-simlab
 
 ---
 
-## Auto Deploy (Laptop → HP via Tailscale + SSH)
+## Auto-Deploy (Update Server dari Laptop)
+
+**Cara kerja:** Push ke `refactoring` → GitHub Actions otomatis test + sync ke `deploy_android` (~90 detik) → SSH dari laptop ke HP → deploy.
 
 ### Setup Passwordless SSH (Sekali di Laptop)
 
@@ -348,9 +350,9 @@ ssh -p 8022 u0_aXXX@100.x.x.x
 > **Cari username HP:** `whoami` di Termux → output `u0_aXXX`. Ganti `u0_aXXX` dengan nilai yang muncul.
 > **Cari SSH key path laptop:** `ls ~\.ssh\id_ed25519.pub` (PowerShell) atau `ls ~/.ssh/id_ed25519.pub` (bash).
 
-### Setup Sekali (di Laptop)
+### (Opsional) Simpan Script Deploy
 
-Simpan script berikut sebagai `deploy-hp.ps1` — isi variable dengan milik Anda:
+Simpan sebagai `deploy-hp.ps1` — isi variable dengan milik Anda:
 
 ```powershell
 # deploy-hp.ps1
@@ -361,25 +363,27 @@ $sshUser = "u0_aXXX"     # Username Termux (ganti)
 ssh -p $sshPort "$sshUser@${tsHost}" 'cd ~/lab_kom_sim && git pull origin deploy_android && CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go && pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
 ```
 
-### Satu Perintah Deploy
+### (Opsional) Git Alias — 1 Perintah dari Laptop
 
 ```bash
-# Dari laptop (bash/WSL):
+git config --global alias.deploy-hp "!git push origin refactoring && ssh -p 8022 u0_aXXX@100.x.x.x 'cd ~/lab_kom_sim && bash scripts/deploy.sh'"
+# Setelah ini: git deploy-hp → push refactoring + deploy ke HP
+```
+
+### Satu Perintah Deploy (Setiap Update)
+
+```bash
+# 1. Push ke refactoring
+git push origin refactoring
+
+# 2. Tunggu ~90 detik (workflow selesai)
+
+# 3. Deploy ke HP — pull + build + restart
 ssh -p 8022 u0_aXXX@100.x.x.x \
   'cd ~/lab_kom_sim && git pull origin deploy_android && \
    CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go && \
    pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
 ```
-
-### Auto-Deploy via Git Alias (Optional)
-
-```bash
-git config --global alias.deploy-hp "!git push origin refactoring && ssh -p 8022 u0_aXXX@100.x.x.x 'cd ~/lab_kom_sim && bash scripts/deploy.sh'"
-```
-
----
-
-## Maintenance
 
 ### Cek Proses Server
 
@@ -407,27 +411,81 @@ df -h
 du -sh ~/lab_kom_sim/backups
 ```
 
-### Backup Database (Manual)
+### Backup & Restore Database
 
-Backup otomatis sudah berjalan via `BACKUP_ENABLED=true`. Untuk backup manual:
+Backup otomatis tiap ada perubahan data (CUD operation, debounce 30 detik). Konfigurasi via `.env`:
 
 ```bash
-cp inventaris_lab.db inventaris_lab.db.manual_$(date +%Y%m%d_%H%M%S)
+BACKUP_ENABLED=true        # Aktif
+BACKUP_INTERVAL=30         # 30 detik setelah CUD terakhir
+BACKUP_DIR=./backups       # Lokasi backup
+BACKUP_RETENTION=20        # Simpan 20 backup terakhir
+BACKUP_COMPRESS=true       # Kompres .gz
 ```
 
----
+Cek daftar backup:
+```bash
+ls -lh ~/lab_kom_sim/backups/
+```
 
-## Auto-Deploy Workflow (GitHub Actions)
+Restore dari backup:
+```bash
+# 1. Hentikan server
+pkill app-simlab
 
-Branch `refactoring` memiliki workflow `.github/workflows/auto-deploy.yml` yang otomatis sync ke `deploy_android` setiap ada push.
+# 2. Backup DB corrupt untuk investigasi
+cp inventaris_lab.db inventaris_lab.db.corrupt
 
-**Cara trigger update:**
+# 3. Copy backup terbaru
+cp ~/lab_kom_sim/backups/inventaris_lab.db.backup_20260613_120405 inventaris_lab.db
 
-1. Push ke `refactoring` dari laptop
-2. Workflow: test → merge → preserve deploy-specific files → build verify → push ke `deploy_android`
-3. Di HP (Termux): `git pull origin deploy_android` → rebuild → restart
+# 4. Start server
+nohup ./app-simlab > server.log 2>&1 &
+```
 
-**README.md di branch deploy_android TIDAK akan ditimpa** oleh workflow — workflow mereset README.md ke versi deploy branch (OLD_HEAD) setiap sync, sehingga panduan spesifik Android tetap aman.
+### Database Recovery (Migration Failure)
+
+Server auto-run migration setiap startup. Jika setelah update server langsung crash:
+
+**1. Cek log:**
+```bash
+tail -50 server.log | grep -i "migration\|error\|fatal"
+```
+
+**2. Restore database dari backup:**
+```bash
+# Cari backup terbaru
+ls -t ~/lab_kom_sim/backups/ | head -5
+
+# Hentikan server
+pkill app-simlab
+
+# Backup DB corrupt
+cp inventaris_lab.db inventaris_lab.db.corrupt
+
+# Balikkan ke backup sebelum update
+cp $(ls -t ~/lab_kom_sim/backups/ | head -1) inventaris_lab.db
+
+# Start ulang
+nohup ./app-simlab > server.log 2>&1 &
+```
+
+**3. Rollback binary (jika bug kode baru):**
+```bash
+cd ~/lab_kom_sim
+git log --oneline -5 origin/deploy_android
+git checkout COMMIT_HASH_SEBELUMNYA -- cmd/ go.mod go.sum internal/ web/
+CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
+pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &
+```
+
+**4. Reset database baru (jika semua gagal):**
+```bash
+pkill app-simlab
+mv inventaris_lab.db inventaris_lab.db.corrupt.$(date +%Y%m%d_%H%M%S)
+nohup ./app-simlab > server.log 2>&1 &
+# Database baru + seed data otomatis
+```
 
 ---
 
