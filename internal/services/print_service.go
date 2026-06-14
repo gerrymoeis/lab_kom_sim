@@ -191,7 +191,14 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 				pdf.SetLineWidth(0.05)
 				pdf.SetDrawColor(60, 60, 60)
 				pdf.SetFillColor(255, 255, 255)
-				pdf.Rect(x, y, stickerW, stickerH, "FD")
+				radius := 0.25
+				if stickerW*0.1 < radius {
+					radius = stickerW * 0.1
+				}
+				if stickerH*0.1 < radius {
+					radius = stickerH * 0.1
+				}
+				pdf.RoundedRect(x, y, stickerW, stickerH, radius, "1234", "FD")
 
 				labelW := pdf.GetStringWidth(label)
 				textX := x + (stickerW-labelW)/2
