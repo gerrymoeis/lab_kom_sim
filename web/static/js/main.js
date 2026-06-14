@@ -114,10 +114,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }).then(function(r) {
                 if (r.ok) {
                     r.json().then(function(data) {
-                        if (data.message) showToast(data.message, 'success', 'solid', 'Berhasil');
-                        window.location.reload();
+                        if (data.message) showToast(data.message, 'error', 'outline', 'Berhasil');
+                        setTimeout(function() { window.location.reload(); }, 500);
                     }).catch(function() {
-                        window.location.reload();
+                        setTimeout(function() { window.location.reload(); }, 500);
                     });
                 } else {
                     return r.json().then(function(d) { throw new Error(d.error || 'Gagal menghapus'); }).catch(function() {
