@@ -33,7 +33,9 @@ func CSRF() gin.HandlerFunc {
 				c.Next()
 				return
 			}
-			session.Save()
+			// Error tidak menyebabkan abort — token sudah ada in-memory untuk request ini.
+			// LoginPage handler bertanggung jawab untuk eksplisit save pada GET /login.
+			_ = session.Save()
 		}
 
 		if c.Request.Method == "GET" || c.Request.Method == "HEAD" || c.Request.Method == "OPTIONS" {
