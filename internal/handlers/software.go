@@ -46,7 +46,6 @@ func (h *Handler) SoftwareList(c *gin.Context) {
 		"catalog": stats, "filters": gin.H{"search": search, "category": filterCategory, "sort_by": sortBy},
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query,
-		"error": c.Query("error"),
 	})
 }
 
@@ -171,7 +170,7 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 		return
 	}
 
-	h.redirectWithSuccess(c, "/software", "Software berhasil diperbarui")
+	h.redirectWithSuccess(c, "/software", "Software berhasil diperbarui", "update")
 }
 
 func (h *Handler) SoftwareDelete(c *gin.Context) {
@@ -188,7 +187,7 @@ func (h *Handler) SoftwareDelete(c *gin.Context) {
 		h.redirectWithError(c, "/software", err.Error())
 		return
 	}
-	h.redirectWithSuccess(c, "/software", "Software berhasil dihapus")
+	h.redirectWithSuccess(c, "/software", "Software berhasil dihapus", "delete")
 }
 
 func (h *Handler) SoftwareCreate(c *gin.Context) {

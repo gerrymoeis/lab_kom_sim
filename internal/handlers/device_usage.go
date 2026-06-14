@@ -171,7 +171,7 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate pemakaian")
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=usages", "Pemakaian berhasil diperbarui")
+	h.redirectWithSuccess(c, "/devices?tab=usages", "Pemakaian berhasil diperbarui", "update")
 }
 
 func (h *Handler) DeviceUsageDelete(c *gin.Context) {
@@ -183,7 +183,7 @@ func (h *Handler) DeviceUsageDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=usages", "Gagal menghapus pemakaian")
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=usages", "Pemakaian berhasil dihapus")
+	h.redirectWithSuccess(c, "/devices?tab=usages", "Pemakaian berhasil dihapus", "delete")
 }
 
 func (h *Handler) DeviceUsageBatchDelete(c *gin.Context) {

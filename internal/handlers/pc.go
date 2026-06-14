@@ -206,7 +206,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 	}
 
 	h.pcService.SyncSoftware(newLabel, req.RequiredSw, req.OtherName, req.OtherDesc, uid, u, r, ip, ua)
-	h.redirectWithSuccess(c, fmt.Sprintf("/pc/%s", newLabel), "PC berhasil diperbarui")
+	h.redirectWithSuccess(c, fmt.Sprintf("/pc/%s", newLabel), "PC berhasil diperbarui", "update")
 }
 
 func (h *Handler) PCDelete(c *gin.Context) {
@@ -218,7 +218,7 @@ func (h *Handler) PCDelete(c *gin.Context) {
 		h.redirectWithError(c, "/pc", "Gagal menghapus PC. Mungkin PC sedang dipinjam.")
 		return
 	}
-	h.redirectWithSuccess(c, "/pc", "PC berhasil dihapus")
+	h.redirectWithSuccess(c, "/pc", "PC berhasil dihapus", "delete")
 }
 
 func (h *Handler) PCStatusAPI(c *gin.Context) {

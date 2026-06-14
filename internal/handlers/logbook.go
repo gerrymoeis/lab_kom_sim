@@ -157,7 +157,6 @@ func (h *Handler) LogbookList(c *gin.Context) {
 			"search": f.Search, "sort_by": sortBy, "sort_order": sortOrder,
 		},
 		"pageSize": pageSize,
-		"success":  c.Query("success"),
 	})
 }
 
@@ -550,7 +549,7 @@ func (h *Handler) LogbookEdit(c *gin.Context) {
 		renderEditWithError("Gagal mengupdate data")
 		return
 	}
-	h.redirectWithSuccess(c, "/logbook", "Data logbook berhasil diperbarui")
+	h.redirectWithSuccess(c, "/logbook", "Data logbook berhasil diperbarui", "update")
 }
 
 func (h *Handler) LogbookDelete(c *gin.Context) {
@@ -571,7 +570,7 @@ func (h *Handler) LogbookDelete(c *gin.Context) {
 	if c.GetHeader("Accept") == "application/json" {
 		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Data logbook berhasil dihapus"})
 	} else {
-		h.redirectWithSuccess(c, "/logbook", "Data logbook berhasil dihapus")
+		h.redirectWithSuccess(c, "/logbook", "Data logbook berhasil dihapus", "delete")
 	}
 }
 

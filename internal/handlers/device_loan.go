@@ -183,7 +183,7 @@ func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate peminjaman")
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=loans", "Peminjaman berhasil diperbarui")
+	h.redirectWithSuccess(c, "/devices?tab=loans", "Peminjaman berhasil diperbarui", "update")
 }
 
 func (h *Handler) DeviceLoanDelete(c *gin.Context) {
@@ -195,7 +195,7 @@ func (h *Handler) DeviceLoanDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=loans", "Gagal menghapus peminjaman")
 		return
 	}
-	h.redirectWithSuccess(c, "/devices?tab=loans", "Peminjaman berhasil dihapus")
+	h.redirectWithSuccess(c, "/devices?tab=loans", "Peminjaman berhasil dihapus", "delete")
 }
 
 func (h *Handler) DeviceLoanExtend(c *gin.Context) {
