@@ -257,6 +257,17 @@ func runMigrations(db *DB, isPostgres bool) error {
 			cost REAL DEFAULT 0,
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS sticker_templates (
+			id {{PK}},
+			name TEXT NOT NULL,
+			sticker_type TEXT NOT NULL CHECK(sticker_type IN ('pc', 'device')),
+			font_size_cm REAL NOT NULL DEFAULT 1.0,
+			padding_h_cm REAL NOT NULL DEFAULT 0.5,
+			padding_v_cm REAL NOT NULL DEFAULT 0.8,
+			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
+			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(name, sticker_type)
+		)`,
 		`CREATE TABLE IF NOT EXISTS activity_logs (
 			id {{PK}},
 			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,

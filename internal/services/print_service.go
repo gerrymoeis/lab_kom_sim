@@ -10,6 +10,7 @@ import (
 
 	gofpdf "github.com/lvillar/gofpdf"
 
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
 
@@ -26,12 +27,13 @@ type PrintConfig struct {
 }
 
 type PrintService struct {
-	pcRepo     *repository.PCRepository
-	deviceRepo *repository.DeviceRepository
+	pcRepo       *repository.PCRepository
+	deviceRepo   *repository.DeviceRepository
+	templateRepo *repository.StickerTemplateRepository
 }
 
-func NewPrintService(pcRepo *repository.PCRepository, deviceRepo *repository.DeviceRepository) *PrintService {
-	return &PrintService{pcRepo: pcRepo, deviceRepo: deviceRepo}
+func NewPrintService(pcRepo *repository.PCRepository, deviceRepo *repository.DeviceRepository, templateRepo *repository.StickerTemplateRepository) *PrintService {
+	return &PrintService{pcRepo: pcRepo, deviceRepo: deviceRepo, templateRepo: templateRepo}
 }
 
 func (s *PrintService) GetPCLabelGroups() (mahasiswa, spesial []string, longest string, err error) {
@@ -245,6 +247,34 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 		return nil, fmt.Errorf("output pdf: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+func (s *PrintService) ListTemplates(stickerType string) ([]models.StickerTemplate, error) {
+	return s.templateRepo.ListByType(stickerType)
+}
+
+func (s *PrintService) GetTemplate(id int) (*models.StickerTemplate, error) {
+	return s.templateRepo.GetByID(id)
+}
+
+func (s *PrintService) SaveTemplate(name, stickerType string, fontSize, padH, padV float64) (*models.StickerTemplate, error) {
+	res, err := s.templateRepo.Create(name, stickerType, fontSize, padH, padV)
+	if err != nil {
+		return nil, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	return s.templateRepo.GetByID(int(id))
+}
+
+func (s *PrintService) UpdateTemplate(id int, name string, fontSize, padH, padV float64) error {
+	return s.templateRepo.Update(id, name, fontSize, padH, padV)
+}
+
+func (s *PrintService) DeleteTemplate(id int) error {
+	return s.templateRepo.Delete(id)
 }
 
 func FormatPrintTimestamp() string {
