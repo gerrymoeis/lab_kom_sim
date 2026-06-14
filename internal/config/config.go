@@ -17,6 +17,7 @@ type Config struct {
 	DatabasePath     string
 	DatabaseURL      string
 	SessionSecret    string
+	CookieSecure     bool
 	UploadPath       string
 	GeminiAPIKey     string
 	OpenRouterAPIKey string
@@ -65,6 +66,7 @@ func Load() *Config {
 		DatabasePath:  getEnv("DATABASE_PATH", "inventaris_lab.db"),
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
+		CookieSecure:  getEnv("COOKIE_SECURE", "false") == "true",
 		UploadPath:    getEnv("UPLOAD_PATH", "uploads"),
 		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),

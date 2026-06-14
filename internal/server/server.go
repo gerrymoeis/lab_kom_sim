@@ -199,7 +199,7 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	router.GET("/static/*filepath", v.Handler())
 	router.Static("/uploads", "./uploads")
 
-	sessionMiddleware := middleware.SessionMiddleware(cfg.SessionSecret, cfg.Environment == "production")
+	sessionMiddleware := middleware.SessionMiddleware(cfg.SessionSecret, cfg.CookieSecure)
 	router.Use(sessionMiddleware)
 
 	// writeFlushMiddleware ensures all pending async writes are flushed
