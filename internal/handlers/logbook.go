@@ -43,14 +43,10 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		Page:      page,
 	}
 
-	entries, total, err := h.logbookService.List(f)
-	if err != nil {
-		h.errHTML(c, "Gagal mengambil data logbook")
-		return
-	}
+	dupMode := c.Query("dup") == "1"
 
-	dupFlags := make(map[int]bool)
 	allEntries, errAll := h.logbookService.ListAll(f)
+	dupFlags := make(map[int]bool)
 	if errAll == nil {
 		for i := 0; i < len(allEntries); i++ {
 			if dupFlags[allEntries[i].ID] {
@@ -71,16 +67,6 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		}
 	}
 
-	totalPages := (total + pageSize - 1) / pageSize
-	startRow := (page-1)*pageSize + 1
-
-	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
-	delete(values, "page")
-	var query interface{} = ""
-	if len(values) > 0 {
-		query = template.URL("&" + values.Encode())
-	}
-
 	totalDupCount := 0
 	if errAll == nil {
 		for _, e := range allEntries {
@@ -88,6 +74,63 @@ func (h *Handler) LogbookList(c *gin.Context) {
 				totalDupCount++
 			}
 		}
+	}
+
+	var entries []models.LogbookEntry
+	total := 0
+
+	if dupMode && errAll == nil {
+		var dupEntries []models.LogbookEntry
+		for _, e := range allEntries {
+			if dupFlags[e.ID] {
+				dupEntries = append(dupEntries, e)
+			}
+		}
+		total = len(dupEntries)
+		start := (page - 1) * pageSize
+		if start < 0 {
+			start = 0
+		}
+		if start > total {
+			start = total
+		}
+		end := start + pageSize
+		if end > total {
+			end = total
+		}
+		entries = dupEntries[start:end]
+	} else {
+		var listErr error
+		entries, total, listErr = h.logbookService.List(f)
+		if listErr != nil {
+			h.errHTML(c, "Gagal mengambil data logbook")
+			return
+		}
+	}
+
+	totalPages := (total + pageSize - 1) / pageSize
+	if totalPages < 1 {
+		totalPages = 1
+	}
+	startRow := (page-1)*pageSize + 1
+	if startRow < 1 {
+		startRow = 1
+	}
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	values.Del("dup")
+	var queryNoDup interface{} = ""
+	if len(values) > 0 {
+		queryNoDup = template.URL("&" + values.Encode())
+	}
+
+	valuesDup, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(valuesDup, "page")
+	valuesDup.Set("dup", "1")
+	var queryDup interface{} = ""
+	if len(valuesDup) > 0 {
+		queryDup = template.URL("&" + valuesDup.Encode())
 	}
 
 	h.renderTemplate(c, http.StatusOK, "logbook/list.html", gin.H{
@@ -100,7 +143,9 @@ func (h *Handler) LogbookList(c *gin.Context) {
 		"page":       page,
 		"totalPages": totalPages,
 		"startRow":   startRow,
-		"query":      query,
+		"query":      queryNoDup,
+		"queryDup":   queryDup,
+		"dupMode":    dupMode,
 		"filters": gin.H{
 			"date_from": f.StartDate, "date_to": f.EndDate,
 			"search": f.Search, "sort_by": sortBy, "sort_order": sortOrder,

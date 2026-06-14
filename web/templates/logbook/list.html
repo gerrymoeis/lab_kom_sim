@@ -78,15 +78,21 @@
             </form>
 
             {{ if gt (len .entries) 0 }}<div class="d-flex justify-content-between align-items-center my-2">
-                <p class="text-muted mb-0">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }} dari {{ .total }} entries{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>
+                <p class="text-muted mb-0">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }} dari {{ .total }} entries{{ if $.dupMode }} duplikat{{ end }}{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>
                 <div>
-                    <button type="button" class="btn btn-sm btn-outline-warning" id="dupFilterBtn" onclick="toggleDupFilter()">
-                        <i class="bi bi-exclamation-triangle"></i> Duplikat <span id="dupFilterBadge" class="badge bg-warning text-dark d-none">0</span>
-                    </button>
+                    {{ if $.dupMode }}
+                    <a href="/logbook{{ if $.query }}?{{ $.query }}{{ end }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Tampilkan Semua
+                    </a>
+                    {{ else }}
+                    <a href="/logbook{{ if $.queryDup }}?{{ $.queryDup }}{{ end }}" class="btn btn-outline-warning{{ if eq .dupCount 0 }} disabled{{ end }}">
+                        <i class="bi bi-exclamation-triangle"></i> Duplikat <span class="badge bg-warning text-dark{{ if eq .dupCount 0 }} d-none{{ end }}">{{ .dupCount }}</span>
+                    </a>
+                    {{ end }}
                 </div>
             </div>{{ end }}
 
-            <p class="mb-0 small{{ if eq .dupCount 0 }} d-none{{ end }}" id="dupStatsList" style="color:#856404;">
+            <p class="mb-0 small{{ if or (eq .dupCount 0) $.dupMode }} d-none{{ end }}" id="dupStatsList" style="color:#856404;">
                 Terdapat {{ .dupCount }} terindikasi duplikat dari {{ .total }} entries.
             </p>
 
@@ -205,46 +211,6 @@ function exportLogbook() {
     window.location.href = '/logbook/export?' + params.toString();
 }
 
-var dupFilterActive = false;
 
-function toggleDupFilter() {
-    dupFilterActive = !dupFilterActive;
-    var rows = document.querySelectorAll('table[data-batch-url] tbody tr');
-    var count = 0;
-    rows.forEach(function(row) {
-        if (row.dataset.dup === '1') {
-            count++;
-            if (dupFilterActive) {
-                row.classList.remove('d-none');
-            }
-        } else if (dupFilterActive) {
-            row.classList.add('d-none');
-        } else {
-            row.classList.remove('d-none');
-        }
-    });
-    var btn = document.getElementById('dupFilterBtn');
-    var badge = document.getElementById('dupFilterBadge');
-    btn.classList.toggle('active', dupFilterActive);
-    if (dupFilterActive) {
-        badge.textContent = count;
-        badge.classList.remove('d-none');
-    } else {
-        badge.classList.add('d-none');
-    }
-}
-
-function countDups() {
-    return document.querySelectorAll('table[data-batch-url] tbody tr[data-dup="1"]').length;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    var dupBadge = document.getElementById('dupFilterBadge');
-    var n = countDups();
-    if (n > 0) {
-        dupBadge.textContent = n;
-        dupBadge.classList.remove('d-none');
-    }
-});
 </script>
 {{ template "layout/footer.html" . }}
