@@ -32,6 +32,10 @@
                             <strong>Peringatan Duplikat:</strong> Terdeteksi potensi data duplikat (ditandai warna).
                             Klik <strong>×</strong> pada badge jika data bukan duplikat, atau hapus row yang duplikat.
                             Tombol simpan akan aktif setelah semua indikasi selesai diverifikasi.
+                            <div class="mt-1 small" id="dupCounterText"></div>
+                        </div>
+                        <div class="mb-2 text-muted small" id="dupStats">
+                            <span id="dupTotalData">0</span> data, <span id="dupCount">0</span> terindikasi duplikat
                         </div>
 
                         <div class="card mb-3">
@@ -245,6 +249,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         updateSaveButton();
         updateDupWarning();
+        updateDupCounters();
         document.getElementById('previewSelectAllBtn').addEventListener('click', function() {
             document.querySelectorAll('#entriesTableBody tr:not(.table-dup-db-ref) .preview-check').forEach(function(cb) { cb.checked = true; });
             updatePreviewSelectedCount();
@@ -271,6 +276,19 @@
         saveBtn.title = active ? '' : 'Verifikasi semua indikasi duplikat terlebih dahulu';
     }
 
+    function updateDupCounters() {
+        var total = document.querySelectorAll('#entriesTableBody > tr:not(.table-dup-db-ref)').length;
+        var dupVisible = visibleDupCount();
+        document.getElementById('dupTotalData').textContent = total;
+        document.getElementById('dupCount').textContent = dupVisible;
+        var warnText = document.getElementById('dupCounterText');
+        if (dupVisible > 0) {
+            warnText.textContent = dupVisible + ' dari ' + total + ' data terindikasi duplikat';
+        } else {
+            warnText.textContent = '';
+        }
+    }
+
     function updateDupWarning() {
         const warning = document.getElementById('duplicateWarning');
         warning.classList.toggle('d-none', visibleDupCount() === 0);
@@ -280,6 +298,7 @@
             toolbar.classList.toggle('d-none', !hasDups);
             toolbar.classList.toggle('d-flex', hasDups);
         }
+        updateDupCounters();
     }
 
     function dismissAllDups() {
