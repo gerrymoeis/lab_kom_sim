@@ -77,7 +77,24 @@ func (h *Handler) Logout(c *gin.Context) {
 		h.authService.Logout(userID, username, role, ip, ua)
 	}
 	session.Clear()
-	session.Save()
+	session.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   c.Request.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+	})
+	if err := session.Save(); err != nil {
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name:     "inventaris_session",
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   c.Request.TLS != nil,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   -1,
+		})
+	}
 	c.Redirect(http.StatusFound, "/login")
 }
 
