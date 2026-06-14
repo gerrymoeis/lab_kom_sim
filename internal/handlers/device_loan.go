@@ -105,7 +105,7 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=loans")
+	h.redirectWithSuccess(c, "/devices?tab=loans", "Peminjaman berhasil ditambahkan")
 }
 
 func (h *Handler) DeviceLoanDetail(c *gin.Context) {
@@ -183,7 +183,7 @@ func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate peminjaman")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=loans")
+	h.redirectWithSuccess(c, "/devices?tab=loans", "Peminjaman berhasil diperbarui")
 }
 
 func (h *Handler) DeviceLoanDelete(c *gin.Context) {
@@ -195,7 +195,7 @@ func (h *Handler) DeviceLoanDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=loans", "Gagal menghapus peminjaman")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=loans")
+	h.redirectWithSuccess(c, "/devices?tab=loans", "Peminjaman berhasil dihapus")
 }
 
 func (h *Handler) DeviceLoanExtend(c *gin.Context) {
@@ -213,7 +213,7 @@ func (h *Handler) DeviceLoanExtend(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal memperpanjang peminjaman")
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Peminjaman berhasil diperpanjang"})
 }
 
 func (h *Handler) DeviceLoanBatchDelete(c *gin.Context) {
@@ -235,5 +235,5 @@ func (h *Handler) DeviceLoanBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Peminjaman berhasil dihapus"})
 }

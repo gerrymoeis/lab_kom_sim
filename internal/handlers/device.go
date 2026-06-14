@@ -263,7 +263,7 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=types")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Perangkat berhasil ditambahkan")
 }
 
 func (h *Handler) DeviceBatchCreate(c *gin.Context) {
@@ -353,7 +353,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal menyimpan batch perangkat"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "codes": codes})
+	c.JSON(http.StatusOK, gin.H{"success": true, "codes": codes, "message": "Batch perangkat berhasil ditambahkan"})
 }
 
 func (h *Handler) DeviceDetail(c *gin.Context) {
@@ -458,7 +458,7 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 		h.errHTML(c, "Gagal mengupdate perangkat")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=types")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Perangkat berhasil diperbarui")
 }
 
 func (h *Handler) DeviceDelete(c *gin.Context) {
@@ -476,7 +476,7 @@ func (h *Handler) DeviceDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=types", "Gagal menghapus perangkat")
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=types")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Perangkat berhasil dihapus")
 }
 
 func (h *Handler) GetNextAssetCode(c *gin.Context) {
@@ -557,7 +557,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		h.renderEditPageWithError(c, dt, err.Error())
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=types")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil diperbarui")
 }
 
 func (h *Handler) renderEditPageWithError(c *gin.Context, dt *models.DeviceType, errMsg string) {
@@ -587,7 +587,7 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=types", err.Error())
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=types")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil dihapus")
 }
 
 func (h *Handler) DeviceTypeDetail(c *gin.Context) {
@@ -688,7 +688,7 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 		h.errHTML(c, err.Error())
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=types")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Kategori berhasil diperbarui")
 }
 
 func (h *Handler) CategoryDelete(c *gin.Context) {
@@ -705,7 +705,7 @@ func (h *Handler) CategoryDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=types", err.Error())
 		return
 	}
-	c.Redirect(http.StatusFound, "/devices?tab=types")
+	h.redirectWithSuccess(c, "/devices?tab=types", "Kategori berhasil dihapus")
 }
 
 func usageTypePriority(ut string) int {
@@ -960,7 +960,7 @@ func (h *Handler) DeviceBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Perangkat berhasil dihapus"})
 }
 
 func (h *Handler) DeviceTypeBatchDelete(c *gin.Context) {
@@ -982,7 +982,7 @@ func (h *Handler) DeviceTypeBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Tipe perangkat berhasil dihapus"})
 }
 
 func (h *Handler) CategoryBatchDelete(c *gin.Context) {
@@ -1004,5 +1004,5 @@ func (h *Handler) CategoryBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Kategori berhasil dihapus"})
 }
