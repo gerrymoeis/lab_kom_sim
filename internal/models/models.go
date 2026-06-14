@@ -251,6 +251,17 @@ type UsageTypeGroup struct {
 	Categories []CategoryGroup
 }
 
+type StickerTemplate struct {
+	ID          int       `json:"id"`
+	Name        string    `json:"name"`
+	StickerType string    `json:"sticker_type"` // "pc" | "device"
+	FontSizeCM  float64   `json:"font_size_cm"`
+	PaddingHCM  float64   `json:"padding_h_cm"`
+	PaddingVCM  float64   `json:"padding_v_cm"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type DeviceGroupedData struct {
 	UsageGroups   []UsageTypeGroup
 	ActiveLoanIDs map[int]bool
