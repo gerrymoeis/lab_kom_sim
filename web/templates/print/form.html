@@ -126,11 +126,17 @@
                             <select class="form-select" id="templateSelect" onchange="onTemplateSelect(this)">
                                 <option value="">-- Pilih template --</option>
                             </select>
-                            <button class="btn btn-outline-secondary" type="button" onclick="saveTemplate()" id="saveTemplateBtn">
+                            <button class="btn btn-primary" type="button" onclick="saveTemplate()" id="saveTemplateBtn">
                                 <i class="bi bi-bookmark-plus"></i> Simpan
                             </button>
+                            <button class="btn btn-outline-danger" type="button" onclick="deleteTemplate()" id="deleteTemplateBtn" style="display:none">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="resetDefaults()">
+                                <i class="bi bi-arrow-counterclockwise"></i> Default
+                            </button>
                         </div>
-                        <div class="form-text">Simpan ukuran saat ini sebagai template untuk digunakan kembali</div>
+                        <div class="form-text">Pilih template untuk memuat ukuran. Simpan = template baru, Update = timpa template terpilih.</div>
                     </div>
                 </div>
                 <div class="row mb-4">
@@ -356,6 +362,7 @@ function updateDefaults() {
     }
     document.getElementById('templateSelect').value = '';
     loadTemplates();
+    updateTemplateButtons();
     updatePreview();
 }
 
@@ -473,6 +480,39 @@ function generatePrint() {
 
 function onTemplateFieldChange() {
     document.getElementById('templateSelect').value = '';
+    updateTemplateButtons();
+    updatePreview();
+}
+
+function updateTemplateButtons() {
+    var sel = document.getElementById('templateSelect');
+    var id = parseInt(sel.value);
+    var delBtn = document.getElementById('deleteTemplateBtn');
+    var saveBtn = document.getElementById('saveTemplateBtn');
+    if (id) {
+        delBtn.style.display = '';
+        saveBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Update';
+    } else {
+        delBtn.style.display = 'none';
+        saveBtn.innerHTML = '<i class="bi bi-bookmark-plus"></i> Simpan';
+    }
+}
+
+function getTypeDefaults() {
+    var type = document.querySelector('input[name="type"]:checked');
+    if (type && type.value === 'device') {
+        return {fontSize: 0.5, padH: 0.3, padV: 0.3};
+    }
+    return {fontSize: 1.0, padH: 0.5, padV: 0.8};
+}
+
+function resetDefaults() {
+    var def = getTypeDefaults();
+    document.getElementById('fontSize').value = def.fontSize;
+    document.getElementById('paddingH').value = def.padH;
+    document.getElementById('paddingV').value = def.padV;
+    document.getElementById('templateSelect').value = '';
+    updateTemplateButtons();
     updatePreview();
 }
 
@@ -487,6 +527,7 @@ function loadTemplates() {
     .then(function(data) {
         templates = data;
         var sel = document.getElementById('templateSelect');
+        var prevVal = sel.value;
         sel.innerHTML = '<option value="">-- Pilih template --</option>';
         data.forEach(function(t) {
             var opt = document.createElement('option');
@@ -494,19 +535,26 @@ function loadTemplates() {
             opt.textContent = t.name;
             sel.appendChild(opt);
         });
+        sel.value = prevVal;
+        if (!sel.value) { sel.value = ''; }
+        updateTemplateButtons();
     })
     .catch(function() {});
 }
 
 function onTemplateSelect(sel) {
     var id = parseInt(sel.value);
-    if (!id) { return; }
+    if (!id) {
+        resetDefaults();
+        return;
+    }
     for (var i = 0; i < templates.length; i++) {
         if (templates[i].id === id) {
             var t = templates[i];
             document.getElementById('fontSize').value = t.font_size_cm;
             document.getElementById('paddingH').value = t.padding_h_cm;
             document.getElementById('paddingV').value = t.padding_v_cm;
+            updateTemplateButtons();
             updatePreview();
             return;
         }
@@ -518,10 +566,72 @@ function saveTemplate() {
         alert('Hanya admin yang dapat menyimpan template');
         return;
     }
+    var sel = document.getElementById('templateSelect');
+    var id = parseInt(sel.value);
+    if (id) {
+        updateTemplateById(id);
+        return;
+    }
     var modal = new bootstrap.Modal(document.getElementById('saveTemplateModal'));
     document.getElementById('templateNameInput').value = '';
     document.getElementById('templateNameInput').focus();
     modal.show();
+}
+
+function updateTemplateById(id) {
+    var type = document.querySelector('input[name="type"]:checked');
+    var stickerType = type ? type.value : 'pc';
+    var fontSize = parseFloat(document.getElementById('fontSize').value) || 0.5;
+    var padH = parseFloat(document.getElementById('paddingH').value) || 0.3;
+    var padV = parseFloat(document.getElementById('paddingV').value) || 0.3;
+
+    var name = '';
+    for (var i = 0; i < templates.length; i++) {
+        if (templates[i].id === id) { name = templates[i].name; break; }
+    }
+
+    fetchWithCSRF('/api/sticker-templates/' + id, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({
+            name: name,
+            sticker_type: stickerType,
+            font_size_cm: fontSize,
+            padding_h_cm: padH,
+            padding_v_cm: padV
+        })
+    })
+    .then(function(r) {
+        if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
+    })
+    .then(function() {
+        loadTemplates();
+    })
+    .catch(function(err) {
+        alert('Gagal mengupdate template: ' + err.message);
+    });
+}
+
+function deleteTemplate() {
+    var sel = document.getElementById('templateSelect');
+    var id = parseInt(sel.value);
+    if (!id) { return; }
+    if (!confirm('Hapus template ini?')) { return; }
+
+    fetchWithCSRF('/api/sticker-templates/' + id, {
+        method: 'DELETE',
+        headers: {'Accept': 'application/json'}
+    })
+    .then(function(r) {
+        if (!r.ok) { return r.json().then(function(d) { throw new Error(d.error); }); }
+    })
+    .then(function() {
+        resetDefaults();
+        loadTemplates();
+    })
+    .catch(function(err) {
+        alert('Gagal menghapus template: ' + err.message);
+    });
 }
 
 document.getElementById('confirmSaveTemplate').addEventListener('click', function() {
@@ -561,6 +671,7 @@ document.getElementById('confirmSaveTemplate').addEventListener('click', functio
 document.addEventListener('DOMContentLoaded', function() {
     loadTemplates();
     updatePreview();
+    updateTemplateButtons();
 });
 </script>
 
