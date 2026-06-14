@@ -90,6 +90,53 @@ func (r *LogbookRepository) List(filters LogbookFilters) ([]models.LogbookEntry,
 	return entries, total, nil
 }
 
+func (r *LogbookRepository) ListAll(filters LogbookFilters) ([]models.LogbookEntry, error) {
+	where := ` WHERE 1=1`
+	var args []any
+
+	if filters.StartDate != "" {
+		where += ` AND date >= ?`
+		args = append(args, filters.StartDate)
+	}
+	if filters.EndDate != "" {
+		where += ` AND date <= ?`
+		args = append(args, filters.EndDate)
+	}
+	if filters.Search != "" {
+		sClause, sArgs := r.search.Where("logbook", filters.Search)
+		where += sClause
+		args = append(args, sArgs...)
+	}
+
+	sortBy := "date"
+	if filters.SortBy == "student_name" {
+		sortBy = "student_name"
+	}
+	sortOrder := "DESC"
+	if filters.SortOrder == "ASC" {
+		sortOrder = "ASC"
+	}
+
+	query := `SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at FROM logbook_entries` + where +
+		` ORDER BY ` + sortBy + ` ` + sortOrder + `, time_in ` + sortOrder
+
+	rows, err := r.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []models.LogbookEntry
+	for rows.Next() {
+		var e models.LogbookEntry
+		if err := rows.Scan(&e.ID, &e.Date, &e.StudentName, &e.NIM, &e.TimeIn, &e.TimeOut, &e.Purpose, &e.SourceFile, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		entries = append(entries, e)
+	}
+	return entries, nil
+}
+
 func (r *LogbookRepository) ListCursor(filters LogbookFilters) ([]models.LogbookEntry, bool, error) {
 	var args []any
 	where := ` WHERE 1=1`
