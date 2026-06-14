@@ -374,11 +374,13 @@ func (s *ActivityLogService) GetLogsCursor(filters ActivityLogFilters) ([]models
 	logs := []models.ActivityLog{}
 	for rows.Next() {
 		var l models.ActivityLog
-		if err := rows.Scan(&l.ID, &l.UserID, &l.Username, &l.UserRole, &l.Action,
+		var nuid sql.NullInt64
+		if err := rows.Scan(&l.ID, &nuid, &l.Username, &l.UserRole, &l.Action,
 			&l.EntityType, &l.EntityID, &l.Description, &l.OldValues, &l.NewValues,
 			&l.CreatedAt, &l.IPAddress, &l.UserAgent, &l.Status, &l.ErrorMessage); err != nil {
 			return nil, false, fmt.Errorf("failed to scan log: %w", err)
 		}
+		l.UserID = int(nuid.Int64)
 		logs = append(logs, l)
 	}
 	if err := rows.Err(); err != nil { return nil, false, fmt.Errorf("rows error: %w", err) }
@@ -423,11 +425,13 @@ func scanLogs(rows *sql.Rows, totalCount int) ([]models.ActivityLog, int, error)
 	logs := []models.ActivityLog{}
 	for rows.Next() {
 		var log models.ActivityLog
-		if err := rows.Scan(&log.ID, &log.UserID, &log.Username, &log.UserRole, &log.Action,
+		var nuid sql.NullInt64
+		if err := rows.Scan(&log.ID, &nuid, &log.Username, &log.UserRole, &log.Action,
 			&log.EntityType, &log.EntityID, &log.Description, &log.OldValues, &log.NewValues,
 			&log.CreatedAt, &log.IPAddress, &log.UserAgent, &log.Status, &log.ErrorMessage); err != nil {
 			return nil, 0, fmt.Errorf("failed to scan log: %w", err)
 		}
+		log.UserID = int(nuid.Int64)
 		logs = append(logs, log)
 	}
 	if err := rows.Err(); err != nil { return nil, 0, fmt.Errorf("rows error: %w", err) }

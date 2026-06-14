@@ -557,6 +557,40 @@ func runMigrations(db *DB, isPostgres bool) error {
 		}
 	}
 
+	// Fix activity_logs.user_id NOT NULL — conflicts with ON DELETE SET NULL.
+	// When a user is deleted, SQLite tries to SET NULL on activity_logs.user_id,
+	// but NOT NULL prevents it → FK violation → DELETE fails silently.
+	if !isPostgres {
+		var alSQL string
+		if rErr := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='activity_logs'`).Scan(&alSQL); rErr == nil && strings.Contains(alSQL, "user_id INTEGER NOT NULL") {
+			actLogSQL := `CREATE TABLE IF NOT EXISTS activity_logs_v2 (
+				id {{PK}},
+				user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+				username TEXT NOT NULL,
+				user_role TEXT NOT NULL,
+				action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
+				entity_type TEXT NOT NULL CHECK(entity_type IN ('pc', 'device', 'software', 'logbook', 'user', 'auth', 'device_loan', 'device_usage', 'schedule', 'device_type', 'category', 'device_installation', 'loan_extension')),
+				entity_id INTEGER,
+				description TEXT NOT NULL,
+				old_values TEXT,
+				new_values TEXT,
+				created_at {{TS}} NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				ip_address TEXT,
+				user_agent TEXT,
+				status TEXT DEFAULT 'success' CHECK(status IN ('success', 'failed', 'error')),
+				error_message TEXT
+			)`
+			actLogSQL = strings.ReplaceAll(actLogSQL, "{{PK}}", d.pkType)
+			actLogSQL = strings.ReplaceAll(actLogSQL, "{{TS}}", d.tsType)
+			if _, err := db.Exec(actLogSQL); err == nil {
+				db.Exec("INSERT INTO activity_logs_v2 SELECT * FROM activity_logs")
+				db.Exec("DROP TABLE activity_logs")
+				db.Exec("ALTER TABLE activity_logs_v2 RENAME TO activity_logs")
+				log.Println("Migrated activity_logs.user_id — removed NOT NULL for ON DELETE SET NULL compatibility")
+			}
+		}
+	}
+
 	if err := normalizeExistingData(db); err != nil {
 		return fmt.Errorf("failed to normalize existing data: %w", err)
 	}
