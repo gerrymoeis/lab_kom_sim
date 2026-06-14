@@ -25,6 +25,7 @@
                     {{ template "layout/alert.html" . }}
 
                     <form method="POST" action="/login" data-validate="true">
+                        <input type="hidden" name="_csrf" value="{{ .csrf_token }}">
                         <div class="mb-3">
                             <label for="username" class="form-label required">Username</label>
                             <div class="input-group">
