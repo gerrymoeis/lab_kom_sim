@@ -31,7 +31,13 @@ Database: **SQLite** (pure Go via `modernc.org/sqlite`, zero CGO). PostgreSQL/Ne
 
 ### 1. Install Git
 
-Git diperlukan untuk clone repositori dan auto-update.
+Git diperlukan untuk clone repositori dan auto-update. Cek dulu apakah sudah terinstall:
+
+```bash
+which git
+# Jika output: /usr/bin/git → sudah terinstall (skip ke step 2)
+# Jika tidak ada output → lanjut install di bawah
+```
 
 **Debian / Ubuntu / Mint:**
 ```bash
@@ -60,7 +66,17 @@ git version
 # Output: git version 2.x.x
 ```
 
+📎 [Official docs: git-scm.com](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+
 ### 2. Install Go (Golang)
+
+Cek dulu apakah sudah terinstall dan versinya:
+
+```bash
+go version
+# Jika output: go version go1.25+ → sudah terinstall (skip ke step 3)
+# Jika command not found → lanjut install di bawah
+```
 
 > **Perhatian:** Project ini membutuhkan **Go 1.25+**. Versi package manager bawaan distro mungkin lebih lama — gunakan official tarball dari go.dev untuk hasil terjamin.
 
@@ -113,6 +129,8 @@ sudo pacman -S --noconfirm go
 go version
 # Output: go version go1.26.4 linux/amd64
 ```
+
+📎 [Official docs: go.dev/doc/install](https://go.dev/doc/install)
 
 ### 3. Cek systemd
 
@@ -214,18 +232,22 @@ cd lab_kom_sim
 # Copy .env.example
 cp .env.example .env
 
-# Edit .env — setidaknya SESSION_SECRET, GEMINI_API_KEY, OPENROUTER_API_KEY
+# Generate SESSION_SECRET random (64 karakter hex)
+SESSION_SECRET=$(openssl rand -hex 32)
+echo "SESSION_SECRET=$SESSION_SECRET"
+
+# Edit .env — set SESSION_SECRET, GEMINI_API_KEY, OPENROUTER_API_KEY
 nano .env
 ```
 
-**Konfigurasi minimal untuk production:**
+**Konfigurasi minimal untuk production (copy-paste dengan nilai Anda):**
 
 ```env
 ENVIRONMENT=production
 HOST=0.0.0.0
 PORT=8080
 DATABASE_PATH=/opt/simlab/app/data/inventaris_lab.db
-SESSION_SECRET=generate-random-string-panjang-32-64-karakter
+SESSION_SECRET=isi-dengan-output-openssl-rand-hex-32
 TIMEZONE=Asia/Jakarta
 UPLOAD_PATH=/opt/simlab/app/data/uploads
 GEMINI_API_KEY=your-gemini-api-key
@@ -233,6 +255,8 @@ OPENROUTER_API_KEY=sk-or-your-openrouter-api-key
 BACKUP_ENABLED=true
 BACKUP_DIR=/opt/simlab/app/data/backups
 ```
+
+> **Catatan:** `openssl rand -hex 32` menghasilkan 64 karakter hex random. Simpan outputnya dan paste ke `SESSION_SECRET` di `.env`. Jangan gunakan string yang sama dengan contoh di atas — setiap server harus punya secret unik.
 
 Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
 
