@@ -229,6 +229,7 @@ HOST=0.0.0.0
 PORT=8080
 DATABASE_PATH=inventaris_lab.db
 SESSION_SECRET=isi-dengan-output-perintah-generate
+COOKIE_SECURE=false
 TIMEZONE=Asia/Jakarta
 UPLOAD_PATH=uploads
 GEMINI_API_KEY=your-gemini-api-key
@@ -613,6 +614,12 @@ WRITE_MODE=sync
 # ============================
 SESSION_SECRET=change-this-secret-in-production-to-random-string
 
+# Cookie Secure Flag
+# false = cookie bisa dikirim via HTTP (Tailscale HTTP / testing).
+# true  = cookie hanya via HTTPS. Set true jika sudah pakai TLS/HTTPS.
+# PENTING: Jangan set true jika masih HTTP — browser tolak cookie → login 403.
+COOKIE_SECURE=false
+
 # ============================
 # TIMEZONE
 # ============================
@@ -686,3 +693,4 @@ PUBLIC_BUILD_BRANCH=main
 | PostgreSQL gagal konek | `DATABASE_URL` salah / firewall | Cek Neon dashboard → Connection details. Pastikan koneksi internet |
 | SSG build tidak push ke git | Git auth belum diatur | Setup Git Credential Manager atau SSH key. Test: `git push --dry-run` |
 | Server lambat dengan banyak PC | WRITE_MODE=sync kena bottleneck | Ganti ke `WRITE_MODE=async` di .env |
+| Login selalu 403 Forbidden | `COOKIE_SECURE=true` tapi server HTTP | Set `COOKIE_SECURE=false` di `.env` jika server belum HTTPS |
