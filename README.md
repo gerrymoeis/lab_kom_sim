@@ -34,6 +34,14 @@ Database: **SQLite** (pure Go via `modernc.org/sqlite`, zero CGO).
 
 ## Instalasi Go (Golang)
 
+Cek dulu apakah sudah terinstall:
+
+```powershell
+go version
+# Jika output: go version go1.25+ → sudah terinstall (skip ke Instalasi Git)
+# Jika error "not recognized" → lanjut install di bawah
+```
+
 ### 1. Download Installer
 
 Buka [go.dev/dl](https://go.dev/dl/) dan download **Microsoft Windows** installer (`.msi`) sesuai arsitektur:
@@ -44,7 +52,7 @@ Buka [go.dev/dl](https://go.dev/dl/) dan download **Microsoft Windows** installe
 | **ARM64** (Snapdragon X, Surface Pro) | [go1.26.4.windows-arm64.msi](https://go.dev/dl/go1.26.4.windows-arm64.msi) |
 | **x86** (32-bit — jarang) | [go1.26.4.windows-386.msi](https://go.dev/dl/go1.26.4.windows-386.msi) |
 
-> Jika ragu, cek arsitektur: `(Get-CimInstance Win32_ComputerSystem).SystemType` di PowerShell.
+> Jika ragu arsitektur: `(Get-CimInstance Win32_ComputerSystem).SystemType` di PowerShell.
 
 ### 2. Jalankan Installer
 
@@ -61,11 +69,21 @@ go version
 # Output: go version go1.26.4 windows/amd64
 ```
 
-> Jika `go` tidak dikenali, tutup dan buka ulang PowerShell, atau restart Windows.
+> Jika `go` tidak dikenali setelah install, tutup dan buka ulang PowerShell, atau restart Windows.
+
+📎 [Official docs: go.dev/doc/install](https://go.dev/doc/install)
 
 ---
 
 ## Instalasi Git
+
+Cek dulu apakah sudah terinstall:
+
+```powershell
+git version
+# Jika output: git version 2.x.x → sudah terinstall (skip ke Setup SSH Key)
+# Jika error "not recognized" → lanjut install di bawah
+```
 
 ### Metode 1 (Recommended) — Git for Windows
 
@@ -100,6 +118,8 @@ git version
 git config --global user.name "Nama Anda"
 git config --global user.email "email@example.com"
 ```
+
+📎 [Official docs: git-scm.com](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
 ---
 
@@ -191,18 +211,24 @@ cd lab_kom_sim
 # Copy .env
 copy .env.example .env
 
+# Generate SESSION_SECRET random (32 karakter ASCII printable)
+$randomBytes = [byte[]]::new(32)
+[Security.Cryptography.RNGCryptoServiceProvider]::Create().GetBytes($randomBytes)
+$sessionSecret = [System.Convert]::ToBase64String($randomBytes)
+Write-Host "SESSION_SECRET=$sessionSecret"
+
 # Edit dengan notepad
 notepad .env
 ```
 
-**Konfigurasi minimal untuk production:**
+**Konfigurasi minimal untuk production (copy-paste dengan nilai Anda):**
 
 ```env
 ENVIRONMENT=production
 HOST=0.0.0.0
 PORT=8080
 DATABASE_PATH=inventaris_lab.db
-SESSION_SECRET=generate-random-string-panjang-32-64-karakter
+SESSION_SECRET=isi-dengan-output-perintah-generate
 TIMEZONE=Asia/Jakarta
 UPLOAD_PATH=uploads
 GEMINI_API_KEY=your-gemini-api-key
@@ -210,6 +236,8 @@ OPENROUTER_API_KEY=sk-or-your-openrouter-api-key
 BACKUP_ENABLED=true
 BACKUP_DIR=./backups
 ```
+
+> **Catatan:** Perintah PowerShell di atas menghasilkan 32 byte random → Base64 (44 karakter). Simpan outputnya dan paste ke `SESSION_SECRET` di `.env`. Jangan gunakan string contoh — setiap server harus punya secret unik.
 
 Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
 
