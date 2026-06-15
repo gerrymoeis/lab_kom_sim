@@ -40,8 +40,16 @@
       html += buildFilters()
 
       if (groupBy) {
-        html += buildInfoText(total > 0 ? 1 : 0, total, total)
-        html += buildGroupedTable(state.filtered)
+        var pages = Math.ceil(total / pageSize) || 1
+        if (state.page > pages) state.page = pages
+        var start = (state.page - 1) * pageSize
+        var pageData = state.filtered.slice(start, start + pageSize)
+        var infoStart = total > 0 ? start + 1 : 0
+        var infoEnd = Math.min(start + pageSize, total)
+        html += buildInfoText(infoStart, infoEnd, total)
+        html += buildPagination(total, pages)
+        html += buildGroupedTable(pageData)
+        html += buildPagination(total, pages)
       } else {
         var pages = Math.ceil(total / pageSize) || 1
         if (state.page > pages) state.page = pages
@@ -267,9 +275,10 @@
               var showSubHeader = g0Expanded
               var showSubRows = g0Expanded && (multiRow ? g1Expanded : true)
 
-              h += '<tr class="ps-subgroup-header' + (showSubHeader ? '' : ' d-none') + '" data-subgroup="' + esc(subKey) + '" data-parent-group="' + esc(key) + '" data-count="' + subRows.length + '"' + (multiRow ? '' : ' style="cursor:default"') + '>'
+              var subAlwaysToggle = multiRow || groupBy.length > 2
+              h += '<tr class="ps-subgroup-header' + (showSubHeader ? '' : ' d-none') + '" data-subgroup="' + esc(subKey) + '" data-parent-group="' + esc(key) + '" data-count="' + subRows.length + '"' + (subAlwaysToggle ? '' : ' style="cursor:default"') + '>'
               h += '<td colspan="' + columns.length + '">'
-              if (multiRow) {
+              if (subAlwaysToggle) {
                 h += '<span class="ps-group-toggle ms-3 me-1"><i class="bi ' + (g1Expanded ? 'bi-chevron-down' : 'bi-chevron-right') + '"></i></span> '
               } else {
                 h += '<span class="ms-3 me-1"><i class="bi bi-dot"></i></span> '
@@ -280,20 +289,68 @@
               }
               h += '</td></tr>'
 
-              subRows.forEach(function (row) {
-                h += '<tr class="ps-group-data' + (showSubRows ? '' : ' d-none') + '">'
-                columns.forEach(function (col) {
-                  h += '<td>'
-                  if (col.render) {
-                    h += col.render(row[col.field], row)
-                  } else {
-                    var v = row[col.field]
-                    h += v != null ? esc(String(v)) : ''
-                  }
-                  h += '</td>'
+              if (groupBy.length > 2) {
+                var thirdGroups = {}
+                subRows.forEach(function (row) {
+                  var thirdKey = row[groupBy[2]] || ''
+                  if (!thirdGroups[thirdKey]) thirdGroups[thirdKey] = []
+                  thirdGroups[thirdKey].push(row)
                 })
-                h += '</tr>'
-              })
+                var thirdKeys = Object.keys(thirdGroups).sort()
+
+                thirdKeys.forEach(function (thirdKey) {
+                  var thirdRows = thirdGroups[thirdKey]
+                  var tMultiRow = thirdRows.length > 1
+                  var g2StateKey = 'g2:' + key + ':' + subKey + ':' + thirdKey
+                  if (state.groupExpanded[g2StateKey] === undefined) {
+                    state.groupExpanded[g2StateKey] = true
+                  }
+                  var g2Expanded = showSubRows && (tMultiRow ? state.groupExpanded[g2StateKey] : true)
+                  var showThirdHeader = showSubRows
+                  var showThirdRows = showSubRows && (tMultiRow ? g2Expanded : true)
+
+                  h += '<tr class="ps-thirdgroup-header' + (showThirdHeader ? '' : ' d-none') + '" data-thirdgroup="' + esc(thirdKey) + '" data-parent-sub="' + esc(subKey) + '" data-parent-group="' + esc(key) + '" data-count="' + thirdRows.length + '"' + (tMultiRow ? '' : ' style="cursor:default"') + '>'
+                  h += '<td colspan="' + columns.length + '">'
+                  if (tMultiRow) {
+                    h += '<span class="ps-group-toggle ms-5 me-1"><i class="bi ' + (g2Expanded ? 'bi-chevron-down' : 'bi-chevron-right') + '"></i></span> '
+                  } else {
+                    h += '<span class="ms-5 me-1"><i class="bi bi-dot"></i></span> '
+                  }
+                  h += esc(thirdKey)
+                  h += ' <span class="text-muted small">(' + thirdRows.length + ')</span>'
+                  h += '</td></tr>'
+
+                  thirdRows.forEach(function (row) {
+                    h += '<tr class="ps-group-data' + (showThirdRows ? '' : ' d-none') + '">'
+                    columns.forEach(function (col) {
+                      h += '<td>'
+                      if (col.render) {
+                        h += col.render(row[col.field], row)
+                      } else {
+                        var v = row[col.field]
+                        h += v != null ? esc(String(v)) : ''
+                      }
+                      h += '</td>'
+                    })
+                    h += '</tr>'
+                  })
+                })
+              } else {
+                subRows.forEach(function (row) {
+                  h += '<tr class="ps-group-data' + (showSubRows ? '' : ' d-none') + '">'
+                  columns.forEach(function (col) {
+                    h += '<td>'
+                    if (col.render) {
+                      h += col.render(row[col.field], row)
+                    } else {
+                      var v = row[col.field]
+                      h += v != null ? esc(String(v)) : ''
+                    }
+                    h += '</td>'
+                  })
+                  h += '</tr>'
+                })
+              }
             })
           }
         })
@@ -390,10 +447,23 @@
         var subKey = tr.getAttribute('data-subgroup')
         var parentKey = tr.getAttribute('data-parent-group')
         var count = parseInt(tr.getAttribute('data-count'), 10)
-        if (!subKey || !parentKey || count <= 1) return
+        if (!subKey || !parentKey || (groupBy.length <= 2 && count <= 1)) return
         tr.addEventListener('click', function (e) {
           var g1StateKey = 'g1:' + parentKey + ':' + subKey
           state.groupExpanded[g1StateKey] = !state.groupExpanded[g1StateKey]
+          render()
+        })
+      })
+
+      container.querySelectorAll('.ps-thirdgroup-header').forEach(function (tr) {
+        var thirdKey = tr.getAttribute('data-thirdgroup')
+        var parentSub = tr.getAttribute('data-parent-sub')
+        var parentKey = tr.getAttribute('data-parent-group')
+        var count = parseInt(tr.getAttribute('data-count'), 10)
+        if (!thirdKey || !parentSub || !parentKey || count <= 1) return
+        tr.addEventListener('click', function (e) {
+          var g2StateKey = 'g2:' + parentKey + ':' + parentSub + ':' + thirdKey
+          state.groupExpanded[g2StateKey] = !state.groupExpanded[g2StateKey]
           render()
         })
       })
