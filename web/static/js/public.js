@@ -242,7 +242,7 @@
           var isToday = todayName && key === todayName
           var g0StateKey = 'g0:' + key
           if (state.groupExpanded[g0StateKey] === undefined) {
-            state.groupExpanded[g0StateKey] = isToday
+            state.groupExpanded[g0StateKey] = isToday || keys.length <= 1
           }
           var g0Expanded = state.groupExpanded[g0StateKey]
 
@@ -269,7 +269,7 @@
               var multiRow = subRows.length > 1
               var g1StateKey = 'g1:' + key + ':' + subKey
               if (state.groupExpanded[g1StateKey] === undefined) {
-                state.groupExpanded[g1StateKey] = true
+                state.groupExpanded[g1StateKey] = subKeys.length <= 1
               }
               var g1Expanded = g0Expanded && state.groupExpanded[g1StateKey]
               var showSubHeader = g0Expanded
@@ -303,7 +303,7 @@
                   var tMultiRow = thirdRows.length > 1
                   var g2StateKey = 'g2:' + key + ':' + subKey + ':' + thirdKey
                   if (state.groupExpanded[g2StateKey] === undefined) {
-                    state.groupExpanded[g2StateKey] = true
+                    state.groupExpanded[g2StateKey] = thirdKeys.length <= 1
                   }
                   var g2Expanded = showSubRows && (tMultiRow ? state.groupExpanded[g2StateKey] : true)
                   var showThirdHeader = showSubRows
