@@ -20,12 +20,11 @@
 initPublicTable({
     containerId: "device-table-container",
     data: JSON.parse(document.getElementById("data-devices").textContent),
+    groupBy: ["category_name", "device_type_name"],
     columns: [
         { field: "asset_code", label: "Asset Code", sortable: true,
           render: function(v) { return '<code>' + v + '</code>'; } },
-        { field: "device_type_name", label: "Nama Perangkat", sortable: true },
-        { field: "category_name", label: "Kategori", sortable: true, filterable: true,
-          render: function(v) { return '<span class="badge bg-secondary">' + v + '</span>'; } },
+        { field: "serial_number", label: "Serial Number", sortable: true },
         { field: "usage_type", label: "Tipe", sortable: true, filterable: true,
           render: function(v) {
               var badge = {loanable: "primary", consumable: "warning", installable: "info"}[v] || "secondary";
