@@ -20,17 +20,11 @@
 initPublicTable({
     containerId: "device-table-container",
     data: JSON.parse(document.getElementById("data-devices").textContent),
-    groupBy: ["category_name", "device_type_name"],
+    groupBy: ["usage_type", "category_name", "device_type_name"],
     columns: [
         { field: "asset_code", label: "Asset Code", sortable: true,
           render: function(v) { return '<code>' + v + '</code>'; } },
         { field: "serial_number", label: "Serial Number", sortable: true },
-        { field: "usage_type", label: "Tipe", sortable: true, filterable: true,
-          render: function(v) {
-              var badge = {loanable: "primary", consumable: "warning", installable: "info"}[v] || "secondary";
-              var label = {loanable: "Dipinjamkan", consumable: "Habis Pakai", installable: "Instalasi"}[v] || v;
-              return '<span class="badge bg-' + badge + '">' + label + '</span>';
-          }},
         { field: "condition", label: "Kondisi", sortable: true, filterable: true,
           render: function(v) {
               var badge = {normal: "success", rusak: "danger", warning: "warning"}[v] || "secondary";
