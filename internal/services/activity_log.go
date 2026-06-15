@@ -265,7 +265,7 @@ type ActivityLogFilters struct {
 
 // GetLogs retrieves activity logs with filters
 func (s *ActivityLogService) GetAllUsernames() ([]string, error) {
-	rows, err := s.db.Query(`SELECT DISTINCT username FROM activity_logs ORDER BY username`)
+	rows, err := s.db.Query(`SELECT username FROM users ORDER BY username`)
 	if err != nil { return nil, err }
 	defer rows.Close()
 	var usernames []string
