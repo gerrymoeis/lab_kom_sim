@@ -29,16 +29,30 @@ func main() {
 	log.Printf("🌍 Timezone: %s (%s)", timeutil.Location(), locName)
 
 	isPostgres := cfg.DatabaseURL != ""
-	db, err := database.InitDB(cfg.DatabasePath, cfg.DatabaseURL)
-	if err != nil { log.Fatalf("Failed to initialize database: %v", err) }
-	defer db.Close()
+	var databases []*database.DB
+	for _, lab := range cfg.Labs {
+		db, err := database.InitDB(lab.DBPath, cfg.DatabaseURL)
+		if err != nil {
+			log.Fatalf("Failed to initialize database for lab %s: %v", lab.Name, err)
+		}
+		defer db.Close()
 
-	if err := database.RunMigrations(db, isPostgres); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+		if err := database.RunMigrations(db, isPostgres, lab.Name); err != nil {
+			log.Fatalf("Failed to run migrations for lab %s: %v", lab.Name, err)
+		}
+		if err := database.SeedDefaultUser(db, lab.Name); err != nil {
+			log.Printf("Warning: Failed to seed default user for lab %s: %v", lab.Name, err)
+		}
+
+		databases = append(databases, db)
 	}
-	if err := database.SeedDefaultUser(db); err != nil {
-		log.Printf("Warning: Failed to seed default user: %v", err)
+
+	if len(databases) == 0 {
+		log.Fatal("No databases initialized")
 	}
+	// For Phase 1, use the first (or only) DB for router and services
+	// Multi-DB routing will be implemented in Phase 2
+	db := databases[0]
 
 	var wq *queue.Queue
 	if cfg.WriteMode == "async" {
@@ -62,8 +76,10 @@ func main() {
 	router, cleanup, _ := server.SetupRouter(db, cfg, notifier)
 	defer cleanup()
 
-	if err := os.MkdirAll("uploads", 0755); err != nil {
-		log.Printf("Warning: Failed to create uploads directory: %v", err)
+	for _, lab := range cfg.Labs {
+		if err := os.MkdirAll(lab.UploadDir, 0755); err != nil {
+			log.Printf("Warning: Failed to create upload directory for lab %s: %v", lab.Name, err)
+		}
 	}
 	if err := os.MkdirAll("uploads/temp", 0755); err != nil {
 		log.Printf("Warning: Failed to create temp directory: %v", err)
@@ -84,7 +100,9 @@ func main() {
 	go func() {
 		log.Printf("🚀 Server starting on http://%s", addr)
 		log.Printf("📊 Environment: %s", cfg.Environment)
-		log.Printf("💾 Database: %s", cfg.DatabasePath)
+		for _, lab := range cfg.Labs {
+			log.Printf("💾 Database [%s]: %s", lab.Name, lab.DBPath)
+		}
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}

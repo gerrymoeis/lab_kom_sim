@@ -90,10 +90,10 @@ func TestFullIntegration(t *testing.T) {
 	}
 	defer db.Close()
 
-	if err := database.RunMigrations(db, false); err != nil {
+	if err := database.RunMigrations(db, false, "test"); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
-	if err := database.SeedDefaultUser(db); err != nil {
+	if err := database.SeedDefaultUser(db, "test"); err != nil {
 		t.Errorf("Seed user: %v", err)
 	}
 	db.Exec("UPDATE users SET session_token = NULL")

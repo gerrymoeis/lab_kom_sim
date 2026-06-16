@@ -19,11 +19,19 @@ func main() {
 	}
 	defer db.Close()
 
-	if err := database.RunMigrations(db, cfg.DatabaseURL != ""); err != nil {
-		log.Fatalf("migrations: %v", err)
-	}
+	for _, lab := range cfg.Labs {
+		db, err := database.InitDB(lab.DBPath, cfg.DatabaseURL)
+		if err != nil {
+			log.Fatalf("DB init for lab %s: %v", lab.Name, err)
+		}
+		defer db.Close()
 
-	if err := services.RunPublicBuild(db, cfg.PublicBuild); err != nil {
-		log.Fatalf("build failed: %v", err)
+		if err := database.RunMigrations(db, cfg.DatabaseURL != "", lab.Name); err != nil {
+			log.Fatalf("migrations for lab %s: %v", lab.Name, err)
+		}
+
+		if err := services.RunPublicBuild(db, cfg.PublicBuild); err != nil {
+			log.Fatalf("build for lab %s: %v", lab.Name, err)
+		}
 	}
 }
