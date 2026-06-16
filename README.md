@@ -281,12 +281,14 @@ Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
 ### Build Binary
 
 ```bash
-# Build static binary (zero dependencies)
-CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
+# Build static binary untuk Linux (zero dependencies)
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 
-# Atau pakai script
+# Atau pakai script (recommended)
 bash scripts/build-linux.sh
 ```
+
+> **Catatan:** Jika build di **Windows**, pastikan `GOOS=linux GOARCH=amd64` diset (seperti contoh di atas). Tanpa ini, `go build` menghasilkan binary Windows (PE32+) yang tidak bisa jalan di Linux. Rekomendasi: build langsung di server Linux untuk hasil terjamin.
 
 ### Run Langsung (Testing)
 
@@ -321,15 +323,15 @@ sudo bash scripts/deploy-linux.sh --install-service
 
 ```bash
 # Copy systemd unit
-sudo cp scripts/inventaris-lab.service /etc/systemd/system/
+sudo cp scripts/simlab.service /etc/systemd/system/
 
 # Buat directory
 sudo mkdir -p /opt/simlab/app/data/uploads /opt/simlab/app/data/backups
-sudo mkdir -p /etc/simlab
+sudo mkdir -p /opt/simlab
 
 # Copy binary & config
 sudo cp app-simlab /opt/simlab/app/
-sudo cp .env /etc/simlab/
+sudo cp .env /opt/simlab/
 
 # Set permissions
 sudo chown -R simlab:simlab /opt/simlab/ 2>/dev/null || true
@@ -337,22 +339,22 @@ sudo chmod 755 /opt/simlab/app/app-simlab
 
 # Reload systemd & enable service
 sudo systemctl daemon-reload
-sudo systemctl enable --now inventaris-lab
+sudo systemctl enable --now simlab
 
 # Cek status
-sudo systemctl status inventaris-lab
+sudo systemctl status simlab
 
 # Lihat log real-time
-sudo journalctl -u inventaris-lab -f
+sudo journalctl -u simlab -f
 ```
 
 ### Service Management
 
 ```bash
-sudo systemctl restart inventaris-lab   # Restart
-sudo systemctl stop inventaris-lab      # Stop
-sudo systemctl start inventaris-lab     # Start
-sudo journalctl -u inventaris-lab -n 100 --no-pager  # Last 100 lines
+sudo systemctl restart simlab   # Restart
+sudo systemctl stop simlab      # Stop
+sudo systemctl start simlab     # Start
+sudo journalctl -u simlab -n 100 --no-pager  # Last 100 lines
 ```
 
 ---
@@ -717,7 +719,7 @@ PUBLIC_BUILD_BRANCH=main
 | `tailscaled` tidak bisa start | Kernel module `tun` tidak ada | `sudo modprobe tun` atau `tailscaled --tun=userspace-networking` |
 | Server tidak bisa diakses via Tailscale | Firewall port 8080 | Pastikan `HOST=0.0.0.0` (bukan localhost) |
 | Database error `UNIQUE constraint` | Data duplikat | Normalisasi otomatis jalan di startup. Jika masih error, hapus row duplikat manual via SQLite CLI |
-| `exec format error` saat run binary | Build untuk arsitektur salah | `go env GOARCH` — harus `amd64` atau `arm64` sesuai server |
+| `exec format error` saat run binary | Build untuk OS/arsitektur salah (misal binary Windows diupload ke Linux) | Cek dengan `file ./binary` — harus `ELF 64-bit`. Build dengan `GOOS=linux GOARCH=amd64 CGO_ENABLED=0`, atau build langsung di server Linux |
 | Backup disk penuh | Retention terlalu besar | Kecilkan `BACKUP_RETENTION` atau `BACKUP_MIN_DISK_MB` |
 | OCR gagal terus | API key expired/invalid | Cek `.env` → `GEMINI_API_KEY` dan `OPENROUTER_API_KEY` |
 | Foto tidak muncul di upload | Path upload salah | Pastikan `UPLOAD_PATH` absolute path dan writable |

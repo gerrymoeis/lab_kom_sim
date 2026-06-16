@@ -7,7 +7,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "Building app-simlab for Linux..."
-CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 
 if [ -f app-simlab ]; then
     size=$(du -h app-simlab | cut -f1)
