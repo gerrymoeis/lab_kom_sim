@@ -16,7 +16,7 @@ type pcSeedData struct {
 	Notes      string
 }
 
-func seedPCs(db *DB) error {
+func seedPCs(db *DB, labName string) error {
 	pcs := []pcSeedData{
 		{1, "0A23460005250060214", "Windows 11 Pro 23H2",
 			[]string{"Visual Studio Code", "Cisco Packet Tracer", "Wireshark", "Postman", "PHP + Xampp", "Composer", "Unity", "Blender", "Android Studio", "Figma", "Node.js", "Python"},
