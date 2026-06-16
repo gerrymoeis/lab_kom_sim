@@ -236,7 +236,10 @@ func (s *PrintService) GenerateStickerPDF(cfg PrintConfig) ([]byte, error) {
 
 				labelW := pdf.GetStringWidth(label)
 				textX := x + (stickerW-labelW)/2
-				baselineY := y + cfg.PaddingVCM + 0.7555*cfg.FontSizeCM
+				baselineY := y + cfg.PaddingVCM + 0.859*cfg.FontSizeCM
+				if strings.Contains(label, "_") {
+					baselineY -= 0.03 * cfg.FontSizeCM
+				}
 				pdf.Text(textX, baselineY, label)
 			}
 		}
