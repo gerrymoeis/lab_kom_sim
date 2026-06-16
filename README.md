@@ -251,9 +251,11 @@ Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
 ```powershell
 # Build (CGO_ENABLED=0 — tidak perlu compiler)
 $env:CGO_ENABLED = "0"
+$env:GOOS = "windows"
+$env:GOARCH = "amd64"
 go build -ldflags="-s -w" -o app-simlab.exe ./cmd/server/main.go
 
-# Atau pakai script
+# Atau pakai script (recommended)
 .\scripts\build-windows.ps1
 ```
 
@@ -395,7 +397,7 @@ git push origin refactoring
 # 2. Tunggu ~90 detik (workflow selesai)
 
 # 3. Deploy ke Windows — pull + build + restart
-ssh user@100.x.x.x 'cd C:\path\to\lab_kom_sim && git pull origin deploy_windows && $env:CGO_ENABLED="0"; go build -ldflags="-s -w" -o app-simlab.exe .\cmd\server\main.go; nssm restart SimLabServer'
+ssh user@100.x.x.x 'cd C:\path\to\lab_kom_sim && git pull origin deploy_windows && $env:CGO_ENABLED="0"; $env:GOOS="windows"; $env:GOARCH="amd64"; go build -ldflags="-s -w" -o app-simlab.exe .\cmd\server\main.go; nssm restart SimLabServer'
 ```
 
 Atau jalankan script deploy yang sudah ada:
@@ -490,6 +492,8 @@ cd C:\path\to\lab_kom_sim
 git log --oneline -5 origin/deploy_windows
 git checkout COMMIT_HASH_SEBELUMNYA -- cmd/ go.mod go.sum internal/ web/
 $env:CGO_ENABLED = "0"
+$env:GOOS = "windows"
+$env:GOARCH = "amd64"
 go build -ldflags="-s -w" -o app-simlab.exe .\cmd\server\main.go
 nssm restart SimLabServer
 ```
@@ -510,6 +514,8 @@ git pull origin deploy_windows
 
 # Rebuild
 $env:CGO_ENABLED = "0"
+$env:GOOS = "windows"
+$env:GOARCH = "amd64"
 go build -ldflags="-s -w" -o app-simlab.exe ./cmd/server/main.go
 
 # Restart service
@@ -685,7 +691,7 @@ PUBLIC_BUILD_BRANCH=main
 | Port 8080 sudah dipakai | Aplikasi lain | Ganti `PORT` di `.env`, atau stop aplikasi lain: `netstat -ano \| findstr :8080` |
 | Firewall blocking akses | Rule belum ada | Jalankan `.\scripts\setup_firewall.ps1` sebagai Administrator |
 | NSSM service gagal start | Path binary salah | `nssm edit SimLabServer` → cek `Application Path` |
-| `exec format error` | Build untuk arsitektur salah | `go env GOARCH` — harus `amd64` |
+| `exec format error` | Build untuk OS/arsitektur salah | Cek dengan `file ./binary`. Pastikan `GOOS=windows GOARCH=amd64` |
 | Upload foto gagal | Path upload tidak writable | Pastikan `UPLOAD_PATH` ada dan bisa ditulis |
 | Database `UNIQUE constraint` | Data duplikat | Restart server — normalisasi auto jalan |
 | Backup gagal "disk space" | Storage minimal | Kosongkan disk atau kecilkan `BACKUP_MIN_DISK_MB` |

@@ -7,6 +7,8 @@ Push-Location "$PSScriptRoot\.."
 
 Write-Host "Building app-simlab.exe for Windows..." -ForegroundColor Cyan
 $env:CGO_ENABLED = "0"
+$env:GOOS = "windows"
+$env:GOARCH = "amd64"
 go build -ldflags="-s -w" -o app-simlab.exe .\cmd\server\main.go
 
 if (Test-Path "app-simlab.exe") {
