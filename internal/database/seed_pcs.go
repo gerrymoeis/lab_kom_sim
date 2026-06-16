@@ -17,6 +17,14 @@ type pcSeedData struct {
 }
 
 func seedPCs(db *DB, labName string) error {
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM pcs").Scan(&count); err != nil {
+		return fmt.Errorf("failed to check existing PC seeds: %w", err)
+	}
+	if count > 0 {
+		return nil
+	}
+
 	pcs := []pcSeedData{
 		{1, "0A23460005250060214", "Windows 11 Pro 23H2",
 			[]string{"Visual Studio Code", "Cisco Packet Tracer", "Wireshark", "Postman", "PHP + Xampp", "Composer", "Unity", "Blender", "Android Studio", "Figma", "Node.js", "Python"},
