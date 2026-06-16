@@ -137,7 +137,7 @@ func (h *Handler) UserEdit(c *gin.Context) {
 
 	var req UpdateUserRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.Redirect(http.StatusFound, "/admin/users/"+targetUsername+"/edit?error=Semua field harus diisi")
+		h.redirectWithError(c, "/admin/users/"+targetUsername+"/edit", "Semua field harus diisi")
 		return
 	}
 
@@ -149,7 +149,7 @@ func (h *Handler) UserEdit(c *gin.Context) {
 		msg := "Gagal mengupdate user"
 		if errors.Is(err, services.ErrUsernameTaken) { msg = "Username sudah digunakan" }
 		if errors.Is(err, services.ErrProtectedUpdate) { msg = "Tidak dapat mengubah username atau role user ini" }
-		c.Redirect(http.StatusFound, "/admin/users/"+targetUsername+"/edit?error="+msg)
+		h.redirectWithError(c, "/admin/users/"+targetUsername+"/edit", msg)
 		return
 	}
 
@@ -206,7 +206,7 @@ func (h *Handler) Profile(c *gin.Context) {
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	var req UpdateProfileRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.Redirect(http.StatusFound, "/profile?error=Username dan Nama Lengkap harus diisi")
+		h.redirectWithError(c, "/profile", "Username dan Nama Lengkap harus diisi")
 		return
 	}
 	userID, u, r, ok := h.user(c)
@@ -217,7 +217,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	if err != nil {
 		msg := "Gagal mengupdate profil"
 		if errors.Is(err, services.ErrUsernameTaken) { msg = "Username sudah digunakan" }
-		c.Redirect(http.StatusFound, "/profile?error="+msg)
+		h.redirectWithError(c, "/profile", msg)
 		return
 	}
 
@@ -231,7 +231,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 func (h *Handler) ChangePassword(c *gin.Context) {
 	var req ChangePasswordRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.Redirect(http.StatusFound, "/profile?error=Semua field harus diisi")
+		h.redirectWithError(c, "/profile", "Semua field harus diisi")
 		return
 	}
 	userID, u, r, ok := h.user(c)
@@ -242,7 +242,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		msg := "Gagal mengubah password"
 		if errors.Is(err, services.ErrPasswordMismatch) { msg = "Password baru dan konfirmasi tidak cocok" }
 		if errors.Is(err, services.ErrWrongPassword) { msg = "Password lama salah" }
-		c.Redirect(http.StatusFound, "/profile?error="+msg)
+		h.redirectWithError(c, "/profile", msg)
 		return
 	}
 	h.redirectWithSuccess(c, "/profile", "Password berhasil diubah", "update")

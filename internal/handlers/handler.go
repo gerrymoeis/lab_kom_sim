@@ -100,14 +100,26 @@ func CanAccessProfile(actorUsername string, target models.User, actorIsSuperAdmi
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {
 	userID, username, role, _, ok = middleware.GetCurrentUser(c)
 	if !ok {
-		c.Redirect(http.StatusFound, "/login")
+		h.redirect(c, "/login")
 	}
 	return
+}
+
+func (h *Handler) redirect(c *gin.Context, path string) {
+	c.Redirect(http.StatusFound, h.labURL(c, path))
 }
 
 func (h *Handler) isSuperAdmin(c *gin.Context) bool {
 	_, _, _, val, ok := middleware.GetCurrentUser(c)
 	return ok && val
+}
+
+func (h *Handler) labURL(c *gin.Context, path string) string {
+	lab := c.GetString("lab")
+	if lab == "" {
+		return path
+	}
+	return "/" + lab + path
 }
 
 func (h *Handler) Close() {
@@ -140,7 +152,7 @@ func (h *Handler) errHTML(c *gin.Context, msg string) {
 func (h *Handler) redirectWithSuccess(c *gin.Context, rawURL, msg string, toastType ...string) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/")
+		h.redirect(c, "/dashboard")
 		return
 	}
 	q := u.Query()
@@ -149,19 +161,19 @@ func (h *Handler) redirectWithSuccess(c *gin.Context, rawURL, msg string, toastT
 		q.Set("toast", toastType[0])
 	}
 	u.RawQuery = q.Encode()
-	c.Redirect(http.StatusFound, u.String())
+	c.Redirect(http.StatusFound, h.labURL(c, u.String()))
 }
 
 func (h *Handler) redirectWithError(c *gin.Context, rawURL, msg string) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/")
+		h.redirect(c, "/dashboard")
 		return
 	}
 	q := u.Query()
 	q.Set("error", msg)
 	u.RawQuery = q.Encode()
-	c.Redirect(http.StatusFound, u.String())
+	c.Redirect(http.StatusFound, h.labURL(c, u.String()))
 }
 
 func parseInt64IDs(ids []string) ([]int, error) {

@@ -2,30 +2,35 @@
 
 import (
 	"crypto/subtle"
-	"database/sql"
 	"net/http"
+
+	"inventaris-lab-kom/internal/database"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
-// AuthRequired middleware checks if user is authenticated and session is valid
-// db is used to validate session_token for single-session enforcement
-func AuthRequired(db any) gin.HandlerFunc {
+func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
 		sessionToken := session.Get("session_token")
 
+		lab := c.GetString("lab")
+
 		if userID == nil || sessionToken == nil {
-			c.Redirect(http.StatusFound, "/login")
+			LabRedirect(c, http.StatusFound, "/login")
 			c.Abort()
 			return
 		}
 
-		queryDB, ok := db.(interface {
-			QueryRow(query string, args ...any) *sql.Row
-		})
+		dbVal, exists := c.Get("db")
+		if !exists {
+			LabRedirect(c, http.StatusFound, "/login")
+			c.Abort()
+			return
+		}
+		queryDB, ok := dbVal.(*database.DB)
 		if ok {
 			var dbToken string
 			err := queryDB.QueryRow(`SELECT session_token FROM users WHERE id = ?`, userID.(int)).Scan(&dbToken)
@@ -40,7 +45,7 @@ func AuthRequired(db any) gin.HandlerFunc {
 				})
 				if err := session.Save(); err != nil {
 					http.SetCookie(c.Writer, &http.Cookie{
-						Name:     "inventaris_session",
+						Name:     LabCookieName(lab),
 						Value:    "",
 						Path:     "/",
 						HttpOnly: true,
@@ -49,7 +54,7 @@ func AuthRequired(db any) gin.HandlerFunc {
 						MaxAge:   -1,
 					})
 				}
-				c.Redirect(http.StatusFound, "/login")
+				LabRedirect(c, http.StatusFound, "/login")
 				c.Abort()
 				return
 			}
