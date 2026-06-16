@@ -63,13 +63,12 @@ func (h *Handler) LoginPage(c *gin.Context) {
 		h.redirect(c, "/dashboard")
 		return
 	}
-	// Generate token baru setiap GET /login dan pastikan tersimpan ke cookie.
-	// Ini memastikan token valid tersedia setelah logout (session.Clear menghapus token lama).
 	token := middleware.NewCSRFToken(session)
 	_ = session.Save()
 	h.renderTemplate(c, http.StatusOK, "login.html", gin.H{
 		"title":      "Login - Sistem Inventaris Lab",
 		"csrf_token": token,
+		"lab":        c.GetString("lab"),
 	})
 }
 

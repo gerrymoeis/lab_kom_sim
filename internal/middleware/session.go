@@ -8,10 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SessionMiddleware creates session middleware
 func SessionMiddleware(secret string, secure bool) gin.HandlerFunc {
 	store := cookie.NewStore([]byte(secret))
-	
+
 	store.Options(sessions.Options{
 		Path:     "/",
 		MaxAge:   86400 * 7,
@@ -20,5 +19,11 @@ func SessionMiddleware(secret string, secure bool) gin.HandlerFunc {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	return sessions.Sessions("inventaris_session", store)
+	return func(c *gin.Context) {
+		lab := c.GetString("lab")
+		if lab == "" {
+			lab = "default"
+		}
+		sessions.Sessions("inventaris_session_"+lab, store)(c)
+	}
 }

@@ -199,9 +199,6 @@ func SetupRouter(dbs map[string]*database.DB, cfg *config.Config, notifier servi
 	router.GET("/static/*filepath", v.Handler())
 	router.Static("/uploads", "./uploads")
 
-	sessionMiddleware := middleware.SessionMiddleware(cfg.SessionSecret, cfg.CookieSecure)
-	router.Use(sessionMiddleware)
-
 	labCfgs := make(map[string]config.LabConfig)
 	if cfg.Labs != nil {
 		for i := range cfg.Labs {
@@ -246,8 +243,11 @@ func SetupRouter(dbs map[string]*database.DB, cfg *config.Config, notifier servi
 		c.String(200, "ready")
 	})
 
+	router.GET("/", handlers.LandingPage(cfg))
+
 	labGroup := router.Group("/:lab")
 	labGroup.Use(middleware.DBInjector(dbs, labCfgs))
+	labGroup.Use(middleware.SessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
 	{
 		public := labGroup.Group("/")
 		public.Use(middleware.CSRF())
