@@ -281,12 +281,14 @@ Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
 ### Build Binary
 
 ```bash
-# Build static binary (zero dependencies)
-CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
+# Build static binary untuk Linux (zero dependencies)
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 
-# Atau pakai script
+# Atau pakai script (recommended)
 bash scripts/build-linux.sh
 ```
+
+> **Catatan:** Jika build di **Windows**, pastikan `GOOS=linux GOARCH=amd64` diset (seperti contoh di atas). Tanpa ini, `go build` menghasilkan binary Windows (PE32+) yang tidak bisa jalan di Linux. Rekomendasi: build langsung di server Linux untuk hasil terjamin.
 
 ### Run Langsung (Testing)
 
@@ -321,15 +323,15 @@ sudo bash scripts/deploy-linux.sh --install-service
 
 ```bash
 # Copy systemd unit
-sudo cp scripts/inventaris-lab.service /etc/systemd/system/
+sudo cp scripts/simlab.service /etc/systemd/system/
 
 # Buat directory
 sudo mkdir -p /opt/simlab/app/data/uploads /opt/simlab/app/data/backups
-sudo mkdir -p /etc/simlab
+sudo mkdir -p /opt/simlab
 
 # Copy binary & config
 sudo cp app-simlab /opt/simlab/app/
-sudo cp .env /etc/simlab/
+sudo cp .env /opt/simlab/
 
 # Set permissions
 sudo chown -R simlab:simlab /opt/simlab/ 2>/dev/null || true
@@ -337,22 +339,22 @@ sudo chmod 755 /opt/simlab/app/app-simlab
 
 # Reload systemd & enable service
 sudo systemctl daemon-reload
-sudo systemctl enable --now inventaris-lab
+sudo systemctl enable --now simlab
 
 # Cek status
-sudo systemctl status inventaris-lab
+sudo systemctl status simlab
 
 # Lihat log real-time
-sudo journalctl -u inventaris-lab -f
+sudo journalctl -u simlab -f
 ```
 
 ### Service Management
 
 ```bash
-sudo systemctl restart inventaris-lab   # Restart
-sudo systemctl stop inventaris-lab      # Stop
-sudo systemctl start inventaris-lab     # Start
-sudo journalctl -u inventaris-lab -n 100 --no-pager  # Last 100 lines
+sudo systemctl restart simlab   # Restart
+sudo systemctl stop simlab      # Stop
+sudo systemctl start simlab     # Start
+sudo journalctl -u simlab -n 100 --no-pager  # Last 100 lines
 ```
 
 ---
@@ -443,7 +445,7 @@ ls -lh /opt/simlab/app/data/backups/
 Restore dari backup:
 ```bash
 # 1. Hentikan server
-sudo systemctl stop inventaris-lab
+sudo systemctl stop simlab
 
 # 2. Backup DB corrupt (untuk investigasi)
 cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db.corrupt
@@ -452,7 +454,7 @@ cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db
 cp /opt/simlab/app/data/backups/inventaris_lab.db.backup_20260613_120405 /opt/simlab/app/data/inventaris_lab.db
 
 # 4. Start server
-sudo systemctl start inventaris-lab
+sudo systemctl start simlab
 ```
 
 ### Database Recovery (Migration Failure)
@@ -462,7 +464,7 @@ Server auto-run migration setiap startup. Jika setelah update server langsung cr
 **1. Cek log untuk tahu penyebab:**
 
 ```bash
-sudo journalctl -u inventaris-lab -n 100 --no-pager | grep -i "migration\|error\|fatal"
+sudo journalctl -u simlab -n 100 --no-pager | grep -i "migration\|error\|fatal"
 ```
 
 **2. Restore database dari backup (jika corruption):**
@@ -472,7 +474,7 @@ sudo journalctl -u inventaris-lab -n 100 --no-pager | grep -i "migration\|error\
 ls -t /opt/simlab/app/data/backups/ | head -5
 
 # Hentikan server
-sudo systemctl stop inventaris-lab
+sudo systemctl stop simlab
 
 # Backup DB corrupt untuk analisis
 cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db.corrupt
@@ -481,7 +483,7 @@ cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db
 cp $(ls -t /opt/simlab/app/data/backups/ | head -1) /opt/simlab/app/data/inventaris_lab.db
 
 # Start server (akan re-run migration yang sudah sukses sebelumnya — skip)
-sudo systemctl start inventaris-lab
+sudo systemctl start simlab
 ```
 
 **3. Rollback binary (jika bug di kode baru):**
@@ -493,15 +495,15 @@ git log --oneline -5 origin/deploy_linux
 git checkout COMMIT_HASH_SEBELUMNYA -- cmd/ go.mod go.sum internal/ web/
 CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 sudo cp app-simlab /opt/simlab/app/app-simlab
-sudo systemctl restart inventaris-lab
+sudo systemctl restart simlab
 ```
 
 **4. Reset ke database baru (jika semua gagal):**
 
 ```bash
-sudo systemctl stop inventaris-lab
+sudo systemctl stop simlab
 rm /opt/simlab/app/data/inventaris_lab.db
-sudo systemctl start inventaris-lab
+sudo systemctl start simlab
 # Database baru akan ter-create + seed data otomatis
 ```
 
@@ -717,7 +719,7 @@ PUBLIC_BUILD_BRANCH=main
 | `tailscaled` tidak bisa start | Kernel module `tun` tidak ada | `sudo modprobe tun` atau `tailscaled --tun=userspace-networking` |
 | Server tidak bisa diakses via Tailscale | Firewall port 8080 | Pastikan `HOST=0.0.0.0` (bukan localhost) |
 | Database error `UNIQUE constraint` | Data duplikat | Normalisasi otomatis jalan di startup. Jika masih error, hapus row duplikat manual via SQLite CLI |
-| `exec format error` saat run binary | Build untuk arsitektur salah | `go env GOARCH` — harus `amd64` atau `arm64` sesuai server |
+| `exec format error` saat run binary | Build untuk OS/arsitektur salah (misal binary Windows diupload ke Linux) | Cek dengan `file ./binary` — harus `ELF 64-bit`. Build dengan `GOOS=linux GOARCH=amd64 CGO_ENABLED=0`, atau build langsung di server Linux |
 | Backup disk penuh | Retention terlalu besar | Kecilkan `BACKUP_RETENTION` atau `BACKUP_MIN_DISK_MB` |
 | OCR gagal terus | API key expired/invalid | Cek `.env` → `GEMINI_API_KEY` dan `OPENROUTER_API_KEY` |
 | Foto tidak muncul di upload | Path upload salah | Pastikan `UPLOAD_PATH` absolute path dan writable |

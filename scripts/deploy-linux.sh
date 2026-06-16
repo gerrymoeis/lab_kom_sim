@@ -10,9 +10,9 @@ set -e
 cd "$(dirname "$0")/.."
 
 BINARY="app-simlab"
-SERVICE_NAME="inventaris-lab"
-INSTALL_DIR="/opt/$SERVICE_NAME"
-ENV_FILE="/etc/$SERVICE_NAME/.env"
+SERVICE_NAME="simlab"
+INSTALL_DIR="/opt/$SERVICE_NAME/app"
+ENV_FILE="/opt/$SERVICE_NAME/.env"
 DATA_DIR="/var/lib/$SERVICE_NAME"
 
 echo "========================================"
@@ -22,7 +22,7 @@ echo ""
 
 # 1. Build
 echo "[1/3] Building binary..."
-CGO_ENABLED=0 go build -ldflags="-s -w" -o "$BINARY" ./cmd/server/main.go
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o "$BINARY" ./cmd/server/main.go
 size=$(du -h "$BINARY" | cut -f1)
 echo "  Build selesai: $BINARY ($size)"
 
