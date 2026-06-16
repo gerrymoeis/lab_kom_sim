@@ -70,13 +70,27 @@ jobs:
           echo "=== 5. Force .env.example dari refactoring ==="
           git checkout origin/refactoring -- .env.example
 
-          echo "=== 6. Cleanup Windows scripts on deploy_linux ==="
-          if [ "${PLATFORM}" = "linux" ]; then
-            git rm --ignore-unmatch \
-              scripts/build-windows.ps1 \
-              scripts/deploy-windows.ps1 \
-              scripts/download-vendor.ps1
-          fi
+           echo "=== 6. Cleanup platform-irrelevant scripts ==="
+           if [ "${PLATFORM}" = "linux" ]; then
+             git rm --ignore-unmatch \
+               scripts/build-windows.ps1 \
+               scripts/deploy-windows.ps1 \
+               scripts/download-vendor.ps1 \
+               scripts/setup_firewall.ps1 \
+               scripts/build_termux.sh
+           elif [ "${PLATFORM}" = "windows" ]; then
+             git rm --ignore-unmatch \
+               scripts/build_termux.sh \
+               scripts/simlab.service \
+               scripts/inventaris-lab.service \
+               scripts/setup-firewall-linux.sh
+           elif [ "${PLATFORM}" = "android" ]; then
+             git rm --ignore-unmatch \
+               scripts/setup_firewall.ps1 \
+               scripts/simlab.service \
+               scripts/inventaris-lab.service \
+               scripts/setup-firewall-linux.sh
+           fi
 
           echo "=== 7. Resolve dependencies ==="
           go mod tidy
