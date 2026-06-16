@@ -54,13 +54,13 @@ func (h *Handler) Login(c *gin.Context) {
 		})
 		return
 	}
-	c.Redirect(http.StatusFound, "/dashboard")
+	h.redirect(c, "/dashboard")
 }
 
 func (h *Handler) LoginPage(c *gin.Context) {
 	session := sessions.Default(c)
 	if userID := session.Get("user_id"); userID != nil {
-		c.Redirect(http.StatusFound, "/dashboard")
+		h.redirect(c, "/dashboard")
 		return
 	}
 	// Generate token baru setiap GET /login dan pastikan tersimpan ke cookie.
@@ -90,8 +90,9 @@ func (h *Handler) Logout(c *gin.Context) {
 		SameSite: http.SameSiteLaxMode,
 	})
 	if err := session.Save(); err != nil {
+		lab := c.GetString("lab")
 		http.SetCookie(c.Writer, &http.Cookie{
-			Name:     "inventaris_session",
+			Name:     middleware.LabCookieName(lab),
 			Value:    "",
 			Path:     "/",
 			HttpOnly: true,
@@ -100,14 +101,14 @@ func (h *Handler) Logout(c *gin.Context) {
 			MaxAge:   -1,
 		})
 	}
-	c.Redirect(http.StatusFound, "/login")
+	h.redirect(c, "/login")
 }
 
 func (h *Handler) Home(c *gin.Context) {
 	session := sessions.Default(c)
 	if userID := session.Get("user_id"); userID != nil {
-		c.Redirect(http.StatusFound, "/dashboard")
+		h.redirect(c, "/dashboard")
 		return
 	}
-	c.Redirect(http.StatusFound, "/login")
+	h.redirect(c, "/login")
 }

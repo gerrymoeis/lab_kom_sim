@@ -175,7 +175,7 @@ func sourceMapBlocker() gin.HandlerFunc {
 	}
 }
 
-func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotifier) (*gin.Engine, func(), func()) {
+func SetupRouter(dbs map[string]*database.DB, cfg *config.Config, notifier services.CUDNotifier) (*gin.Engine, func(), func()) {
 	router := gin.New()
 	router.MaxMultipartMemory = 6 << 20
 	router.Use(sourceMapBlocker())
@@ -202,178 +202,212 @@ func SetupRouter(db *database.DB, cfg *config.Config, notifier services.CUDNotif
 	sessionMiddleware := middleware.SessionMiddleware(cfg.SessionSecret, cfg.CookieSecure)
 	router.Use(sessionMiddleware)
 
-	// writeFlushMiddleware ensures all pending async writes are flushed
-	// before the response is sent, preventing stale data on POST-then-redirect.
+	labCfgs := make(map[string]config.LabConfig)
+	if cfg.Labs != nil {
+		for i := range cfg.Labs {
+			labCfgs[cfg.Labs[i].Name] = cfg.Labs[i]
+		}
+	}
+
+	handlersMap := make(map[string]*handlers.Handler, len(dbs))
+	for labName, db := range dbs {
+		handlersMap[labName] = handlers.NewHandler(db, cfg, notifier)
+	}
+	adapter := NewHandlerAdapter(handlersMap)
+
 	writeFlushMiddleware := func() gin.HandlerFunc {
 		return func(c *gin.Context) {
 			c.Next()
 			if c.Request.Method == "POST" {
-				db.Flush()
+				if dbVal, exists := c.Get("db"); exists {
+					if db, ok := dbVal.(*database.DB); ok {
+						db.Flush()
+					}
+				}
 			}
 		}
 	}
 
-	h := handlers.NewHandler(db, cfg, notifier)
+	readyzDB := func() *database.DB {
+		for _, db := range dbs {
+			return db
+		}
+		return nil
+	}()
 
 	router.GET("/healthz", func(c *gin.Context) {
 		c.String(200, "ok")
 	})
 	router.GET("/readyz", func(c *gin.Context) {
-		if err := db.Ping(); err != nil {
+		if readyzDB == nil || readyzDB.Ping() != nil {
 			c.String(503, "not ready")
 			return
 		}
 		c.String(200, "ready")
 	})
 
-	public := router.Group("/")
-	public.Use(middleware.CSRF())
+	labGroup := router.Group("/:lab")
+	labGroup.Use(middleware.DBInjector(dbs, labCfgs))
 	{
-		public.GET("/", h.Home)
-		public.GET("/login", h.LoginPage)
-		public.POST("/login", h.Login)
-		public.POST("/logout", h.Logout)
-	}
-
-	protected := router.Group("/")
-	protected.Use(middleware.AuthRequired(db), middleware.CSRF(), writeFlushMiddleware())
-	{
-		protected.GET("/dashboard", h.Dashboard)
-		protected.GET("/pc", h.PCList)
-		protected.GET("/pc/create", h.PCCreatePage)
-		protected.POST("/pc/create", h.PCCreate)
-		protected.GET("/pc/export", h.PCExport)
-		protected.GET("/pc/:label", h.PCDetail)
-		protected.GET("/pc/:label/edit", h.PCEditPage)
-		protected.POST("/pc/:label/edit", h.PCEdit)
-		protected.POST("/pc/:label/delete", h.PCDelete)
-		protected.POST("/pc/batch-delete", h.PCBatchDelete)
-
-		protected.GET("/devices", h.DeviceList)
-		protected.GET("/devices/export", h.DeviceExport)
-		protected.GET("/devices/create", h.DeviceCreatePage)
-		protected.POST("/devices/create", h.DeviceCreate)
-		protected.POST("/devices/batch-create", h.DeviceBatchCreate)
-		protected.GET("/devices/:slug/:typeSlug/:assetCode", h.DeviceDetail)
-		protected.GET("/devices/:slug/edit", h.DeviceEditPage)
-		protected.POST("/devices/:slug/edit", h.DeviceEdit)
-		protected.POST("/devices/:slug/delete", h.DeviceDelete)
-		protected.POST("/devices/batch-delete", h.DeviceBatchDelete)
-
-		protected.GET("/device-types/:slug", h.DeviceTypeDetail)
-		protected.GET("/device-types/:slug/edit", h.DeviceTypeEditPage)
-		protected.POST("/device-types/:slug/edit", h.DeviceTypeEdit)
-		protected.POST("/device-types/:slug/delete", h.DeviceTypeDelete)
-		protected.POST("/device-types/batch-delete", h.DeviceTypeBatchDelete)
-		protected.GET("/categories/:slug", h.CategoryDetail)
-		protected.GET("/categories/:slug/edit", h.CategoryEditPage)
-		protected.POST("/categories/:slug/edit", h.CategoryEdit)
-		protected.POST("/categories/:slug/delete", h.CategoryDelete)
-		protected.POST("/categories/batch-delete", h.CategoryBatchDelete)
-
-		protected.GET("/device-loans", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=loans") })
-		protected.GET("/device-loans/create", h.DeviceLoanCreatePage)
-		protected.POST("/device-loans/create", h.DeviceLoanCreate)
-		protected.GET("/device-loans/:id", h.DeviceLoanDetail)
-		protected.GET("/device-loans/:id/edit", h.DeviceLoanEditPage)
-		protected.POST("/device-loans/:id/edit", h.DeviceLoanEdit)
-		protected.POST("/device-loans/:id/delete", h.DeviceLoanDelete)
-		protected.POST("/device-loans/batch-delete", h.DeviceLoanBatchDelete)
-
-		protected.GET("/device-usages", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=usages") })
-		protected.GET("/device-usages/create", h.DeviceUsageCreatePage)
-		protected.POST("/device-usages/create", h.DeviceUsageCreate)
-		protected.GET("/device-usages/:id", h.DeviceUsageDetail)
-		protected.GET("/device-usages/:id/edit", h.DeviceUsageEditPage)
-		protected.POST("/device-usages/:id/edit", h.DeviceUsageEdit)
-		protected.POST("/device-usages/:id/delete", h.DeviceUsageDelete)
-		protected.POST("/device-usages/batch-delete", h.DeviceUsageBatchDelete)
-		protected.POST("/device-loans/:id/extend", h.DeviceLoanExtend)
-		protected.GET("/installations", func(c *gin.Context) { c.Redirect(http.StatusFound, "/devices?tab=installations") })
-		protected.GET("/installations/create", h.DeviceInstallationCreatePage)
-		protected.GET("/installations/:id", h.DeviceInstallationDetail)
-		protected.POST("/installations/create", h.DeviceInstallationCreate)
-		protected.GET("/installations/:id/edit", h.DeviceInstallationEditPage)
-		protected.POST("/installations/:id/edit", h.DeviceInstallationEdit)
-		protected.POST("/installations/:id/delete", h.DeviceInstallationDelete)
-		protected.POST("/installations/batch-delete", h.DeviceInstallationBatchDelete)
-		protected.GET("/schedules", h.ScheduleList)
-		protected.GET("/schedules/create", h.ScheduleCreatePage)
-		protected.POST("/schedules/create", h.ScheduleCreate)
-		protected.GET("/schedules/:id/edit", h.ScheduleEditPage)
-		protected.POST("/schedules/:id/edit", h.ScheduleEdit)
-		protected.POST("/schedules/:id/delete", h.ScheduleDelete)
-		protected.POST("/schedules/batch-delete", h.ScheduleBatchDelete)
-
-		protected.GET("/software", h.SoftwareList)
-		protected.POST("/software/create", h.SoftwareCreate)
-		protected.GET("/software/export", h.SoftwareExport)
-		protected.GET("/software/catalog.json", h.GetSoftwareCatalogJSON)
-		protected.GET("/software/:slug", h.SoftwareDetail)
-		protected.GET("/software/:slug/edit", h.SoftwareEditPage)
-		protected.POST("/software/:slug/edit", h.SoftwareEdit)
-		protected.POST("/software/:slug/delete", h.SoftwareDelete)
-		protected.POST("/software/batch-delete", h.SoftwareBatchDelete)
-
-		protected.GET("/logbook", h.LogbookList)
-		protected.GET("/logbook/upload", h.LogbookUploadPage)
-		protected.POST("/logbook/upload", h.LogbookUpload)
-		protected.POST("/logbook/save", h.LogbookSave)
-		protected.GET("/logbook/export", h.LogbookExport)
-		protected.GET("/logbook/export-preview", h.LogbookExportPreview)
-		protected.GET("/logbook/create", h.LogbookCreatePage)
-		protected.POST("/logbook/create", h.LogbookCreate)
-		protected.GET("/logbook/:id", h.LogbookDetail)
-		protected.GET("/logbook/:id/edit", h.LogbookEditPage)
-		protected.POST("/logbook/:id/edit", h.LogbookEdit)
-		protected.POST("/logbook/:id/delete", h.LogbookDelete)
-		protected.POST("/logbook/batch-delete", h.LogbookBatchDelete)
-
-		admin := protected.Group("/admin")
-		admin.Use(middleware.AdminRequired())
+		public := labGroup.Group("/")
+		public.Use(middleware.CSRF())
 		{
-			admin.GET("/users", h.UserList)
-			admin.GET("/users/create", h.UserCreatePage)
-			admin.POST("/users/create", h.UserCreate)
-			admin.GET("/users/:username", h.UserDetail)
-			admin.GET("/users/:username/edit", h.UserEditPage)
-			admin.POST("/users/:username/edit", h.UserEdit)
-			admin.POST("/users/:username/delete", h.UserDelete)
-			admin.POST("/users/batch-delete", h.UserBatchDelete)
-			admin.GET("/activity-logs", h.ActivityLogList)
-			admin.GET("/activity-logs/export", h.ActivityLogExport)
+			public.GET("/", adapter.Handle((*handlers.Handler).Home))
+			public.GET("/login", adapter.Handle((*handlers.Handler).LoginPage))
+			public.POST("/login", adapter.Handle((*handlers.Handler).Login))
+			public.POST("/logout", adapter.Handle((*handlers.Handler).Logout))
 		}
 
-		protected.GET("/print", h.PrintForm)
-		protected.GET("/print/generate", h.PrintGeneratePDF)
+		protected := labGroup.Group("/")
+		protected.Use(middleware.AuthRequired(), middleware.CSRF(), writeFlushMiddleware())
+		{
+			protected.GET("/dashboard", adapter.Handle((*handlers.Handler).Dashboard))
+			protected.GET("/pc", adapter.Handle((*handlers.Handler).PCList))
+			protected.GET("/pc/create", adapter.Handle((*handlers.Handler).PCCreatePage))
+			protected.POST("/pc/create", adapter.Handle((*handlers.Handler).PCCreate))
+			protected.GET("/pc/export", adapter.Handle((*handlers.Handler).PCExport))
+			protected.GET("/pc/:label", adapter.Handle((*handlers.Handler).PCDetail))
+			protected.GET("/pc/:label/edit", adapter.Handle((*handlers.Handler).PCEditPage))
+			protected.POST("/pc/:label/edit", adapter.Handle((*handlers.Handler).PCEdit))
+			protected.POST("/pc/:label/delete", adapter.Handle((*handlers.Handler).PCDelete))
+			protected.POST("/pc/batch-delete", adapter.Handle((*handlers.Handler).PCBatchDelete))
 
-		protected.GET("/profile", h.Profile)
-		protected.POST("/profile", h.UpdateProfile)
-		protected.POST("/profile/password", h.ChangePassword)
+			protected.GET("/devices", adapter.Handle((*handlers.Handler).DeviceList))
+			protected.GET("/devices/export", adapter.Handle((*handlers.Handler).DeviceExport))
+			protected.GET("/devices/create", adapter.Handle((*handlers.Handler).DeviceCreatePage))
+			protected.POST("/devices/create", adapter.Handle((*handlers.Handler).DeviceCreate))
+			protected.POST("/devices/batch-create", adapter.Handle((*handlers.Handler).DeviceBatchCreate))
+			protected.GET("/devices/:slug/:typeSlug/:assetCode", adapter.Handle((*handlers.Handler).DeviceDetail))
+			protected.GET("/devices/:slug/edit", adapter.Handle((*handlers.Handler).DeviceEditPage))
+			protected.POST("/devices/:slug/edit", adapter.Handle((*handlers.Handler).DeviceEdit))
+			protected.POST("/devices/:slug/delete", adapter.Handle((*handlers.Handler).DeviceDelete))
+			protected.POST("/devices/batch-delete", adapter.Handle((*handlers.Handler).DeviceBatchDelete))
+
+			protected.GET("/device-types/:slug", adapter.Handle((*handlers.Handler).DeviceTypeDetail))
+			protected.GET("/device-types/:slug/edit", adapter.Handle((*handlers.Handler).DeviceTypeEditPage))
+			protected.POST("/device-types/:slug/edit", adapter.Handle((*handlers.Handler).DeviceTypeEdit))
+			protected.POST("/device-types/:slug/delete", adapter.Handle((*handlers.Handler).DeviceTypeDelete))
+			protected.POST("/device-types/batch-delete", adapter.Handle((*handlers.Handler).DeviceTypeBatchDelete))
+			protected.GET("/categories/:slug", adapter.Handle((*handlers.Handler).CategoryDetail))
+			protected.GET("/categories/:slug/edit", adapter.Handle((*handlers.Handler).CategoryEditPage))
+			protected.POST("/categories/:slug/edit", adapter.Handle((*handlers.Handler).CategoryEdit))
+			protected.POST("/categories/:slug/delete", adapter.Handle((*handlers.Handler).CategoryDelete))
+			protected.POST("/categories/batch-delete", adapter.Handle((*handlers.Handler).CategoryBatchDelete))
+
+			protected.GET("/device-loans", func(c *gin.Context) { middleware.LabRedirect(c, http.StatusFound, "/devices?tab=loans") })
+			protected.GET("/device-loans/create", adapter.Handle((*handlers.Handler).DeviceLoanCreatePage))
+			protected.POST("/device-loans/create", adapter.Handle((*handlers.Handler).DeviceLoanCreate))
+			protected.GET("/device-loans/:id", adapter.Handle((*handlers.Handler).DeviceLoanDetail))
+			protected.GET("/device-loans/:id/edit", adapter.Handle((*handlers.Handler).DeviceLoanEditPage))
+			protected.POST("/device-loans/:id/edit", adapter.Handle((*handlers.Handler).DeviceLoanEdit))
+			protected.POST("/device-loans/:id/delete", adapter.Handle((*handlers.Handler).DeviceLoanDelete))
+			protected.POST("/device-loans/batch-delete", adapter.Handle((*handlers.Handler).DeviceLoanBatchDelete))
+
+			protected.GET("/device-usages", func(c *gin.Context) { middleware.LabRedirect(c, http.StatusFound, "/devices?tab=usages") })
+			protected.GET("/device-usages/create", adapter.Handle((*handlers.Handler).DeviceUsageCreatePage))
+			protected.POST("/device-usages/create", adapter.Handle((*handlers.Handler).DeviceUsageCreate))
+			protected.GET("/device-usages/:id", adapter.Handle((*handlers.Handler).DeviceUsageDetail))
+			protected.GET("/device-usages/:id/edit", adapter.Handle((*handlers.Handler).DeviceUsageEditPage))
+			protected.POST("/device-usages/:id/edit", adapter.Handle((*handlers.Handler).DeviceUsageEdit))
+			protected.POST("/device-usages/:id/delete", adapter.Handle((*handlers.Handler).DeviceUsageDelete))
+			protected.POST("/device-usages/batch-delete", adapter.Handle((*handlers.Handler).DeviceUsageBatchDelete))
+			protected.POST("/device-loans/:id/extend", adapter.Handle((*handlers.Handler).DeviceLoanExtend))
+			protected.GET("/installations", func(c *gin.Context) { middleware.LabRedirect(c, http.StatusFound, "/devices?tab=installations") })
+			protected.GET("/installations/create", adapter.Handle((*handlers.Handler).DeviceInstallationCreatePage))
+			protected.GET("/installations/:id", adapter.Handle((*handlers.Handler).DeviceInstallationDetail))
+			protected.POST("/installations/create", adapter.Handle((*handlers.Handler).DeviceInstallationCreate))
+			protected.GET("/installations/:id/edit", adapter.Handle((*handlers.Handler).DeviceInstallationEditPage))
+			protected.POST("/installations/:id/edit", adapter.Handle((*handlers.Handler).DeviceInstallationEdit))
+			protected.POST("/installations/:id/delete", adapter.Handle((*handlers.Handler).DeviceInstallationDelete))
+			protected.POST("/installations/batch-delete", adapter.Handle((*handlers.Handler).DeviceInstallationBatchDelete))
+			protected.GET("/schedules", adapter.Handle((*handlers.Handler).ScheduleList))
+			protected.GET("/schedules/create", adapter.Handle((*handlers.Handler).ScheduleCreatePage))
+			protected.POST("/schedules/create", adapter.Handle((*handlers.Handler).ScheduleCreate))
+			protected.GET("/schedules/:id/edit", adapter.Handle((*handlers.Handler).ScheduleEditPage))
+			protected.POST("/schedules/:id/edit", adapter.Handle((*handlers.Handler).ScheduleEdit))
+			protected.POST("/schedules/:id/delete", adapter.Handle((*handlers.Handler).ScheduleDelete))
+			protected.POST("/schedules/batch-delete", adapter.Handle((*handlers.Handler).ScheduleBatchDelete))
+
+			protected.GET("/software", adapter.Handle((*handlers.Handler).SoftwareList))
+			protected.POST("/software/create", adapter.Handle((*handlers.Handler).SoftwareCreate))
+			protected.GET("/software/export", adapter.Handle((*handlers.Handler).SoftwareExport))
+			protected.GET("/software/catalog.json", adapter.Handle((*handlers.Handler).GetSoftwareCatalogJSON))
+			protected.GET("/software/:slug", adapter.Handle((*handlers.Handler).SoftwareDetail))
+			protected.GET("/software/:slug/edit", adapter.Handle((*handlers.Handler).SoftwareEditPage))
+			protected.POST("/software/:slug/edit", adapter.Handle((*handlers.Handler).SoftwareEdit))
+			protected.POST("/software/:slug/delete", adapter.Handle((*handlers.Handler).SoftwareDelete))
+			protected.POST("/software/batch-delete", adapter.Handle((*handlers.Handler).SoftwareBatchDelete))
+
+			protected.GET("/logbook", adapter.Handle((*handlers.Handler).LogbookList))
+			protected.GET("/logbook/upload", adapter.Handle((*handlers.Handler).LogbookUploadPage))
+			protected.POST("/logbook/upload", adapter.Handle((*handlers.Handler).LogbookUpload))
+			protected.POST("/logbook/save", adapter.Handle((*handlers.Handler).LogbookSave))
+			protected.GET("/logbook/export", adapter.Handle((*handlers.Handler).LogbookExport))
+			protected.GET("/logbook/export-preview", adapter.Handle((*handlers.Handler).LogbookExportPreview))
+			protected.GET("/logbook/create", adapter.Handle((*handlers.Handler).LogbookCreatePage))
+			protected.POST("/logbook/create", adapter.Handle((*handlers.Handler).LogbookCreate))
+			protected.GET("/logbook/:id", adapter.Handle((*handlers.Handler).LogbookDetail))
+			protected.GET("/logbook/:id/edit", adapter.Handle((*handlers.Handler).LogbookEditPage))
+			protected.POST("/logbook/:id/edit", adapter.Handle((*handlers.Handler).LogbookEdit))
+			protected.POST("/logbook/:id/delete", adapter.Handle((*handlers.Handler).LogbookDelete))
+			protected.POST("/logbook/batch-delete", adapter.Handle((*handlers.Handler).LogbookBatchDelete))
+
+			admin := protected.Group("/admin")
+			admin.Use(middleware.AdminRequired())
+			{
+				admin.GET("/users", adapter.Handle((*handlers.Handler).UserList))
+				admin.GET("/users/create", adapter.Handle((*handlers.Handler).UserCreatePage))
+				admin.POST("/users/create", adapter.Handle((*handlers.Handler).UserCreate))
+				admin.GET("/users/:username", adapter.Handle((*handlers.Handler).UserDetail))
+				admin.GET("/users/:username/edit", adapter.Handle((*handlers.Handler).UserEditPage))
+				admin.POST("/users/:username/edit", adapter.Handle((*handlers.Handler).UserEdit))
+				admin.POST("/users/:username/delete", adapter.Handle((*handlers.Handler).UserDelete))
+				admin.POST("/users/batch-delete", adapter.Handle((*handlers.Handler).UserBatchDelete))
+				admin.GET("/activity-logs", adapter.Handle((*handlers.Handler).ActivityLogList))
+				admin.GET("/activity-logs/export", adapter.Handle((*handlers.Handler).ActivityLogExport))
+			}
+
+			protected.GET("/print", adapter.Handle((*handlers.Handler).PrintForm))
+			protected.GET("/print/generate", adapter.Handle((*handlers.Handler).PrintGeneratePDF))
+
+			protected.GET("/profile", adapter.Handle((*handlers.Handler).Profile))
+			protected.POST("/profile", adapter.Handle((*handlers.Handler).UpdateProfile))
+			protected.POST("/profile/password", adapter.Handle((*handlers.Handler).ChangePassword))
+		}
+
+		api := labGroup.Group("/api")
+		api.Use(middleware.AuthRequired(), middleware.CSRF(), writeFlushMiddleware())
+		{
+			api.GET("/pc/status", adapter.Handle((*handlers.Handler).PCStatusAPI))
+			api.POST("/pc/:label/status", adapter.Handle((*handlers.Handler).UpdatePCStatusAPI))
+			api.GET("/pc/layout", adapter.Handle((*handlers.Handler).PCGetLayout))
+			api.POST("/pc/swap", adapter.Handle((*handlers.Handler).PCSwap))
+			api.POST("/pc/replace", adapter.Handle((*handlers.Handler).PCReplace))
+			api.POST("/pc/move-row", adapter.Handle((*handlers.Handler).PCMoveRowToCadangan))
+			api.POST("/pc/move-to-cadangan", adapter.Handle((*handlers.Handler).PCMoveToCadangan))
+			api.POST("/pc/move", adapter.Handle((*handlers.Handler).PCMove))
+			api.POST("/pc/place", adapter.Handle((*handlers.Handler).PCPlace))
+			api.POST("/upload-image", adapter.Handle((*handlers.Handler).UploadImage))
+			api.POST("/delete-temp-file", adapter.Handle((*handlers.Handler).DeleteTempFile))
+			api.POST("/cleanup-temp-files", adapter.Handle((*handlers.Handler).CleanupTempFiles))
+			api.GET("/devices/next-asset-code", adapter.Handle((*handlers.Handler).GetNextAssetCode))
+			api.GET("/devices/next-asset-codes", adapter.Handle((*handlers.Handler).GetNextAssetCodes))
+			api.GET("/sticker-templates", adapter.Handle((*handlers.Handler).StickerTemplateList))
+			api.POST("/sticker-templates", adapter.Handle((*handlers.Handler).StickerTemplateCreate))
+			api.PUT("/sticker-templates/:id", adapter.Handle((*handlers.Handler).StickerTemplateUpdate))
+			api.DELETE("/sticker-templates/:id", adapter.Handle((*handlers.Handler).StickerTemplateDelete))
+		}
 	}
 
-	api := router.Group("/api")
-	api.Use(middleware.AuthRequired(db), middleware.CSRF(), writeFlushMiddleware())
-	{
-		api.GET("/pc/status", h.PCStatusAPI)
-		api.POST("/pc/:label/status", h.UpdatePCStatusAPI)
-		api.GET("/pc/layout", h.PCGetLayout)
-		api.POST("/pc/swap", h.PCSwap)
-		api.POST("/pc/replace", h.PCReplace)
-		api.POST("/pc/move-row", h.PCMoveRowToCadangan)
-		api.POST("/pc/move-to-cadangan", h.PCMoveToCadangan)
-		api.POST("/pc/move", h.PCMove)
-		api.POST("/pc/place", h.PCPlace)
-		api.POST("/upload-image", h.UploadImage)
-		api.POST("/delete-temp-file", h.DeleteTempFile)
-		api.POST("/cleanup-temp-files", h.CleanupTempFiles)
-		api.GET("/devices/next-asset-code", h.GetNextAssetCode)
-		api.GET("/devices/next-asset-codes", h.GetNextAssetCodes)
-		api.GET("/sticker-templates", h.StickerTemplateList)
-		api.POST("/sticker-templates", h.StickerTemplateCreate)
-		api.PUT("/sticker-templates/:id", h.StickerTemplateUpdate)
-		api.DELETE("/sticker-templates/:id", h.StickerTemplateDelete)
+	closeAll := func() {
+		for _, h := range handlersMap {
+			h.Close()
+		}
 	}
-
-	return router, func() { h.Close() }, func() { h.FlushActivityLogs() }
+	flushAll := func() {
+		for _, h := range handlersMap {
+			h.FlushActivityLogs()
+		}
+	}
+	return router, closeAll, flushAll
 }
