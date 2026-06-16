@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"path/filepath"
+
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/queue"
@@ -31,6 +33,11 @@ func main() {
 	isPostgres := cfg.DatabaseURL != ""
 	dbs := make(map[string]*database.DB)
 	for _, lab := range cfg.Labs {
+		if dir := filepath.Dir(lab.DBPath); dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				log.Fatalf("Failed to create database directory %s for lab %s: %v", dir, lab.Name, err)
+			}
+		}
 		db, err := database.InitDB(lab.DBPath, cfg.DatabaseURL)
 		if err != nil {
 			log.Fatalf("Failed to initialize database for lab %s: %v", lab.Name, err)
