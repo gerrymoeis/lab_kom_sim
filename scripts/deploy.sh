@@ -19,7 +19,7 @@ if [ ! -f "web/static/vendor/bootstrap/css/bootstrap.min.css" ]; then
 fi
 
 echo "[deploy] Building binary (pure Go SQLite)..."
-CGO_ENABLED=0 go build -ldflags="-s -w" -tags nodynamic -o app-simlab ./cmd/server/main.go
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -tags nodynamic -o app-simlab ./cmd/server/main.go
 
 echo "[deploy] Stopping existing server..."
 pkill -f app-simlab 2>/dev/null || true

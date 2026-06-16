@@ -287,9 +287,9 @@ Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
 ```bash
 # WAJIB: CGO_ENABLED=0 + -tags nodynamic
 # -tags nodynamic mencegah purego menggunakan CGO untuk dynamic library loading
-CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 
-# Atau pakai script
+# Atau pakai script (recommended)
 bash scripts/build_termux.sh
 ```
 
@@ -361,7 +361,7 @@ $tsHost = "100.x.x.x"   # Tailscale IP HP (ganti)
 $sshPort = 8022
 $sshUser = "u0_aXXX"     # Username Termux (ganti)
 
-ssh -p $sshPort "$sshUser@${tsHost}" 'cd ~/lab_kom_sim && git pull origin deploy_android && CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go && pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
+ssh -p $sshPort "$sshUser@${tsHost}" 'cd ~/lab_kom_sim && git pull origin deploy_android && GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -tags nodynamic -o app-simlab ./cmd/server/main.go && pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
 ```
 
 ### (Opsional) Git Alias — 1 Perintah dari Laptop
@@ -382,7 +382,7 @@ git push origin refactoring
 # 3. Deploy ke HP — pull + build + restart
 ssh -p 8022 u0_aXXX@100.x.x.x \
   'cd ~/lab_kom_sim && git pull origin deploy_android && \
-   CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go && \
+   GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go && \
    pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &'
 ```
 
@@ -476,7 +476,7 @@ nohup ./app-simlab > server.log 2>&1 &
 cd ~/lab_kom_sim
 git log --oneline -5 origin/deploy_android
 git checkout COMMIT_HASH_SEBELUMNYA -- cmd/ go.mod go.sum internal/ web/
-CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -tags nodynamic -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 pkill app-simlab; nohup ./app-simlab > server.log 2>&1 &
 ```
 
