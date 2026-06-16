@@ -110,8 +110,8 @@ func Load() *Config {
 }
 
 // parseLabs splits LABS env into LabConfig slice
-// Format: name:path,name:path,...
-// Example: labkom-mi:data/labkom_mi.db,labkom-vokasi-1:data/labkom_vokasi_1.db
+// Format: name:path[:title],name:path[:title],...
+// Example: labkom-mi:data/labkom_mi.db:Lab Kom MI,labkom-vokasi-1:data/labkom_vokasi_1.db
 func parseLabs(raw, uploadPath, fallbackDBPath string) []LabConfig {
 	parts := strings.Split(raw, ",")
 	labs := make([]LabConfig, 0, len(parts))
@@ -120,7 +120,7 @@ func parseLabs(raw, uploadPath, fallbackDBPath string) []LabConfig {
 		if p == "" {
 			continue
 		}
-		segments := strings.SplitN(p, ":", 2)
+		segments := strings.SplitN(p, ":", 3)
 		if len(segments) < 2 || segments[0] == "" || segments[1] == "" {
 			log.Printf("Warning: skipping invalid LABS entry: %q", p)
 			continue
@@ -128,6 +128,9 @@ func parseLabs(raw, uploadPath, fallbackDBPath string) []LabConfig {
 		name := segments[0]
 		dbPath := segments[1]
 		title := labTitleFromName(name)
+		if len(segments) > 2 && segments[2] != "" {
+			title = segments[2]
+		}
 		uploadDir := filepath.Join(uploadPath, name)
 		labs = append(labs, LabConfig{
 			Name:      name,
