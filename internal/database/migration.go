@@ -14,7 +14,7 @@ type dialect struct {
 	columnExists                                    func(db *DB, table, col string) (bool, error)
 }
 
-func runMigrations(db *DB, isPostgres bool) error {
+func runMigrations(db *DB, isPostgres bool, labName string) error {
 	d := dialect{
 		pkType: "INTEGER PRIMARY KEY AUTOINCREMENT",
 		tsType: "DATETIME",
@@ -601,7 +601,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		}
 	}
 
-	return SeedSchedules(db)
+	return SeedSchedules(db, labName)
 }
 
 func toTitleCaseWithAbbr(s string) string {

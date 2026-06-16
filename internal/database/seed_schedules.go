@@ -2,7 +2,7 @@ package database
 
 import "fmt"
 
-func SeedSchedules(db *DB) error {
+func SeedSchedules(db *DB, labName string) error {
 	var count int
 	err := db.QueryRow(`SELECT COUNT(*) FROM course_schedules`).Scan(&count)
 	if err != nil {
