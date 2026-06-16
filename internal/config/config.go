@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -14,6 +15,7 @@ type Config struct {
 	Environment      string
 	Host             string
 	Port             string
+	Labs             []LabConfig
 	DatabasePath     string
 	DatabaseURL      string
 	SessionSecret    string
@@ -59,15 +61,26 @@ func Load() *Config {
 		log.Println("Warning: .env file not found, using environment variables or defaults")
 	}
 
+	dbPath := getEnv("DATABASE_PATH", "inventaris_lab.db")
+	uploadPath := getEnv("UPLOAD_PATH", "uploads")
+	labsEnv := getEnv("LABS", "")
+	var labs []LabConfig
+	if labsEnv != "" {
+		labs = parseLabs(labsEnv, uploadPath, dbPath)
+	} else {
+		labs = []LabConfig{defaultLab(dbPath, uploadPath)}
+	}
+
 	return &Config{
 		Environment:   getEnv("ENVIRONMENT", "development"),
 		Host:          getEnv("HOST", "0.0.0.0"),
 		Port:          getEnv("PORT", "8080"),
-		DatabasePath:  getEnv("DATABASE_PATH", "inventaris_lab.db"),
+		Labs:          labs,
+		DatabasePath:  dbPath,
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
 		CookieSecure:  getEnv("COOKIE_SECURE", "false") == "true",
-		UploadPath:    getEnv("UPLOAD_PATH", "uploads"),
+		UploadPath:    uploadPath,
 		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
 		Android:          getEnv("ANDROID", "false") == "true",
@@ -94,6 +107,77 @@ func Load() *Config {
 			Compress:  getEnv("BACKUP_COMPRESS", "true") == "true",
 		},
 	}
+}
+
+// parseLabs splits LABS env into LabConfig slice
+// Format: name:path,name:path,...
+// Example: labkom-mi:data/labkom_mi.db,labkom-vokasi-1:data/labkom_vokasi_1.db
+func parseLabs(raw, uploadPath, fallbackDBPath string) []LabConfig {
+	parts := strings.Split(raw, ",")
+	labs := make([]LabConfig, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		segments := strings.SplitN(p, ":", 2)
+		if len(segments) < 2 || segments[0] == "" || segments[1] == "" {
+			log.Printf("Warning: skipping invalid LABS entry: %q", p)
+			continue
+		}
+		name := segments[0]
+		dbPath := segments[1]
+		title := labTitleFromName(name)
+		uploadDir := filepath.Join(uploadPath, name)
+		labs = append(labs, LabConfig{
+			Name:      name,
+			Title:     title,
+			DBPath:    dbPath,
+			UploadDir: uploadDir,
+		})
+	}
+	if len(labs) == 0 {
+		log.Println("Warning: LABS env set but no valid entries, using default lab")
+		return []LabConfig{defaultLab(fallbackDBPath, uploadPath)}
+	}
+	return labs
+}
+
+func defaultLab(dbPath, uploadPath string) LabConfig {
+	name := labNameFromPath(dbPath)
+	title := labTitleFromName(name)
+	uploadDir := filepath.Join(uploadPath, name)
+	return LabConfig{
+		Name:      name,
+		Title:     title,
+		DBPath:    dbPath,
+		UploadDir: uploadDir,
+	}
+}
+
+func labNameFromPath(dbPath string) string {
+	base := filepath.Base(dbPath)
+	base = strings.TrimSuffix(base, filepath.Ext(base))
+	if base == "" {
+		return "lab"
+	}
+	return base
+}
+
+func labTitleFromName(name string) string {
+	t := strings.ReplaceAll(name, "_", " ")
+	t = strings.ReplaceAll(t, "-", " ")
+	t = strings.TrimSpace(t)
+	if t == "" {
+		return "Laboratorium Komputer"
+	}
+	words := strings.Fields(t)
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 // parseDirs splits comma-separated directory paths, trimming whitespace and quotes
