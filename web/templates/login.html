@@ -24,7 +24,7 @@
 
                     {{ template "layout/alert.html" . }}
 
-                    <form method="POST" action="/login" data-validate="true">
+                    <form method="POST" action="/{{ .lab }}/login" data-validate="true">
                         <input type="hidden" name="_csrf" value="{{ .csrf_token }}">
                         <div class="mb-3">
                             <label for="username" class="form-label required">Username</label>
@@ -63,6 +63,9 @@
                         <small class="text-muted">
                             Default: admin / admin123
                         </small>
+                    </div>
+                    <div class="mt-2 text-center">
+                        <a href="/" class="text-muted small"><i class="bi bi-arrow-left"></i> Pilih Lab Lain</a>
                     </div>
                 </div>
             </div>
