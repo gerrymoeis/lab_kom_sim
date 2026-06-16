@@ -206,10 +206,56 @@ func TestFullIntegration(t *testing.T) {
 		}
 	}
 
+	getLocation := func(resp *http.Response) string {
+		if resp == nil { return "" }
+		return resp.Header.Get("Location")
+	}
+
+	// 0. Routing Validation (Phase 2)
+	t.Log("\n=== 0. ROUTING VALIDATION ===")
+
+	getURL := func(url string) (*http.Response, error) {
+		req, _ := http.NewRequest("GET", url, nil)
+		return client.Do(req)
+	}
+
+	var resp *http.Response
+
+	{
+		// Root / returns 404 (no landing page yet — will be Phase 3)
+		resp, err = getURL(ts.URL + "/")
+		assert(err == nil, "GET / request")
+		assert(resp.StatusCode == 404, "GET / returns 404: %d", resp.StatusCode)
+		closeResp(resp)
+	}
+	{
+		// Invalid lab returns 404
+		resp, err = getURL(ts.URL + "/nonexistent/dashboard")
+		assert(err == nil, "GET /nonexistent/dashboard request")
+		assert(resp.StatusCode == 404, "invalid lab 404: %d", resp.StatusCode)
+		closeResp(resp)
+	}
+	{
+		// Home /{lab}/ redirects to /{lab}/login when not logged in
+		resp, err = getURL(ts.URL + testLabPrefix + "/")
+		assert(err == nil, "GET /{lab}/ request")
+		assert(resp.StatusCode == 302, "home redirects to login: %d", resp.StatusCode)
+		assert(getLocation(resp) == testLabPrefix+"/login", "home → login: %s", getLocation(resp))
+		closeResp(resp)
+	}
+	{
+		// Device-loans redirect without auth → /{lab}/login
+		resp, err = getURL(ts.URL + testLabPrefix + "/device-loans")
+		assert(err == nil, "GET /{lab}/device-loans without auth")
+		assert(resp.StatusCode == 302, "device-loans → login: %d", resp.StatusCode)
+		assert(getLocation(resp) == testLabPrefix+"/login", "device-loans → login Location: %s", getLocation(resp))
+		closeResp(resp)
+	}
+
 	// 1. Login
 	t.Log("\n=== 1. LOGIN ===")
 	assert(login(), "Login should set session cookie")
-	resp, err := get("/dashboard")
+	resp, err = get("/dashboard")
 	assert(err == nil && resp.StatusCode == 200, "/dashboard returns 200")
 	dashBody, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
