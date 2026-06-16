@@ -13,6 +13,8 @@ Write-Host ""
 # 1. Build
 Write-Host "[1/3] Building binary..." -ForegroundColor Yellow
 $env:CGO_ENABLED = "0"
+$env:GOOS = "windows"
+$env:GOARCH = "amd64"
 go build -ldflags="-s -w" -o app-simlab.exe .\cmd\server\main.go
 if (-not (Test-Path "app-simlab.exe")) {
     Write-Host "Build gagal" -ForegroundColor Red
