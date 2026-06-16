@@ -445,7 +445,7 @@ ls -lh /opt/simlab/app/data/backups/
 Restore dari backup:
 ```bash
 # 1. Hentikan server
-sudo systemctl stop inventaris-lab
+sudo systemctl stop simlab
 
 # 2. Backup DB corrupt (untuk investigasi)
 cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db.corrupt
@@ -454,7 +454,7 @@ cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db
 cp /opt/simlab/app/data/backups/inventaris_lab.db.backup_20260613_120405 /opt/simlab/app/data/inventaris_lab.db
 
 # 4. Start server
-sudo systemctl start inventaris-lab
+sudo systemctl start simlab
 ```
 
 ### Database Recovery (Migration Failure)
@@ -464,7 +464,7 @@ Server auto-run migration setiap startup. Jika setelah update server langsung cr
 **1. Cek log untuk tahu penyebab:**
 
 ```bash
-sudo journalctl -u inventaris-lab -n 100 --no-pager | grep -i "migration\|error\|fatal"
+sudo journalctl -u simlab -n 100 --no-pager | grep -i "migration\|error\|fatal"
 ```
 
 **2. Restore database dari backup (jika corruption):**
@@ -474,7 +474,7 @@ sudo journalctl -u inventaris-lab -n 100 --no-pager | grep -i "migration\|error\
 ls -t /opt/simlab/app/data/backups/ | head -5
 
 # Hentikan server
-sudo systemctl stop inventaris-lab
+sudo systemctl stop simlab
 
 # Backup DB corrupt untuk analisis
 cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db.corrupt
@@ -483,7 +483,7 @@ cp /opt/simlab/app/data/inventaris_lab.db /opt/simlab/app/data/inventaris_lab.db
 cp $(ls -t /opt/simlab/app/data/backups/ | head -1) /opt/simlab/app/data/inventaris_lab.db
 
 # Start server (akan re-run migration yang sudah sukses sebelumnya — skip)
-sudo systemctl start inventaris-lab
+sudo systemctl start simlab
 ```
 
 **3. Rollback binary (jika bug di kode baru):**
@@ -495,15 +495,15 @@ git log --oneline -5 origin/deploy_linux
 git checkout COMMIT_HASH_SEBELUMNYA -- cmd/ go.mod go.sum internal/ web/
 CGO_ENABLED=0 go build -ldflags="-s -w" -o app-simlab ./cmd/server/main.go
 sudo cp app-simlab /opt/simlab/app/app-simlab
-sudo systemctl restart inventaris-lab
+sudo systemctl restart simlab
 ```
 
 **4. Reset ke database baru (jika semua gagal):**
 
 ```bash
-sudo systemctl stop inventaris-lab
+sudo systemctl stop simlab
 rm /opt/simlab/app/data/inventaris_lab.db
-sudo systemctl start inventaris-lab
+sudo systemctl start simlab
 # Database baru akan ter-create + seed data otomatis
 ```
 
