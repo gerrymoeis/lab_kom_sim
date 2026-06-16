@@ -29,7 +29,7 @@ func main() {
 	log.Printf("🌍 Timezone: %s (%s)", timeutil.Location(), locName)
 
 	isPostgres := cfg.DatabaseURL != ""
-	var databases []*database.DB
+	dbs := make(map[string]*database.DB)
 	for _, lab := range cfg.Labs {
 		db, err := database.InitDB(lab.DBPath, cfg.DatabaseURL)
 		if err != nil {
@@ -44,19 +44,22 @@ func main() {
 			log.Printf("Warning: Failed to seed default user for lab %s: %v", lab.Name, err)
 		}
 
-		databases = append(databases, db)
+		dbs[lab.Name] = db
 	}
 
-	if len(databases) == 0 {
+	if len(dbs) == 0 {
 		log.Fatal("No databases initialized")
 	}
-	// For Phase 1, use the first (or only) DB for router and services
-	// Multi-DB routing will be implemented in Phase 2
-	db := databases[0]
+	// Use first DB for global services (backup, public build)
+	var firstDB *database.DB
+	for _, db := range dbs {
+		firstDB = db
+		break
+	}
 
 	var wq *queue.Queue
 	if cfg.WriteMode == "async" {
-		wq = db.NewWriteQueue(50000, 200, 200*time.Millisecond)
+		wq = firstDB.NewWriteQueue(50000, 200, 200*time.Millisecond)
 		wq.Start()
 		log.Println("⚡ Write mode: async (queue-based batch writer)")
 	} else {
@@ -66,14 +69,14 @@ func main() {
 		defer wq.Stop()
 	}
 
-	backupSvc := services.NewBackupService(db, cfg.Backup)
-	publicBuildSvc := services.NewPublicBuildService(db, cfg.PublicBuild)
+	backupSvc := services.NewBackupService(firstDB, cfg.Backup)
+	publicBuildSvc := services.NewPublicBuildService(firstDB, cfg.PublicBuild)
 
 	notifier := services.NewMultiNotifier(backupSvc, publicBuildSvc)
 
 	if cfg.Environment == "production" { gin.SetMode(gin.ReleaseMode) }
 
-	router, cleanup, _ := server.SetupRouter(db, cfg, notifier)
+	router, cleanup, _ := server.SetupRouter(dbs, cfg, notifier)
 	defer cleanup()
 
 	for _, lab := range cfg.Labs {

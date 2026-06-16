@@ -76,6 +76,9 @@ func TestFullIntegration(t *testing.T) {
 	// Load .env for API keys (if available)
 	godotenv.Load()
 
+	testLab := "testlab"
+	testLabPrefix := "/" + testLab
+
 	cfg := &config.Config{
 		DatabasePath:     dbPath,
 		SessionSecret:    "test-secret-12345",
@@ -84,21 +87,25 @@ func TestFullIntegration(t *testing.T) {
 		GeminiAPIKey:     os.Getenv("GEMINI_API_KEY"),
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 	}
+	cfg.Labs = []config.LabConfig{
+		{Name: testLab, DBPath: dbPath, UploadDir: "uploads", Layout: config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}},
+	}
 	db, err := database.InitDB(dbPath, "")
 	if err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}
 	defer db.Close()
 
-	if err := database.RunMigrations(db, false, "test"); err != nil {
+	if err := database.RunMigrations(db, false, testLab); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
-	if err := database.SeedDefaultUser(db, "test"); err != nil {
+	if err := database.SeedDefaultUser(db, testLab); err != nil {
 		t.Errorf("Seed user: %v", err)
 	}
 	db.Exec("UPDATE users SET session_token = NULL")
 
-	router, cleanup, flushLogs := server.SetupRouter(db, cfg, nil)
+	dbs := map[string]*database.DB{testLab: db}
+	router, cleanup, flushLogs := server.SetupRouter(dbs, cfg, nil)
 	defer cleanup()
 	ts := httptest.NewServer(router)
 	defer ts.Close()
@@ -141,7 +148,7 @@ func TestFullIntegration(t *testing.T) {
 	}
 
 	login := func() bool {
-		req, _ := http.NewRequest("GET", ts.URL+"/login", nil)
+		req, _ := http.NewRequest("GET", ts.URL+testLabPrefix+"/login", nil)
 		resp, err := client.Do(req)
 		if err != nil {
 			return false
@@ -156,7 +163,7 @@ func TestFullIntegration(t *testing.T) {
 		}
 
 		formData := "_csrf=" + url.QueryEscape(token) + "&username=admin&password=admin123"
-		req, _ = http.NewRequest("POST", ts.URL+"/login", strings.NewReader(formData))
+		req, _ = http.NewRequest("POST", ts.URL+testLabPrefix+"/login", strings.NewReader(formData))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		addCookies(req)
 		resp, err = client.Do(req)
@@ -170,7 +177,7 @@ func TestFullIntegration(t *testing.T) {
 	}
 
 	get := func(path string) (*http.Response, error) {
-		req, _ := http.NewRequest("GET", ts.URL+path, nil)
+		req, _ := http.NewRequest("GET", ts.URL+testLabPrefix+path, nil)
 		addCookies(req)
 		return client.Do(req)
 	}
@@ -180,13 +187,13 @@ func TestFullIntegration(t *testing.T) {
 		} else {
 			data = data + "&_csrf=" + url.QueryEscape(csrfToken)
 		}
-		req, _ := http.NewRequest("POST", ts.URL+path, strings.NewReader(data))
+		req, _ := http.NewRequest("POST", ts.URL+testLabPrefix+path, strings.NewReader(data))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		addCookies(req)
 		return client.Do(req)
 	}
 	postJSON := func(path, data string) (*http.Response, error) {
-		req, _ := http.NewRequest("POST", ts.URL+path, strings.NewReader(data))
+		req, _ := http.NewRequest("POST", ts.URL+testLabPrefix+path, strings.NewReader(data))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("X-CSRF-Token", csrfToken)
 		addCookies(req)
@@ -239,7 +246,7 @@ func TestFullIntegration(t *testing.T) {
 	mw.WriteField("type", "serial")
 	mw.Close()
 
-	req, _ := http.NewRequest("POST", ts.URL+"/api/upload-image", &photoBuf)
+	req, _ := http.NewRequest("POST", ts.URL+testLabPrefix+"/api/upload-image", &photoBuf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req.Header.Set("X-CSRF-Token", csrfToken)
 	addCookies(req)
@@ -449,7 +456,7 @@ func TestFullIntegration(t *testing.T) {
 	fw.Write(photoData)
 	mw.Close()
 
-	req, _ = http.NewRequest("POST", ts.URL+"/logbook/upload", &photoBuf)
+	req, _ = http.NewRequest("POST", ts.URL+testLabPrefix+"/logbook/upload", &photoBuf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 	req.Header.Set("X-CSRF-Token", csrfToken)
 	addCookies(req)
