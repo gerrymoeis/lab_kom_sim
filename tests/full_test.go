@@ -222,10 +222,10 @@ func TestFullIntegration(t *testing.T) {
 	var resp *http.Response
 
 	{
-		// Root / returns 404 (no landing page yet — will be Phase 3)
+		// Root / renders landing page (Phase 3)
 		resp, err = getURL(ts.URL + "/")
 		assert(err == nil, "GET / request")
-		assert(resp.StatusCode == 404, "GET / returns 404: %d", resp.StatusCode)
+		assert(resp.StatusCode == 200, "GET / returns 200 (landing page): %d", resp.StatusCode)
 		closeResp(resp)
 	}
 	{
