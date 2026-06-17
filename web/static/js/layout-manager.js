@@ -26,8 +26,12 @@ var PCLayoutManager = (function() {
     fetchLayout();
   }
 
+  function apiURL(path) {
+    return (window.BASE_PATH || '') + path;
+  }
+
   function fetchLayout() {
-    fetch('/api/pc/layout')
+    fetch(apiURL('/api/pc/layout'))
       .then(function(r) { return r.json(); })
       .then(function(data) {
         grid = data.grid || [];
@@ -282,7 +286,7 @@ var PCLayoutManager = (function() {
     if (busy) return;
     busy = true;
 
-    fetch('/api/pc/' + op, {
+    fetch(apiURL('/api/pc/' + op), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -341,7 +345,7 @@ var PCLayoutManager = (function() {
   }
 
   function moveRowToCadangan(row) {
-    fetch('/api/pc/move-row', {
+    fetch(apiURL('/api/pc/move-row'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

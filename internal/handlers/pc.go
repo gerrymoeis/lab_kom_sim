@@ -474,13 +474,11 @@ func (h *Handler) PCMove(c *gin.Context) {
 		return
 	}
 
-	newLabel := fmt.Sprintf("pc-%d", (req.Row-1)*8+req.Col)
 	pcs, _ := h.pcService.List(repository.PCFilters{})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "PC berhasil dipindahkan",
 		"pcs":     pcs,
-		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
 	})
 }
 
@@ -503,13 +501,11 @@ func (h *Handler) PCPlace(c *gin.Context) {
 		return
 	}
 
-	newLabel := fmt.Sprintf("pc-%d", (req.Row-1)*8+req.Col)
 	pcs, _ := h.pcService.List(repository.PCFilters{})
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "PC cadangan berhasil ditempatkan",
 		"pcs":     pcs,
-		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
 	})
 }
 
