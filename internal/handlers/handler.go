@@ -138,6 +138,15 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	if token := sessions.Default(c).Get("csrf_token"); token != nil {
 		data["csrf_token"] = token.(string)
 	}
+	lab := c.GetString("lab")
+	data["lab"] = lab
+	data["basePath"] = h.labURL(c, "")
+	for _, l := range h.cfg.Labs {
+		if l.Name == lab {
+			data["labTitle"] = l.Title
+			break
+		}
+	}
 	c.HTML(status, tmpl, data)
 }
 
