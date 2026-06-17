@@ -564,8 +564,6 @@ func (r *PCRepository) MoveRowToCadangan(row int) (map[string]string, error) {
 }
 
 func (r *PCRepository) MoveToPosition(label string, row, col int) error {
-	newLabel := fmt.Sprintf("pc-%d", (row-1)*8+col)
-
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -577,12 +575,7 @@ func (r *PCRepository) MoveToPosition(label string, row, col int) error {
 		return err
 	}
 
-	var clash int
-	if err := tx.QueryRow(`SELECT id FROM pcs WHERE label=? AND id!=?`, newLabel, id).Scan(&clash); err == nil {
-		return fmt.Errorf("label %s sudah digunakan oleh PC lain", newLabel)
-	}
-
-	if _, err := tx.Exec(`UPDATE pcs SET label=?, "row"=?, "column"=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, row, col, id); err != nil {
+	if _, err := tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, row, col, id); err != nil {
 		return err
 	}
 
@@ -601,13 +594,7 @@ func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
 		return err
 	}
 
-	newLabel := fmt.Sprintf("pc-%d", (row-1)*8+col)
-	var clash int
-	if err := tx.QueryRow(`SELECT id FROM pcs WHERE label=? AND id!=?`, newLabel, id).Scan(&clash); err == nil {
-		return fmt.Errorf("label %s sudah digunakan oleh PC lain", newLabel)
-	}
-
-	if _, err := tx.Exec(`UPDATE pcs SET label=?, "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, newLabel, row, col, id); err != nil {
+	if _, err := tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, row, col, id); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {

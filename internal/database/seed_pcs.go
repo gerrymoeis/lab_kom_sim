@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 
+	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/util"
 )
 
@@ -17,6 +18,8 @@ type pcSeedData struct {
 }
 
 func seedPCs(db *DB, labName string) error {
+	layout := config.GetGridLayout(labName)
+	colsPerRow := layout.ColsPerRow
 	var count int
 	if err := db.QueryRow("SELECT COUNT(*) FROM pcs").Scan(&count); err != nil {
 		return fmt.Errorf("failed to check existing PC seeds: %w", err)
@@ -194,14 +197,7 @@ func seedPCs(db *DB, labName string) error {
 		defPlacement   = "dipakai"
 	)
 
-	rowFor := func(n int) int {
-		if n >= 41 { return 0 }
-		return ((n - 1) / 8) + 1
-	}
-	colFor := func(n int) int {
-		if n >= 41 { return n - 40 }
-		return ((n - 1) % 8) + 1
-	}
+	rowFor, colFor := gridPositionFunc(colsPerRow)
 	labelFor := func(n int) string {
 		switch n {
 		case 41:
@@ -324,4 +320,37 @@ func seedPCs(db *DB, labName string) error {
 
 	fmt.Printf("Seeded %d PCs with software data\n", len(pcs))
 	return nil
+}
+
+func gridPositionFunc(colsPerRow []int) (func(int) int, func(int) int) {
+	// Pre-compute cumulative offsets per row
+	rowStarts := []int{1}
+	for _, cols := range colsPerRow {
+		rowStarts = append(rowStarts, rowStarts[len(rowStarts)-1]+cols)
+	}
+	totalGrid := rowStarts[len(rowStarts)-1] - 1
+
+	rowFor := func(n int) int {
+		if n > totalGrid || n < 1 {
+			return 0
+		}
+		for r := 0; r < len(colsPerRow); r++ {
+			if n >= rowStarts[r] && n < rowStarts[r+1] {
+				return r + 1
+			}
+		}
+		return 0
+	}
+	colFor := func(n int) int {
+		if n > totalGrid || n < 1 {
+			return n - totalGrid
+		}
+		for r := 0; r < len(colsPerRow); r++ {
+			if n >= rowStarts[r] && n < rowStarts[r+1] {
+				return n - rowStarts[r] + 1
+			}
+		}
+		return n - totalGrid
+	}
+	return rowFor, colFor
 }
