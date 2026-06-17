@@ -76,7 +76,7 @@ func TestFullIntegration(t *testing.T) {
 	// Load .env for API keys (if available)
 	godotenv.Load()
 
-	testLab := "testlab"
+	testLab := "labkom-mi"
 	testLabPrefix := "/" + testLab
 
 	cfg := &config.Config{
@@ -321,7 +321,7 @@ func TestFullIntegration(t *testing.T) {
 		"row": {"5"}, "column": {"8"},
 		"status": {"normal"}, "placement": {"dipakai"},
 		"is_mahasiswa": {"true"},
-		"serial_number": {"SN-TEST40"},
+		"serial_number": {"SN-TEST-NEW"},
 		"operating_system": {"Win11"}, "pc_type": {"PC"},
 		"brand_model": {"Dell"}, "accessories": {"KB"},
 		"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},
@@ -329,15 +329,17 @@ func TestFullIntegration(t *testing.T) {
 	resp, _ = post("/pc/create", pcCreateData)
 	closeResp(resp)
 	var newPCID int
-	db.QueryRow("SELECT id FROM pcs WHERE label='pc-40'").Scan(&newPCID)
-	assert(newPCID > 0, "PC 40 created: id=%d", newPCID)
+	var newPCLabel string
+	db.QueryRow("SELECT id, label FROM pcs ORDER BY id DESC LIMIT 1").Scan(&newPCID, &newPCLabel)
+	assert(newPCID > 0, "PC created: id=%d", newPCID)
+	assert(newPCLabel != "", "PC created: label=%s", newPCLabel)
 
-	resp, _ = post("/pc/pc-40/delete", "")
+	resp, _ = post("/pc/"+newPCLabel+"/delete", "")
 	assert(resp.StatusCode == 302, "PC delete: %d", resp.StatusCode)
 	closeResp(resp)
 	var pcDeleted int
-	db.QueryRow("SELECT COUNT(*) FROM pcs WHERE label='pc-40'").Scan(&pcDeleted)
-	assert(pcDeleted == 0, "PC 40 deleted")
+	db.QueryRow("SELECT COUNT(*) FROM pcs WHERE id=?", newPCID).Scan(&pcDeleted)
+	assert(pcDeleted == 0, "PC deleted")
 
 	// Seed category & device type (seed_devices.go was removed in Item 6.1)
 	db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (1, 'Pentab', 'PENTAB')")
