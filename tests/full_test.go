@@ -220,7 +220,6 @@ func TestFullIntegration(t *testing.T) {
 	labBID := "VOKASI-1"
 
 	cfg := &config.Config{
-		DatabasePath:     dbPathA,
 		SessionSecret:    "test-secret-12345",
 		UploadPath:       "uploads",
 		DefaultPageSize:  25,

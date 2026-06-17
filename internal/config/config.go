@@ -16,7 +16,6 @@ type Config struct {
 	Host             string
 	Port             string
 	Labs             []LabConfig
-	DatabasePath     string
 	DatabaseURL      string
 	SessionSecret    string
 	CookieSecure     bool
@@ -76,7 +75,6 @@ func Load() *Config {
 		Host:          getEnv("HOST", "0.0.0.0"),
 		Port:          getEnv("PORT", "8080"),
 		Labs:          labs,
-		DatabasePath:  dbPath,
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
 		CookieSecure:  getEnv("COOKIE_SECURE", "false") == "true",
