@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/dashboard">
+        <a class="navbar-brand" href="{{ .basePath }}/dashboard">
             <i class="bi bi-pc-display-horizontal" aria-hidden="true"></i>
             Inventaris Lab Kom
         </a>
@@ -11,7 +11,7 @@
             <ul class="navbar-nav me-auto">
                 {{ range $item := navItems $.currentPage $.role }}
                 <li class="nav-item">
-                    <a class="nav-link {{ if eq $.currentPage $item.Page }}active{{ end }}" href="{{ $item.URL }}">
+                    <a class="nav-link {{ if eq $.currentPage $item.Page }}active{{ end }}" href="{{ $.basePath }}{{ $item.URL }}">
                         <i class="bi {{ $item.Icon }}" aria-hidden="true"></i> {{ $item.Label }}
                     </a>
                 </li>
@@ -23,9 +23,9 @@
                         <i class="bi bi-person-circle" aria-hidden="true"></i> {{ .username }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                        <li><a class="dropdown-item {{ if eq $.currentPage "profile" }}active{{ end }}" href="/profile"><i class="bi bi-person" aria-hidden="true"></i> Profil</a></li>
+                        <li><a class="dropdown-item {{ if eq $.currentPage "profile" }}active{{ end }}" href="{{ .basePath }}/profile"><i class="bi bi-person" aria-hidden="true"></i> Profil</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><form method="POST" action="/logout" style="display:inline"><button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</button></form></li>
+                        <li><form method="POST" action="{{ .basePath }}/logout" style="display:inline"><button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</button></form></li>
                     </ul>
                 </li>
             </ul>
