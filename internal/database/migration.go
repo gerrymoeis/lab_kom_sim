@@ -111,8 +111,8 @@ func runMigrations(db *DB, isPostgres bool, labName string) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS pcs (
 			id {{PK}},
-			{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0 AND {{ROW}} <= 6),
-			{{COL}} INTEGER NOT NULL DEFAULT 0 CHECK({{COL}} >= 0 AND {{COL}} <= 8),
+			{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0),
+			{{COL}} INTEGER NOT NULL DEFAULT 0 CHECK({{COL}} >= 0),
 			status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken')),
 			processor TEXT,
 			ram TEXT,
@@ -431,7 +431,7 @@ func runMigrations(db *DB, isPostgres bool, labName string) error {
 			pcsV2 := `CREATE TABLE pcs_v2 (
 				id {{PK}},
 				{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0),
-				{{COL}} INTEGER NOT NULL DEFAULT 0 CHECK({{COL}} >= 0 AND {{COL}} <= 8),
+				{{COL}} INTEGER NOT NULL DEFAULT 0 CHECK({{COL}} >= 0),
 				status TEXT NOT NULL DEFAULT 'normal' CHECK(status IN ('normal', 'warning', 'broken')),
 				processor TEXT, ram TEXT, storage TEXT, purchase_date DATE, notes TEXT,
 				last_checked {{TS}}, asset_id TEXT, serial_number TEXT, operating_system TEXT,

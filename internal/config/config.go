@@ -137,6 +137,7 @@ func parseLabs(raw, uploadPath, fallbackDBPath string) []LabConfig {
 			Title:     title,
 			DBPath:    dbPath,
 			UploadDir: uploadDir,
+			Layout:    GetGridLayout(name),
 		})
 	}
 	if len(labs) == 0 {
@@ -155,6 +156,7 @@ func defaultLab(dbPath, uploadPath string) LabConfig {
 		Title:     title,
 		DBPath:    dbPath,
 		UploadDir: uploadDir,
+		Layout:    GetGridLayout(name),
 	}
 }
 
@@ -198,6 +200,15 @@ func parseDirs(raw string) []string {
 		return []string{"./backups"}
 	}
 	return dirs
+}
+
+func (c *Config) LabLayout(labName string) GridLayout {
+	for _, lab := range c.Labs {
+		if lab.Name == labName {
+			return lab.Layout
+		}
+	}
+	return GetGridLayout(labName)
 }
 
 // getEnv gets environment variable with fallback to default value

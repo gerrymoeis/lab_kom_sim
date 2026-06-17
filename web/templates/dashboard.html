@@ -7,7 +7,7 @@
         <div class="row">
             <div class="col-12">
                 <h2><i class="bi bi-grid-3x3-gap"></i> Dashboard Laboratorium Komputer</h2>
-                <p class="text-muted">Visualisasi status 40 PC dalam grid 8 baris × 5 kolom</p>
+                <p class="text-muted">Visualisasi status PC dalam grid laboratorium</p>
             </div>
         </div>
 
@@ -464,8 +464,14 @@
     </script>
 
 <script>
+window.colsPerRow = {{ json .colsPerRow }};
+window.gapPos = {{ .gapPos }};
+function columnsForRow(rowIdx) {
+    return (window.colsPerRow && window.colsPerRow[rowIdx] !== undefined) ? window.colsPerRow[rowIdx] : 8;
+}
+
 window.updateDashboardFromData = function(pcs) {
-    var maxRow = 5;
+    var maxRow = (window.colsPerRow && window.colsPerRow.length) ? window.colsPerRow.length : 5;
     pcs.forEach(function(pc) {
         if (pc.placement === 'dipakai' && /^pc-[0-9]+$/.test(pc.label) && pc.row > maxRow) {
             maxRow = pc.row;
@@ -473,14 +479,16 @@ window.updateDashboardFromData = function(pcs) {
     });
     var grid = [];
     for (var r = 0; r < maxRow; r++) {
+        var numCols = columnsForRow(r);
         grid[r] = [];
-        for (var c = 0; c < 8; c++) {
+        for (var c = 0; c < numCols; c++) {
             grid[r][c] = null;
         }
     }
     pcs.forEach(function(pc) {
         if (pc.placement !== 'dipakai') return;
-        if (/^pc-[0-9]+$/.test(pc.label) && pc.row >= 1 && pc.row <= maxRow && pc.column >= 1 && pc.column <= 8) {
+        var maxCol = columnsForRow(pc.row - 1);
+        if (/^pc-[0-9]+$/.test(pc.label) && pc.row >= 1 && pc.row <= maxRow && pc.column >= 1 && pc.column <= maxCol) {
             grid[pc.row - 1][pc.column - 1] = pc;
         }
     });
