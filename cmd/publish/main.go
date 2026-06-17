@@ -17,12 +17,12 @@ func main() {
 	for _, lab := range cfg.Labs {
 		db, err := database.InitDB(lab.DBPath, cfg.DatabaseURL)
 		if err != nil {
-			log.Fatalf("DB init for lab %s: %v", lab.Name, err)
+			log.Fatalf("DB init for lab %s: %v", lab.URLPath, err)
 		}
 		defer db.Close()
 
-		if err := services.RunPublicBuild(db, cfg.PublicBuild, lab.Name, lab.Title); err != nil {
-			log.Fatalf("build for lab %s: %v", lab.Name, err)
+		if err := services.RunPublicBuild(db, cfg.PublicBuild, lab.URLPath, lab.Title); err != nil {
+			log.Fatalf("build for lab %s: %v", lab.URLPath, err)
 		}
 		labs = append(labs, lab)
 	}
