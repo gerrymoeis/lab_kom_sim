@@ -227,20 +227,15 @@ func SetupRouter(dbs map[string]*database.DB, cfg *config.Config, notifier servi
 		}
 	}
 
-	readyzDB := func() *database.DB {
-		for _, db := range dbs {
-			return db
-		}
-		return nil
-	}()
-
 	router.GET("/healthz", func(c *gin.Context) {
 		c.String(200, "ok")
 	})
 	router.GET("/readyz", func(c *gin.Context) {
-		if readyzDB == nil || readyzDB.Ping() != nil {
-			c.String(503, "not ready")
-			return
+		for labName, db := range dbs {
+			if db == nil || db.Ping() != nil {
+				c.String(503, "lab %s not ready", labName)
+				return
+			}
 		}
 		c.String(200, "ready")
 	})

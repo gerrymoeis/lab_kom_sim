@@ -57,31 +57,33 @@ func main() {
 	if len(dbs) == 0 {
 		log.Fatal("No databases initialized")
 	}
-	// Use first DB for global services (backup, write queue)
-	var firstDB *database.DB
-	for _, db := range dbs {
-		firstDB = db
-		break
-	}
 
-	var wq *queue.Queue
+	var (
+		wqs           []*queue.Queue
+		backupSvcs    []*services.BackupService
+		publicBuildSvcs []*services.PublicBuildService
+		notifiers     []services.CUDNotifier
+	)
+
 	if cfg.WriteMode == "async" {
-		wq = firstDB.NewWriteQueue(50000, 200, 200*time.Millisecond)
-		wq.Start()
-		log.Println("⚡ Write mode: async (queue-based batch writer)")
+		for _, lab := range cfg.Labs {
+			db := dbs[lab.URLPath]
+			wq := db.NewWriteQueue(50000, 200, 200*time.Millisecond)
+			wq.Start()
+			wqs = append(wqs, wq)
+		}
+		log.Printf("⚡ Write mode: async — %d queue(s) started", len(wqs))
 	} else {
 		log.Println("🔒 Write mode: sync (direct writer)")
 	}
-	if wq != nil {
-		defer wq.Stop()
-	}
 
-	backupSvc := services.NewBackupService(firstDB, cfg.Backup)
-
-	var publicBuildSvcs []*services.PublicBuildService
-	notifiers := []services.CUDNotifier{backupSvc}
 	for _, lab := range cfg.Labs {
 		db := dbs[lab.URLPath]
+
+		backupSvc := services.NewBackupService(db, cfg.Backup)
+		backupSvcs = append(backupSvcs, backupSvc)
+		notifiers = append(notifiers, backupSvc)
+
 		pubSvc := services.NewPublicBuildService(db, cfg.PublicBuild, lab.URLPath, lab.Title)
 		publicBuildSvcs = append(publicBuildSvcs, pubSvc)
 		notifiers = append(notifiers, pubSvc)
@@ -106,8 +108,13 @@ func main() {
 		for { time.Sleep(30 * time.Minute); server.CleanupTempFiles() }
 	}()
 
-	backupSvc.Start()
-	defer backupSvc.Stop()
+	for _, wq := range wqs {
+		defer wq.Stop()
+	}
+	for _, s := range backupSvcs {
+		s.Start()
+		defer s.Stop()
+	}
 	for _, s := range publicBuildSvcs {
 		s.Start()
 		defer s.Stop()
