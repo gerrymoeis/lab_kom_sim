@@ -61,19 +61,15 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 	return wrapSQLite(reader, writer), nil
 }
 
-func RunMigrations(db *DB, isPostgres bool, labName ...string) error {
-	ln := ""
-	if len(labName) > 0 {
-		ln = labName[0]
-	}
-	if err := runMigrations(db, isPostgres, ln); err != nil {
+func RunMigrations(db *DB, isPostgres bool, labID, urlPath string) error {
+	if err := runMigrations(db, isPostgres); err != nil {
 		return err
 	}
-	if err := seedRequiredSoftware(db); err != nil {
+	if err := seedPCPhotos(db); err != nil {
 		return err
 	}
-	if err := seedPCs(db, ln); err != nil {
+	if err := RunSeedFolder(db, labID, urlPath); err != nil {
 		return err
 	}
-	return seedPCPhotos(db)
+	return nil
 }

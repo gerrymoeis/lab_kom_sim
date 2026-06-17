@@ -35,23 +35,23 @@ func main() {
 	for _, lab := range cfg.Labs {
 		if dir := filepath.Dir(lab.DBPath); dir != "." {
 			if err := os.MkdirAll(dir, 0755); err != nil {
-				log.Fatalf("Failed to create database directory %s for lab %s: %v", dir, lab.Name, err)
+				log.Fatalf("Failed to create database directory %s for lab %s: %v", dir, lab.URLPath, err)
 			}
 		}
 		db, err := database.InitDB(lab.DBPath, cfg.DatabaseURL)
 		if err != nil {
-			log.Fatalf("Failed to initialize database for lab %s: %v", lab.Name, err)
+			log.Fatalf("Failed to initialize database for lab %s: %v", lab.URLPath, err)
 		}
 		defer db.Close()
 
-		if err := database.RunMigrations(db, isPostgres, lab.Name); err != nil {
-			log.Fatalf("Failed to run migrations for lab %s: %v", lab.Name, err)
+		if err := database.RunMigrations(db, isPostgres, lab.ID, lab.URLPath); err != nil {
+			log.Fatalf("Failed to run migrations for lab %s: %v", lab.URLPath, err)
 		}
-		if err := database.SeedDefaultUser(db, lab.Name); err != nil {
-			log.Printf("Warning: Failed to seed default user for lab %s: %v", lab.Name, err)
+		if err := database.SeedDefaultUser(db); err != nil {
+			log.Printf("Warning: Failed to seed default user for lab %s: %v", lab.URLPath, err)
 		}
 
-		dbs[lab.Name] = db
+		dbs[lab.URLPath] = db
 	}
 
 	if len(dbs) == 0 {
@@ -81,8 +81,8 @@ func main() {
 	var publicBuildSvcs []*services.PublicBuildService
 	notifiers := []services.CUDNotifier{backupSvc}
 	for _, lab := range cfg.Labs {
-		db := dbs[lab.Name]
-		pubSvc := services.NewPublicBuildService(db, cfg.PublicBuild, lab.Name, lab.Title)
+		db := dbs[lab.URLPath]
+		pubSvc := services.NewPublicBuildService(db, cfg.PublicBuild, lab.URLPath, lab.Title)
 		publicBuildSvcs = append(publicBuildSvcs, pubSvc)
 		notifiers = append(notifiers, pubSvc)
 	}
@@ -95,7 +95,7 @@ func main() {
 
 	for _, lab := range cfg.Labs {
 		if err := os.MkdirAll(lab.UploadDir, 0755); err != nil {
-			log.Printf("Warning: Failed to create upload directory for lab %s: %v", lab.Name, err)
+			log.Printf("Warning: Failed to create upload directory for lab %s: %v", lab.URLPath, err)
 		}
 	}
 	if err := os.MkdirAll("uploads/temp", 0755); err != nil {
@@ -120,7 +120,7 @@ func main() {
 		log.Printf("🚀 Server starting on http://%s", addr)
 		log.Printf("📊 Environment: %s", cfg.Environment)
 		for _, lab := range cfg.Labs {
-			log.Printf("💾 Database [%s]: %s", lab.Name, lab.DBPath)
+			log.Printf("💾 Database [%s]: %s", lab.URLPath, lab.DBPath)
 		}
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)

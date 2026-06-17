@@ -605,12 +605,12 @@ body { display:flex; align-items:center; justify-content:center; min-height:100v
 <div class="row justify-content-center g-4">
 {{range .labs}}
 <div class="col-md-4">
-<a href="/{{.Name}}/dashboard.html" class="text-decoration-none">
+<a href="/{{.URLPath}}/dashboard.html" class="text-decoration-none">
 <div class="card shadow-sm h-100">
 <div class="card-body text-center py-5">
 <i class="bi bi-building fs-1 text-primary"></i>
 <h4 class="mt-3">{{.Title}}</h4>
-<p class="text-muted small mb-0">{{.Name}}</p>
+<p class="text-muted small mb-0">{{.URLPath}}</p>
 </div>
 </div>
 </a>
