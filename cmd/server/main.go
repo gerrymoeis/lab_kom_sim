@@ -57,7 +57,7 @@ func main() {
 	if len(dbs) == 0 {
 		log.Fatal("No databases initialized")
 	}
-	// Use first DB for global services (backup, public build)
+	// Use first DB for global services (backup, write queue)
 	var firstDB *database.DB
 	for _, db := range dbs {
 		firstDB = db
@@ -77,9 +77,16 @@ func main() {
 	}
 
 	backupSvc := services.NewBackupService(firstDB, cfg.Backup)
-	publicBuildSvc := services.NewPublicBuildService(firstDB, cfg.PublicBuild)
 
-	notifier := services.NewMultiNotifier(backupSvc, publicBuildSvc)
+	var publicBuildSvcs []*services.PublicBuildService
+	notifiers := []services.CUDNotifier{backupSvc}
+	for _, lab := range cfg.Labs {
+		db := dbs[lab.Name]
+		pubSvc := services.NewPublicBuildService(db, cfg.PublicBuild, lab.Name, lab.Title)
+		publicBuildSvcs = append(publicBuildSvcs, pubSvc)
+		notifiers = append(notifiers, pubSvc)
+	}
+	notifier := services.NewMultiNotifier(notifiers...)
 
 	if cfg.Environment == "production" { gin.SetMode(gin.ReleaseMode) }
 
@@ -101,8 +108,10 @@ func main() {
 
 	backupSvc.Start()
 	defer backupSvc.Stop()
-	publicBuildSvc.Start()
-	defer publicBuildSvc.Stop()
+	for _, s := range publicBuildSvcs {
+		s.Start()
+		defer s.Stop()
+	}
 
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
 	srv := &http.Server{Addr: addr, Handler: router}

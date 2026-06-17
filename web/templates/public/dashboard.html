@@ -340,7 +340,7 @@ window.openPCModal = function(card) {
     else if (pcStatus === 'broken') statusBadge.classList.add('bg-danger');
     else statusBadge.classList.add('bg-secondary');
 
-    document.getElementById('modal-detail-link').href = '/pc/detail/' + pcLabel + '.html';
+    document.getElementById('modal-detail-link').href = PUBLIC_BASE_PATH + '/pc/detail/' + pcLabel + '.html';
 
     var modal = getPCDetailModal();
     if (modal) modal.show();

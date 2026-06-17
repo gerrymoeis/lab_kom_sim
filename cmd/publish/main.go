@@ -13,12 +13,7 @@ func main() {
 	cfg := config.Load()
 	timeutil.SetTimezone(cfg.Timezone)
 
-	db, err := database.InitDB(cfg.DatabasePath, cfg.DatabaseURL)
-	if err != nil {
-		log.Fatalf("DB init: %v", err)
-	}
-	defer db.Close()
-
+	var labs []config.LabConfig
 	for _, lab := range cfg.Labs {
 		db, err := database.InitDB(lab.DBPath, cfg.DatabaseURL)
 		if err != nil {
@@ -26,12 +21,13 @@ func main() {
 		}
 		defer db.Close()
 
-		if err := database.RunMigrations(db, cfg.DatabaseURL != "", lab.Name); err != nil {
-			log.Fatalf("migrations for lab %s: %v", lab.Name, err)
-		}
-
-		if err := services.RunPublicBuild(db, cfg.PublicBuild); err != nil {
+		if err := services.RunPublicBuild(db, cfg.PublicBuild, lab.Name, lab.Title); err != nil {
 			log.Fatalf("build for lab %s: %v", lab.Name, err)
 		}
+		labs = append(labs, lab)
+	}
+
+	if err := services.GenerateLabSelector(labs, cfg.PublicBuild); err != nil {
+		log.Fatalf("generate lab selector: %v", err)
 	}
 }
