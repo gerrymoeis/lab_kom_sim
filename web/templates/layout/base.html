@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ staticURL "css/style.css" }}">
     <link rel="icon" type="image/svg+xml" href="{{ staticURL "favicon.svg" }}">
     <meta name="csrf-token" content="{{ .csrf_token }}">
+    <script>window.BASE_PATH = {{ .basePath | json }};</script>
 </head>
 <body>
     {{ template "layout/navbar.html" . }}

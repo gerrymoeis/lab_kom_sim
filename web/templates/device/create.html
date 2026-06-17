@@ -352,7 +352,8 @@
         // Fetch batch codes from server (gap-aware)
         let codes = [];
         try {
-            const resp = await fetch('/api/devices/next-asset-codes?prefix=' + encodeURIComponent(prefix) + '&count=' + count);
+            var bp = window.BASE_PATH || '';
+            const resp = await fetch(bp + '/api/devices/next-asset-codes?prefix=' + encodeURIComponent(prefix) + '&count=' + count);
             const data = await resp.json();
             if (data.codes) { codes = data.codes; }
         } catch(e) {}

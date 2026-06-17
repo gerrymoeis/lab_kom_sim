@@ -2,7 +2,7 @@
 
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
-                    <form method="POST" action="/admin/users/{{ .user.Username }}/edit">
+                    <form method="POST" action="{{ $.basePath }}/admin/users/{{ .user.Username }}/edit">
                         <div class="mb-3">
                             <label for="username" class="form-label">Username *</label>
                             <input type="text" class="form-control" id="username" name="username" value="{{ .user.Username }}" required>
@@ -33,7 +33,7 @@
                             <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
-                            <a href="/admin/users/{{ .user.Username }}" class="btn btn-secondary">
+                            <a href="{{ $.basePath }}/admin/users/{{ .user.Username }}" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>
