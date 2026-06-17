@@ -7,10 +7,10 @@
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-person-circle"></i> Detail User: {{ .user.Username }}</h5>
                     <div class="d-flex flex-column flex-sm-row gap-2">
-                        <a href="/admin/users/{{ .user.Username }}/edit" class="btn btn-sm btn-warning">
+                        <a href="{{ $.basePath }}/admin/users/{{ .user.Username }}/edit" class="btn btn-sm btn-warning">
                             <i class="bi bi-pencil"></i> Edit
                         </a>
-                        <a href="/admin/users" class="btn btn-sm btn-secondary">
+                        <a href="{{ $.basePath }}/admin/users" class="btn btn-sm btn-secondary">
                             <i class="bi bi-arrow-left"></i> Kembali
                         </a>
                     </div>
