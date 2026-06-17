@@ -231,7 +231,12 @@ const FormValidator = {
         const inputs = form.querySelectorAll('input, select, textarea');
         inputs.forEach(input => {
             input.addEventListener('blur', () => {
-                this.validateField(input);
+                if (input.value.trim()) {
+                    this.validateField(input);
+                } else {
+                    input.classList.remove('is-invalid');
+                    this.clearFieldError(input);
+                }
             });
             
             input.addEventListener('input', () => {
