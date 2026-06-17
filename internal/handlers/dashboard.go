@@ -10,7 +10,10 @@ func (h *Handler) Dashboard(c *gin.Context) {
 	userID, username, role, ok := h.user(c)
 	if !ok { return }
 
-	data, err := h.dashboardService.GetDashboardData()
+	labName := c.GetString("lab")
+	layout := h.cfg.LabLayout(labName)
+
+	data, err := h.dashboardService.GetDashboardData(layout.ColsPerRow, layout.GapPos)
 	if err != nil { h.errHTML(c, "Gagal mengambil data dashboard"); return }
 
 	h.renderTemplate(c, http.StatusOK, "dashboard.html", gin.H{
@@ -24,5 +27,7 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		"pcLecturer": data.PCLecturer, "pcLaboran": data.PCLaboran,
 		"pcCCTV": data.PCCCTV,
 		"specialPCs": data.SpecialPCs,
+		"colsPerRow": data.ColsPerRow,
+		"gapPos":     data.GapPos,
 	})
 }

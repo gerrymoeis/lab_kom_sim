@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -118,6 +119,7 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 		"allCategories":   func() []Category { return loadCategories() },
 		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },
 		"pcPlacementInfo": func(placement string) PlacementInfo { return getPCPlacementInfo(placement) },
+		"json":            func(v interface{}) (template.JS, error) { b, err := json.Marshal(v); return template.JS(b), err },
 		"isSpecialLabel": func(label, placement string) bool {
 			if placement != "dipakai" { return false }
 			if len(label) < 4 || !strings.HasPrefix(label, "pc-") { return false }

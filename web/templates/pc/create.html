@@ -363,16 +363,8 @@ function validatePCForm() {
 }
 
 function updateAutoLabel() {
-    var row = parseInt(document.getElementById('row').value, 10);
-    var col = parseInt(document.getElementById('column').value, 10);
-    if (row && col) {
-        var label = 'pc-' + ((row - 1) * 8 + col);
-        document.getElementById('autoLabelText').textContent = label;
-        document.getElementById('label').value = label;
-    } else {
-        document.getElementById('autoLabelText').textContent = 'Pilih posisi terlebih dahulu';
-        document.getElementById('label').value = '';
-    }
+    document.getElementById('autoLabelText').textContent = nextMahasiswaLabel;
+    document.getElementById('label').value = nextMahasiswaLabel;
 }
 
 function togglePCCreateFields() {
