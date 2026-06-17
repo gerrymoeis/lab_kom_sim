@@ -514,8 +514,12 @@ window.updateDashboardFromData = function(pcs) {
     }
 };
 
+function apiURL(path) {
+    return (window.BASE_PATH || '') + path;
+}
+
 window.refreshDashboardGrid = function(optCallback) {
-    fetch('/api/pc/status')
+    fetch(apiURL('/api/pc/status'))
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (!data.pcs) {

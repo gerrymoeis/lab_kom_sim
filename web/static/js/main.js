@@ -201,7 +201,8 @@ function updateAvailability(selectEl) {
     const formData = new FormData();
     formData.append('is_available', selectEl.value);
 
-    fetch('/device-usages/' + usageId + '/availability', {
+    var bp = window.BASE_PATH || '';
+    fetch(bp + '/device-usages/' + usageId + '/availability', {
         method: 'POST',
         headers: { 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
         body: formData

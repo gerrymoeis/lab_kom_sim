@@ -18,6 +18,10 @@ type pcSeedData struct {
 }
 
 func seedPCs(db *DB, labName string) error {
+	// Only labkom-mi gets PC seeds; other labs start empty
+	if labName != "" && labName != "labkom-mi" {
+		return nil
+	}
 	layout := config.GetGridLayout(labName)
 	colsPerRow := layout.ColsPerRow
 	var count int
