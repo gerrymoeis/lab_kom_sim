@@ -3,7 +3,7 @@
 <div class="container-fluid mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/devices/list.html">Perangkat</a></li>
+            <li class="breadcrumb-item"><a href="{{.basePath}}/devices/list.html">Perangkat</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ .device.AssetCode }}</li>
         </ol>
     </nav>
@@ -42,7 +42,7 @@
             <div class="card shadow-sm mb-4">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-image"></i> Foto</h5></div>
                 <div class="card-body text-center">
-                    <img src="/uploads/device_types/{{ .device.DeviceTypePhoto }}" class="img-fluid rounded" alt="Foto perangkat">
+                    <img src="{{.basePath}}/uploads/device_types/{{ .device.DeviceTypePhoto }}" class="img-fluid rounded" alt="Foto perangkat">
                 </div>
             </div>
             {{ end }}

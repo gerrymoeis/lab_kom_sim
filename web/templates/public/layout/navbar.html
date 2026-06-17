@@ -1,36 +1,37 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/">
+        <a class="navbar-brand" href="{{.basePath}}/dashboard.html">
             <i class="bi bi-pc-display-horizontal"></i>
             Inventaris Lab Kom
         </a>
+        <span class="navbar-text ms-2 text-white-50 small">{{.labTitle}}</span>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarPublic">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarPublic">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "dashboard" }}active{{ end }}" href="/">
+                    <a class="nav-link {{ if eq .currentPage "dashboard" }}active{{ end }}" href="{{.basePath}}/dashboard.html">
                         <i class="bi bi-grid-3x3-gap"></i> Dashboard
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "pc" }}active{{ end }}" href="/pc/list.html">
+                    <a class="nav-link {{ if eq .currentPage "pc" }}active{{ end }}" href="{{.basePath}}/pc/list.html">
                         <i class="bi bi-pc-display"></i> PC
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "devices" }}active{{ end }}" href="/devices/list.html">
+                    <a class="nav-link {{ if eq .currentPage "devices" }}active{{ end }}" href="{{.basePath}}/devices/list.html">
                         <i class="bi bi-hdd-rack"></i> Perangkat
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "software" }}active{{ end }}" href="/software/list.html">
+                    <a class="nav-link {{ if eq .currentPage "software" }}active{{ end }}" href="{{.basePath}}/software/list.html">
                         <i class="bi bi-app-indicator"></i> Software
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ if eq .currentPage "schedules" }}active{{ end }}" href="/schedules/list.html">
+                    <a class="nav-link {{ if eq .currentPage "schedules" }}active{{ end }}" href="{{.basePath}}/schedules/list.html">
                         <i class="bi bi-calendar-event"></i> Jadwal
                     </a>
                 </li>

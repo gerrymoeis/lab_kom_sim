@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -246,9 +247,9 @@ func renderToFile(tmpl *template.Template, name string, data interface{}, path s
 	return tmpl.ExecuteTemplate(f, name, data)
 }
 
-var indexRedirectHTML = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/dashboard.html"></head><body></body></html>`
+var indexRedirectHTML = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=dashboard.html"></head><body></body></html>`
 
-func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
+func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labTitle string) error {
 	pcRepo := repository.NewPCRepository(db)
 	deviceRepo := repository.NewDeviceRepository(db)
 	softwareRepo := repository.NewSoftwareRepository(db)
@@ -282,9 +283,14 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 		return fmt.Errorf("load templates: %w", err)
 	}
 
-	outDir := cfg.OutDir
+	outDir := filepath.Join(cfg.OutDir, labName)
 	os.RemoveAll(outDir)
 	os.MkdirAll(outDir, 0755)
+
+	basePath := "/" + labName
+	commonData := map[string]interface{}{
+		"basePath": basePath, "labName": labName, "labTitle": labTitle,
+	}
 
 	var errs []error
 	re := func(tmplName, filePath string, data interface{}) {
@@ -301,13 +307,13 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 
 	// Dashboard
 	grid, extraPCs, pcLecturer, pcLaboran, pcCCTV, specialPCs, statusCounts, spareCount := buildDashboardGrid(pcs)
-	re("dashboard.html", filepath.Join(outDir, "dashboard.html"), map[string]interface{}{
+	re("dashboard.html", filepath.Join(outDir, "dashboard.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Dashboard", "currentPage": "dashboard",
 		"pcGrid": grid, "pcs": pcs, "extraPCs": extraPCs,
 		"statusCounts": statusCounts, "spareCount": spareCount,
 		"pcLecturer": pcLecturer, "pcLaboran": pcLaboran, "pcCCTV": pcCCTV,
 		"specialPCs": specialPCs,
-	})
+	}))
 
 	// Index (redirect to dashboard)
 	if err := os.WriteFile(filepath.Join(outDir, "index.html"), []byte(indexRedirectHTML), 0644); err != nil {
@@ -319,10 +325,10 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 	if err != nil {
 		errs = append(errs, fmt.Errorf("marshal pcs: %w", err))
 	}
-	re("pc/list.html", filepath.Join(outDir, "pc", "list.html"), map[string]interface{}{
+	re("pc/list.html", filepath.Join(outDir, "pc", "list.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Daftar PC", "currentPage": "pc",
 		"dataJSON": template.JS(pcJSON),
-	})
+	}))
 
 	// PC detail — one file per PC
 	for _, pc := range pcs {
@@ -330,10 +336,10 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 		if label == "" {
 			label = fmt.Sprintf("pc-%d", pc.ID)
 		}
-		re("pc/detail.html", filepath.Join(outDir, "pc", "detail", label+".html"), map[string]interface{}{
+		re("pc/detail.html", filepath.Join(outDir, "pc", "detail", label+".html"), mergeData(commonData, map[string]interface{}{
 			"title": "Detail " + label, "currentPage": "pc",
 			"pc": pc,
-		})
+		}))
 	}
 
 	// Device list
@@ -341,19 +347,19 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 	if err != nil {
 		errs = append(errs, fmt.Errorf("marshal devices: %w", err))
 	}
-	re("device/list.html", filepath.Join(outDir, "devices", "list.html"), map[string]interface{}{
+	re("device/list.html", filepath.Join(outDir, "devices", "list.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Daftar Perangkat", "currentPage": "devices",
 		"dataJSON": template.JS(devJSON),
-	})
+	}))
 
 	// Device detail — one file per device
 	for _, d := range devices {
-		re("device/detail.html", filepath.Join(outDir, "devices", "detail", strings.ToLower(d.AssetCode)+".html"), map[string]interface{}{
-			"title":         "Detail - " + d.AssetCode,
-			"currentPage":   "devices",
-			"device":        d,
+		re("device/detail.html", filepath.Join(outDir, "devices", "detail", strings.ToLower(d.AssetCode)+".html"), mergeData(commonData, map[string]interface{}{
+			"title":          "Detail - " + d.AssetCode,
+			"currentPage":    "devices",
+			"device":         d,
 			"deviceTypeName": d.DeviceTypeName,
-		})
+		}))
 	}
 
 	// Software list
@@ -361,10 +367,10 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 	if err != nil {
 		errs = append(errs, fmt.Errorf("marshal software: %w", err))
 	}
-	re("software/list.html", filepath.Join(outDir, "software", "list.html"), map[string]interface{}{
+	re("software/list.html", filepath.Join(outDir, "software", "list.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Software Catalog", "currentPage": "software",
 		"dataJSON": template.JS(swJSON),
-	})
+	}))
 
 	// Software detail — one file per software
 	for _, sw := range softwareStats {
@@ -380,14 +386,14 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 			}
 		}
 		swGrid := buildSoftwareGrid(pcList)
-		re("software/detail.html", filepath.Join(outDir, "software", "detail", sw.Slug+".html"), map[string]interface{}{
+		re("software/detail.html", filepath.Join(outDir, "software", "detail", sw.Slug+".html"), mergeData(commonData, map[string]interface{}{
 			"title":          "Detail Software - " + sw.Name,
 			"currentPage":    "software",
 			"software":       sw.SoftwareCatalog,
 			"pcGrid":         swGrid,
 			"installedCount": installedCount,
 			"totalPCs":       len(pcList),
-		})
+		}))
 	}
 
 	// Schedule list
@@ -395,10 +401,10 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 	if err != nil {
 		errs = append(errs, fmt.Errorf("marshal schedules: %w", err))
 	}
-	re("schedule/list.html", filepath.Join(outDir, "schedules", "list.html"), map[string]interface{}{
+	re("schedule/list.html", filepath.Join(outDir, "schedules", "list.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Jadwal Mata Kuliah", "currentPage": "schedules",
 		"dataJSON": template.JS(schJSON),
-	})
+	}))
 
 	// Generate JSON data files
 	os.MkdirAll(filepath.Join(outDir, "data"), 0755)
@@ -407,12 +413,12 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 	wj(filepath.Join(outDir, "data", "software.json"), softwareStats)
 	wj(filepath.Join(outDir, "data", "schedules.json"), schedules)
 
-	// Copy static assets
-	if err := copyDir(cfg.StaticDir, filepath.Join(outDir, "static")); err != nil {
+	// Copy static assets (shared at root level)
+	if err := copyDir(cfg.StaticDir, filepath.Join(cfg.OutDir, "static")); err != nil {
 		errs = append(errs, fmt.Errorf("copy static: %w", err))
 	}
 
-	// Copy device type photos (needed for public device detail pages)
+	// Copy device type photos (per-lab)
 	deviceTypesDir := filepath.Join("uploads", "device_types")
 	if fi, err := os.Stat(deviceTypesDir); err == nil && fi.IsDir() {
 		if err := copyDir(deviceTypesDir, filepath.Join(outDir, "uploads", "device_types")); err != nil {
@@ -420,7 +426,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig) error {
 		}
 	}
 
-	// Copy PC photos (serial + front, needed for public PC detail pages)
+	// Copy PC photos (per-lab)
 	pcPhotosDir := filepath.Join("uploads", "pc")
 	if fi, err := os.Stat(pcPhotosDir); err == nil && fi.IsDir() {
 		if err := copyDir(pcPhotosDir, filepath.Join(outDir, "uploads", "pc")); err != nil {
@@ -531,9 +537,91 @@ func removeAllContents(dir string) error {
 	return nil
 }
 
-func PublicBuildOutputDir(cfg config.PublicBuildConfig) string {
-	if cfg.RepoDir != "" {
-		return filepath.Join(cfg.RepoDir, cfg.OutDir)
+func mergeData(base, extra map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{}, len(base)+len(extra))
+	for k, v := range base {
+		result[k] = v
 	}
-	return cfg.OutDir
+	for k, v := range extra {
+		result[k] = v
+	}
+	return result
+}
+
+func GenerateLabSelector(labs []config.LabConfig, cfg config.PublicBuildConfig) error {
+	os.MkdirAll(cfg.OutDir, 0755)
+
+	tmpl, err := loadPublicTemplates(cfg.TemplateDir, template.FuncMap{})
+	if err != nil {
+		tmpl = template.New("lab_selector")
+		tmpl.Parse(labSelectorTemplate)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "lab_selector.html", map[string]interface{}{
+		"title": "Pilih Laboratorium",
+		"labs":  labs,
+	}); err != nil {
+		// fallback: execute as standalone
+		buf.Reset()
+		if err2 := tmpl.Execute(&buf, map[string]interface{}{
+			"title": "Pilih Laboratorium",
+			"labs":  labs,
+		}); err2 != nil {
+			return fmt.Errorf("render lab selector: %w", err2)
+		}
+	}
+
+	path := filepath.Join(cfg.OutDir, "index.html")
+	if err := os.WriteFile(path, buf.Bytes(), 0644); err != nil {
+		return fmt.Errorf("write lab selector: %w", err)
+	}
+	log.Printf("PublicBuild: lab selector generated at %s", path)
+	return nil
+}
+
+var labSelectorTemplate = `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.title}}</title>
+<link href="/static/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/static/vendor/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="/static/css/style.css">
+<style>
+body { display:flex; align-items:center; justify-content:center; min-height:100vh; background:#f5f7fa; }
+.card { transition: transform .2s; cursor:pointer; }
+.card:hover { transform:translateY(-4px); box-shadow:0 8px 25px rgba(0,0,0,.15); }
+</style>
+</head>
+<body>
+<div class="container text-center">
+<h1 class="mb-2"><i class="bi bi-pc-display-horizontal"></i> Inventaris Lab Kom</h1>
+<p class="text-muted mb-5">Pilih laboratorium untuk melihat inventaris</p>
+<div class="row justify-content-center g-4">
+{{range .labs}}
+<div class="col-md-4">
+<a href="/{{.Name}}/dashboard.html" class="text-decoration-none">
+<div class="card shadow-sm h-100">
+<div class="card-body text-center py-5">
+<i class="bi bi-building fs-1 text-primary"></i>
+<h4 class="mt-3">{{.Title}}</h4>
+<p class="text-muted small mb-0">{{.Name}}</p>
+</div>
+</div>
+</a>
+</div>
+{{end}}
+</div>
+</div>
+<script src="/static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>`
+
+func PublicBuildOutputDir(cfg config.PublicBuildConfig, labName string) string {
+	if cfg.RepoDir != "" {
+		return filepath.Join(cfg.RepoDir, cfg.OutDir, labName)
+	}
+	return filepath.Join(cfg.OutDir, labName)
 }
