@@ -6,7 +6,7 @@
     <div class="container-fluid mt-4">
         <div class="row">
             <div class="col-12">
-                <h2><i class="bi bi-grid-3x3-gap"></i> Dashboard Laboratorium Komputer</h2>
+                <h2><i class="bi bi-grid-3x3-gap"></i> {{ .labTitle }}</h2>
                 <p class="text-muted">Visualisasi status PC dalam grid laboratorium</p>
             </div>
         </div>
@@ -54,7 +54,7 @@
         <!-- PC Grid -->
         <div class="card shadow-sm">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-grid"></i> Grid PC Laboratorium</h5>
+                <h5 class="mb-0"><i class="bi bi-grid"></i> Grid PC {{ .labTitle }}</h5>
                 <button type="button" class="btn btn-sm btn-light" onclick="PCLayoutManager.openManager()">
                     <i class="bi bi-grid-3x3-gap"></i> Kelola Layout
                 </button>
@@ -426,7 +426,7 @@
         var pcNotes = card.dataset.pcNotes || '-';
         
         document.getElementById('pcDetailModalLabel').textContent = pcLabel + ' Detail';
-        document.getElementById('modal-position').textContent = 'Baris ' + pcColumn + ', Kolom ' + pcRow;
+        document.getElementById('modal-position').textContent = 'Baris ' + pcRow + ', Kolom ' + pcColumn;
         document.getElementById('modal-processor').textContent = pcProcessor;
         document.getElementById('modal-ram').textContent = pcRam;
         document.getElementById('modal-storage').textContent = pcStorage;
@@ -442,9 +442,10 @@
         else if (pcStatus === 'broken') { statusBadge.classList.add('bg-danger'); }
         else { statusBadge.classList.add('bg-secondary'); }
         
-        document.getElementById('modal-detail-link').href = '/pc/' + pcLabel;
+        var bp = window.BASE_PATH || '';
+        document.getElementById('modal-detail-link').href = bp + '/pc/' + pcLabel;
         var editLink = document.getElementById('modal-edit-link');
-        if (editLink) { editLink.href = '/pc/' + pcLabel + '/edit'; }
+        if (editLink) { editLink.href = bp + '/pc/' + pcLabel + '/edit'; }
         
         var modal = getPCDetailModal();
         if (modal) modal.show();

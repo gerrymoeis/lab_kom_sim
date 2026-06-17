@@ -8,7 +8,7 @@
         </div>
         <div class="col-md-6 text-end">
             {{ template "layout/header_actions_start.html" $ }}
-            <a href="/admin/users/create" class="btn btn-primary flex-grow-1">
+            <a href="{{ $.basePath }}/admin/users/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah User
             </a>
             {{ template "layout/header_actions_end.html" }}
@@ -17,7 +17,7 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <form method="GET" action="/admin/users" class="row g-3 mb-3">
+            <form method="GET" action="{{ $.basePath }}/admin/users" class="row g-3 mb-3">
                 <div class="col-md-3">
                     <label for="search" class="form-label">Cari</label>
                     <input type="text" class="form-control" id="search" name="search" placeholder="Cari username atau nama..." value="{{ .filters.search }}">
@@ -45,7 +45,7 @@
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
-                    <a href="/admin/users" class="btn btn-secondary w-100">
+                    <a href="{{ $.basePath }}/admin/users" class="btn btn-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>
                 </div>
@@ -54,7 +54,7 @@
             {{ if gt (len .users) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .users)) 1 }} dari {{ .totalItems }} user</p>{{ end }}
             {{ template "layout/pagination.html" . }}
             <div class="table-responsive">
-                <table class="table table-hover" data-batch-url="/admin/users/batch-delete">
+                <table class="table table-hover" data-batch-url="{{ $.basePath }}/admin/users/batch-delete">
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
@@ -69,7 +69,7 @@
                         {{ range $i, $u := .users }}
                         <tr data-batch-id="{{ .Username }}" data-batch-label="{{ .Username }} - {{ .FullName }}">
                             <td>{{ add $i $.startRow }}</td>
-                            <td><strong>{{ if eq $.username .Username }}<a href="/admin/users/{{ .Username }}" class="text-decoration-none fw-bold text-primary">{{ end }}{{ .Username }}{{ if eq $.username .Username }}</a>{{ end }}</strong></td>
+                            <td><strong>{{ if eq $.username .Username }}<a href="{{ $.basePath }}/admin/users/{{ .Username }}" class="text-decoration-none fw-bold text-primary">{{ end }}{{ .Username }}{{ if eq $.username .Username }}</a>{{ end }}</strong></td>
                             <td>
                                 {{ .FullName }}
 {{ if .IsProtected }}
@@ -85,10 +85,10 @@
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                 {{ if canAccessUser $.username . $.isSuperAdmin }}
-                                <a href="/admin/users/{{ .Username }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                <a href="{{ $.basePath }}/admin/users/{{ .Username }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="/admin/users/{{ .Username }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                <a href="{{ $.basePath }}/admin/users/{{ .Username }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 {{ if and (not .IsProtected) $.isSuperAdmin }}
@@ -96,7 +96,7 @@
                                     onclick="confirmDelete({message:'Hapus user ini?', formId:'del-user-{{ .Username }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                <form id="del-user-{{ .Username }}" method="POST" action="/admin/users/{{ .Username }}/delete" class="d-none"></form>
+                                <form id="del-user-{{ .Username }}" method="POST" action="{{ $.basePath }}/admin/users/{{ .Username }}/delete" class="d-none"></form>
                                 {{ end }}
                                 {{ else }}
                                 -

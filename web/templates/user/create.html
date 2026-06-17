@@ -10,7 +10,7 @@
                 <div class="card-body">
                     {{ template "layout/alert.html" . }}
 
-                    <form method="POST" action="/admin/users/create">
+                    <form method="POST" action="{{ $.basePath }}/admin/users/create">
                         <div class="mb-3">
                             <label for="username" class="form-label">Username *</label>
                             <input type="text" class="form-control" id="username" name="username" required>
@@ -38,7 +38,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-save"></i> Simpan
                             </button>
-                            <a href="/admin/users" class="btn btn-secondary">
+                            <a href="{{ $.basePath }}/admin/users" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>
