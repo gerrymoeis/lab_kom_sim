@@ -106,7 +106,7 @@ func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bo
 }
 
 func (h *Handler) redirect(c *gin.Context, path string) {
-	c.Redirect(http.StatusFound, h.labURL(c, path))
+	middleware.LabRedirect(c, http.StatusFound, path)
 }
 
 func (h *Handler) isSuperAdmin(c *gin.Context) bool {
@@ -115,11 +115,7 @@ func (h *Handler) isSuperAdmin(c *gin.Context) bool {
 }
 
 func (h *Handler) labURL(c *gin.Context, path string) string {
-	lab := c.GetString("lab")
-	if lab == "" {
-		return path
-	}
-	return "/" + lab + path
+	return middleware.LabURL(c, path)
 }
 
 func (h *Handler) Close() {

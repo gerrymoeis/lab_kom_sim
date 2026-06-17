@@ -153,6 +153,16 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 			if start == nil || end == nil { return "-" }
 			return fmt.Sprintf("%d", int(end.Sub(*start).Hours()/24)+1)
 		},
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 { return nil, fmt.Errorf("dict: odd number of arguments") }
+			d := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok { return nil, fmt.Errorf("dict: keys must be strings") }
+				d[key] = values[i+1]
+			}
+			return d, nil
+		},
 	})
 	err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil { return err }

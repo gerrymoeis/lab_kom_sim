@@ -80,7 +80,11 @@ func main() {
 	for _, lab := range cfg.Labs {
 		db := dbs[lab.URLPath]
 
-		backupSvc := services.NewBackupService(db, cfg.Backup)
+		labBackupCfg := cfg.Backup
+		labBackupDir := filepath.Join("backups", lab.URLPath)
+		labBackupCfg.Dir = []string{labBackupDir}
+
+		backupSvc := services.NewBackupService(db, labBackupCfg)
 		backupSvcs = append(backupSvcs, backupSvc)
 		notifiers = append(notifiers, backupSvc)
 
