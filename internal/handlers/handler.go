@@ -142,7 +142,7 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	data["lab"] = lab
 	data["basePath"] = h.labURL(c, "")
 	for _, l := range h.cfg.Labs {
-		if l.Name == lab {
+		if l.URLPath == lab {
 			data["labTitle"] = l.Title
 			break
 		}

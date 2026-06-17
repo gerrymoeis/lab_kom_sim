@@ -76,8 +76,9 @@ func TestFullIntegration(t *testing.T) {
 	// Load .env for API keys (if available)
 	godotenv.Load()
 
-	testLab := "labkom-mi"
-	testLabPrefix := "/" + testLab
+	testLabID := "MI-1"
+	testLabURL := "lab-kom-mi"
+	testLabPrefix := "/" + testLabURL
 
 	cfg := &config.Config{
 		DatabasePath:     dbPath,
@@ -88,7 +89,7 @@ func TestFullIntegration(t *testing.T) {
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 	}
 	cfg.Labs = []config.LabConfig{
-		{Name: testLab, DBPath: dbPath, UploadDir: "uploads", Layout: config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}},
+		{ID: testLabID, URLPath: testLabURL, DBPath: dbPath, UploadDir: "uploads", Layout: config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}},
 	}
 	db, err := database.InitDB(dbPath, "")
 	if err != nil {
@@ -96,15 +97,15 @@ func TestFullIntegration(t *testing.T) {
 	}
 	defer db.Close()
 
-	if err := database.RunMigrations(db, false, testLab); err != nil {
+	if err := database.RunMigrations(db, false, testLabID, testLabURL); err != nil {
 		t.Fatalf("Migrate: %v", err)
 	}
-	if err := database.SeedDefaultUser(db, testLab); err != nil {
+	if err := database.SeedDefaultUser(db); err != nil {
 		t.Errorf("Seed user: %v", err)
 	}
 	db.Exec("UPDATE users SET session_token = NULL")
 
-	dbs := map[string]*database.DB{testLab: db}
+	dbs := map[string]*database.DB{testLabURL: db}
 	router, cleanup, flushLogs := server.SetupRouter(dbs, cfg, nil)
 	defer cleanup()
 	ts := httptest.NewServer(router)
