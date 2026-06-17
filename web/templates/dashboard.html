@@ -90,58 +90,7 @@
                 </div>
                 {{ end }}
 
-                <div class="pc-grid">
-                    {{ range $barisIndex, $baris := .grid }}
-                    <div class="pc-row mb-3">
-                        {{ range $kolomIndex, $pc := $baris }}
-                        {{ if $pc.ID }}
-                        <div class="pc-card-wrapper">
-                            <div class="pc-card status-{{ $pc.Status }} pc-card-clickable" 
-                                 role="button"
-                                 tabindex="0"
-								 aria-label="PC {{ $pc.Label }}, Status {{ (pcStatusInfo $pc.Status).VisLabel }}, Baris {{ add $barisIndex 1 }}, Kolom {{ add $kolomIndex 1 }}"
-                                 data-pc-id="{{ $pc.ID }}"
-                                 data-pc-label="{{ $pc.Label }}"
-                                 data-pc-row="{{ $pc.Row }}"
-								 data-pc-column="{{ $pc.Column }}"
-                                 data-pc-status="{{ $pc.Status }}"
-                                 data-pc-processor="{{ $pc.Processor }}"
-                                 data-pc-ram="{{ $pc.RAM }}"
-                                 data-pc-storage="{{ $pc.Storage }}"
-                                 data-pc-os="{{ $pc.OperatingSystem }}"
-                                 data-pc-notes="{{ $pc.Notes }}"
-                                 style="cursor: pointer;">
-                                <div class="pc-number">{{ $pc.Label }}</div>
-                                <div class="pc-icon">
-                                    <i class="bi bi-pc-display" aria-hidden="true"></i>
-                                </div>
-                                <div class="pc-status-badge">
-                                    {{ $info := pcStatusInfo $pc.Status }}
-                                    <i class="bi {{ $info.Icon }} {{ $info.Color }}" aria-hidden="true"></i>
-                                    <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
-                                </div>
-                                <!-- Windows Version Badge -->
-                                <div class="pc-windows-badge" id="win-badge-{{ $pc.Label }}">
-                                    <span class="visually-hidden">Windows Version</span>
-                                </div>
-                            </div>
-                            <!-- Windows Version Text -->
-                            <div class="pc-windows-text" id="win-text-{{ $pc.Label }}"></div>
-                        </div>
-                        {{ else }}
-                        <div class="pc-card-wrapper">
-                            <div class="pc-card pc-empty">
-                                <div class="pc-number">-</div>
-                                <div class="pc-icon text-muted">
-                                    <i class="bi bi-dash"></i>
-                                </div>
-                            </div>
-                        </div>
-                        {{ end }}
-                        {{ end }}
-                    </div>
-                    {{ end }}
-                </div>
+                {{ template "pc/grid_component.html" dict "GridRows" .grid "Clickable" true "WindowsBadge" true "WindowsText" true }}
 
                 <!-- PC Laboran (bottom left) + PC CCTV (below Laboran) -->
                 <div class="mt-4">
