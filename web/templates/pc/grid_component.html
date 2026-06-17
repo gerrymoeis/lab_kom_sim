@@ -1,0 +1,55 @@
+{{ define "pc/grid_component.html" }}
+<div class="pc-grid{{ with .GridClass }} {{ . }}{{ end }}">
+    {{ range $rowIdx, $row := .GridRows }}
+    <div class="pc-row mb-3">
+        {{ range $colIdx, $pc := $row }}
+        {{ if $.HasGap }}
+        {{ if eq $colIdx (index $.RowGaps $rowIdx) }}<div class="grid-gap"></div>{{ end }}
+        {{ end }}
+        <div class="pc-card-wrapper{{ if $.SmallCards }} pc-card-wrapper-sm{{ end }}{{ if and $.CadanganWrapper (eq $pc.Placement "cadangan") }} pc-card-wrapper-cadangan{{ end }}">
+            {{ if $pc.ID }}
+            <div class="pc-card status-{{ $pc.Status }}{{ if $.Clickable }} pc-card-clickable{{ end }}"
+                 {{ if $.Clickable }}
+                 role="button" tabindex="0"
+                 aria-label="PC {{ $pc.Label }}, Status {{ (pcStatusInfo $pc.Status).VisLabel }}, Baris {{ add $rowIdx 1 }}, Kolom {{ add $colIdx 1 }}"
+                 data-pc-id="{{ $pc.ID }}"
+                 data-pc-label="{{ $pc.Label }}"
+                 data-pc-row="{{ $pc.Row }}"
+                 data-pc-column="{{ $pc.Column }}"
+                 data-pc-status="{{ $pc.Status }}"
+                 data-pc-processor="{{ $pc.Processor }}"
+                 data-pc-ram="{{ $pc.RAM }}"
+                 data-pc-storage="{{ $pc.Storage }}"
+                 data-pc-os="{{ $pc.OperatingSystem }}"
+                 data-pc-notes="{{ $pc.Notes }}"
+                 style="cursor: pointer;"
+                 {{ end }}>
+                <div class="pc-number">{{ $pc.Label }}</div>
+                <div class="pc-icon"><i class="bi bi-pc-display" aria-hidden="true"></i></div>
+                <div class="pc-status-badge">
+                    {{ $info := pcStatusInfo $pc.Status }}
+                    {{ if eq $.BadgeStyle "badge" }}
+                    <span class="badge bg-{{ $info.BadgeClass }}"><i class="bi {{ $info.Icon }}"></i></span>
+                    {{ else }}
+                    <i class="bi {{ $info.Icon }} {{ $info.Color }}" aria-hidden="true"></i>
+                    <span class="visually-hidden">Status {{ $info.VisLabel }}</span>
+                    {{ end }}
+                </div>
+                {{ if $.WindowsBadge }}
+                <div class="pc-windows-badge" id="win-badge-{{ $pc.Label }}"><span class="visually-hidden">Windows Version</span></div>
+                {{ end }}
+                {{ if $.WindowsText }}
+                <div class="pc-windows-text" id="win-text-{{ $pc.Label }}"></div>
+                {{ end }}
+            </div>
+            {{ else }}
+            <div class="pc-card pc-card-empty">
+                <div class="pc-number{{ if not $.ShowLabelOnEmpty }} text-muted{{ end }}">{{ if $.ShowLabelOnEmpty }}{{ $pc.Label }}{{ else }}-{{ end }}</div>
+            </div>
+            {{ end }}
+        </div>
+        {{ end }}
+    </div>
+    {{ end }}
+</div>
+{{ end }}
