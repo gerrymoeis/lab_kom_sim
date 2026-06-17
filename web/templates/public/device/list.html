@@ -33,7 +33,7 @@ initPublicTable({
           }},
         { field: "location", label: "Lokasi", sortable: true },
         { field: "detail", label: "", sortable: false,
-          render: function(v, r) { return '<a href="/devices/detail/' + (r.asset_code).toLowerCase() + '.html" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>'; } }
+          render: function(v, r) { return '<a href="' + PUBLIC_BASE_PATH + '/devices/detail/' + (r.asset_code).toLowerCase() + '.html" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>'; } }
     ],
     searchFields: ["asset_code", "device_type_name", "category_name", "serial_number", "location"],
     pageSize: 25
