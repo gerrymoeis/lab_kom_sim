@@ -159,7 +159,7 @@ func copyDir(src, dst string) error {
 	})
 }
 
-func buildDashboardGrid(pcs []models.PC) ([][]models.PC, []models.PC, models.PC, models.PC, models.PC, []models.PC, map[string]int, int) {
+func buildDashboardGrid(pcs []models.PC, colsPerRow []int) ([][]models.PC, []models.PC, models.PC, models.PC, models.PC, []models.PC, map[string]int, int) {
 	statusCounts := make(map[string]int)
 	var spareCount int
 	for _, pc := range pcs {
@@ -170,9 +170,10 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, []models.PC, models.PC,
 		}
 	}
 
-	grid := make([][]models.PC, 5)
+	gridRowCount := len(colsPerRow)
+	grid := make([][]models.PC, gridRowCount)
 	for i := range grid {
-		grid[i] = make([]models.PC, 8)
+		grid[i] = make([]models.PC, colsPerRow[i])
 	}
 
 	var extraPCs []models.PC
@@ -182,7 +183,8 @@ func buildDashboardGrid(pcs []models.PC) ([][]models.PC, []models.PC, models.PC,
 		if pc.Placement == "cadangan" {
 			continue
 		}
-		if pc.Row >= 1 && pc.Row <= 5 && pc.Column >= 1 && pc.Column <= 8 {
+		maxCol := colsPerRow[pc.Row-1]
+		if pc.Row >= 1 && pc.Row <= gridRowCount && pc.Column >= 1 && pc.Column <= maxCol {
 			grid[pc.Row-1][pc.Column-1] = pc
 		} else if pc.Label != "" && isNumericLabel(pc.Label) {
 			extraPCs = append(extraPCs, pc)
@@ -306,7 +308,8 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	}
 
 	// Dashboard
-	grid, extraPCs, pcLecturer, pcLaboran, pcCCTV, specialPCs, statusCounts, spareCount := buildDashboardGrid(pcs)
+	layout := config.GetGridLayout(labName)
+	grid, extraPCs, pcLecturer, pcLaboran, pcCCTV, specialPCs, statusCounts, spareCount := buildDashboardGrid(pcs, layout.ColsPerRow)
 	re("dashboard.html", filepath.Join(outDir, "dashboard.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Dashboard", "currentPage": "dashboard",
 		"pcGrid": grid, "pcs": pcs, "extraPCs": extraPCs,

@@ -4,7 +4,8 @@ var PCLayoutManager = (function() {
   var cadangan = [];
   var special = [];
   var maxRow = 5;
-  var COLUMNS = 8;
+  var columnsPerRow = [];
+  var gapPos = 0;
   var busy = false;
 
   function init() {
@@ -33,6 +34,8 @@ var PCLayoutManager = (function() {
         cadangan = data.cadangan || [];
         special = data.special || [];
         maxRow = data.maxRow || 5;
+        columnsPerRow = data.columns || [];
+        gapPos = data.gapPos || 0;
         render();
         layoutModal.show();
       })
@@ -48,17 +51,22 @@ var PCLayoutManager = (function() {
     document.getElementById('layoutSelectedInfo').textContent = '';
   }
 
+  function columnsForRow(row) {
+    return (columnsPerRow[row] !== undefined) ? columnsPerRow[row] : 8;
+  }
+
   function renderGrid() {
     var container = document.getElementById('layoutGridBody');
     var html = '<div class="layout-grid-scroll">';
     for (var r = 0; r < Math.max(maxRow, grid.length); r++) {
+      var numCols = columnsForRow(r);
       html += '<div class="d-flex align-items-center gap-2 mb-2 layout-row" data-row="' + (r + 1) + '">';
       if (mode === 'manager') {
         html += '<button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 btn-remove-row" style="padding:2px 6px;font-size:0.75rem" title="Pindahkan semua PC di baris ini ke cadangan"><i class="bi bi-trash"></i></button>';
       }
       html += '<span class="flex-shrink-0 small text-muted" style="width:48px">Baris ' + (r + 1) + '</span>';
       html += '<div class="d-flex gap-2 justify-content-center flex-fill">';
-      for (var c = 0; c < COLUMNS; c++) {
+      for (var c = 0; c < numCols; c++) {
         var pc = (grid[r] && grid[r][c]) ? grid[r][c] : null;
         var selected = selectedSlot && selectedSlot.row === r && selectedSlot.col === c;
         var label = pc && pc.label ? pc.label : '-';

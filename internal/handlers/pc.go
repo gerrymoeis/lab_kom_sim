@@ -325,7 +325,11 @@ func (h *Handler) PCGetLayout(c *gin.Context) {
 		return
 	}
 
-	maxRow := 5
+	labName := c.GetString("lab")
+	layout := h.cfg.LabLayout(labName)
+	columns := layout.ColsPerRow
+
+	maxRow := len(columns)
 	for _, pc := range pcs {
 		if pc.Placement == "dipakai" && isNumericLabel(pc.Label) && pc.Row > maxRow {
 			maxRow = pc.Row
@@ -334,7 +338,7 @@ func (h *Handler) PCGetLayout(c *gin.Context) {
 
 	grid := make([][]pcLayoutItem, maxRow)
 	for i := range grid {
-		grid[i] = make([]pcLayoutItem, 8)
+		grid[i] = make([]pcLayoutItem, layout.ColsAtRow(i))
 	}
 	var cadangan, special []pcLayoutItem
 
@@ -342,7 +346,7 @@ func (h *Handler) PCGetLayout(c *gin.Context) {
 		item := pcLayoutItem{Label: pc.Label, Row: pc.Row, Column: pc.Column, Status: pc.Status, Placement: pc.Placement}
 		if pc.Placement == "cadangan" || (pc.Placement == "dipakai" && isNumericLabel(pc.Label) && (pc.Row < 1 || pc.Column < 1)) {
 			cadangan = append(cadangan, item)
-		} else if pc.Placement == "dipakai" && isNumericLabel(pc.Label) && pc.Row >= 1 && pc.Row <= maxRow && pc.Column >= 1 && pc.Column <= 8 {
+		} else if pc.Placement == "dipakai" && isNumericLabel(pc.Label) && pc.Row >= 1 && pc.Row <= maxRow && pc.Column >= 1 && pc.Column <= layout.ColsAtRow(pc.Row-1) {
 			grid[pc.Row-1][pc.Column-1] = item
 		} else {
 			special = append(special, item)
@@ -354,6 +358,8 @@ func (h *Handler) PCGetLayout(c *gin.Context) {
 		"cadangan": cadangan,
 		"special":  special,
 		"maxRow":   maxRow,
+		"columns":  columns,
+		"gapPos":   layout.GapPos,
 	})
 }
 
