@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func SeedDefaultUser(db *DB, labName string) error {
+func SeedDefaultUser(db *DB) error {
 	admins := []struct {
 		Username string
 		Password string

@@ -204,7 +204,7 @@ func SetupRouter(dbs map[string]*database.DB, cfg *config.Config, notifier servi
 	labCfgs := make(map[string]config.LabConfig)
 	if cfg.Labs != nil {
 		for i := range cfg.Labs {
-			labCfgs[cfg.Labs[i].Name] = cfg.Labs[i]
+			labCfgs[cfg.Labs[i].URLPath] = cfg.Labs[i]
 		}
 	}
 

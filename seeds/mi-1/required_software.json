@@ -1,0 +1,16 @@
+[
+  {"name": "Visual Studio Code", "description": "Code editor untuk berbagai bahasa pemrograman"},
+  {"name": "PHP + Xampp", "description": "Web server lokal dengan PHP dan MySQL"},
+  {"name": "Python", "description": "Bahasa pemrograman serbaguna"},
+  {"name": "Unity", "description": "Game engine multiplatform"},
+  {"name": "Blender", "description": "Software modeling dan animasi 3D"},
+  {"name": "Cisco Packet Tracer", "description": "Simulator jaringan Cisco"},
+  {"name": "Wireshark", "description": "Network protocol analyzer"},
+  {"name": "Postman", "description": "API testing dan development tool"},
+  {"name": "Composer", "description": "Dependency manager untuk PHP"},
+  {"name": "Android Studio", "description": "IDE untuk pengembangan Android"},
+  {"name": "Git", "description": "Version control system"},
+  {"name": "Figma", "description": "Design dan prototyping kolaboratif"},
+  {"name": "Node.js", "description": "JavaScript runtime environment"},
+  {"name": "SQL Server", "description": "Microsoft SQL Server database"}
+]

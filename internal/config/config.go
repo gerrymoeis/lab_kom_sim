@@ -110,8 +110,8 @@ func Load() *Config {
 }
 
 // parseLabs splits LABS env into LabConfig slice
-// Format: name:path[:title],name:path[:title],...
-// Example: labkom-mi:data/labkom_mi.db:Lab Kom MI,labkom-vokasi-1:data/labkom_vokasi_1.db
+// Format: LAB-ID:dbPath[:Title[:urlPath]],...
+// Example: MI-1:data/lab_mi_1.db:Lab Kom MI 1:lab-kom-mi,VOKASI-1:data/lab_vokasi_1.db:Lab Kom Vokasi:vokasi
 func parseLabs(raw, uploadPath, fallbackDBPath string) []LabConfig {
 	parts := strings.Split(raw, ",")
 	labs := make([]LabConfig, 0, len(parts))
@@ -120,24 +120,29 @@ func parseLabs(raw, uploadPath, fallbackDBPath string) []LabConfig {
 		if p == "" {
 			continue
 		}
-		segments := strings.SplitN(p, ":", 3)
+		segments := strings.SplitN(p, ":", 4)
 		if len(segments) < 2 || segments[0] == "" || segments[1] == "" {
 			log.Printf("Warning: skipping invalid LABS entry: %q", p)
 			continue
 		}
-		name := segments[0]
+		labID := segments[0]
 		dbPath := segments[1]
-		title := labTitleFromName(name)
+		title := labTitleFromName(labID)
 		if len(segments) > 2 && segments[2] != "" {
 			title = segments[2]
 		}
-		uploadDir := filepath.Join(uploadPath, name)
+		urlPath := strings.ToLower(labID)
+		if len(segments) > 3 && segments[3] != "" {
+			urlPath = segments[3]
+		}
+		uploadDir := filepath.Join(uploadPath, urlPath)
 		labs = append(labs, LabConfig{
-			Name:      name,
+			ID:        labID,
 			Title:     title,
 			DBPath:    dbPath,
+			URLPath:   urlPath,
 			UploadDir: uploadDir,
-			Layout:    GetGridLayout(name),
+			Layout:    GetGridLayout(urlPath),
 		})
 	}
 	if len(labs) == 0 {
@@ -148,15 +153,17 @@ func parseLabs(raw, uploadPath, fallbackDBPath string) []LabConfig {
 }
 
 func defaultLab(dbPath, uploadPath string) LabConfig {
-	name := labNameFromPath(dbPath)
-	title := labTitleFromName(name)
-	uploadDir := filepath.Join(uploadPath, name)
+	id := labNameFromPath(dbPath)
+	title := labTitleFromName(id)
+	urlPath := strings.ToLower(id)
+	uploadDir := filepath.Join(uploadPath, urlPath)
 	return LabConfig{
-		Name:      name,
+		ID:        id,
 		Title:     title,
 		DBPath:    dbPath,
+		URLPath:   urlPath,
 		UploadDir: uploadDir,
-		Layout:    GetGridLayout(name),
+		Layout:    GetGridLayout(urlPath),
 	}
 }
 
@@ -204,7 +211,7 @@ func parseDirs(raw string) []string {
 
 func (c *Config) LabLayout(labName string) GridLayout {
 	for _, lab := range c.Labs {
-		if lab.Name == labName {
+		if lab.URLPath == labName {
 			return lab.Layout
 		}
 	}
