@@ -15,7 +15,7 @@ func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.renderTemplate(c, http.StatusBadRequest, "login.html", gin.H{
-			"title": "Login - Sistem Inventaris Lab",
+			"title": "Login - " + c.GetString("lab"),
 			"error": "Username dan password harus diisi",
 		})
 		return
@@ -33,7 +33,7 @@ func (h *Handler) Login(c *gin.Context) {
 			status = http.StatusConflict
 		}
 		h.renderTemplate(c, status, "login.html", gin.H{
-			"title": "Login - Sistem Inventaris Lab",
+			"title": "Login - " + c.GetString("lab"),
 			"error": msg,
 		})
 		return
@@ -66,9 +66,8 @@ func (h *Handler) LoginPage(c *gin.Context) {
 	token := middleware.NewCSRFToken(session)
 	_ = session.Save()
 	h.renderTemplate(c, http.StatusOK, "login.html", gin.H{
-		"title":      "Login - Sistem Inventaris Lab",
+		"title":      "Login - " + c.GetString("lab"),
 		"csrf_token": token,
-		"lab":        c.GetString("lab"),
 	})
 }
 
