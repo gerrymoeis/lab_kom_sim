@@ -14,6 +14,8 @@ import (
 
 	"database/sql"
 
+	"inventaris-lab-kom/internal/timeutil"
+
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 )
@@ -153,7 +155,7 @@ func (s *BackupService) backup() {
 }
 
 func (s *BackupService) runBackup() error {
-	now := time.Now()
+	now := timeutil.Now()
 	filename := fmt.Sprintf("backup_%s.db", now.Format("20060102_150405"))
 
 	for _, dir := range s.cfg.Dir {

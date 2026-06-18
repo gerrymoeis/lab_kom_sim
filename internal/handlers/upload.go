@@ -7,9 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"inventaris-lab-kom/internal/timeutil"
 )
 
 // UploadResponse represents the response from image upload
@@ -107,7 +108,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
+	now := timeutil.Now()
 	dateStr := now.Format("020106") // DDMMYY
 
 	if strings.ContainsAny(req.Label, "/\\") || strings.ContainsAny(req.Type, "/\\") {
