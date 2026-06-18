@@ -21,7 +21,7 @@ func main() {
 		}
 		defer db.Close()
 
-		if err := services.RunPublicBuild(db, cfg.PublicBuild, lab.URLPath, lab.Title); err != nil {
+		if err := services.RunPublicBuild(db, cfg.PublicBuild, lab.URLPath, lab.Title, cfg.UploadPath); err != nil {
 			log.Fatalf("build for lab %s: %v", lab.URLPath, err)
 		}
 		labs = append(labs, lab)

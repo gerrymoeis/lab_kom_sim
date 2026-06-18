@@ -3,6 +3,7 @@
 import (
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -103,7 +104,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		return
 	}
 
-	photoSerial, photoFront := processPhotoRefs(c.GetString("lab"), req.SerialFileRef, req.FrontFileRef)
+	photoSerial, photoFront := processPhotoRefs(h.cfg.UploadPath, c.GetString("lab"), req.SerialFileRef, req.FrontFileRef)
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
@@ -182,7 +183,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	photoSerial, photoFront := processPhotoRefs(c.GetString("lab"), req.SerialFileRef, req.FrontFileRef)
+	photoSerial, photoFront := processPhotoRefs(h.cfg.UploadPath, c.GetString("lab"), req.SerialFileRef, req.FrontFileRef)
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
@@ -536,24 +537,26 @@ func (h *Handler) PCMoveToCadangan(c *gin.Context) {
 	})
 }
 
-func processPhotoRef(lab, photoRef, subDir string) string {
+func processPhotoRef(uploadPath, lab, photoRef, subDir string) string {
 	ref := filepath.Base(strings.TrimSpace(photoRef))
 	if ref == "" || ref == "." || ref == "/" || ref == "\\" {
 		return ""
 	}
-	src := filepath.Join("uploads", lab, "temp", ref)
-	dst := filepath.Join("uploads", lab, subDir, ref)
+	src := filepath.Join(uploadPath, lab, "temp", ref)
+	dst := filepath.Join(uploadPath, lab, subDir, ref)
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		log.Printf("WARN: processPhotoRef: failed to create dir for %s/%s: %v", subDir, ref, err)
 		return ""
 	}
 	if err := services.CopyFile(src, dst); err != nil {
+		log.Printf("WARN: processPhotoRef: copy failed %s -> %s: %v", src, dst, err)
 		return ""
 	}
 	os.Remove(src)
 	return ref
 }
 
-func processPhotoRefs(lab, serialRef, frontRef string) (serial, front string) {
+func processPhotoRefs(uploadPath, lab, serialRef, frontRef string) (serial, front string) {
 	for _, p := range []struct{ ref string; result *string }{
 		{serialRef, &serial}, {frontRef, &front},
 	} {
@@ -561,16 +564,18 @@ func processPhotoRefs(lab, serialRef, frontRef string) (serial, front string) {
 		if ref == "" || ref == "." || ref == "/" || ref == "\\" {
 			continue
 		}
-		src := filepath.Join("uploads", lab, "temp", ref)
-		dst := filepath.Join("uploads", lab, "pc", ref)
+		src := filepath.Join(uploadPath, lab, "temp", ref)
+		dst := filepath.Join(uploadPath, lab, "pc", ref)
 		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+			log.Printf("WARN: processPhotoRefs: failed to create pc dir for %s: %v", ref, err)
 			continue
 		}
 		if err := services.CopyFile(src, dst); err != nil {
+			log.Printf("WARN: processPhotoRefs: copy failed %s -> %s: %v", src, dst, err)
 			continue
 		}
-	os.Remove(src)
-	*p.result = ref
+		os.Remove(src)
+		*p.result = ref
 	}
 	return
 }

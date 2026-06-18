@@ -251,7 +251,7 @@ func renderToFile(tmpl *template.Template, name string, data interface{}, path s
 
 var indexRedirectHTML = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=dashboard.html"></head><body></body></html>`
 
-func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labTitle string) error {
+func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labTitle, uploadPath string) error {
 	pcRepo := repository.NewPCRepository(db)
 	deviceRepo := repository.NewDeviceRepository(db)
 	softwareRepo := repository.NewSoftwareRepository(db)
@@ -422,7 +422,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	}
 
 	// Copy device type photos (per-lab)
-	deviceTypesDir := filepath.Join("uploads", labName, "device_types")
+	deviceTypesDir := filepath.Join(uploadPath, labName, "device_types")
 	if fi, err := os.Stat(deviceTypesDir); err == nil && fi.IsDir() {
 		if err := copyDir(deviceTypesDir, filepath.Join(outDir, "uploads", "device_types")); err != nil {
 			errs = append(errs, fmt.Errorf("copy device_type photos: %w", err))
@@ -430,7 +430,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	}
 
 	// Copy PC photos (per-lab)
-	pcPhotosDir := filepath.Join("uploads", labName, "pc")
+	pcPhotosDir := filepath.Join(uploadPath, labName, "pc")
 	if fi, err := os.Stat(pcPhotosDir); err == nil && fi.IsDir() {
 		if err := copyDir(pcPhotosDir, filepath.Join(outDir, "uploads", "pc")); err != nil {
 			errs = append(errs, fmt.Errorf("copy pc photos: %w", err))

@@ -70,11 +70,11 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 	return wrapSQLite(reader, writer), nil
 }
 
-func RunMigrations(db *DB, isPostgres bool, labID, urlPath string) error {
+func RunMigrations(db *DB, isPostgres bool, labID, urlPath, uploadPath string) error {
 	if err := runMigrations(db, isPostgres); err != nil {
 		return err
 	}
-	if err := seedPCPhotos(db, urlPath); err != nil {
+	if err := seedPCPhotos(db, uploadPath, urlPath); err != nil {
 		return err
 	}
 	if err := RunSeedFolder(db, labID, urlPath); err != nil {
