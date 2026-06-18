@@ -149,9 +149,9 @@ func (s *ExcelService) applyConditionalFormatting(f *excelize.File, sheetName st
 }
 
 // GenerateFilename generates a consistent filename with timestamp
-// Format: {prefix}_HHMM_DDMMYYYY.xlsx
+// Format: {prefix}_YYYYMMDD_HHMMSS.xlsx
 func (s *ExcelService) GenerateFilename(prefix string) string {
-	timestamp := time.Now().Format("1504_02012006")
+	timestamp := time.Now().Format("20060102_150405")
 	return fmt.Sprintf("%s_%s.xlsx", prefix, timestamp)
 }
 
