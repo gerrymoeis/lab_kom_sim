@@ -227,8 +227,8 @@ func TestFullIntegration(t *testing.T) {
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 	}
 	cfg.Labs = []config.LabConfig{
-		{ID: labAID, URLPath: labAURL, DBPath: dbPathA, UploadDir: "uploads", Layout: config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}},
-		{ID: labBID, URLPath: labBURL, DBPath: dbPathB, UploadDir: "uploads", Layout: config.GridLayout{ColsPerRow: []int{10, 8, 9, 9}, HasGap: true, GapPos: 4}},
+		{ID: labAID, URLPath: labAURL, DBPath: dbPathA, UploadDir: filepath.Join(cfg.UploadPath, labAURL), Layout: config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}},
+		{ID: labBID, URLPath: labBURL, DBPath: dbPathB, UploadDir: filepath.Join(cfg.UploadPath, labBURL), Layout: config.GridLayout{ColsPerRow: []int{10, 8, 9, 9}, HasGap: true, GapPos: 4}},
 	}
 
 	// Init Lab A DB (has seeds via seeds/mi-1/)
@@ -236,7 +236,7 @@ func TestFullIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InitDB lab A: %v", err)
 	}
-	if err := database.RunMigrations(dbA, false, labAID, labAURL); err != nil {
+	if err := database.RunMigrations(dbA, false, labAID, labAURL, cfg.UploadPath); err != nil {
 		t.Fatalf("Migrate lab A: %v", err)
 	}
 	if err := database.SeedDefaultUser(dbA); err != nil {
@@ -249,7 +249,7 @@ func TestFullIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InitDB lab B: %v", err)
 	}
-	if err := database.RunMigrations(dbB, false, labBID, labBURL); err != nil {
+	if err := database.RunMigrations(dbB, false, labBID, labBURL, cfg.UploadPath); err != nil {
 		t.Fatalf("Migrate lab B: %v", err)
 	}
 	if err := database.SeedDefaultUser(dbB); err != nil {

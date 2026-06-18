@@ -44,7 +44,7 @@ func main() {
 		}
 		defer db.Close()
 
-		if err := database.RunMigrations(db, isPostgres, lab.ID, lab.URLPath); err != nil {
+		if err := database.RunMigrations(db, isPostgres, lab.ID, lab.URLPath, cfg.UploadPath); err != nil {
 			log.Fatalf("Failed to run migrations for lab %s: %v", lab.URLPath, err)
 		}
 		if err := database.SeedDefaultUser(db); err != nil {
@@ -88,7 +88,7 @@ func main() {
 		backupSvcs = append(backupSvcs, backupSvc)
 		notifiers = append(notifiers, backupSvc)
 
-		pubSvc := services.NewPublicBuildService(db, cfg.PublicBuild, lab.URLPath, lab.Title)
+		pubSvc := services.NewPublicBuildService(db, cfg.PublicBuild, lab.URLPath, lab.Title, cfg.UploadPath)
 		publicBuildSvcs = append(publicBuildSvcs, pubSvc)
 		notifiers = append(notifiers, pubSvc)
 	}
@@ -109,7 +109,7 @@ func main() {
 	}
 
 	go func() {
-		for { time.Sleep(30 * time.Minute); server.CleanupTempFiles(cfg.Labs) }
+		for { time.Sleep(30 * time.Minute); server.CleanupTempFiles(cfg) }
 	}()
 
 	for _, wq := range wqs {

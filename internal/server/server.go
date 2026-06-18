@@ -94,9 +94,9 @@ func loadNavItems(currentPage, role string) []NavItem {
 	return items
 }
 
-func CleanupTempFiles(labs []config.LabConfig) {
-	for _, lab := range labs {
-		tempDir := filepath.Join("uploads", lab.URLPath, "temp")
+func CleanupTempFiles(cfg *config.Config) {
+	for _, lab := range cfg.Labs {
+		tempDir := filepath.Join(cfg.UploadPath, lab.URLPath, "temp")
 		filepath.Walk(tempDir,
 			func(path string, info os.FileInfo, err error) error {
 				if err == nil && !info.IsDir() && info.ModTime().Before(time.Now().Add(-1*time.Hour)) {
@@ -212,7 +212,7 @@ func SetupRouter(dbs map[string]*database.DB, cfg *config.Config, notifier servi
 	router.SetHTMLTemplate(templ)
 
 	router.GET("/static/*filepath", v.Handler())
-	router.Static("/uploads", "./uploads")
+	router.Static("/uploads", cfg.UploadPath)
 
 	labCfgs := make(map[string]config.LabConfig)
 	if cfg.Labs != nil {

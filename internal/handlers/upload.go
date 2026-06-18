@@ -141,10 +141,10 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	}
 	finalFilename := fileBase + ".jpeg"
 	lab := c.GetString("lab")
-	finalPath := filepath.Join("uploads", lab, "temp", finalFilename)
+	finalPath := filepath.Join(h.cfg.UploadPath, lab, "temp", finalFilename)
 
 	// Ensure temp directory exists
-	tempDir := filepath.Join("uploads", lab, "temp")
+	tempDir := filepath.Join(h.cfg.UploadPath, lab, "temp")
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, UploadResponse{
 			Success: false,
@@ -163,7 +163,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		}
 	} else {
 		// ANDROID=false: save original, then server-side compress
-		tempOriginal := filepath.Join("uploads", lab, "temp", "original_"+fileBase+ext)
+		tempOriginal := filepath.Join(h.cfg.UploadPath, lab, "temp", "original_"+fileBase+ext)
 		if err := c.SaveUploadedFile(file, tempOriginal); err != nil {
 			c.JSON(http.StatusInternalServerError, UploadResponse{
 				Success: false,
@@ -210,7 +210,7 @@ func (h *Handler) DeleteTempFile(c *gin.Context) {
 
 	lab := c.GetString("lab")
 	if ref := filepath.Base(req.FileRef); ref != "" && ref != "." && ref != "/" && ref != "\\" {
-		tempPath := filepath.Join("uploads", lab, "temp", ref)
+		tempPath := filepath.Join(h.cfg.UploadPath, lab, "temp", ref)
 		os.Remove(tempPath)
 	}
 
@@ -229,7 +229,7 @@ func (h *Handler) CleanupTempFiles(c *gin.Context) {
 	// Cleanup multiple files
 	for _, fileRef := range req.FileRefs {
 		if ref := filepath.Base(fileRef); ref != "" && ref != "." && ref != "/" && ref != "\\" {
-			tempPath := filepath.Join("uploads", lab, "temp", ref)
+			tempPath := filepath.Join(h.cfg.UploadPath, lab, "temp", ref)
 			os.Remove(tempPath)
 		}
 	}
