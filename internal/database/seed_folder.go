@@ -35,10 +35,17 @@ type jsonSchedule struct {
 	Lecturer   string `json:"lecturer"`
 }
 
-func RunSeedFolder(db *DB, labID string, urlPath string) error {
+func RunSeedFolder(db *DB, labID string, urlPath string, useDefaultFallback bool) error {
 	folder := filepath.Join("seeds", strings.ToLower(labID))
 	if _, err := os.Stat(folder); os.IsNotExist(err) {
-		return nil
+		if !useDefaultFallback {
+			return nil
+		}
+		defaultFolder := filepath.Join("seeds", "default")
+		if _, err := os.Stat(defaultFolder); os.IsNotExist(err) {
+			return nil
+		}
+		folder = defaultFolder
 	}
 	if err := seedRequiredSWFromJSON(db, folder); err != nil {
 		return fmt.Errorf("seed required_software for %s: %w", labID, err)
