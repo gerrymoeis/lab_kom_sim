@@ -398,8 +398,8 @@ func (r *PCRepository) GetStatus(id int) (string, error) {
 }
 
 func (r *PCRepository) SeedRequiredSoftware(pcID int) error {
-	_, err := r.db.Exec(`INSERT INTO pc_software (pc_id, software_id, installed)
-		SELECT ?, id, TRUE FROM software_catalog WHERE category = 'required'`, pcID)
+	_, err := r.db.Exec(`INSERT OR IGNORE INTO pc_software (pc_id, software_id, installed)
+		SELECT ?, id, FALSE FROM software_catalog WHERE category = 'required'`, pcID)
 	return err
 }
 
