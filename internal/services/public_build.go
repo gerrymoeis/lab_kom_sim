@@ -500,7 +500,7 @@ func gitPushIfChanged(repoDir, outDir, branch string) error {
 		return nil
 	}
 
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := timeutil.Now().Format("2006-01-02 15:04:05")
 	commitCmd := exec.Command("git", "-C", repoDir, "commit", "-m", fmt.Sprintf("auto-build %s", now))
 	commitCmd.Stderr = os.Stderr
 	commitCmd.Stdout = os.Stdout
