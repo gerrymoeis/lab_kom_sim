@@ -158,7 +158,7 @@ async function handlePhotoSelect(file, source) {
         formData.append('image', file);
         formData.append('type', 'device_type');
         formData.append('label', '{{ .deviceType.AssetCodePrefix }}');
-        var response = await fetchWithCSRF('/api/upload-image', { method: 'POST', body: formData });
+        var response = await fetchWithCSRF('{{$.basePath}}/api/upload-image', { method: 'POST', body: formData });
         var result = await response.json();
         if (result.success) {
             photoFileRef = result.file_ref;
@@ -246,7 +246,7 @@ window.clearPhoto = function() {
     document.getElementById('photoPreviewImage').src = '';
     document.getElementById('photo_file_ref').value = '';
     if (photoFileRef) {
-        fetchWithCSRF('/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: photoFileRef }) }).catch(function(){});
+        fetchWithCSRF('{{$.basePath}}/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: photoFileRef }) }).catch(function(){});
         photoFileRef = '';
     }
 };
