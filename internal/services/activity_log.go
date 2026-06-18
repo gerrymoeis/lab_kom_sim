@@ -10,6 +10,7 @@ import (
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/search"
+	"inventaris-lab-kom/internal/timeutil"
 )
 
 // ActivityLogService handles activity logging operations
@@ -134,7 +135,7 @@ func (s *ActivityLogService) cleanupLoop(intervalHours int) {
 }
 
 func (s *ActivityLogService) purgeOldLogs() {
-	cutoff := time.Now().UTC().AddDate(0, 0, -s.retentionDays)
+	cutoff := timeutil.Now().AddDate(0, 0, -s.retentionDays)
 	result, err := s.db.Exec("DELETE FROM activity_logs WHERE created_at < ?", cutoff)
 	if err != nil {
 		log.Printf("activity log cleanup: %v", err)
@@ -192,7 +193,7 @@ func (s *ActivityLogService) logAction(p logParams) error {
 		UserID: p.userID, Username: p.username, UserRole: p.role,
 		Action: p.action, EntityType: p.entityType, EntityID: entityID,
 		Description: desc, OldValues: oldJSON, NewValues: newJSON,
-		CreatedAt: time.Now().UTC(), IPAddress: p.ipAddress, UserAgent: p.userAgent,
+		CreatedAt: timeutil.Now(), IPAddress: p.ipAddress, UserAgent: p.userAgent,
 		Status: status, ErrorMessage: errText,
 	})
 	return nil
@@ -240,7 +241,7 @@ func (s *ActivityLogService) LogAuth(userID int, username, role, action string, 
 		UserID: userID, Username: username, UserRole: role,
 		Action: action, EntityType: "auth", EntityID: nil,
 		Description: desc, OldValues: "", NewValues: "",
-		CreatedAt: time.Now().UTC(), IPAddress: ipAddress, UserAgent: userAgent,
+		CreatedAt: timeutil.Now(), IPAddress: ipAddress, UserAgent: userAgent,
 		Status: status, ErrorMessage: errorMsg,
 	})
 	return nil

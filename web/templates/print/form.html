@@ -487,7 +487,7 @@ function generatePrint() {
         params.set('pc_labels', cfg.pcLabels.join(','));
     }
 
-    window.open('/print/generate?' + params.toString(), '_blank');
+    window.open('{{$.basePath}}/print/generate?' + params.toString(), '_blank');
 }
 
 function onTemplateFieldChange() {
@@ -534,7 +534,7 @@ function loadTemplates() {
     var type = document.querySelector('input[name="type"]:checked');
     var stickerType = type ? type.value : 'pc';
 
-    fetchWithCSRF('/api/sticker-templates?type=' + stickerType, {
+    fetchWithCSRF('{{$.basePath}}/api/sticker-templates?type=' + stickerType, {
         headers: {'Accept': 'application/json'}
     })
     .then(function(r) { return r.json(); })
@@ -604,7 +604,7 @@ function updateTemplateById(id) {
         if (templates[i].id === id) { name = templates[i].name; break; }
     }
 
-    fetchWithCSRF('/api/sticker-templates/' + id, {
+    fetchWithCSRF('{{$.basePath}}/api/sticker-templates/' + id, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: JSON.stringify({
@@ -637,7 +637,7 @@ function deleteTemplate() {
     if (!id) { return; }
     if (!confirm('Hapus template ini?')) { return; }
 
-    fetchWithCSRF('/api/sticker-templates/' + id, {
+    fetchWithCSRF('{{$.basePath}}/api/sticker-templates/' + id, {
         method: 'DELETE',
         headers: {'Accept': 'application/json'}
     })
@@ -673,7 +673,7 @@ document.getElementById('confirmSaveTemplate').addEventListener('click', functio
     var padH = parseFloat(document.getElementById('paddingH').value) || 0.3;
     var padV = parseFloat(document.getElementById('paddingV').value) || 0.3;
 
-    fetchWithCSRF('/api/sticker-templates', {
+    fetchWithCSRF('{{$.basePath}}/api/sticker-templates', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: JSON.stringify({
