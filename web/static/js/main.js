@@ -577,7 +577,7 @@ var BatchSelector = {
     toggleAll: function() {
         var container = document.getElementById('deviceBatchContainer');
         if (!container) return;
-        this.toggleGroup(container, { container: container, batchUrl: '/devices/batch-delete' });
+        this.toggleGroup(container, { container: container, batchUrl: bp + '/devices/batch-delete' });
     },
 
     _attachListeners: function() {
@@ -764,7 +764,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (BatchSelector.isActive()) {
         var groupContainer = document.getElementById('deviceBatchContainer');
         if (groupContainer) {
-            BatchSelector.enableGroup(groupContainer, { container: groupContainer, batchUrl: '/devices/batch-delete' });
+            BatchSelector.enableGroup(groupContainer, { container: groupContainer, batchUrl: bp + '/devices/batch-delete' });
         } else {
             var table = document.querySelector('table[data-batch-url]');
             if (table) BatchSelector.enable(table);
