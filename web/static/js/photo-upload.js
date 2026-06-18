@@ -49,6 +49,7 @@ function getMaxDim(type) {
 
 // --- PC-specific: serial & front photo handling ---
 
+var bp = window.BASE_PATH || '';
 var serialFileRef = null;
 var frontFileRef = null;
 var serialPreviewUrl = null;
@@ -123,7 +124,7 @@ async function uploadForProcessing(file, type) {
     var label = labelInput ? labelInput.value : window.location.pathname.split('/')[2];
     if (label) { formData.append('label', label); }
 
-    var response = await fetchWithCSRF('/api/upload-image', {
+    var response = await fetchWithCSRF(bp + '/api/upload-image', {
         method: 'POST',
         body: formData
     });
@@ -225,7 +226,7 @@ async function clearImage(type) {
 
     if (fileRef) {
         try {
-            await fetchWithCSRF('/api/delete-temp-file', {
+            await fetchWithCSRF(bp + '/api/delete-temp-file', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
