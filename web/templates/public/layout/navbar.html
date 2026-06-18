@@ -2,9 +2,8 @@
     <div class="container-fluid">
         <a class="navbar-brand" href="{{.basePath}}/dashboard.html">
             <i class="bi bi-pc-display-horizontal"></i>
-            Inventaris Lab Kom
+            Inventaris Lab Kom{{ if .labTitle }} — {{ .labTitle }}{{ end }}
         </a>
-        <span class="badge bg-warning text-dark ms-2 fs-6">{{.labTitle}}</span>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarPublic">
             <span class="navbar-toggler-icon"></span>
         </button>
