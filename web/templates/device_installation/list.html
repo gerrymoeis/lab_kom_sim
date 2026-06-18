@@ -73,7 +73,7 @@
             {{ template "layout/pagination.html" . }}
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle" data-batch-url="/installations/batch-delete">
+                <table class="table table-hover align-middle" data-batch-url="{{$.basePath}}/installations/batch-delete">
                     <thead class="table-light">
                         <tr>
                             <th class="th-w-50">#</th>

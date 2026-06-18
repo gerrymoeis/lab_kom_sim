@@ -87,7 +87,7 @@
         <div class="card-body">
             {{ if gt (len .devices) 0 }}
             <div class="table-responsive">
-                <table class="table table-hover table-sm mb-0" data-batch-url="/devices/batch-delete">
+                <table class="table table-hover table-sm mb-0" data-batch-url="{{$.basePath}}/devices/batch-delete">
                     <thead class="table-light">
                         <tr>
                             <th>#</th>

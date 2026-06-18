@@ -52,7 +52,7 @@
         <div class="card-body">
             {{ if gt (len .deviceTypes) 0 }}
             <div class="table-responsive">
-                <table class="table table-hover align-middle" data-batch-url="/device-types/batch-delete">
+                <table class="table table-hover align-middle" data-batch-url="{{$.basePath}}/device-types/batch-delete">
                     <thead class="table-light">
                         <tr>
                             <th>Nama Tipe</th>
