@@ -46,7 +46,7 @@
         {{ if gt (len .catalog) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .catalog)) 1 }} dari {{ .totalItems }} software</p>{{ end }}
         {{ template "layout/pagination.html" . }}
         <div class="table-responsive">
-            <table class="table table-hover" data-batch-url="/software/batch-delete">
+            <table class="table table-hover" data-batch-url="{{$.basePath}}/software/batch-delete">
                 <thead class="table-light">
                     <tr><th>#</th><th>Nama Software</th><th>Kategori</th><th>Deskripsi</th><th>PC Terinstall</th><th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th></tr>
                 </thead>

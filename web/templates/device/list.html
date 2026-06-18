@@ -151,7 +151,7 @@
                                 </div>
                                 <div id="ug-{{ $ui }}-cat-{{ $ci }}-type-{{ $ti }}-body" class="px-2{{ if gt $typeCount 1 }} d-none{{ end }}">
                                     <div class="table-responsive">
-                                        <table class="table table-hover table-sm mb-0" data-batch-url="/devices/batch-delete">
+                                        <table class="table table-hover table-sm mb-0" data-batch-url="{{$.basePath}}/devices/batch-delete">
                                             <thead class="table-light">
                                                 <tr>
                                                     <th>#</th>

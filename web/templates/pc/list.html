@@ -78,7 +78,7 @@
             {{ if gt (len .pcs) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .pcs)) 1 }} dari {{ .totalItems }} PC</p>{{ end }}
             {{ template "layout/pagination.html" . }}
             <div class="table-responsive">
-                <table class="table table-hover" data-batch-url="/pc/batch-delete">
+                <table class="table table-hover" data-batch-url="{{$.basePath}}/pc/batch-delete">
                     <thead class="table-light">
                         <tr>
                             <th>No. PC</th>

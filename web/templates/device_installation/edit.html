@@ -205,7 +205,7 @@ function clearPhoto() {
     document.getElementById('previewPhoto').classList.add('d-none');
     if (photoPreviewUrl) { URL.revokeObjectURL(photoPreviewUrl); photoPreviewUrl = null; }
     if (photoFileRef) {
-        fetchWithCSRF('/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: photoFileRef }) }).catch(function(){});
+        fetchWithCSRF('{{$.basePath}}/api/delete-temp-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_ref: photoFileRef }) }).catch(function(){});
     }
     photoFileRef = null;
     var hiddenInput = document.getElementById('photo_file_ref');
@@ -216,7 +216,7 @@ async function uploadForProcessing(file) {
     var formData = new FormData();
     formData.append('image', file);
     formData.append('type', 'installation');
-    var response = await fetchWithCSRF('/api/upload-image', { method: 'POST', body: formData });
+    var response = await fetchWithCSRF('{{$.basePath}}/api/upload-image', { method: 'POST', body: formData });
     return await response.json();
 }
 

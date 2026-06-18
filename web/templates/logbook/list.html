@@ -98,7 +98,7 @@
             {{ template "layout/pagination.html" . }}
 
             <div class="table-responsive">
-                <table class="table table-hover" data-batch-url="/logbook/batch-delete">
+                <table class="table table-hover" data-batch-url="{{$.basePath}}/logbook/batch-delete">
                     <thead class="table-light">
                         <tr>
                             <th class="th-w-50">#</th>

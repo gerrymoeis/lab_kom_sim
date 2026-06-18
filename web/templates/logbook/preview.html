@@ -702,7 +702,7 @@
             params.append('purpose[]', purposes[i] || '');
         }
         params.append('source_file', formData.get('source_file'));
-        window.open('/logbook/export-preview?' + params.toString(), '_blank');
+        window.open('{{$.basePath}}/logbook/export-preview?' + params.toString(), '_blank');
     }
 
     document.getElementById('previewForm').addEventListener('submit', function(e) {
@@ -716,7 +716,7 @@
         const originalText = submitBtn.innerHTML;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...';
-        fetchWithCSRF('/logbook/save', { method: 'POST', body: formData })
+        fetchWithCSRF('{{$.basePath}}/logbook/save', { method: 'POST', body: formData })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {

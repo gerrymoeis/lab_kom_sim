@@ -73,7 +73,7 @@
             {{ template "layout/pagination.html" . }}
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle" data-batch-url="/device-loans/batch-delete">
+                <table class="table table-hover align-middle" data-batch-url="{{$.basePath}}/device-loans/batch-delete">
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
@@ -189,7 +189,7 @@ document.getElementById('extendForm')?.addEventListener('submit', function(e) {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Menyimpan...';
 
-    fetchWithCSRF('/device-loans/' + loanId + '/extend', {
+    fetchWithCSRF('{{$.basePath}}/device-loans/' + loanId + '/extend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'return_date=' + encodeURIComponent(returnDate)
