@@ -2,22 +2,22 @@
 {{ $tab := or .activeTab "types" }}
 <ul class="nav nav-tabs">
     <li class="nav-item">
-        <a class="nav-link {{ if or (eq $tab "types") (eq $tab "") }}active{{ end }}" href="/devices">
+        <a class="nav-link {{ if or (eq $tab "types") (eq $tab "") }}active{{ end }}" href="{{$.basePath}}/devices">
             <i class="bi bi-hdd-rack"></i> Perangkat
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {{ if eq $tab "loans" }}active{{ end }}" href="/devices?tab=loans">
+        <a class="nav-link {{ if eq $tab "loans" }}active{{ end }}" href="{{$.basePath}}/devices?tab=loans">
             <i class="bi bi-journal-arrow-up"></i> Peminjaman
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {{ if eq $tab "usages" }}active{{ end }}" href="/devices?tab=usages">
+        <a class="nav-link {{ if eq $tab "usages" }}active{{ end }}" href="{{$.basePath}}/devices?tab=usages">
             <i class="bi bi-clipboard-data"></i> Pemakaian
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link {{ if eq $tab "installations" }}active{{ end }}" href="/devices?tab=installations">
+        <a class="nav-link {{ if eq $tab "installations" }}active{{ end }}" href="{{$.basePath}}/devices?tab=installations">
             <i class="bi bi-pc-display"></i> Instalasi
         </a>
     </li>

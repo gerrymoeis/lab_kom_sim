@@ -6,11 +6,11 @@
             <h5 class="mb-0"><i class="bi bi-eye"></i> {{ .title }}</h5>
             <div class="d-flex flex-column flex-sm-row gap-2">
                 {{ if eq .role "admin" }}
-                <a href="/software/{{ .software.Slug }}/edit" class="btn btn-sm btn-warning">
+                <a href="{{$.basePath}}/software/{{ .software.Slug }}/edit" class="btn btn-sm btn-warning">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
                 {{ end }}
-                <a href="/software" class="btn btn-sm btn-secondary">
+                <a href="{{$.basePath}}/software" class="btn btn-sm btn-secondary">
                     <i class="bi bi-arrow-left"></i> Kembali
                 </a>
             </div>

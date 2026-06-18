@@ -9,13 +9,13 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
-            <a href="/devices/create" class="btn btn-primary flex-grow-1">
+            <a href="{{$.basePath}}/devices/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Perangkat
             </a>
-            <a href="/devices/export" class="btn btn-success flex-grow-1">
+            <a href="{{$.basePath}}/devices/export" class="btn btn-success flex-grow-1">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
-            <a href="/print?type=device" class="btn btn-dark flex-grow-1 text-white">
+            <a href="{{$.basePath}}/print?type=device" class="btn btn-dark flex-grow-1 text-white">
                 <i class="bi bi-printer"></i> Print Stiker
             </a>
             {{ template "layout/header_actions_end.html" }}
@@ -27,7 +27,7 @@
 
     <div class="card shadow-sm card-no-hover">
         <div class="card-body">
-            <form method="GET" action="/devices" class="row g-3 mb-3">
+            <form method="GET" action="{{$.basePath}}/devices" class="row g-3 mb-3">
                 <input type="hidden" name="tab" value="types">
                 <div class="col-md-3">
                     <label for="search" class="form-label">Cari</label>
@@ -65,7 +65,7 @@
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
-                    <a href="/devices" class="btn btn-secondary w-100">
+                    <a href="{{$.basePath}}/devices" class="btn btn-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>
                 </div>
@@ -108,18 +108,18 @@
                                 <span class="badge bg-secondary ms-2">{{ len $cat.Types }} tipe</span>
                             </div>
                             <div class="d-flex gap-1 ms-2 flex-shrink-0">
-                                <a href="/categories/{{ $cat.CategoryPrefix | lower }}" class="btn btn-sm btn-info" title="Detail Kategori">
+                                <a href="{{$.basePath}}/categories/{{ $cat.CategoryPrefix | lower }}" class="btn btn-sm btn-info" title="Detail Kategori">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 {{ if eq $.role "admin" }}
-                                <a href="/categories/{{ $cat.CategoryPrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Kategori">
+                                <a href="{{$.basePath}}/categories/{{ $cat.CategoryPrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Kategori">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <button type="button" class="btn btn-sm btn-danger" title="Hapus Kategori"
                                     onclick="confirmDelete({message:'Hapus kategori &quot;{{ $cat.CategoryName }}&quot;? Semua perangkat dalam kategori ini akan terhapus.', requirePrefix:true, prefix:'{{ $cat.CategoryPrefix }}', type:'kategori', formId:'del-cat-{{ $ui }}-{{ $ci }}'})">
                                     <i class="bi bi-trash"></i>
                                 </button>
-                                <form id="del-cat-{{ $ui }}-{{ $ci }}" method="POST" action="/categories/{{ $cat.CategoryPrefix | lower }}/delete" class="d-none"></form>
+                                <form id="del-cat-{{ $ui }}-{{ $ci }}" method="POST" action="{{$.basePath}}/categories/{{ $cat.CategoryPrefix | lower }}/delete" class="d-none"></form>
                                 {{ end }}
                             </div>
                         </div>
@@ -134,18 +134,18 @@
                                         <span class="badge bg-secondary ms-1">{{ len $type.Devices }} perangkat</span>
                                     </div>
                                     <div class="d-flex gap-1 ms-2 flex-shrink-0">
-                                        <a href="/device-types/{{ $type.TypePrefix | lower }}" class="btn btn-sm btn-info" title="Detail Tipe">
+                                        <a href="{{$.basePath}}/device-types/{{ $type.TypePrefix | lower }}" class="btn btn-sm btn-info" title="Detail Tipe">
                                             <i class="bi bi-eye"></i>
                                         </a>
                                         {{ if eq $.role "admin" }}
-                                        <a href="/device-types/{{ $type.TypePrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Tipe">
+                                        <a href="{{$.basePath}}/device-types/{{ $type.TypePrefix | lower }}/edit" class="btn btn-sm btn-warning" title="Edit Tipe">
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <button type="button" class="btn btn-sm btn-danger" title="Hapus Tipe"
                                             onclick="confirmDelete({message:'Hapus tipe &quot;{{ $type.TypeName }}&quot;? Semua perangkat dalam tipe ini akan terhapus.', requirePrefix:true, prefix:'{{ $type.TypePrefix }}', type:'tipe', formId:'del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}'})">
                                             <i class="bi bi-trash"></i>
                                         </button>
-                                        <form id="del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}" method="POST" action="/device-types/{{ $type.TypePrefix | lower }}/delete" class="d-none"></form>
+                                        <form id="del-type-{{ $ui }}-{{ $ci }}-{{ $ti }}" method="POST" action="{{$.basePath}}/device-types/{{ $type.TypePrefix | lower }}/delete" class="d-none"></form>
                                         {{ end }}
                                     </div>
                                 </div>
@@ -195,18 +195,18 @@
                                                     </td>
                                                     <td class="text-nowrap text-end batch-action-col">
                                                         <span class="batch-mode-off">
-                                                        <a href="/devices/{{ $d.CategoryPrefix | lower }}/{{ $d.DeviceTypePrefix | lower }}/{{ $d.AssetCode | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                                        <a href="{{$.basePath}}/devices/{{ $d.CategoryPrefix | lower }}/{{ $d.DeviceTypePrefix | lower }}/{{ $d.AssetCode | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
                                                             <i class="bi bi-eye"></i>
                                                         </a>
                                                         {{ if eq $.role "admin" }}
-                                                        <a href="/devices/{{ $d.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                                        <a href="{{$.basePath}}/devices/{{ $d.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                                             <i class="bi bi-pencil"></i>
                                                         </a>
                                                         <button type="button" class="btn btn-sm btn-danger" title="Hapus"
                                                             onclick="confirmDelete({message:'Hapus perangkat {{ $d.AssetCode }}?', formId:'del-dev-{{ $d.ID }}'})">
                                                             <i class="bi bi-trash"></i>
                                                         </button>
-                                                        <form id="del-dev-{{ $d.ID }}" method="POST" action="/devices/{{ $d.AssetCode | lower }}/delete" class="d-none"></form>
+                                                        <form id="del-dev-{{ $d.ID }}" method="POST" action="{{$.basePath}}/devices/{{ $d.AssetCode | lower }}/delete" class="d-none"></form>
                                                         {{ end }}
                                                         </span>
                                                     </td>
