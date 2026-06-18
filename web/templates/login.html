@@ -24,7 +24,7 @@
 
                     {{ template "layout/alert.html" . }}
 
-                    <form method="POST" action="{{$.basePath}}/{{ .lab }}/login" data-validate="true">
+                    <form method="POST" action="{{$.basePath}}/login" data-validate="true">
                         <input type="hidden" name="_csrf" value="{{ .csrf_token }}">
                         <div class="mb-3">
                             <label for="username" class="form-label required">Username</label>
@@ -65,7 +65,7 @@
                         </small>
                     </div>
                     <div class="mt-3 text-center pt-3 border-top">
-                        <a href="{{$.basePath}}/" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Pilih Lab Lain</a>
+                        <a href="/" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Pilih Lab Lain</a>
                     </div>
                 </div>
             </div>
