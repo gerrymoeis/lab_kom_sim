@@ -7,6 +7,7 @@ import (
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/search"
+	"inventaris-lab-kom/internal/timeutil"
 )
 
 type LogbookRepository struct {
@@ -250,12 +251,12 @@ func (r *LogbookRepository) GetMaxID() (int, error) {
 
 func (r *LogbookRepository) Create(date time.Time, studentName, nim, timeIn, timeOut, purpose string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO logbook_entries (date, student_name, nim, time_in, time_out, purpose, source_file, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'manual_entry', ?, ?)`,
-		date, studentName, nim, timeIn, timeOut, purpose, time.Now().UTC(), time.Now().UTC())
+		date, studentName, nim, timeIn, timeOut, purpose, timeutil.Now(), timeutil.Now())
 }
 
 func (r *LogbookRepository) Update(id int, date time.Time, studentName, nim, timeIn, timeOut, purpose string) error {
 	_, err := r.db.Exec(`UPDATE logbook_entries SET date=?, student_name=?, nim=?, time_in=?, time_out=?, purpose=?, updated_at=? WHERE id=?`,
-		date, studentName, nim, timeIn, timeOut, purpose, time.Now().UTC(), id)
+		date, studentName, nim, timeIn, timeOut, purpose, timeutil.Now(), id)
 	return err
 }
 
@@ -278,7 +279,7 @@ func (r *LogbookRepository) BulkImport(entries []BulkEntry, sourceFile string) e
 	}
 	defer stmt.Close()
 
-	now := time.Now().UTC()
+	now := timeutil.Now()
 	for _, e := range entries {
 		if _, err := stmt.Exec(e.Date, e.StudentName, e.NIM, e.TimeIn, e.TimeOut, e.Purpose, sourceFile, now, now); err != nil {
 			return err
