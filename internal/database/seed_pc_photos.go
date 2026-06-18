@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"inventaris-lab-kom/internal/timeutil"
 )
 
 func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
@@ -28,9 +30,10 @@ func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
 		return nil
 	}
 
-	// Check if photo files already exist on disk (more reliable than DB-only check)
 	pcDir := filepath.Join(uploadPath, urlPath, "pc")
-	if fi, err := os.Stat(filepath.Join(pcDir, "1_serial.jpeg")); err == nil && fi.Size() > 0 {
+	// Check if seed photos already exist using standardized naming (pc-{num}_{type}_{date}.jpeg)
+	marker := filepath.Join(pcDir, ".seed_done")
+	if fi, err := os.Stat(marker); err == nil && fi.Size() >= 0 {
 		return nil
 	}
 	if err := os.MkdirAll(pcDir, 0755); err != nil {
@@ -48,15 +51,33 @@ func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
 		return nil
 	}
 
+	dateStr := timeutil.Now().Format("020106") // DDMMYY — same format as UploadImage
+
 	serialMap := map[int]string{}
 	frontMap := map[int]string{}
 	allNums := map[int]bool{}
+
+	// Rename extracted files to standardized naming: pc-{num}_{type}_{date}.jpeg
 	for _, e := range entries {
 		allNums[e.pcNum] = true
+		oldPath := filepath.Join(pcDir, e.fileName)
+		label := fmt.Sprintf("pc-%d", e.pcNum)
+		newName := fmt.Sprintf("%s_%s_%s.jpeg", label, e.dbColSuffix, dateStr)
+		newPath := filepath.Join(pcDir, newName)
+
+		if err := os.Rename(oldPath, newPath); err != nil {
+			// If rename fails (e.g., cross-device), copy+delete
+			if cpErr := copyFile(oldPath, newPath); cpErr != nil {
+				fmt.Printf("WARN: seedPCPhotos: failed to rename %s -> %s: %v\n", oldPath, newPath, err)
+				continue
+			}
+			os.Remove(oldPath)
+		}
+
 		if e.dbCol == "photo_serial" {
-			serialMap[e.pcNum] = e.fileName
+			serialMap[e.pcNum] = newName
 		} else {
-			frontMap[e.pcNum] = e.fileName
+			frontMap[e.pcNum] = newName
 		}
 	}
 
@@ -74,14 +95,18 @@ func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
 		}
 	}
 
+	// Write marker file
+	os.WriteFile(marker, []byte("done"), 0644)
+
 	fmt.Printf("Seeded PC photos: %d files extracted, %d PCs updated\n", len(entries), updated)
 	return nil
 }
 
 type photoEntry struct {
-	pcNum    int
-	dbCol    string
-	fileName string
+	pcNum       int
+	dbCol       string // "photo_serial" or "photo_front"
+	dbColSuffix string // "serial" or "front"
+	fileName    string
 }
 
 func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEntry, error) {
@@ -111,8 +136,10 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 		}
 		pcNum, _ := strconv.Atoi(matches[1])
 		dbCol := "photo_serial"
+		dbColSuffix := "serial"
 		if matches[2] == "full" || matches[2] == "front" {
 			dbCol = "photo_front"
+			dbColSuffix = "front"
 		}
 
 		dstPath := filepath.Join(pcDir, base)
@@ -134,9 +161,10 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 		dst.Close()
 
 		entries = append(entries, photoEntry{
-			pcNum:    pcNum,
-			dbCol:    dbCol,
-			fileName: base,
+			pcNum:       pcNum,
+			dbCol:       dbCol,
+			dbColSuffix: dbColSuffix,
+			fileName:    base,
 		})
 	}
 
@@ -228,4 +256,19 @@ func downloadReleaseAsset(releaseURL, token string) (string, error) {
 	}
 
 	return tmpPath, nil
+}
+
+func copyFile(src, dst string) error {
+	s, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	d, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	_, err = io.Copy(d, s)
+	return err
 }

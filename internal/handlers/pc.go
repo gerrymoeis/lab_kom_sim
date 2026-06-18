@@ -104,9 +104,23 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		return
 	}
 
-	photoSerial, photoFront := processPhotoRefs(h.cfg.UploadPath, c.GetString("lab"), req.SerialFileRef, req.FrontFileRef)
+	// Pre-compute label so we can scan temp dir for matching photos
+	label := req.Label
+	if label == "" {
+		label = h.pcService.NextLabel(req.Placement, req.IsMahasiswa == "true")
+	}
+
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
+	lab := c.GetString("lab")
+	uploadPath := h.cfg.UploadPath
+
+	// Move photos from temp/ to pc/ using label-based scanning (more robust)
+	photoSerial, photoFront := movePCPhotos(uploadPath, lab, label)
+	// Fallback: try hidden input refs if label scanning found nothing
+	if photoSerial == "" && photoFront == "" {
+		photoSerial, photoFront = processPhotoRefs(uploadPath, lab, req.SerialFileRef, req.FrontFileRef)
+	}
 
 	_, err := h.pcService.CreatePC(services.CreatePCInput{
 		Row: req.Row, Column: req.Column,
@@ -115,7 +129,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		SerialNumber: req.SerialNumber, OperatingSystem: req.OperatingSystem,
 		PCType: req.PCType, BrandModel: req.BrandModel, Accessories: req.Accessories,
 		PhotoSerial: photoSerial, PhotoFront: photoFront,
-		Label: req.Label, IsMahasiswa: req.IsMahasiswa == "true",
+		Label: label, IsMahasiswa: req.IsMahasiswa == "true",
 		PurchaseDate: req.PurchaseDate,
 		LastChecked: req.LastChecked,
 		Notes: req.Notes,
@@ -183,13 +197,20 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	photoSerial, photoFront := processPhotoRefs(h.cfg.UploadPath, c.GetString("lab"), req.SerialFileRef, req.FrontFileRef)
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-
+	lab := c.GetString("lab")
+	uploadPath := h.cfg.UploadPath
 	newLabel := req.Label
 	if newLabel == "" {
 		newLabel = label
+	}
+
+	// Move photos from temp/ to pc/ using label-based scanning (more robust)
+	photoSerial, photoFront := movePCPhotos(uploadPath, lab, newLabel)
+	// Fallback: try hidden input refs if label scanning found nothing
+	if photoSerial == "" && photoFront == "" {
+		photoSerial, photoFront = processPhotoRefs(uploadPath, lab, req.SerialFileRef, req.FrontFileRef)
 	}
 
 	if err := h.pcService.UpdatePC(label, services.UpdatePCInput{
@@ -554,6 +575,53 @@ func processPhotoRef(uploadPath, lab, photoRef, subDir string) string {
 	}
 	os.Remove(src)
 	return ref
+}
+
+// movePCPhotos scans temp dir for files matching the PC label pattern,
+// copies them to pc/ with standardized name {label}_{type}.jpeg,
+// and cleans up temp. Returns the new filenames.
+func movePCPhotos(uploadPath, lab, label string) (serial, front string) {
+	tempDir := filepath.Join(uploadPath, lab, "temp")
+	pcDir := filepath.Join(uploadPath, lab, "pc")
+
+	if err := os.MkdirAll(pcDir, 0755); err != nil {
+		log.Printf("WARN: movePCPhotos: failed to create pc dir: %v", err)
+		return
+	}
+
+	label = strings.ToLower(label)
+	for _, ptype := range []string{"serial", "front"} {
+		pattern := fmt.Sprintf("%s_%s_*.jpeg", label, ptype)
+		matches, err := filepath.Glob(filepath.Join(tempDir, pattern))
+		if err != nil || len(matches) == 0 {
+			continue
+		}
+		// Use the first match (most recent upload)
+		src := matches[0]
+		base := filepath.Base(src)
+		dst := filepath.Join(pcDir, base)
+
+		if err := services.CopyFile(src, dst); err != nil {
+			log.Printf("WARN: movePCPhotos: copy failed %s -> %s: %v", src, dst, err)
+			// Still clean up temp files even if copy fails
+			for _, m := range matches {
+				os.Remove(m)
+			}
+			continue
+		}
+
+		// Clean up all matching temp files for this type
+		for _, m := range matches {
+			os.Remove(m)
+		}
+
+		if ptype == "serial" {
+			serial = base
+		} else {
+			front = base
+		}
+	}
+	return
 }
 
 func processPhotoRefs(uploadPath, lab, serialRef, frontRef string) (serial, front string) {
