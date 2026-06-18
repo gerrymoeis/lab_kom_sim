@@ -100,16 +100,16 @@ func main() {
 	defer cleanup()
 
 	for _, lab := range cfg.Labs {
-		if err := os.MkdirAll(lab.UploadDir, 0755); err != nil {
-			log.Printf("Warning: Failed to create upload directory for lab %s: %v", lab.URLPath, err)
+		for _, sub := range []string{"pc", "device_types", "temp", "logbook", "device_installations"} {
+			dir := filepath.Join(lab.UploadDir, sub)
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				log.Printf("Warning: Failed to create upload subdir for lab %s: %v", lab.URLPath, err)
+			}
 		}
-	}
-	if err := os.MkdirAll("uploads/temp", 0755); err != nil {
-		log.Printf("Warning: Failed to create temp directory: %v", err)
 	}
 
 	go func() {
-		for { time.Sleep(30 * time.Minute); server.CleanupTempFiles() }
+		for { time.Sleep(30 * time.Minute); server.CleanupTempFiles(cfg.Labs) }
 	}()
 
 	for _, wq := range wqs {

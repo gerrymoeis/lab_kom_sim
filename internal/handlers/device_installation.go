@@ -87,7 +87,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 		return
 	}
 
-	photo := processPhotoRef(req.PhotoFileRef, "device_installations")
+	photo := processPhotoRef(c.GetString("lab"), req.PhotoFileRef, "device_installations")
 
 	deviceID, _ := strconv.Atoi(req.DeviceID)
 	uid, u, r, _ := h.user(c)
@@ -161,7 +161,7 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		return
 	}
 
-	photo := processPhotoRef(req.PhotoFileRef, "device_installations")
+	photo := processPhotoRef(c.GetString("lab"), req.PhotoFileRef, "device_installations")
 
 	// If no new photo uploaded, keep existing
 	if photo == "" {

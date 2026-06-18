@@ -94,14 +94,17 @@ func loadNavItems(currentPage, role string) []NavItem {
 	return items
 }
 
-func CleanupTempFiles() {
-	filepath.Walk(filepath.Join("uploads", "temp"),
-		func(path string, info os.FileInfo, err error) error {
-			if err == nil && !info.IsDir() && info.ModTime().Before(time.Now().Add(-1*time.Hour)) {
-				os.Remove(path)
-			}
-			return nil
-		})
+func CleanupTempFiles(labs []config.LabConfig) {
+	for _, lab := range labs {
+		tempDir := filepath.Join("uploads", lab.URLPath, "temp")
+		filepath.Walk(tempDir,
+			func(path string, info os.FileInfo, err error) error {
+				if err == nil && !info.IsDir() && info.ModTime().Before(time.Now().Add(-1*time.Hour)) {
+					os.Remove(path)
+				}
+				return nil
+			})
+	}
 }
 
 func LoadTemplates(templatesDir string, staticURL func(string) string) (*template.Template, error) {

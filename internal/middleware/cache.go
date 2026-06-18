@@ -19,13 +19,15 @@ func CacheControl() gin.HandlerFunc {
 			c.Header("Pragma", "no-cache")
 			c.Header("Expires", "0")
 
-		case strings.HasPrefix(path, "/uploads/temp/"):
+	case strings.HasPrefix(path, "/uploads/"):
+		after := strings.TrimPrefix(path, "/uploads/")
+		if slashIdx := strings.Index(after, "/"); slashIdx >= 0 && strings.HasPrefix(after[slashIdx:], "/temp/") {
 			c.Header("Cache-Control", "no-cache, no-store")
-
-		case strings.HasPrefix(path, "/uploads/"):
+		} else {
 			c.Header("Cache-Control", "public, max-age=86400")
+		}
 
-		case strings.HasPrefix(path, "/static/"):
+	case strings.HasPrefix(path, "/static/"):
 			if versionedFilePattern.MatchString(path) {
 				c.Header("Cache-Control", "public, max-age=31536000, immutable")
 			} else {

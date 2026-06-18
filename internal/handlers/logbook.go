@@ -210,14 +210,15 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 	}
 	fileRef := strings.TrimSpace(uploadReq.FileRef)
 
+	lab := c.GetString("lab")
 	if fileRef != "" {
 		fn = filepath.Base(fileRef)
 		if fn == "" || fn == "." || fn == "/" || fn == "\\" {
 			h.errHTML(c, "Nama file tidak valid")
 			return
 		}
-		tempPath := filepath.Join("uploads", "temp", fn)
-		path = filepath.Join("uploads", "logbook", fn)
+		tempPath := filepath.Join("uploads", lab, "temp", fn)
+		path = filepath.Join("uploads", lab, "logbook", fn)
 		os.MkdirAll(filepath.Dir(path), 0755)
 		if err := services.CopyFile(tempPath, path); err != nil {
 			h.errHTML(c, "Gagal memproses file: file tidak ditemukan")
@@ -251,12 +252,12 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 			h.errHTML(c, "File harus berupa gambar"); return
 		}
 		fn = fmt.Sprintf("logbook_%d%s", time.Now().Unix(), ext)
-		tempPath := filepath.Join("uploads", "temp", fn)
+		tempPath := filepath.Join("uploads", lab, "temp", fn)
 		os.MkdirAll(filepath.Dir(tempPath), 0755)
 		if err := c.SaveUploadedFile(file, tempPath); err != nil {
 			h.errHTML(c, "Gagal menyimpan file"); return
 		}
-		logbookPath := filepath.Join("uploads", "logbook", fn)
+		logbookPath := filepath.Join("uploads", lab, "logbook", fn)
 		os.MkdirAll(filepath.Dir(logbookPath), 0755)
 		if err := services.CopyFile(tempPath, logbookPath); err != nil {
 			os.Remove(tempPath)

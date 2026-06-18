@@ -301,7 +301,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 	}
 
 	// Process photo ref for inline device type creation
-	photoFile, err := processDeviceTypePhotoRef(req.NewTypePhotoFileRef)
+	photoFile, err := processDeviceTypePhotoRef(c.GetString("lab"), req.NewTypePhotoFileRef)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -541,7 +541,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	ip, ua := getRequestContext(c)
 
 	// Process photo ref
-	photoFile, err := processDeviceTypePhotoRef(req.PhotoFileRef)
+	photoFile, err := processDeviceTypePhotoRef(c.GetString("lab"), req.PhotoFileRef)
 	if err != nil {
 		h.renderEditPageWithError(c, dt, err.Error())
 		return
@@ -927,13 +927,13 @@ func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bo
 	return grouped
 }
 
-func processDeviceTypePhotoRef(fileRef string) (string, error) {
+func processDeviceTypePhotoRef(lab, fileRef string) (string, error) {
 	ref := filepath.Base(strings.TrimSpace(fileRef))
 	if ref == "" || ref == "." || ref == "/" || ref == "\\" {
 		return "", nil
 	}
-	src := filepath.Join("uploads", "temp", ref)
-	dst := filepath.Join("uploads", "device_types", ref)
+	src := filepath.Join("uploads", lab, "temp", ref)
+	dst := filepath.Join("uploads", lab, "device_types", ref)
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return "", fmt.Errorf("gagal membuat direktori foto: %w", err)
 	}
