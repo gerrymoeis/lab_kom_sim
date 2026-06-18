@@ -33,6 +33,9 @@ func LabURL(c *gin.Context, path string) string {
 	if lab == "" {
 		return path
 	}
+	if path == "" {
+		return "/" + lab
+	}
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
