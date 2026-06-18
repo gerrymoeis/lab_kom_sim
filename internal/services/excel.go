@@ -2,9 +2,10 @@
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/xuri/excelize/v2"
+
+	"inventaris-lab-kom/internal/timeutil"
 )
 
 // ExcelService handles Excel file generation
@@ -151,7 +152,7 @@ func (s *ExcelService) applyConditionalFormatting(f *excelize.File, sheetName st
 // GenerateFilename generates a consistent filename with timestamp
 // Format: {prefix}_YYYYMMDD_HHMMSS.xlsx
 func (s *ExcelService) GenerateFilename(prefix string) string {
-	timestamp := time.Now().Format("20060102_150405")
+	timestamp := timeutil.Now().Format("20060102_150405")
 	return fmt.Sprintf("%s_%s.xlsx", prefix, timestamp)
 }
 
