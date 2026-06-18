@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func seedPCPhotos(db *DB) error {
+func seedPCPhotos(db *DB, urlPath string) error {
 	releaseURL := os.Getenv("PC_PHOTO_RELEASE_URL")
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	if releaseURL == "" || githubToken == "" {
@@ -33,11 +33,10 @@ func seedPCPhotos(db *DB) error {
 	if uploadPath == "" {
 		uploadPath = "uploads"
 	}
-	if fi, err := os.Stat(filepath.Join(uploadPath, "pc", "1_serial.jpeg")); err == nil && fi.Size() > 0 {
+	pcDir := filepath.Join(uploadPath, urlPath, "pc")
+	if fi, err := os.Stat(filepath.Join(pcDir, "1_serial.jpeg")); err == nil && fi.Size() > 0 {
 		return nil
 	}
-
-	pcDir := filepath.Join(uploadPath, "pc")
 	if err := os.MkdirAll(pcDir, 0755); err != nil {
 		return fmt.Errorf("seedPCPhotos: failed to create pc dir: %w", err)
 	}

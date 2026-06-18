@@ -139,10 +139,11 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		fileBase = fmt.Sprintf("temp_%s_%s", req.Type, dateStr)
 	}
 	finalFilename := fileBase + ".jpeg"
-	finalPath := filepath.Join("uploads", "temp", finalFilename)
+	lab := c.GetString("lab")
+	finalPath := filepath.Join("uploads", lab, "temp", finalFilename)
 
 	// Ensure temp directory exists
-	tempDir := filepath.Join("uploads", "temp")
+	tempDir := filepath.Join("uploads", lab, "temp")
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		c.JSON(http.StatusInternalServerError, UploadResponse{
 			Success: false,
@@ -161,7 +162,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		}
 	} else {
 		// ANDROID=false: save original, then server-side compress
-		tempOriginal := filepath.Join("uploads", "temp", "original_"+fileBase+ext)
+		tempOriginal := filepath.Join("uploads", lab, "temp", "original_"+fileBase+ext)
 		if err := c.SaveUploadedFile(file, tempOriginal); err != nil {
 			c.JSON(http.StatusInternalServerError, UploadResponse{
 				Success: false,
@@ -192,7 +193,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	// Return success response
 	c.JSON(http.StatusOK, UploadResponse{
 		Success:    true,
-		PreviewURL: "/uploads/temp/" + finalFilename,
+		PreviewURL: "/uploads/" + lab + "/temp/" + finalFilename,
 		FileRef:    finalFilename,
 		Message:    "File berhasil diproses",
 	})
@@ -206,8 +207,9 @@ func (h *Handler) DeleteTempFile(c *gin.Context) {
 		return
 	}
 
+	lab := c.GetString("lab")
 	if ref := filepath.Base(req.FileRef); ref != "" && ref != "." && ref != "/" && ref != "\\" {
-		tempPath := filepath.Join("uploads", "temp", ref)
+		tempPath := filepath.Join("uploads", lab, "temp", ref)
 		os.Remove(tempPath)
 	}
 
@@ -222,10 +224,11 @@ func (h *Handler) CleanupTempFiles(c *gin.Context) {
 		return
 	}
 
+	lab := c.GetString("lab")
 	// Cleanup multiple files
 	for _, fileRef := range req.FileRefs {
 		if ref := filepath.Base(fileRef); ref != "" && ref != "." && ref != "/" && ref != "\\" {
-			tempPath := filepath.Join("uploads", "temp", ref)
+			tempPath := filepath.Join("uploads", lab, "temp", ref)
 			os.Remove(tempPath)
 		}
 	}
