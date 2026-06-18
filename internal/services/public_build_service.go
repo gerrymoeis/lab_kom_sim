@@ -11,24 +11,26 @@ import (
 )
 
 type PublicBuildService struct {
-	db      *database.DB
-	cfg     config.PublicBuildConfig
-	labName string
-	labTitle string
-	trigger chan struct{}
-	stop    chan struct{}
-	done    chan struct{}
-	mu      sync.Mutex
+	db         *database.DB
+	cfg        config.PublicBuildConfig
+	labName    string
+	labTitle   string
+	uploadPath string
+	trigger    chan struct{}
+	stop       chan struct{}
+	done       chan struct{}
+	mu         sync.Mutex
 }
 
-func NewPublicBuildService(db *database.DB, cfg config.PublicBuildConfig, labName, labTitle string) *PublicBuildService {
+func NewPublicBuildService(db *database.DB, cfg config.PublicBuildConfig, labName, labTitle, uploadPath string) *PublicBuildService {
 	return &PublicBuildService{
-		db:      db,
-		cfg:     cfg,
-		labName: labName,
-		labTitle: labTitle,
-		stop:    make(chan struct{}),
-		done:    make(chan struct{}),
+		db:         db,
+		cfg:        cfg,
+		labName:    labName,
+		labTitle:   labTitle,
+		uploadPath: uploadPath,
+		stop:       make(chan struct{}),
+		done:       make(chan struct{}),
 	}
 }
 
@@ -97,7 +99,7 @@ func (s *PublicBuildService) runBuild() {
 	}
 	defer s.mu.Unlock()
 
-	if err := RunPublicBuild(s.db, s.cfg, s.labName, s.labTitle); err != nil {
+	if err := RunPublicBuild(s.db, s.cfg, s.labName, s.labTitle, s.uploadPath); err != nil {
 		log.Printf("PublicBuild[%s]: FAILED — %v", s.labName, err)
 	} else {
 		log.Printf("PublicBuild[%s]: SUCCESS", s.labName)
@@ -121,7 +123,7 @@ func (s *PublicBuildService) BuildNow() error {
 		return fmt.Errorf("build already running")
 	}
 	defer s.mu.Unlock()
-	return RunPublicBuild(s.db, s.cfg, s.labName, s.labTitle)
+	return RunPublicBuild(s.db, s.cfg, s.labName, s.labTitle, s.uploadPath)
 }
 
 type MultiNotifier struct {

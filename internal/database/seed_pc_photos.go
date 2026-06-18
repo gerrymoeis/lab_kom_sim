@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func seedPCPhotos(db *DB, urlPath string) error {
+func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
 	releaseURL := os.Getenv("PC_PHOTO_RELEASE_URL")
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	if releaseURL == "" || githubToken == "" {
@@ -29,10 +29,6 @@ func seedPCPhotos(db *DB, urlPath string) error {
 	}
 
 	// Check if photo files already exist on disk (more reliable than DB-only check)
-	uploadPath := os.Getenv("UPLOAD_PATH")
-	if uploadPath == "" {
-		uploadPath = "uploads"
-	}
 	pcDir := filepath.Join(uploadPath, urlPath, "pc")
 	if fi, err := os.Stat(filepath.Join(pcDir, "1_serial.jpeg")); err == nil && fi.Size() > 0 {
 		return nil
