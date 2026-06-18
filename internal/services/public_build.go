@@ -98,6 +98,12 @@ func loadPublicFuncMap() template.FuncMap {
 			return t
 		},
 		"tzCode": func() string { return timeutil.Code() },
+		"imgv": func(filename string, t time.Time) string {
+			if filename == "" || t.IsZero() {
+				return filename
+			}
+			return filename + "?v=" + fmt.Sprintf("%d", t.Unix())
+		},
 	}
 }
 

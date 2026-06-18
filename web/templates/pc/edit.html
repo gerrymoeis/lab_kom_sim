@@ -107,7 +107,7 @@
 
                             {{ if .pc.PhotoSerial }}
                             <div class="mb-3">
-                                <img src="/uploads/{{$.lab}}/pc/{{ .pc.PhotoSerial }}" alt="Foto Serial" class="img-thumbnail" style="max-width: 300px;">
+                                <img src="/uploads/{{$.lab}}/pc/{{ .pc.PhotoSerial | imgv .pc.UpdatedAt }}" alt="Foto Serial" class="img-thumbnail" style="max-width: 300px;">
                                 <p class="text-muted small mb-0 mt-2">Foto saat ini: {{ .pc.PhotoSerial }}</p>
                             </div>
                             {{ end }}
@@ -157,7 +157,7 @@
 
                             {{ if .pc.PhotoFront }}
                             <div class="mb-3">
-                                <img src="/uploads/{{$.lab}}/pc/{{ .pc.PhotoFront }}" alt="Foto Tampilan Depan" class="img-thumbnail" style="max-width: 300px;">
+                                <img src="/uploads/{{$.lab}}/pc/{{ .pc.PhotoFront | imgv .pc.UpdatedAt }}" alt="Foto Tampilan Depan" class="img-thumbnail" style="max-width: 300px;">
                                 <p class="text-muted small mb-0 mt-2">Foto saat ini: {{ .pc.PhotoFront }}</p>
                             </div>
                             {{ end }}
