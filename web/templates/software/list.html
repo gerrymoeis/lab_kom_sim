@@ -8,14 +8,14 @@
         {{ if eq .role "admin" }}
         {{ template "layout/header_actions_start.html" $ }}
         <button type="button" class="btn btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#addSoftwareModal"><i class="bi bi-plus-circle"></i> Tambah Software</button>
-        <a href="/software/export" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
+        <a href="{{$.basePath}}/software/export" class="btn btn-success flex-grow-1"><i class="bi bi-file-earmark-excel"></i> Export Excel</a>
         {{ template "layout/header_actions_end.html" }}
         {{ end }}
     </div>
 </div>
 <div class="card shadow-sm">
     <div class="card-body">
-        <form method="GET" action="/software" class="row g-3 mb-3">
+        <form method="GET" action="{{$.basePath}}/software" class="row g-3 mb-3">
             <div class="col-md-4">
                 <label for="search" class="form-label">Cari</label>
                 <input type="text" id="search" name="search" class="form-control" placeholder="Cari software..." value="{{ .filters.search }}">
@@ -40,7 +40,7 @@
                 <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i> Filter</button>
             </div>
             <div class="col-md-2 d-flex align-items-end">
-                <a href="/software" class="btn btn-secondary w-100"><i class="bi bi-x-circle"></i> Reset</a>
+                <a href="{{$.basePath}}/software" class="btn btn-secondary w-100"><i class="bi bi-x-circle"></i> Reset</a>
             </div>
         </form>
         {{ if gt (len .catalog) 0 }}<p class="text-muted my-2">Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .catalog)) 1 }} dari {{ .totalItems }} software</p>{{ end }}
@@ -60,11 +60,11 @@
                         <td>{{ .InstalledCount }} / {{ .TotalPCs }} PC</td>
                         <td class="batch-action-col text-nowrap text-end">
                             <span class="batch-mode-off">
-                                <a href="/software/{{ .Slug }}" class="btn btn-sm btn-info me-1" title="Detail"><i class="bi bi-eye"></i></a>
-                                <a href="/software/{{ .Slug }}/edit" class="btn btn-sm btn-warning me-1" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a href="{{$.basePath}}/software/{{ .Slug }}" class="btn btn-sm btn-info me-1" title="Detail"><i class="bi bi-eye"></i></a>
+                                <a href="{{$.basePath}}/software/{{ .Slug }}/edit" class="btn btn-sm btn-warning me-1" title="Edit"><i class="bi bi-pencil"></i></a>
                                 <button type="button" class="btn btn-sm btn-danger" title="Hapus"
                                     onclick="confirmDelete({message:'Hapus {{ .Name }}?', formId:'del-{{ .ID }}'})"><i class="bi bi-trash"></i></button>
-                                <form id="del-{{ .ID }}" method="POST" action="/software/{{ .Slug }}/delete" class="d-none"></form>
+                                <form id="del-{{ .ID }}" method="POST" action="{{$.basePath}}/software/{{ .Slug }}/delete" class="d-none"></form>
                             </span>
                         </td>
                         <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input"></span></td>
@@ -83,7 +83,7 @@
 <div class="modal fade" id="addSoftwareModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="/software/create">
+            <form method="POST" action="{{$.basePath}}/software/create">
                 <div class="modal-header"><h5 class="modal-title"><i class="bi bi-plus-circle"></i> Tambah Software</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
                     <div class="mb-3"><label for="name" class="form-label">Nama Software *</label><input type="text" class="form-control" id="name" name="name" required></div>
