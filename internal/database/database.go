@@ -74,10 +74,11 @@ func RunMigrations(db *DB, isPostgres bool, labID, urlPath, uploadPath string, u
 	if err := runMigrations(db, isPostgres); err != nil {
 		return err
 	}
-	if err := seedPCPhotos(db, uploadPath, urlPath); err != nil {
+	// RunSeedFolder first to create PCs, then seedPCPhotos can match photos to existing PCs
+	if err := RunSeedFolder(db, labID, urlPath, useDefaultFallback); err != nil {
 		return err
 	}
-	if err := RunSeedFolder(db, labID, urlPath, useDefaultFallback); err != nil {
+	if err := seedPCPhotos(db, uploadPath, urlPath); err != nil {
 		return err
 	}
 	return nil
