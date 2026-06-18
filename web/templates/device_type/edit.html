@@ -59,7 +59,7 @@
 
                             {{ if .deviceType.Photo }}
                             <div class="mb-3">
-                                <img src="/uploads/device_types/{{ .deviceType.Photo }}" alt="Foto tipe perangkat" class="img-thumbnail" style="max-width: 300px;">
+                                <img src="/uploads/{{$.lab}}/device_types/{{ .deviceType.Photo }}" alt="Foto tipe perangkat" class="img-thumbnail" style="max-width: 300px;">
                                 <p class="text-muted small mb-0 mt-2">Foto saat ini: {{ .deviceType.Photo }}</p>
                             </div>
                             {{ end }}

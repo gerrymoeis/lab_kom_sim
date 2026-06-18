@@ -103,7 +103,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		return
 	}
 
-	photoSerial, photoFront := processPhotoRefs(req.SerialFileRef, req.FrontFileRef)
+	photoSerial, photoFront := processPhotoRefs(c.GetString("lab"), req.SerialFileRef, req.FrontFileRef)
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
@@ -182,7 +182,7 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		return
 	}
 
-	photoSerial, photoFront := processPhotoRefs(req.SerialFileRef, req.FrontFileRef)
+	photoSerial, photoFront := processPhotoRefs(c.GetString("lab"), req.SerialFileRef, req.FrontFileRef)
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
@@ -536,13 +536,13 @@ func (h *Handler) PCMoveToCadangan(c *gin.Context) {
 	})
 }
 
-func processPhotoRef(photoRef, subDir string) string {
+func processPhotoRef(lab, photoRef, subDir string) string {
 	ref := filepath.Base(strings.TrimSpace(photoRef))
 	if ref == "" || ref == "." || ref == "/" || ref == "\\" {
 		return ""
 	}
-	src := filepath.Join("uploads", "temp", ref)
-	dst := filepath.Join("uploads", subDir, ref)
+	src := filepath.Join("uploads", lab, "temp", ref)
+	dst := filepath.Join("uploads", lab, subDir, ref)
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return ""
 	}
@@ -553,7 +553,7 @@ func processPhotoRef(photoRef, subDir string) string {
 	return ref
 }
 
-func processPhotoRefs(serialRef, frontRef string) (serial, front string) {
+func processPhotoRefs(lab, serialRef, frontRef string) (serial, front string) {
 	for _, p := range []struct{ ref string; result *string }{
 		{serialRef, &serial}, {frontRef, &front},
 	} {
@@ -561,8 +561,8 @@ func processPhotoRefs(serialRef, frontRef string) (serial, front string) {
 		if ref == "" || ref == "." || ref == "/" || ref == "\\" {
 			continue
 		}
-		src := filepath.Join("uploads", "temp", ref)
-		dst := filepath.Join("uploads", "pc", ref)
+		src := filepath.Join("uploads", lab, "temp", ref)
+		dst := filepath.Join("uploads", lab, "pc", ref)
 		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 			continue
 		}
