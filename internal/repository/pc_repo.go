@@ -258,9 +258,9 @@ func (r *PCRepository) GetByLabelEdit(label string) (*models.PC, error) {
 	var processor, ram, storage, os, notes, sn, bm, pt, acc, ps, pf, lbl, pDate, lc sql.NullString
 	err := r.db.QueryRow(`SELECT id, label, "row", "column", status, placement, processor, ram, storage,
 		purchase_date, last_checked, operating_system, notes, pc_type, serial_number, brand_model,
-		accessories, photo_serial, photo_front FROM pcs WHERE label = ?`, label).
+		accessories, photo_serial, photo_front, created_at, updated_at FROM pcs WHERE label = ?`, label).
 		Scan(&pc.ID, &lbl, &pc.Row, &pc.Column, &pc.Status, &pc.Placement, &processor, &ram, &storage,
-			&pDate, &lc, &os, &notes, &pt, &sn, &bm, &acc, &ps, &pf)
+			&pDate, &lc, &os, &notes, &pt, &sn, &bm, &acc, &ps, &pf, &pc.CreatedAt, &pc.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
