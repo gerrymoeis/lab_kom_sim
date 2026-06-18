@@ -6,12 +6,12 @@ import (
 	"math"
 	"sort"
 	"strings"
-	"time"
 
 	gofpdf "github.com/lvillar/gofpdf"
 
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
+	"inventaris-lab-kom/internal/timeutil"
 )
 
 type PrintConfig struct {
@@ -274,5 +274,5 @@ func (s *PrintService) DeleteTemplate(id int) error {
 }
 
 func FormatPrintTimestamp() string {
-	return time.Now().Format("20060102_150405")
+	return timeutil.Now().Format("20060102_150405")
 }

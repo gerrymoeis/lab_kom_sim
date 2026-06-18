@@ -35,6 +35,10 @@ func Location() *time.Location {
 	return loc
 }
 
+func Now() time.Time {
+	return time.Now().In(Location())
+}
+
 func FromDB(t time.Time) time.Time {
 	if t.IsZero() {
 		return t
