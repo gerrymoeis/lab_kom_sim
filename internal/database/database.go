@@ -74,7 +74,7 @@ func RunMigrations(db *DB, isPostgres bool, labID, urlPath string) error {
 	if err := runMigrations(db, isPostgres); err != nil {
 		return err
 	}
-	if err := seedPCPhotos(db); err != nil {
+	if err := seedPCPhotos(db, urlPath); err != nil {
 		return err
 	}
 	if err := RunSeedFolder(db, labID, urlPath); err != nil {

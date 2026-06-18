@@ -52,7 +52,7 @@
                     {{ if .pc.PhotoFront }}
                     <div class="col-md-6 mb-3">
                         <div class="card">
-                            <img src="/uploads/pc/{{ .pc.PhotoFront }}" class="card-img-top img-fluid" alt="Foto Depan">
+                            <img src="{{$.basePath}}/uploads/pc/{{ .pc.PhotoFront }}" class="card-img-top img-fluid" alt="Foto Depan">
                             <div class="card-body"><p class="card-text small text-muted mb-0">Foto Tampilan Depan</p></div>
                         </div>
                     </div>

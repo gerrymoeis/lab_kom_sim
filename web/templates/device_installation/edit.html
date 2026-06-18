@@ -36,7 +36,7 @@
 
                             {{ if .installation.Photo }}
                             <div class="mb-3">
-                                <img src="/uploads/device_installations/{{ .installation.Photo }}" class="img-thumbnail" style="max-width:300px" alt="Foto saat ini">
+                                <img src="/uploads/{{$.lab}}/device_installations/{{ .installation.Photo }}" class="img-thumbnail" style="max-width:300px" alt="Foto saat ini">
                                 <p class="text-muted small mt-1">Foto saat ini. Upload foto baru untuk mengganti.</p>
                             </div>
                             {{ end }}
