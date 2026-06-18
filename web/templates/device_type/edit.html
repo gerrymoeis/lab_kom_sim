@@ -3,7 +3,7 @@
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
 
-                    <form method="POST" action="/device-types/{{ .deviceType.AssetCodePrefix | lower }}/edit">
+                    <form method="POST" action="{{$.basePath}}/device-types/{{ .deviceType.AssetCodePrefix | lower }}/edit">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="name" class="form-label">Nama Tipe *</label>
@@ -108,7 +108,7 @@
                             <button type="submit" id="submitBtn" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
-                            <a href="/devices" class="btn btn-secondary">
+                            <a href="{{$.basePath}}/devices" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>

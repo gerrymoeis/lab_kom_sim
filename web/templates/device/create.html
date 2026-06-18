@@ -175,7 +175,7 @@
                         <button class="btn btn-primary" id="saveBatchBtn">
                             <i class="bi bi-save"></i> Simpan Batch
                         </button>
-                        <a href="/devices" class="btn btn-secondary">
+                        <a href="{{$.basePath}}/devices" class="btn btn-secondary">
                             <i class="bi bi-x-circle"></i> Batal
                         </a>
                     </div>
@@ -475,7 +475,7 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) {
-                window.location.href = '/devices?success=' + encodeURIComponent(data.message || 'Batch perangkat berhasil ditambahkan');
+                window.location.href = '{{$.basePath}}/devices?success=' + encodeURIComponent(data.message || 'Batch perangkat berhasil ditambahkan');
             } else {
                 errorDiv.textContent = data.error || 'Gagal menyimpan batch';
                 errorDiv.classList.remove('d-none');

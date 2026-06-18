@@ -2,7 +2,7 @@
 
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
-                    <form method="POST" action="/pc/{{ .pc.Label }}/edit" enctype="multipart/form-data">
+                    <form method="POST" action="{{$.basePath}}/pc/{{ .pc.Label }}/edit" enctype="multipart/form-data">
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label for="label" class="form-label">Nomor PC {{ if .isRegularPC }}<small class="text-muted">(read-only — label meja)</small>{{ end }}</label>
@@ -317,7 +317,7 @@
                             <button type="submit" id="submitBtn" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
-                            <a href="/pc/{{ .pc.Label }}" class="btn btn-secondary">
+                            <a href="{{$.basePath}}/pc/{{ .pc.Label }}" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>

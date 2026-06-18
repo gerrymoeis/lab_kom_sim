@@ -6,7 +6,7 @@
                         <strong>Perangkat:</strong> {{ .assetCode }}
                     </div>
 
-                    <form method="POST" action="/installations/{{ .installation.ID }}/edit">
+                    <form method="POST" action="{{$.basePath}}/installations/{{ .installation.ID }}/edit">
                         <div class="mb-3">
                             <label for="location_installed" class="form-label">Lokasi Instalasi *</label>
                             <input type="text" class="form-control" id="location_installed" name="location_installed" value="{{ .installation.LocationInstalled }}" required>
@@ -83,7 +83,7 @@
                             <button type="submit" id="submitBtn" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
-                            <a href="/devices?tab=installations" class="btn btn-secondary">
+                            <a href="{{$.basePath}}/devices?tab=installations" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>

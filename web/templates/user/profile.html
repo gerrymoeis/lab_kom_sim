@@ -12,7 +12,7 @@
 
                     <div class="mb-4">
                         <h6 class="text-muted">Edit Profil</h6>
-                        <form method="POST" action="/profile">
+                        <form method="POST" action="{{$.basePath}}/profile">
                             <div class="mb-3">
                                 <label for="username" class="form-label">Username *</label>
                                 <input type="text" class="form-control" id="username" name="username" value="{{ .user.Username }}" required>
@@ -36,7 +36,7 @@
                     <div class="mt-4">
                         <h6 class="text-muted">Ubah Password</h6>
 
-                        <form method="POST" action="/profile/password">
+                        <form method="POST" action="{{$.basePath}}/profile/password">
                             <div class="mb-3">
                                 <label for="old_password" class="form-label">Password Lama *</label>
                                 <input type="password" class="form-control" id="old_password" name="old_password" required>

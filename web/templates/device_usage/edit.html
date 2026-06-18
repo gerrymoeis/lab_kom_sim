@@ -6,7 +6,7 @@
                         <strong>Perangkat:</strong> {{ .deviceTypeName }} ({{ .assetCode }})
                     </div>
 
-                    <form method="POST" action="/device-usages/{{ .usage.ID }}/edit">
+                    <form method="POST" action="{{$.basePath}}/device-usages/{{ .usage.ID }}/edit">
                         <div class="mb-3">
                             <label for="user_name" class="form-label">Nama Pengguna *</label>
                             <input type="text" class="form-control" id="user_name" name="user_name" value="{{ .usage.UserName }}" required>
@@ -52,7 +52,7 @@
                             <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-save"></i> Update
                             </button>
-                            <a href="/devices?tab=usages" class="btn btn-secondary">
+                            <a href="{{$.basePath}}/devices?tab=usages" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Batal
                             </a>
                         </div>

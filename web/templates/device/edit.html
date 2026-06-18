@@ -8,7 +8,7 @@
         <div class="card-body">
             {{ template "layout/alert.html" . }}
 
-            <form method="POST" action="/devices/{{ .device.AssetCode | lower }}/edit">
+            <form method="POST" action="{{$.basePath}}/devices/{{ .device.AssetCode | lower }}/edit">
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="device_type_id" class="form-label">Tipe Perangkat *</label>
@@ -83,7 +83,7 @@
                     <button type="submit" class="btn btn-warning">
                         <i class="bi bi-save"></i> Update
                     </button>
-                    <a href="/devices" class="btn btn-secondary">
+                    <a href="{{$.basePath}}/devices" class="btn btn-secondary">
                         <i class="bi bi-x-circle"></i> Batal
                     </a>
                 </div>
