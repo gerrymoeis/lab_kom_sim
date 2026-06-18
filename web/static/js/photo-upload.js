@@ -160,7 +160,8 @@ function storeFileReference(fileRef, type) {
         hiddenInput.type = 'hidden';
         hiddenInput.id = id;
         hiddenInput.name = id;
-        var form = document.querySelector('form');
+        // Use the main form (not the logout form in navbar which comes first in DOM)
+        var form = document.querySelector('form:not([action*="logout"])') || document.querySelector('form');
         if (form) form.appendChild(hiddenInput);
     }
     hiddenInput.value = fileRef;
