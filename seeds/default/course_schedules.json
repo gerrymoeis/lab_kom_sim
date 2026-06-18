@@ -1,0 +1,17 @@
+[
+  {"day": "Senin", "timeStart": "07:00", "timeEnd": "08:40", "courseName": "Praktek Pemrograman Web Lanjut", "class": "2024 D", "lecturer": "Pak Kurniawan"},
+  {"day": "Senin", "timeStart": "08:40", "timeEnd": "10:20", "courseName": "Praktek Pemrograman Web Lanjut", "class": "2024 E", "lecturer": "Pak Kurniawan"},
+  {"day": "Senin", "timeStart": "10:20", "timeEnd": "12:00", "courseName": "Praktek Pemrograman Web Lanjut", "class": "2024 I", "lecturer": "Pak Kurniawan"},
+  {"day": "Selasa", "timeStart": "07:00", "timeEnd": "08:40", "courseName": "Praktek Pemrograman Mobile", "class": "2024 I", "lecturer": "Pak Dimas"},
+  {"day": "Selasa", "timeStart": "08:40", "timeEnd": "10:20", "courseName": "Praktek Pemrograman Mobile", "class": "2024 E", "lecturer": "Pak Dimas"},
+  {"day": "Selasa", "timeStart": "10:20", "timeEnd": "12:00", "courseName": "Praktek Pemrograman Mobile", "class": "2024 D", "lecturer": "Pak Dimas"},
+  {"day": "Rabu", "timeStart": "07:00", "timeEnd": "08:40", "courseName": "Praktek Pemrograman Web Lanjut", "class": "2024 B", "lecturer": "Pak Faris"},
+  {"day": "Rabu", "timeStart": "08:40", "timeEnd": "10:20", "courseName": "Praktek Pemrograman Web Lanjut", "class": "2024 C", "lecturer": "Pak Faris"},
+  {"day": "Rabu", "timeStart": "10:20", "timeEnd": "12:00", "courseName": "Praktek Pemrograman Web Lanjut", "class": "2024 A", "lecturer": "Pak Faris"},
+  {"day": "Kamis", "timeStart": "07:00", "timeEnd": "08:40", "courseName": "Praktek Pemrograman API", "class": "2024 C", "lecturer": "Pak Faris"},
+  {"day": "Kamis", "timeStart": "08:40", "timeEnd": "10:20", "courseName": "Praktek Pemrograman API", "class": "2024 D", "lecturer": "Pak Faris"},
+  {"day": "Kamis", "timeStart": "10:20", "timeEnd": "12:00", "courseName": "Praktek Pemrograman API", "class": "2024 I", "lecturer": "Pak Faris"},
+  {"day": "Jumat", "timeStart": "07:00", "timeEnd": "08:40", "courseName": "Praktek Pemrograman Mobile", "class": "2024 A", "lecturer": "Pak I Gde Agung"},
+  {"day": "Jumat", "timeStart": "08:40", "timeEnd": "10:20", "courseName": "Praktek Pemrograman Mobile", "class": "2024 B", "lecturer": "Pak I Gde Agung"},
+  {"day": "Jumat", "timeStart": "10:20", "timeEnd": "12:00", "courseName": "Praktek Pemrograman Mobile", "class": "2024 C", "lecturer": "Pak I Gde Agung"}
+]

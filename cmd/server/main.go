@@ -44,7 +44,8 @@ func main() {
 		}
 		defer db.Close()
 
-		if err := database.RunMigrations(db, isPostgres, lab.ID, lab.URLPath, cfg.UploadPath); err != nil {
+		useDefaultFallback := os.Getenv("LABS") == ""
+		if err := database.RunMigrations(db, isPostgres, lab.ID, lab.URLPath, cfg.UploadPath, useDefaultFallback); err != nil {
 			log.Fatalf("Failed to run migrations for lab %s: %v", lab.URLPath, err)
 		}
 		if err := database.SeedDefaultUser(db); err != nil {
