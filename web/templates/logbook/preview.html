@@ -57,7 +57,7 @@
                             </div>
                         </div>
 
-                        <form id="previewForm" action="/logbook/save" method="POST">
+                        <form id="previewForm" action="{{$.basePath}}/logbook/save" method="POST">
                             <input type="hidden" name="source_file" value="{{ .source_file }}">
 
                             <div id="batchIndikasi" class="mb-2 d-none d-flex gap-2 justify-content-end">
@@ -221,10 +221,10 @@
                                 <button type="button" class="btn btn-success btn-lg" onclick="exportExcel()">
                                     <i class="bi bi-file-earmark-excel"></i> Export Excel
                                 </button>
-                                <a href="/logbook/upload" class="btn btn-secondary btn-lg">
+                                <a href="{{$.basePath}}/logbook/upload" class="btn btn-secondary btn-lg">
                                     <i class="bi bi-arrow-left"></i> Upload Ulang
                                 </a>
-                                <a href="/logbook" class="btn btn-outline-secondary btn-lg">
+                                <a href="{{$.basePath}}/logbook" class="btn btn-outline-secondary btn-lg">
                                     <i class="bi bi-list"></i> Lihat Logbook
                                 </a>
                             </div>
@@ -720,7 +720,7 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    window.location.href = '/logbook?success=' + encodeURIComponent(data.message);
+                    window.location.href = '{{$.basePath}}/logbook?success=' + encodeURIComponent(data.message);
                 } else {
                     alert('Error: ' + (data.error || 'Gagal menyimpan data'));
                     submitBtn.disabled = false;

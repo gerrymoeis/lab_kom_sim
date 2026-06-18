@@ -9,10 +9,10 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
-            <a href="/device-usages/create" class="btn btn-primary flex-grow-1">
+            <a href="{{$.basePath}}/device-usages/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Pemakaian
             </a>
-            <a href="/devices/export" class="btn btn-success flex-grow-1">
+            <a href="{{$.basePath}}/devices/export" class="btn btn-success flex-grow-1">
                 <i class="bi bi-file-earmark-excel"></i> Export Excel
             </a>
             {{ template "layout/header_actions_end.html" }}
@@ -24,7 +24,7 @@
 
     <div class="card shadow-sm card-no-hover">
         <div class="card-body">
-            <form method="GET" action="/devices" class="row g-3 mb-3">
+            <form method="GET" action="{{$.basePath}}/devices" class="row g-3 mb-3">
                 <input type="hidden" name="tab" value="usages">
                 <div class="col-md-3">
                     <label for="search" class="form-label">Cari</label>
@@ -62,7 +62,7 @@
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
-                    <a href="/devices?tab=usages" class="btn btn-secondary w-100">
+                    <a href="{{$.basePath}}/devices?tab=usages" class="btn btn-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>
                 </div>
@@ -101,18 +101,18 @@
                             </td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
-                                    <a href="/device-usages/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
+                                    <a href="{{$.basePath}}/device-usages/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     {{ if eq $.role "admin" }}
-                                    <a href="/device-usages/{{ $l.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                    <a href="{{$.basePath}}/device-usages/{{ $l.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <button type="button" class="btn btn-sm btn-danger" title="Hapus"
                                         onclick="confirmDelete({message:'Hapus data pemakaian ini?', formId:'del-usage-{{ $l.ID }}'})">
                                         <i class="bi bi-trash"></i>
                                     </button>
-                                    <form id="del-usage-{{ $l.ID }}" method="POST" action="/device-usages/{{ $l.ID }}/delete" class="d-none"></form>
+                                    <form id="del-usage-{{ $l.ID }}" method="POST" action="{{$.basePath}}/device-usages/{{ $l.ID }}/delete" class="d-none"></form>
                                     {{ end }}
                                 </span>
                             </td>

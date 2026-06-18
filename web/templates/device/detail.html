@@ -3,9 +3,9 @@
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/devices">Perangkat</a></li>
-            <li class="breadcrumb-item"><a href="/categories/{{ .device.CategoryPrefix | lower }}">{{ .device.CategoryName }}</a></li>
-            <li class="breadcrumb-item"><a href="/device-types/{{ .device.DeviceTypePrefix | lower }}">{{ .device.DeviceTypeName }}</a></li>
+            <li class="breadcrumb-item"><a href="{{$.basePath}}/devices">Perangkat</a></li>
+            <li class="breadcrumb-item"><a href="{{$.basePath}}/categories/{{ .device.CategoryPrefix | lower }}">{{ .device.CategoryName }}</a></li>
+            <li class="breadcrumb-item"><a href="{{$.basePath}}/device-types/{{ .device.DeviceTypePrefix | lower }}">{{ .device.DeviceTypeName }}</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ .device.AssetCode }}</li>
         </ol>
     </nav>
@@ -14,10 +14,10 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-box"></i> {{ .device.AssetCode }}</h5>
             <div>
-                <a href="/print?type=device" class="btn btn-sm btn-dark text-white me-1">
+                <a href="{{$.basePath}}/print?type=device" class="btn btn-sm btn-dark text-white me-1">
                     <i class="bi bi-printer"></i> Print Stiker
                 </a>
-                <a href="/devices/{{ .device.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1">
+                <a href="{{$.basePath}}/devices/{{ .device.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1">
                     <i class="bi bi-pencil"></i> Edit
                 </a>
             </div>
@@ -36,11 +36,11 @@
                         </tr>
                         <tr>
                             <th>Kategori</th>
-                            <td><a href="/categories/{{ .device.CategoryPrefix | lower }}">{{ .device.CategoryName }}</a></td>
+                            <td><a href="{{$.basePath}}/categories/{{ .device.CategoryPrefix | lower }}">{{ .device.CategoryName }}</a></td>
                         </tr>
                         <tr>
                             <th>Tipe Perangkat</th>
-                            <td><a href="/device-types/{{ .device.DeviceTypePrefix | lower }}">{{ .device.DeviceTypeName }}</a></td>
+                            <td><a href="{{$.basePath}}/device-types/{{ .device.DeviceTypePrefix | lower }}">{{ .device.DeviceTypeName }}</a></td>
                         </tr>
                         <tr>
                             <th>Tipe Penggunaan</th>
@@ -131,7 +131,7 @@
                             <i class="bi bi-journal-arrow-up"></i> Perangkat Masih Dipinjam
                         </button>
                         {{ else }}
-                        <a href="/device-loans/create?device_id={{ .device.ID }}" class="btn btn-primary">
+                        <a href="{{$.basePath}}/device-loans/create?device_id={{ .device.ID }}" class="btn btn-primary">
                             <i class="bi bi-journal-arrow-up"></i> Pinjamkan Perangkat
                         </a>
                         {{ end }}
@@ -141,13 +141,13 @@
                             <i class="bi bi-x-circle"></i> Stok Sudah Habis
                         </button>
                         {{ else }}
-                        <a href="/device-usages/create?device_id={{ .device.ID }}" class="btn btn-info">
+                        <a href="{{$.basePath}}/device-usages/create?device_id={{ .device.ID }}" class="btn btn-info">
                             <i class="bi bi-clipboard-data"></i> Catat Pemakaian
                         </a>
                         {{ end }}
                         {{ else if eq .device.UsageType "installable" }}
                         {{ if not .installationHistory }}
-                        <a href="/installations/create?device_id={{ .device.ID }}" class="btn btn-success">
+                        <a href="{{$.basePath}}/installations/create?device_id={{ .device.ID }}" class="btn btn-success">
                             <i class="bi bi-pc-display"></i> Catat Instalasi
                         </a>
                         {{ else if .installationHistory.InstallationFinishDate }}

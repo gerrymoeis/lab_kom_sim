@@ -21,7 +21,7 @@
                         </ol>
                     </div>
 
-                    <form id="uploadForm" action="/logbook/upload" method="POST" enctype="multipart/form-data">
+                    <form id="uploadForm" action="{{$.basePath}}/logbook/upload" method="POST" enctype="multipart/form-data">
                         <input type="hidden" id="logbook_file_ref" name="file_ref" value="">
 
                         <div class="mb-4">
@@ -69,7 +69,7 @@
                             <button type="submit" id="submitBtn" class="btn btn-primary btn-lg" disabled>
                                 <i class="bi bi-magic"></i> Proses OCR
                             </button>
-                            <a href="/logbook" class="btn btn-secondary btn-lg">
+                            <a href="{{$.basePath}}/logbook" class="btn btn-secondary btn-lg">
                                 <i class="bi bi-arrow-left"></i> Kembali
                             </a>
                         </div>

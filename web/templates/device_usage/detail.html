@@ -3,7 +3,7 @@
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/devices?tab=usages">Pemakaian</a></li>
+            <li class="breadcrumb-item"><a href="{{$.basePath}}/devices?tab=usages">Pemakaian</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ .assetCode }}</li>
         </ol>
     </nav>
@@ -69,11 +69,11 @@
 
             <div class="d-flex flex-column gap-2">
                 {{ if eq .role "admin" }}
-                <a href="/device-usages/{{ .usage.ID }}/edit" class="btn btn-warning">
+                <a href="{{$.basePath}}/device-usages/{{ .usage.ID }}/edit" class="btn btn-warning">
                     <i class="bi bi-pencil"></i> Edit Pemakaian
                 </a>
                 {{ end }}
-                <a href="/devices/{{ .usage.CategoryPrefix | lower }}/{{ .usage.DeviceTypePrefix | lower }}/{{ .usage.DeviceAssetCode }}" class="btn btn-info">
+                <a href="{{$.basePath}}/devices/{{ .usage.CategoryPrefix | lower }}/{{ .usage.DeviceTypePrefix | lower }}/{{ .usage.DeviceAssetCode }}" class="btn btn-info">
                     <i class="bi bi-hdd-rack"></i> Lihat Perangkat
                 </a>
             </div>

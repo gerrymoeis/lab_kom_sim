@@ -9,10 +9,10 @@
         <div class="col-md-6 text-end">
             {{ if eq .role "admin" }}
             {{ template "layout/header_actions_start.html" $ }}
-            <a href="/logbook/create" class="btn btn-primary flex-grow-1">
+            <a href="{{$.basePath}}/logbook/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah Manual
             </a>
-            <a href="/logbook/upload" class="btn btn-primary flex-grow-1">
+            <a href="{{$.basePath}}/logbook/upload" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-upload"></i> Upload (OCR)
             </a>
             <button type="button" class="btn btn-success flex-grow-1" onclick="exportLogbook()">
@@ -25,7 +25,7 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <form method="GET" action="/logbook" class="row g-3 mb-3">
+            <form method="GET" action="{{$.basePath}}/logbook" class="row g-3 mb-3">
                 {{ if $.dupMode }}<input type="hidden" name="dup" value="1">{{ end }}
                 <div class="col-md-6">
                     <label for="search" class="form-label">Cari</label>
@@ -70,7 +70,7 @@
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-search"></i> Filter
                     </button>
-                    <a href="/logbook{{ if $.dupMode }}?dup=1{{ end }}" class="btn btn-secondary w-100">
+                    <a href="{{$.basePath}}/logbook{{ if $.dupMode }}?dup=1{{ end }}" class="btn btn-secondary w-100">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>
                 </div>
@@ -80,11 +80,11 @@
                 <p class="mb-0{{ if not $.dupMode }} text-muted{{ end }}"{{ if $.dupMode }} style="color:#856404;"{{ end }}>Menampilkan {{ .startRow }} - {{ sub (add .startRow (len .entries)) 1 }} dari {{ .total }} entries{{ if $.dupMode }} duplikat{{ end }}{{ if .filters.search }} (hasil pencarian: "{{ .filters.search }}"){{ end }}</p>
                 <div>
                     {{ if $.dupMode }}
-                    <a href="/logbook{{ if $.queryBack }}?{{ $.queryBack }}{{ end }}" class="btn btn-outline-secondary">
+                    <a href="{{$.basePath}}/logbook{{ if $.queryBack }}?{{ $.queryBack }}{{ end }}" class="btn btn-outline-secondary">
                         <i class="bi bi-x-circle"></i> Tampilkan Semua
                     </a>
                     {{ else }}
-                    <a href="/logbook{{ if $.queryDup }}?{{ $.queryDup }}{{ end }}" class="btn btn-outline-warning{{ if eq .dupCount 0 }} disabled{{ end }}">
+                    <a href="{{$.basePath}}/logbook{{ if $.queryDup }}?{{ $.queryDup }}{{ end }}" class="btn btn-outline-warning{{ if eq .dupCount 0 }} disabled{{ end }}">
                         <i class="bi bi-exclamation-triangle"></i> Duplikat <span class="badge bg-warning text-dark{{ if eq .dupCount 0 }} d-none{{ end }}">{{ .dupCount }}</span>
                     </a>
                     {{ end }}
@@ -147,17 +147,17 @@
                             {{ if eq $.role "admin" }}
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
-                                    <a href="/logbook/{{ $entry.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                    <a href="{{$.basePath}}/logbook/{{ $entry.ID }}" class="btn btn-sm btn-info me-1" title="Detail">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <a href="/logbook/{{ $entry.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                    <a href="{{$.basePath}}/logbook/{{ $entry.ID }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <button type="button" class="btn btn-sm btn-danger" title="Hapus"
                                         onclick="confirmDelete({message:'Yakin ingin menghapus entry ini?', formId:'del-log-{{ $entry.ID }}'})">
                                         <i class="bi bi-trash"></i>
                                     </button>
-                                    <form id="del-log-{{ $entry.ID }}" method="POST" action="/logbook/{{ $entry.ID }}/delete" class="d-none"></form>
+                                    <form id="del-log-{{ $entry.ID }}" method="POST" action="{{$.basePath}}/logbook/{{ $entry.ID }}/delete" class="d-none"></form>
                                 </span>
                             </td>
                             <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-check form-check-input" value="{{ $entry.ID }}"></span></td>
@@ -207,7 +207,7 @@ function exportLogbook() {
     const dateTo = document.getElementById('date_to').value;
     if (dateFrom) params.append('start_date', dateFrom);
     if (dateTo) params.append('end_date', dateTo);
-    window.location.href = '/logbook/export?' + params.toString();
+    window.location.href = '{{$.basePath}}/logbook/export?' + params.toString();
 }
 
 
