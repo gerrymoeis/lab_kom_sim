@@ -65,6 +65,7 @@ var deviceFullCols = []string{
 	"COALESCE(d.usage_type, dt.usage_type) AS usage_type",
 	"COALESCE(d.usage_type, '') AS usage_type_override",
 	"COALESCE(dt.photo,'')",
+	"dt.updated_at",
 }
 var deviceFullFrom = "FROM devices d JOIN device_types dt ON d.device_type_id = dt.id JOIN categories c ON c.id = dt.category_id"
 
@@ -77,7 +78,8 @@ func scanDeviceRow(db DBTX, where string, args ...any) (*models.Device, error) {
 		&d.Condition, &d.Location, &pDate, &d.Notes,
 		&d.CreatedAt, &d.UpdatedAt,
 		&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-		&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto)
+		&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto,
+		&d.DeviceTypeUpdatedAt)
 	if err != nil {
 		return nil, err
 	}
