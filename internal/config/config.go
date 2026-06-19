@@ -210,11 +210,6 @@ func parseDirs(raw string) []string {
 }
 
 func (c *Config) LabLayout(labName string) GridLayout {
-	for _, lab := range c.Labs {
-		if lab.URLPath == labName {
-			return lab.Layout
-		}
-	}
 	return GetGridLayout(labName)
 }
 
