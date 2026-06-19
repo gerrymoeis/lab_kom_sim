@@ -1,0 +1,71 @@
+{{ define "admin_lab_seeds.html" }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link href="{{ staticURL "vendor/bootstrap/css/bootstrap.min.css" }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ staticURL "vendor/bootstrap-icons/bootstrap-icons.min.css" }}">
+    <link rel="stylesheet" href="{{ staticURL "css/style.css" }}">
+    <link rel="icon" type="image/svg+xml" href="{{ staticURL "favicon.svg" }}">
+    <meta name="csrf-token" content="{{ .csrf_token }}">
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <div class="d-flex justify-content-between mb-3">
+            <h4><i class="bi bi-database"></i> Seeds — {{ .lab.Title }}</h4>
+            <a href="/admin/labs" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a>
+        </div>
+
+        {{ template "layout/alert.html" . }}
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-pc-display" style="font-size: 2rem;"></i>
+                        <h6 class="mt-2">PC</h6>
+                        <form method="POST" action="/admin/labs/{{ .lab.URLPath }}/seeds/pc">
+                            <input type="hidden" name="_csrf" value="{{ .csrf_token }}">
+                            <button class="btn btn-outline-primary btn-sm w-100 mt-2">
+                                <i class="bi bi-arrow-repeat"></i> Reseed PC
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-software" style="font-size: 2rem;"></i>
+                        <h6 class="mt-2">Software</h6>
+                        <form method="POST" action="/admin/labs/{{ .lab.URLPath }}/seeds/software">
+                            <input type="hidden" name="_csrf" value="{{ .csrf_token }}">
+                            <button class="btn btn-outline-success btn-sm w-100 mt-2">
+                                <i class="bi bi-arrow-repeat"></i> Reseed Software
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="bi bi-calendar-event" style="font-size: 2rem;"></i>
+                        <h6 class="mt-2">Schedule</h6>
+                        <form method="POST" action="/admin/labs/{{ .lab.URLPath }}/seeds/schedule">
+                            <input type="hidden" name="_csrf" value="{{ .csrf_token }}">
+                            <button class="btn btn-outline-info btn-sm w-100 mt-2">
+                                <i class="bi bi-arrow-repeat"></i> Reseed Schedule
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ staticURL "vendor/bootstrap/js/bootstrap.bundle.min.js" }}"></script>
+</body>
+</html>
+{{ end }}

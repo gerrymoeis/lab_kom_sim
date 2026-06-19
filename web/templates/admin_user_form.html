@@ -1,0 +1,104 @@
+{{ define "admin_user_form.html" }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link href="{{ staticURL "vendor/bootstrap/css/bootstrap.min.css" }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ staticURL "vendor/bootstrap-icons/bootstrap-icons.min.css" }}">
+    <link rel="stylesheet" href="{{ staticURL "css/style.css" }}">
+    <link rel="icon" type="image/svg+xml" href="{{ staticURL "favicon.svg" }}">
+    <meta name="csrf-token" content="{{ .csrf_token }}">
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <div class="d-flex justify-content-between mb-3">
+            <h4><i class="bi {{ if .user }}bi-pencil{{ else }}bi-person-plus{{ end }}"></i> {{ .title }}</h4>
+            <a href="/admin/users" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a>
+        </div>
+
+        {{ template "layout/alert.html" . }}
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="POST"
+                    {{ if .user }}
+                        action="/admin/users/{{ .user.ID }}/edit"
+                    {{ else }}
+                        action="/admin/users/create"
+                    {{ end }}>
+
+                    <input type="hidden" name="_csrf" value="{{ .csrf_token }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-control"
+                               value="{{ if .user }}{{ .user.Username }}{{ end }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nama Lengkap</label>
+                        <input type="text" name="full_name" class="form-control"
+                               value="{{ if .user }}{{ .user.FullName }}{{ end }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            {{ if .user }}Password Baru (kosongkan jika tidak diubah){{ else }}Password{{ end }}
+                        </label>
+                        <input type="password" name="new_password" class="form-control"
+                               {{ if not .user }}required{{ end }}>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="is_super_admin" class="form-check-input" value="1"
+                            id="is_super_admin"
+                            {{ if .user.IsSuperAdmin }}checked{{ end }}>
+                        <label class="form-check-label" for="is_super_admin">Super Admin</label>
+                    </div>
+
+                    <div id="lab_permissions_section" class="mb-3">
+                        <label class="form-label">Akses Lab</label>
+                        {{ range $lab := .labs }}
+                        <div class="row mb-2 align-items-center">
+                            <div class="col">
+                                <div class="form-check">
+                                    <input type="checkbox" name="labs" class="form-check-input lab-check"
+                                        value="{{ $lab.URLPath }}" id="lab_{{ $lab.URLPath }}"
+                                        {{ if index $.permissions $lab.URLPath }}checked{{ end }}>
+                                    <label class="form-check-label" for="lab_{{ $lab.URLPath }}">
+                                        {{ $lab.Title }}
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <select name="roles" class="form-select form-select-sm">
+                                    <option value="user" {{ if eq (index $.permissions $lab.URLPath) "user" }}selected{{ end }}>User</option>
+                                    <option value="admin" {{ if eq (index $.permissions $lab.URLPath) "admin" }}selected{{ end }}>Admin Lab</option>
+                                </select>
+                            </div>
+                        </div>
+                        {{ end }}
+                    </div>
+
+                    <button class="btn btn-primary">
+                        <i class="bi bi-floppy"></i>
+                        {{ if .user }}Simpan Perubahan{{ else }}Buat User{{ end }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('is_super_admin').addEventListener('change', function() {
+            document.getElementById('lab_permissions_section').style.display = this.checked ? 'none' : 'block';
+        });
+        if (document.getElementById('is_super_admin').checked) {
+            document.getElementById('lab_permissions_section').style.display = 'none';
+        }
+    </script>
+    <script src="{{ staticURL "vendor/bootstrap/js/bootstrap.bundle.min.js" }}"></script>
+</body>
+</html>
+{{ end }}
