@@ -1,5 +1,10 @@
 package config
 
+import (
+	"database/sql"
+	"encoding/json"
+)
+
 type GridLayout struct {
 	ColsPerRow []int
 	HasGap     bool
@@ -39,8 +44,34 @@ var DefaultGridLayouts = map[string]GridLayout{
 	},
 }
 
-func GetGridLayout(labName string) GridLayout {
-	if l, ok := DefaultGridLayouts[labName]; ok {
+var globalDB interface {
+	QueryRow(string, ...any) *sql.Row
+}
+
+func SetGlobalDB(db interface{ QueryRow(string, ...any) *sql.Row }) {
+	globalDB = db
+}
+
+func GetGridLayout(labURLPath string) GridLayout {
+	if globalDB != nil {
+		var colsJSON string
+		var hasGapInt, gapPosInt int
+		err := globalDB.QueryRow(
+			`SELECT cols_per_row, has_gap, gap_pos FROM grid_layouts WHERE lab_url_path = ?`,
+			labURLPath).Scan(&colsJSON, &hasGapInt, &gapPosInt)
+		if err == nil {
+			var cols []int
+			if json.Unmarshal([]byte(colsJSON), &cols) == nil && len(cols) > 0 {
+				return GridLayout{
+					ColsPerRow: cols,
+					HasGap:     hasGapInt == 1,
+					GapPos:     gapPosInt,
+				}
+			}
+		}
+	}
+
+	if l, ok := DefaultGridLayouts[labURLPath]; ok {
 		return l
 	}
 	return GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}
