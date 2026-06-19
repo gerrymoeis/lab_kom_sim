@@ -98,10 +98,12 @@ func CanAccessProfile(actorUsername string, target models.User, actorIsSuperAdmi
 }
 
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {
-	userID, username, role, _, ok = middleware.GetCurrentUser(c)
+	userID, username, _, ok = middleware.GetCurrentUser(c)
 	if !ok {
 		h.redirect(c, "/login")
+		return
 	}
+	role = c.GetString("role")
 	return
 }
 
@@ -110,7 +112,7 @@ func (h *Handler) redirect(c *gin.Context, path string) {
 }
 
 func (h *Handler) isSuperAdmin(c *gin.Context) bool {
-	_, _, _, val, ok := middleware.GetCurrentUser(c)
+	_, _, val, ok := middleware.GetCurrentUser(c)
 	return ok && val
 }
 

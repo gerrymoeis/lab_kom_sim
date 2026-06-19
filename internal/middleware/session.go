@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SessionMiddleware(secret string, secure bool) gin.HandlerFunc {
+func GlobalSessionMiddleware(secret string, secure bool) gin.HandlerFunc {
 	store := cookie.NewStore([]byte(secret))
 
 	store.Options(sessions.Options{
@@ -19,11 +19,5 @@ func SessionMiddleware(secret string, secure bool) gin.HandlerFunc {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	return func(c *gin.Context) {
-		lab := c.GetString("lab")
-		if lab == "" {
-			lab = "default"
-		}
-		sessions.Sessions("inventaris_session_"+lab, store)(c)
-	}
+	return sessions.Sessions("inventaris_session", store)
 }
