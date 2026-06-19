@@ -283,7 +283,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	// Super admin — system management
 	adminGroup := router.Group("/admin")
-	adminGroup.Use(middleware.AuthRequired(), middleware.SuperAdminRequired())
+	adminGroup.Use(middleware.AuthRequired(), middleware.CSRF(), middleware.SuperAdminRequired())
 	{
 		adminGroup.GET("/labs", globalHandler.AdminLabList)
 		adminGroup.GET("/labs/:urlPath/layout", globalHandler.AdminLabLayout)

@@ -123,6 +123,11 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 		return
 	}
 
+	if _, err := h.globalAuthService.GetUser(id); err != nil {
+		c.AbortWithStatus(404)
+		return
+	}
+
 	username := c.PostForm("username")
 	fullName := c.PostForm("full_name")
 	isSuperAdmin := c.PostForm("is_super_admin") == "1"
