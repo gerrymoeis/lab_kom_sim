@@ -15,6 +15,7 @@ import (
 	"inventaris-lab-kom/internal/handlers"
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
 	"inventaris-lab-kom/internal/versioner"
@@ -228,9 +229,12 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		}
 	}
 
+	globalUserRepo := repository.NewGlobalUserRepository(globalDB)
+	globalAuthService := services.NewGlobalAuthService(globalUserRepo)
+
 	handlersMap := make(map[string]*handlers.Handler, len(dbs))
 	for labName, db := range dbs {
-		handlersMap[labName] = handlers.NewHandler(db, cfg, notifier)
+		handlersMap[labName] = handlers.NewHandler(db, cfg, notifier, globalAuthService)
 	}
 	adapter := NewHandlerAdapter(handlersMap)
 

@@ -21,6 +21,7 @@ type Handler struct {
 	cfg                *config.Config
 	activityLogService *services.ActivityLogService
 	imageService       *services.ImageService
+	globalAuthService  *services.GlobalAuthService
 
 	authService               *services.AuthService
 	userService               *services.UserService
@@ -38,7 +39,7 @@ type Handler struct {
 	printService              *services.PrintService
 }
 
-func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifier) *Handler {
+func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifier, globalAuthService *services.GlobalAuthService) *Handler {
 	activityLogService := services.NewActivityLogService(db, notifier, cfg.LogRetentionDays, cfg.LogCleanupInterval)
 	deviceRepo := repository.NewDeviceRepository(db)
 	deviceTypeRepo := repository.NewDeviceTypeRepository(db)
@@ -59,8 +60,9 @@ func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifi
 		cfg:                cfg,
 		activityLogService: activityLogService,
 		imageService:       services.NewImageService(),
+		globalAuthService:  globalAuthService,
 
-		authService:               services.NewAuthService(userRepo, activityLogService),
+		authService: services.NewAuthService(userRepo, activityLogService),
 		userService:               services.NewUserService(userRepo, activityLogService),
 		deviceService:             services.NewDeviceService(deviceRepo, deviceTypeRepo, activityLogService),
 		pcService:                 services.NewPCService(pcRepo, activityLogService),

@@ -21,12 +21,10 @@ func LandingPage(cfg *config.Config) gin.HandlerFunc {
 	})
 
 	return func(c *gin.Context) {
-		for _, lab := range cfg.Labs {
-			s, _ := store.Get(c.Request, "inventaris_session_"+lab.URLPath)
-			if s != nil && s.Values["user_id"] != nil {
-				c.Redirect(http.StatusFound, "/"+lab.URLPath+"/dashboard")
-				return
-			}
+		s, _ := store.Get(c.Request, "inventaris_session")
+		if s != nil && s.Values["user_id"] != nil && len(cfg.Labs) > 0 {
+			c.Redirect(http.StatusFound, "/"+cfg.Labs[0].URLPath+"/dashboard")
+			return
 		}
 		c.HTML(http.StatusOK, "landing.html", gin.H{
 			"title": "Sistem Inventaris Laboratorium Komputer",
