@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/services"
 
@@ -22,7 +23,7 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	ip, ua := getRequestContext(c)
-	userID, fullName, role, token, isSuperAdmin, err := h.authService.Login(req.Username, req.Password, ip, ua)
+	userID, fullName, _, token, isSuperAdmin, err := h.authService.Login(req.Username, req.Password, ip, ua)
 	if err != nil {
 		msg := "Username atau password salah"
 		if errors.Is(err, services.ErrAlreadyLoggedIn) {
@@ -39,11 +40,14 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
+	// Sync session_token to global_users for AuthRequired validation
+	gdb := c.MustGet("globalDB").(*database.DB)
+	_, _ = gdb.Exec(`UPDATE global_users SET session_token = ? WHERE id = ?`, token, userID)
+
 	session := sessions.Default(c)
 	session.Set("user_id", userID)
 	session.Set("username", req.Username)
 	session.Set("full_name", fullName)
-	session.Set("role", role)
 	session.Set("is_super_admin", isSuperAdmin)
 	session.Set("session_token", token)
 	middleware.NewCSRFToken(session)
@@ -75,11 +79,15 @@ func (h *Handler) Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	if userID, ok := session.Get("user_id").(int); ok {
 		username, _ := session.Get("username").(string)
-		role, _ := session.Get("role").(string)
 		ip, ua := getRequestContext(c)
-		h.authService.Logout(userID, username, role, ip, ua)
+		h.authService.Logout(userID, username, "", ip, ua)
+
+		// Clear session_token in global_users
+		gdb := c.MustGet("globalDB").(*database.DB)
+		_, _ = gdb.Exec(`UPDATE global_users SET session_token = NULL WHERE id = ?`, userID)
 	}
-	session.Clear()
+
+	// Force clear session cookie
 	session.Options(sessions.Options{
 		Path:     "/",
 		MaxAge:   -1,
@@ -87,18 +95,19 @@ func (h *Handler) Logout(c *gin.Context) {
 		Secure:   c.Request.TLS != nil,
 		SameSite: http.SameSiteLaxMode,
 	})
-	if err := session.Save(); err != nil {
-		lab := c.GetString("lab")
-		http.SetCookie(c.Writer, &http.Cookie{
-			Name:     middleware.LabCookieName(lab),
-			Value:    "",
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   c.Request.TLS != nil,
-			SameSite: http.SameSiteLaxMode,
-			MaxAge:   -1,
-		})
-	}
+	session.Clear()
+	_ = session.Save()
+
+	// Fallback: clear cookie directly
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "inventaris_session",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   c.Request.TLS != nil,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
 	h.redirect(c, "/login")
 }
 

@@ -196,7 +196,7 @@ func sourceMapBlocker() gin.HandlerFunc {
 	}
 }
 
-func SetupRouter(dbs map[string]*database.DB, cfg *config.Config, notifier services.CUDNotifier) (*gin.Engine, func(), func()) {
+func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config.Config, notifier services.CUDNotifier) (*gin.Engine, func(), func()) {
 	router := gin.New()
 	router.MaxMultipartMemory = 6 << 20
 	router.Use(sourceMapBlocker())
@@ -263,8 +263,10 @@ func SetupRouter(dbs map[string]*database.DB, cfg *config.Config, notifier servi
 	router.GET("/", handlers.LandingPage(cfg))
 
 	labGroup := router.Group("/:lab")
+	labGroup.Use(middleware.GlobalDBInjector(globalDB))
 	labGroup.Use(middleware.DBInjector(dbs, labCfgs))
-	labGroup.Use(middleware.SessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
+	labGroup.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
+	labGroup.Use(middleware.LabRoleInjector())
 	{
 		public := labGroup.Group("/")
 		public.Use(middleware.CSRF())
