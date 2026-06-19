@@ -20,6 +20,7 @@ type Config struct {
 	SessionSecret    string
 	CookieSecure     bool
 	UploadPath       string
+	GlobalDBPath     string
 	GeminiAPIKey     string
 	OpenRouterAPIKey string
 	Android          bool
@@ -79,6 +80,7 @@ func Load() *Config {
 		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
 		CookieSecure:  getEnv("COOKIE_SECURE", "false") == "true",
 		UploadPath:    uploadPath,
+		GlobalDBPath:  getEnv("GLOBAL_DB_PATH", "data/global.db"),
 		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
 		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
 		Android:          getEnv("ANDROID", "false") == "true",
