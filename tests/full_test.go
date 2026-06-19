@@ -162,9 +162,10 @@ func TestFullIntegration(t *testing.T) {
 	// Load .env for API keys (if available)
 	godotenv.Load()
 
-	// ---- Setup 2 separate DB files ----
+	// ---- Setup 2 separate DB files + global DB ----
 	dbPathA := filepath.Join(projectRoot, "full_testing_a.db")
 	dbPathB := filepath.Join(projectRoot, "full_testing_b.db")
+	globalDBPath := filepath.Join(projectRoot, "full_testing_global.db")
 
 	// Cleanup leftover DB files from previous runs
 	for _, p := range []string{dbPathA, dbPathA + "-shm", dbPathA + "-wal"} {
@@ -173,16 +174,20 @@ func TestFullIntegration(t *testing.T) {
 	for _, p := range []string{dbPathB, dbPathB + "-shm", dbPathB + "-wal"} {
 		os.Remove(p)
 	}
+	for _, p := range []string{globalDBPath, globalDBPath + "-shm", globalDBPath + "-wal"} {
+		os.Remove(p)
+	}
 	// Cleanup leftover uploads
 	os.RemoveAll(filepath.Join(projectRoot, "uploads", "temp"))
 	os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
 	os.RemoveAll(filepath.Join(projectRoot, "uploads", "logbook"))
 
-	var dbA, dbB *database.DB
+	var dbA, dbB, globalDB *database.DB
 	var err error
 	defer func() {
 		if dbA != nil { dbA.Close() }
 		if dbB != nil { dbB.Close() }
+		if globalDB != nil { globalDB.Close() }
 		for _, p := range []string{dbPathA, dbPathA + "-shm", dbPathA + "-wal"} {
 			for i := 0; i < 3; i++ {
 				if err := os.Remove(p); err == nil {
@@ -208,6 +213,9 @@ func TestFullIntegration(t *testing.T) {
 					t.Logf("cleanup %s: %v", filepath.Base(p), err)
 				}
 			}
+		}
+		for _, p := range []string{globalDBPath, globalDBPath + "-shm", globalDBPath + "-wal"} {
+			os.Remove(p)
 		}
 		os.RemoveAll(filepath.Join(projectRoot, "uploads", "temp"))
 		os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
@@ -257,8 +265,19 @@ func TestFullIntegration(t *testing.T) {
 	}
 	dbB.Exec("UPDATE users SET session_token = NULL")
 
+	// Init global DB
+	globalDB, err = database.InitDB(globalDBPath, "")
+	if err != nil {
+		t.Fatalf("InitDB global: %v", err)
+	}
+	if err := database.SetupGlobalDB(globalDB, cfg.Labs); err != nil {
+		t.Fatalf("Setup global DB: %v", err)
+	}
+	// Clear session tokens for test predictability
+	globalDB.Exec("UPDATE global_users SET session_token = NULL")
+
 	dbs := map[string]*database.DB{labAURL: dbA, labBURL: dbB}
-	router, cleanup, flushLogs := server.SetupRouter(dbs, cfg, nil)
+	router, cleanup, flushLogs := server.SetupRouter(dbs, globalDB, cfg, nil)
 	defer cleanup()
 	ts := httptest.NewServer(router)
 	defer ts.Close()
