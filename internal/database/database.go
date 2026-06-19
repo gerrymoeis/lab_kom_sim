@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 
+	"inventaris-lab-kom/internal/config"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -80,6 +82,16 @@ func RunMigrations(db *DB, isPostgres bool, labID, urlPath, uploadPath string, u
 	}
 	if err := seedPCPhotos(db, uploadPath, urlPath); err != nil {
 		return err
+	}
+	return nil
+}
+
+func SetupGlobalDB(db *DB, labs []config.LabConfig) error {
+	if err := RunGlobalMigrations(db); err != nil {
+		return fmt.Errorf("global migration: %w", err)
+	}
+	if err := SeedGlobalUsers(db, labs); err != nil {
+		return fmt.Errorf("global seed: %w", err)
 	}
 	return nil
 }

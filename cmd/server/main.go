@@ -59,6 +59,24 @@ func main() {
 		log.Fatal("No databases initialized")
 	}
 
+	// Init global database (users, permissions, layouts, configs)
+	globalDBDir := filepath.Dir(cfg.GlobalDBPath)
+	if globalDBDir != "." {
+		if err := os.MkdirAll(globalDBDir, 0755); err != nil {
+			log.Fatalf("Failed to create global db directory %s: %v", globalDBDir, err)
+		}
+	}
+	globalDB, err := database.InitDB(cfg.GlobalDBPath, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Failed to initialize global database: %v", err)
+	}
+	defer globalDB.Close()
+
+	if err := database.SetupGlobalDB(globalDB, cfg.Labs); err != nil {
+		log.Fatalf("Failed to setup global database: %v", err)
+	}
+	log.Printf("🌐 Global database: %s", cfg.GlobalDBPath)
+
 	var (
 		wqs           []*queue.Queue
 		backupSvcs    []*services.BackupService
