@@ -156,7 +156,7 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 			if start == nil || end == nil { return "-" }
 			return fmt.Sprintf("%d", int(end.Sub(*start).Hours()/24)+1)
 		},
-		"imgv": func(filename string, t time.Time) string {
+		"imgv": func(t time.Time, filename string) string {
 			if filename == "" || t.IsZero() {
 				return filename
 			}
@@ -219,6 +219,7 @@ func SetupRouter(dbs map[string]*database.DB, cfg *config.Config, notifier servi
 
 	router.GET("/static/*filepath", v.Handler())
 	router.Static("/uploads", cfg.UploadPath)
+	router.StaticFile("/favicon.ico", "./web/static/favicon.svg")
 
 	labCfgs := make(map[string]config.LabConfig)
 	if cfg.Labs != nil {
