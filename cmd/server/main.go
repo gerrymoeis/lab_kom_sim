@@ -75,6 +75,7 @@ func main() {
 	if err := database.SetupGlobalDB(globalDB, cfg.Labs); err != nil {
 		log.Fatalf("Failed to setup global database: %v", err)
 	}
+	config.SetGlobalDB(globalDB)
 	log.Printf("🌐 Global database: %s", cfg.GlobalDBPath)
 
 	var (
