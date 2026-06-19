@@ -3,6 +3,7 @@ package services
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"inventaris-lab-kom/internal/config"
@@ -11,6 +12,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+var ErrProtectedUser = errors.New("cannot delete protected user")
 
 type GlobalAuthService struct {
 	userRepo *repository.GlobalUserRepository
@@ -72,4 +75,64 @@ func (s *GlobalAuthService) GetLabsForUser(userID int, isSuperAdmin bool, allLab
 		paths = append(paths, p.LabURLPath)
 	}
 	return paths
+}
+
+// --- Admin user management ---
+
+func (s *GlobalAuthService) ListUsers() ([]models.GlobalUser, error) {
+	return s.userRepo.List()
+}
+
+func (s *GlobalAuthService) GetUser(id int) (*models.GlobalUser, error) {
+	return s.userRepo.GetByID(id)
+}
+
+func (s *GlobalAuthService) CreateUser(username, password, fullName string, isSuperAdmin bool) (*models.GlobalUser, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("gagal hash password: %w", err)
+	}
+	_, err = s.userRepo.Create(username, string(hash), fullName, isSuperAdmin)
+	if err != nil {
+		return nil, err
+	}
+	return s.userRepo.GetByUsername(username)
+}
+
+func (s *GlobalAuthService) UpdateUser(id int, username, fullName string, isSuperAdmin bool) error {
+	return s.userRepo.Update(id, username, fullName, isSuperAdmin)
+}
+
+func (s *GlobalAuthService) DeleteUser(id int) error {
+	user, err := s.userRepo.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if user.IsProtected {
+		return ErrProtectedUser
+	}
+	s.userRepo.ClearPermissions(id)
+	s.userRepo.ClearSessionToken(id)
+	return s.userRepo.Delete(id)
+}
+
+func (s *GlobalAuthService) UpdateUserPassword(id int, password string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("gagal hash password: %w", err)
+	}
+	return s.userRepo.UpdatePassword(id, string(hash))
+}
+
+func (s *GlobalAuthService) SetUserPermissions(userID int, permissions []struct {
+	LabURLPath string
+	Role       string
+}) error {
+	s.userRepo.ClearPermissions(userID)
+	for _, p := range permissions {
+		if err := s.userRepo.AddPermission(userID, p.LabURLPath, p.Role); err != nil {
+			return err
+		}
+	}
+	return nil
 }

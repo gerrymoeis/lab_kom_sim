@@ -231,7 +231,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	globalUserRepo := repository.NewGlobalUserRepository(globalDB)
 	globalAuthService := services.NewGlobalAuthService(globalUserRepo)
-	globalHandler := handlers.NewGlobalHandler(cfg, globalAuthService)
+	globalHandler := handlers.NewGlobalHandler(cfg, globalDB, globalAuthService, dbs)
 
 	handlersMap := make(map[string]*handlers.Handler, len(dbs))
 	for labName, db := range dbs {
@@ -281,22 +281,23 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 	// Lab selector (requires auth)
 	router.GET("/labs", middleware.AuthRequired(), globalHandler.LabSelector)
 
-	// Super admin — system management (Fase 5+ will implement full UI)
+	// Super admin — system management
 	adminGroup := router.Group("/admin")
 	adminGroup.Use(middleware.AuthRequired(), middleware.SuperAdminRequired())
 	{
-		adminGroup.GET("/labs", globalHandler.AdminNotImplemented)
-		adminGroup.GET("/labs/:urlPath/layout", globalHandler.AdminNotImplemented)
-		adminGroup.POST("/labs/:urlPath/layout", globalHandler.AdminNotImplemented)
-		adminGroup.GET("/labs/:urlPath/seeds", globalHandler.AdminNotImplemented)
-		adminGroup.POST("/labs/:urlPath/seeds/:type", globalHandler.AdminNotImplemented)
-		adminGroup.GET("/users", globalHandler.AdminNotImplemented)
-		adminGroup.GET("/users/create", globalHandler.AdminNotImplemented)
-		adminGroup.POST("/users/create", globalHandler.AdminNotImplemented)
-		adminGroup.GET("/users/:id/edit", globalHandler.AdminNotImplemented)
-		adminGroup.POST("/users/:id/edit", globalHandler.AdminNotImplemented)
-		adminGroup.POST("/users/:id/delete", globalHandler.AdminNotImplemented)
-		adminGroup.POST("/users/:id/permissions", globalHandler.AdminNotImplemented)
+		adminGroup.GET("/labs", globalHandler.AdminLabList)
+		adminGroup.GET("/labs/:urlPath/layout", globalHandler.AdminLabLayout)
+		adminGroup.POST("/labs/:urlPath/layout", globalHandler.AdminLabLayoutSave)
+		adminGroup.GET("/labs/:urlPath/seeds", globalHandler.AdminLabSeeds)
+		adminGroup.POST("/labs/:urlPath/seeds/:type", globalHandler.AdminLabReseed)
+		adminGroup.GET("/users", globalHandler.AdminUserList)
+		adminGroup.GET("/users/create", globalHandler.AdminUserCreatePage)
+		adminGroup.POST("/users/create", globalHandler.AdminUserCreate)
+		adminGroup.GET("/users/:id/edit", globalHandler.AdminUserEditPage)
+		adminGroup.POST("/users/:id/edit", globalHandler.AdminUserEdit)
+		adminGroup.POST("/users/:id/delete", globalHandler.AdminUserDelete)
+		adminGroup.GET("/users/:id/permissions", globalHandler.AdminUserPermissions)
+		adminGroup.POST("/users/:id/permissions", globalHandler.AdminUserPermissionsSave)
 	}
 
 	// ========== PER-LAB ROUTES ==========

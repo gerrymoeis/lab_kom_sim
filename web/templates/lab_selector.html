@@ -1,0 +1,65 @@
+{{ define "lab_selector.html" }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link href="{{ staticURL "vendor/bootstrap/css/bootstrap.min.css" }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ staticURL "vendor/bootstrap-icons/bootstrap-icons.min.css" }}">
+    <link rel="stylesheet" href="{{ staticURL "css/style.css" }}">
+    <link rel="icon" type="image/svg+xml" href="{{ staticURL "favicon.svg" }}">
+    <meta name="csrf-token" content="{{ .csrf_token }}">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="text-center mb-4">
+            <i class="bi bi-pc-display-horizontal text-primary" style="font-size: 3rem;"></i>
+            <h3 class="mt-2">Selamat datang, {{ .fullName }}</h3>
+            <p class="text-muted">Pilih laboratorium untuk memulai</p>
+        </div>
+
+        {{ template "layout/alert.html" . }}
+
+        <div class="row justify-content-center">
+            {{ range $lab := .labs }}
+            <div class="col-md-4 mb-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center d-flex flex-column">
+                        <div class="mb-3">
+                            <i class="bi bi-building text-secondary" style="font-size: 2rem;"></i>
+                        </div>
+                        <h5 class="card-title">{{ $lab.Title }}</h5>
+                        <div class="mt-auto">
+                            <a href="/{{ $lab.URLPath }}/dashboard" class="btn btn-primary">
+                                <i class="bi bi-box-arrow-in-right"></i> Masuk
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+
+        {{ if .isSuperAdmin }}
+        <div class="text-center mt-4">
+            <a href="/admin/labs" class="btn btn-outline-secondary">
+                <i class="bi bi-gear"></i> Admin Panel
+            </a>
+        </div>
+        {{ end }}
+
+        <div class="text-center mt-3">
+            <form action="/logout" method="POST" class="d-inline">
+                <input type="hidden" name="_csrf" value="{{ .csrf_token }}">
+                <button class="btn btn-outline-danger btn-sm">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ staticURL "vendor/bootstrap/js/bootstrap.bundle.min.js" }}"></script>
+</body>
+</html>
+{{ end }}

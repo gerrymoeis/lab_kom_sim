@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"inventaris-lab-kom/internal/config"
+	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/services"
 
@@ -14,14 +15,27 @@ import (
 
 type GlobalHandler struct {
 	cfg               *config.Config
+	globalDB          *database.DB
 	globalAuthService *services.GlobalAuthService
+	labsDB            map[string]*database.DB
 }
 
-func NewGlobalHandler(cfg *config.Config, gas *services.GlobalAuthService) *GlobalHandler {
+func NewGlobalHandler(cfg *config.Config, globalDB *database.DB, gas *services.GlobalAuthService, labsDB map[string]*database.DB) *GlobalHandler {
 	return &GlobalHandler{
 		cfg:               cfg,
+		globalDB:          globalDB,
 		globalAuthService: gas,
+		labsDB:            labsDB,
 	}
+}
+
+func (h *GlobalHandler) labFromPath(urlPath string) *config.LabConfig {
+	for i := range h.cfg.Labs {
+		if h.cfg.Labs[i].URLPath == urlPath {
+			return &h.cfg.Labs[i]
+		}
+	}
+	return nil
 }
 
 func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin.H) {
@@ -30,6 +44,9 @@ func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin
 	}
 	data["lab"] = ""
 	data["basePath"] = ""
+	_, username, isSuperAdmin, _ := middleware.GetCurrentUser(c)
+	data["username"] = username
+	data["is_super_admin"] = isSuperAdmin
 	c.HTML(status, tmpl, data)
 }
 

@@ -141,6 +141,7 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	lab := c.GetString("lab")
 	data["lab"] = lab
 	data["basePath"] = h.labURL(c, "")
+	data["is_super_admin"] = c.GetBool("is_super_admin")
 	for _, l := range h.cfg.Labs {
 		if l.URLPath == lab {
 			data["labTitle"] = l.Title

@@ -20,6 +20,7 @@ import (
 	"inventaris-lab-kom/internal/server"
 
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func findProjectRoot(wd string) string {
@@ -84,7 +85,7 @@ func (l *testLab) extractCSRFToken(html string) string {
 }
 
 func (l *testLab) login(username, password string) bool {
-	req, _ := http.NewRequest("GET", l.ts.URL+l.prefix+"/login", nil)
+	req, _ := http.NewRequest("GET", l.ts.URL+"/login", nil)
 	resp, err := l.client.Do(req)
 	if err != nil {
 		return false
@@ -99,7 +100,7 @@ func (l *testLab) login(username, password string) bool {
 	}
 
 	formData := "_csrf=" + url.QueryEscape(token) + "&username=" + url.QueryEscape(username) + "&password=" + url.QueryEscape(password)
-	req, _ = http.NewRequest("POST", l.ts.URL+l.prefix+"/login", strings.NewReader(formData))
+	req, _ = http.NewRequest("POST", l.ts.URL+"/login", strings.NewReader(formData))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	l.addCookies(req)
 	resp, err = l.client.Do(req)
@@ -276,6 +277,23 @@ func TestFullIntegration(t *testing.T) {
 	// Clear session tokens for test predictability
 	globalDB.Exec("UPDATE global_users SET session_token = NULL")
 
+	// Create limited users for cross-lab isolation tests
+	bcryptHash := func(pw string) string {
+		h, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+		return string(h)
+	}
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_only", bcryptHash("test123"), "Lab A Only")
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labB_only", bcryptHash("test123"), "Lab B Only")
+	var labAOnlyID, labBOnlyID int
+	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_only'").Scan(&labAOnlyID)
+	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labB_only'").Scan(&labBOnlyID)
+	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labAOnlyID, labAURL)
+	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labBOnlyID, labBURL)
+	// Seed per-lab DB users with matching IDs for profile/activity-log features
+	hashA, hashB := bcryptHash("test123"), bcryptHash("test123")
+	dbA.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, 'Lab A Only', 'admin')", labAOnlyID, "labA_only", hashA)
+	dbB.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, 'Lab B Only', 'admin')", labBOnlyID, "labB_only", hashB)
+
 	dbs := map[string]*database.DB{labAURL: dbA, labBURL: dbB}
 	router, cleanup, flushLogs := server.SetupRouter(dbs, globalDB, cfg, nil)
 	defer cleanup()
@@ -355,14 +373,13 @@ func TestFullIntegration(t *testing.T) {
 	// ============================================
 	t.Log("\n=== 1. CROSS-LAB SESSION ISOLATION ===")
 
-	// Login to Lab A
-	assert(labA.login("admin", "admin123"), "Lab A login sets session cookie")
+	// Login to Lab A with limited user (Lab A only)
+	assert(labA.login("labA_only", "test123"), "Lab A login sets session cookie")
 
-	// While logged into Lab A, accessing Lab B should redirect to Lab B login
-	resp, err = rawGet(ts.URL + labB.prefix + "/dashboard")
+	// While logged into Lab A, accessing Lab B should return 403 Forbidden
+	resp, err = labA.getURL(ts.URL + labB.prefix + "/dashboard")
 	assert(err == nil, "GET %s/dashboard while logged in A", labB.prefix)
-	assert(resp.StatusCode == 302, "Lab A session cannot access Lab B dashboard: %d", resp.StatusCode)
-	assert(labB.getLocation(resp) == labB.prefix+"/login", "redirect to Lab B login: %s", labB.getLocation(resp))
+	assert(resp.StatusCode == 403, "Lab A-limited session cannot access Lab B dashboard: %d", resp.StatusCode)
 	labB.closeResp(resp)
 
 	// Also verify Lab A can access its own dashboard
@@ -382,6 +399,7 @@ func TestFullIntegration(t *testing.T) {
 	// ============================================
 	t.Log("\n=== 2. LAB A CRUD ===")
 
+	// Continue with labA_only user (has admin role for Lab A, seeded in per-lab DB)
 	var csrfToken string
 
 	// Refresh CSRF from dashboard
@@ -821,14 +839,13 @@ func TestFullIntegration(t *testing.T) {
 	// ============================================
 	t.Log("\n=== 3. CROSS-LAB DATA ISOLATION (reverse) ===")
 
-	// Login to Lab B
-	assert(labB.login("admin", "admin123"), "Lab B login sets session cookie")
+	// Login to Lab B with limited user (Lab B only)
+	assert(labB.login("labB_only", "test123"), "Lab B login sets session cookie")
 
-	// While logged into Lab B, accessing Lab A should redirect to Lab A login
-	resp, err = rawGet(ts.URL + labA.prefix + "/dashboard")
+	// While logged into Lab B, accessing Lab A should return 403 Forbidden
+	resp, err = labB.getURL(ts.URL + labA.prefix + "/dashboard")
 	assert(err == nil, "GET %s/dashboard while logged in B", labA.prefix)
-	assert(resp.StatusCode == 302, "Lab B session cannot access Lab A dashboard: %d", resp.StatusCode)
-	assert(labA.getLocation(resp) == labA.prefix+"/login", "redirect to Lab A login: %s", labA.getLocation(resp))
+	assert(resp.StatusCode == 403, "Lab B-limited session cannot access Lab A dashboard: %d", resp.StatusCode)
 	labA.closeResp(resp)
 
 	// Verify Lab B can access its own dashboard
@@ -859,6 +876,7 @@ func TestFullIntegration(t *testing.T) {
 	// ============================================
 	t.Log("\n=== 4. LAB B CRUD (empty lab) ===")
 
+	// Continue with labB_only user (has admin role for Lab B, seeded in per-lab DB)
 	// Refresh CSRF for Lab B
 	resp, err = labB.get("/dashboard")
 	assert(err == nil && resp.StatusCode == 200, "Lab B dashboard")
