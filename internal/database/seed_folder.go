@@ -81,14 +81,13 @@ func seedRequiredSWFromJSON(db *DB, folder string) error {
 		return err
 	}
 
-	var count int
-	db.QueryRow(`SELECT COUNT(*) FROM software_catalog WHERE category = 'required'`).Scan(&count)
-	if count > 0 {
-		return nil
-	}
-
 	for _, sw := range entries {
 		slug := util.Slugify(sw.Name)
+		var exists int
+		db.QueryRow(`SELECT COUNT(*) FROM software_catalog WHERE slug = ?`, slug).Scan(&exists)
+		if exists > 0 {
+			continue
+		}
 		_, err := db.Exec(`INSERT INTO software_catalog (name, category, description, slug, created_at, updated_at) VALUES (?, 'required', ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 			sw.Name, sw.Description, slug)
 		if err != nil {
@@ -96,7 +95,6 @@ func seedRequiredSWFromJSON(db *DB, folder string) error {
 		}
 	}
 
-	fmt.Printf("Seeded %d required software to catalog\n", len(entries))
 	return nil
 }
 
@@ -105,14 +103,6 @@ func seedPCsFromJSON(db *DB, folder string, urlPath string) error {
 	ok, err := readJSONFile(folder, "pcs.json", &pcs)
 	if err != nil || !ok {
 		return err
-	}
-
-	var count int
-	if err := db.QueryRow("SELECT COUNT(*) FROM pcs").Scan(&count); err != nil {
-		return fmt.Errorf("failed to check existing PC seeds: %w", err)
-	}
-	if count > 0 {
-		return nil
 	}
 
 	layout := config.GetGridLayout(urlPath)
@@ -267,16 +257,13 @@ func seedSchedulesFromJSON(db *DB, folder string) error {
 		return err
 	}
 
-	var count int
-	err = db.QueryRow(`SELECT COUNT(*) FROM course_schedules`).Scan(&count)
-	if err != nil {
-		return fmt.Errorf("failed to check existing schedule seeds: %w", err)
-	}
-	if count > 0 {
-		return nil
-	}
-
 	for _, s := range entries {
+		var exists int
+		db.QueryRow(`SELECT COUNT(*) FROM course_schedules WHERE course_name = ? AND day = ? AND class = ? AND time_start = ? AND time_end = ?`,
+			s.CourseName, s.Day, s.Class, s.TimeStart, s.TimeEnd).Scan(&exists)
+		if exists > 0 {
+			continue
+		}
 		_, err := db.Exec(`INSERT INTO course_schedules (course_name, lecturer, day, class, time_start, time_end, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 			s.CourseName, s.Lecturer, s.Day, s.Class, s.TimeStart, s.TimeEnd)
 		if err != nil {
@@ -285,7 +272,6 @@ func seedSchedulesFromJSON(db *DB, folder string) error {
 		}
 	}
 
-	fmt.Printf("Seeded %d course schedules\n", len(entries))
 	return nil
 }
 
