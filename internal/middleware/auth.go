@@ -99,6 +99,7 @@ func SuperAdminRequired() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		c.Set("is_super_admin", true)
 		c.Next()
 	}
 }

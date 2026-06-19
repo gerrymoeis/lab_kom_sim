@@ -19,19 +19,22 @@ func GlobalDBInjector(globalDB *database.DB) gin.HandlerFunc {
 	}
 }
 
-// LabRoleInjector reads lab_permissions and sets role in context
+// LabRoleInjector reads lab_permissions and sets role in context.
+// Also auto-syncs global user to per-lab users table.
 func LabRoleInjector() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("role", "user")
 
-		userID, _, isSuperAdmin, ok := GetCurrentUser(c)
+		userID, username, isSuperAdmin, ok := GetCurrentUser(c)
 		if !ok {
 			c.Next()
 			return
 		}
 
+		c.Set("is_super_admin", isSuperAdmin)
 		if isSuperAdmin {
 			c.Set("role", "admin")
+			autoSyncUser(c, userID, username, "")
 			c.Next()
 			return
 		}
@@ -56,7 +59,38 @@ func LabRoleInjector() gin.HandlerFunc {
 		if err == nil {
 			c.Set("role", role)
 		}
+
+		autoSyncUser(c, userID, username, "")
+
 		c.Next()
+	}
+}
+
+// autoSyncUser ensures the global user exists in the current per-lab users table.
+func autoSyncUser(c *gin.Context, userID int, username, fullName string) {
+	if fullName == "" {
+		session := sessions.Default(c)
+		if fn, ok := session.Get("full_name").(string); ok {
+			fullName = fn
+		} else {
+			fullName = username
+		}
+	}
+
+	dbVal, hasDB := c.Get("db")
+	if !hasDB {
+		return
+	}
+	db, ok := dbVal.(*database.DB)
+	if !ok {
+		return
+	}
+
+	var count int
+	db.QueryRow("SELECT COUNT(*) FROM users WHERE id = ?", userID).Scan(&count)
+	if count == 0 {
+		db.Exec(`INSERT INTO users (id, username, password, full_name, role, is_protected, is_super_admin)
+			VALUES (?, ?, '', ?, 'user', 0, 0)`, userID, username, fullName)
 	}
 }
 
