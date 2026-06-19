@@ -3,6 +3,7 @@
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
@@ -81,7 +82,7 @@ func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actor
 	if err := s.userRepo.Delete(targetID); err != nil {
 		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", targetID,
 			map[string]any{"deleted_username": u.Username}, ipAddress, userAgent, err.Error())
-		return err
+		return wrapDeleteErr(err)
 	}
 	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", targetID, map[string]any{"deleted_username": u.Username}, ipAddress, userAgent)
 	return nil
@@ -231,7 +232,7 @@ func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, act
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
 				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
 				ipAddress, userAgent, err.Error())
-			return err
+			return wrapDeleteErr(err)
 		}
 		items = append(items, info)
 	}
@@ -239,4 +240,15 @@ func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, act
 		map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
 		ipAddress, userAgent)
 	return nil
+}
+
+func wrapDeleteErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "FOREIGN KEY") || strings.Contains(msg, "foreign key") {
+		return fmt.Errorf("user memiliki data terkait (aktivitas, log) yang masih tersimpan. Hapus data terkait terlebih dahulu atau hubungi admin: %w", err)
+	}
+	return err
 }

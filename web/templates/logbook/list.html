@@ -84,7 +84,7 @@
                         <i class="bi bi-x-circle"></i> Tampilkan Semua
                     </a>
                     {{ else }}
-                    <a href="{{$.basePath}}/logbook{{ if $.queryDup }}?{{ $.queryDup }}{{ end }}" class="btn btn-outline-warning{{ if eq .dupCount 0 }} disabled{{ end }}">
+                    <a href="{{$.basePath}}/logbook{{ if $.queryDup }}?{{ $.queryDup }}{{ end }}" class="btn btn-outline-warning{{ if eq .dupCount 0 }} d-none{{ end }}">
                         <i class="bi bi-exclamation-triangle"></i> Duplikat <span class="badge bg-warning text-dark{{ if eq .dupCount 0 }} d-none{{ end }}">{{ .dupCount }}</span>
                     </a>
                     {{ end }}
