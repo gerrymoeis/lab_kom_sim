@@ -36,16 +36,9 @@ type jsonSchedule struct {
 }
 
 func RunSeedFolder(db *DB, labID string, urlPath string, useDefaultFallback bool) error {
-	folder := filepath.Join("seeds", strings.ToLower(labID))
-	if _, err := os.Stat(folder); os.IsNotExist(err) {
-		if !useDefaultFallback {
-			return nil
-		}
-		defaultFolder := filepath.Join("seeds", "default")
-		if _, err := os.Stat(defaultFolder); os.IsNotExist(err) {
-			return nil
-		}
-		folder = defaultFolder
+	folder := resolveSeedFolder(labID, useDefaultFallback)
+	if folder == "" {
+		return nil
 	}
 	if err := seedRequiredSWFromJSON(db, folder); err != nil {
 		return fmt.Errorf("seed required_software for %s: %w", labID, err)
@@ -57,6 +50,38 @@ func RunSeedFolder(db *DB, labID string, urlPath string, useDefaultFallback bool
 		return fmt.Errorf("seed schedules for %s: %w", labID, err)
 	}
 	return nil
+}
+
+func RunSeedType(db *DB, labID string, urlPath string, seedType string) error {
+	folder := resolveSeedFolder(labID, false)
+	if folder == "" {
+		return nil
+	}
+	switch seedType {
+	case "pc":
+		return seedPCsFromJSON(db, folder, urlPath)
+	case "software":
+		return seedRequiredSWFromJSON(db, folder)
+	case "schedule":
+		return seedSchedulesFromJSON(db, folder)
+	default:
+		return fmt.Errorf("unknown seed type: %s", seedType)
+	}
+}
+
+func resolveSeedFolder(labID string, useDefaultFallback bool) string {
+	folder := filepath.Join("seeds", strings.ToLower(labID))
+	if _, err := os.Stat(folder); os.IsNotExist(err) {
+		if !useDefaultFallback {
+			return ""
+		}
+		defaultFolder := filepath.Join("seeds", "default")
+		if _, err := os.Stat(defaultFolder); os.IsNotExist(err) {
+			return ""
+		}
+		return defaultFolder
+	}
+	return folder
 }
 
 func readJSONFile(folder, name string, v any) (bool, error) {

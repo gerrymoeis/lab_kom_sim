@@ -15,6 +15,7 @@ import (
 	"inventaris-lab-kom/internal/handlers"
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/models"
+	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
 	"inventaris-lab-kom/internal/versioner"
@@ -228,9 +229,13 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		}
 	}
 
+	globalUserRepo := repository.NewGlobalUserRepository(globalDB)
+	globalAuthService := services.NewGlobalAuthService(globalUserRepo)
+	globalHandler := handlers.NewGlobalHandler(cfg, globalDB, globalAuthService, dbs)
+
 	handlersMap := make(map[string]*handlers.Handler, len(dbs))
 	for labName, db := range dbs {
-		handlersMap[labName] = handlers.NewHandler(db, cfg, notifier)
+		handlersMap[labName] = handlers.NewHandler(db, cfg, notifier, globalAuthService)
 	}
 	adapter := NewHandlerAdapter(handlersMap)
 
@@ -247,6 +252,10 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		}
 	}
 
+	// --- Root-level middleware (applies to ALL routes) ---
+	router.Use(middleware.GlobalDBInjector(globalDB))
+	router.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
+
 	router.GET("/healthz", func(c *gin.Context) {
 		c.String(200, "ok")
 	})
@@ -262,25 +271,60 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	router.GET("/", handlers.LandingPage(cfg))
 
+	// ========== GLOBAL ROUTES (tanpa lab context) ==========
+
+	// Global auth
+	router.GET("/login", globalHandler.LoginPage)
+	router.POST("/login", globalHandler.Login)
+	router.POST("/logout", globalHandler.Logout)
+
+	// Lab selector (requires auth)
+	router.GET("/labs", middleware.AuthRequired(), globalHandler.LabSelector)
+
+	// Super admin — system management
+	adminGroup := router.Group("/admin")
+	adminGroup.Use(middleware.AuthRequired(), middleware.SuperAdminRequired())
+	{
+		adminGroup.GET("/labs", globalHandler.AdminLabList)
+		adminGroup.GET("/labs/:urlPath/layout", globalHandler.AdminLabLayout)
+		adminGroup.POST("/labs/:urlPath/layout", globalHandler.AdminLabLayoutSave)
+		adminGroup.GET("/labs/:urlPath/seeds", globalHandler.AdminLabSeeds)
+		adminGroup.POST("/labs/:urlPath/seeds/:type", globalHandler.AdminLabReseed)
+		adminGroup.GET("/users", globalHandler.AdminUserList)
+		adminGroup.GET("/users/create", globalHandler.AdminUserCreatePage)
+		adminGroup.POST("/users/create", globalHandler.AdminUserCreate)
+		adminGroup.GET("/users/:id/edit", globalHandler.AdminUserEditPage)
+		adminGroup.POST("/users/:id/edit", globalHandler.AdminUserEdit)
+		adminGroup.POST("/users/:id/delete", globalHandler.AdminUserDelete)
+		adminGroup.GET("/users/:id/permissions", globalHandler.AdminUserPermissions)
+		adminGroup.POST("/users/:id/permissions", globalHandler.AdminUserPermissionsSave)
+	}
+
+	// ========== PER-LAB ROUTES ==========
+
+	// Backward compat: redirect old /:lab/login → /login
+	router.GET("/:lab/login", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/login")
+	})
+	router.POST("/:lab/login", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/login")
+	})
+	router.GET("/:lab/logout", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/logout")
+	})
+
 	labGroup := router.Group("/:lab")
-	labGroup.Use(middleware.GlobalDBInjector(globalDB))
 	labGroup.Use(middleware.DBInjector(dbs, labCfgs))
-	labGroup.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
+	labGroup.Use(middleware.AuthRequired())
+	labGroup.Use(middleware.LabPermissionRequired())
 	labGroup.Use(middleware.LabRoleInjector())
 	{
-		public := labGroup.Group("/")
-		public.Use(middleware.CSRF())
-		{
-			public.GET("/", adapter.Handle((*handlers.Handler).Home))
-			public.GET("/login", adapter.Handle((*handlers.Handler).LoginPage))
-			public.POST("/login", adapter.Handle((*handlers.Handler).Login))
-			public.POST("/logout", adapter.Handle((*handlers.Handler).Logout))
-		}
-
 		protected := labGroup.Group("/")
-		protected.Use(middleware.AuthRequired(), middleware.CSRF(), writeFlushMiddleware())
+		protected.Use(middleware.CSRF(), writeFlushMiddleware())
 		{
+			protected.GET("/", adapter.Handle((*handlers.Handler).Home))
 			protected.GET("/dashboard", adapter.Handle((*handlers.Handler).Dashboard))
+
 			protected.GET("/pc", adapter.Handle((*handlers.Handler).PCList))
 			protected.GET("/pc/create", adapter.Handle((*handlers.Handler).PCCreatePage))
 			protected.POST("/pc/create", adapter.Handle((*handlers.Handler).PCCreate))
@@ -395,7 +439,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		}
 
 		api := labGroup.Group("/api")
-		api.Use(middleware.AuthRequired(), middleware.CSRF(), writeFlushMiddleware())
+		api.Use(middleware.CSRF(), writeFlushMiddleware())
 		{
 			api.GET("/pc/status", adapter.Handle((*handlers.Handler).PCStatusAPI))
 			api.POST("/pc/:label/status", adapter.Handle((*handlers.Handler).UpdatePCStatusAPI))

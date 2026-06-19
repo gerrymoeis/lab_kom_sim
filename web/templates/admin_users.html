@@ -1,0 +1,81 @@
+{{ define "admin_users.html" }}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link href="{{ staticURL "vendor/bootstrap/css/bootstrap.min.css" }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ staticURL "vendor/bootstrap-icons/bootstrap-icons.min.css" }}">
+    <link rel="stylesheet" href="{{ staticURL "css/style.css" }}">
+    <link rel="icon" type="image/svg+xml" href="{{ staticURL "favicon.svg" }}">
+    <meta name="csrf-token" content="{{ .csrf_token }}">
+</head>
+<body class="bg-light">
+    <div class="container-fluid py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4><i class="bi bi-people"></i> Admin Panel — Users</h4>
+            <div>
+                <a href="/admin/users/create" class="btn btn-primary btn-sm"><i class="bi bi-person-plus"></i> Tambah User</a>
+                <a href="/admin/labs" class="btn btn-outline-primary btn-sm"><i class="bi bi-building"></i> Labs</a>
+                <a href="/labs" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a>
+            </div>
+        </div>
+
+        {{ template "layout/alert.html" . }}
+
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Nama Lengkap</th>
+                            <th>Super Admin</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{ range $user := .users }}
+                        <tr>
+                            <td>{{ $user.ID }}</td>
+                            <td>{{ $user.Username }}</td>
+                            <td>{{ $user.FullName }}</td>
+                            <td>
+                                {{ if $user.IsSuperAdmin }}
+                                    <span class="badge bg-success">Ya</span>
+                                {{ else }}
+                                    <span class="badge bg-secondary">Tidak</span>
+                                {{ end }}
+                                {{ if $user.IsProtected }}
+                                    <span class="badge bg-danger">Protected</span>
+                                {{ end }}
+                            </td>
+                            <td>
+                                <a href="/admin/users/{{ $user.ID }}/edit" class="btn btn-warning btn-sm">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="/admin/users/{{ $user.ID }}/permissions" class="btn btn-info btn-sm">
+                                    <i class="bi bi-shield"></i>
+                                </a>
+                                {{ if not $user.IsProtected }}
+                                <form method="POST" action="/admin/users/{{ $user.ID }}/delete" class="d-inline">
+                                    <input type="hidden" name="_csrf" value="{{ $.csrf_token }}">
+                                    <button class="btn btn-danger btn-sm" onclick="return confirm('Hapus user ini?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {{ end }}
+                            </td>
+                        </tr>
+                        {{ end }}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="{{ staticURL "vendor/bootstrap/js/bootstrap.bundle.min.js" }}"></script>
+</body>
+</html>
+{{ end }}
