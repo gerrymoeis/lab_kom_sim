@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
@@ -152,6 +151,54 @@ func (l *testLab) getLocation(resp *http.Response) string {
 	return resp.Header.Get("Location")
 }
 
+func (l *testLab) assertStatus(resp *http.Response, expected int) bool {
+	if resp.StatusCode != expected {
+		l.t.Errorf("FAIL: expected status %d, got %d", expected, resp.StatusCode)
+		return false
+	}
+	return true
+}
+
+func (l *testLab) assertRedirect(resp *http.Response, expectedTo string) bool {
+	loc := l.getLocation(resp)
+	if loc != expectedTo {
+		l.t.Errorf("FAIL: expected redirect to %q, got %q", expectedTo, loc)
+		return false
+	}
+	return true
+}
+
+func (l *testLab) assertBodyContains(resp *http.Response, substr string) bool {
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if !strings.Contains(string(body), substr) {
+		l.t.Errorf("FAIL: body does not contain %q", substr)
+		return false
+	}
+	return true
+}
+
+func (l *testLab) getBody(resp *http.Response) string {
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	return string(body)
+}
+
+func (l *testLab) refreshCSRF() bool {
+	resp, err := l.get("/dashboard")
+	if err != nil || resp.StatusCode != 200 {
+		return false
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	token := l.extractCSRFToken(string(body))
+	if token == "" {
+		return false
+	}
+	l.csrf = token
+	return true
+}
+
 func TestFullIntegration(t *testing.T) {
 	wd, _ := os.Getwd()
 	projectRoot := findProjectRoot(wd)
@@ -163,65 +210,27 @@ func TestFullIntegration(t *testing.T) {
 	// Load .env for API keys (if available)
 	godotenv.Load()
 
-	// ---- Setup 2 separate DB files + global DB ----
-	dbPathA := filepath.Join(projectRoot, "full_testing_a.db")
-	dbPathB := filepath.Join(projectRoot, "full_testing_b.db")
-	globalDBPath := filepath.Join(projectRoot, "full_testing_global.db")
+	// ---- Setup 2 separate DB files + global DB (in temp dir) ----
+	tmpDir := t.TempDir()
+	dbPathA := filepath.Join(tmpDir, "full_testing_a.db")
+	dbPathB := filepath.Join(tmpDir, "full_testing_b.db")
+	globalDBPath := filepath.Join(tmpDir, "full_testing_global.db")
 
-	// Cleanup leftover DB files from previous runs
-	for _, p := range []string{dbPathA, dbPathA + "-shm", dbPathA + "-wal"} {
-		os.Remove(p)
-	}
-	for _, p := range []string{dbPathB, dbPathB + "-shm", dbPathB + "-wal"} {
-		os.Remove(p)
-	}
-	for _, p := range []string{globalDBPath, globalDBPath + "-shm", globalDBPath + "-wal"} {
-		os.Remove(p)
-	}
-	// Cleanup leftover uploads
+	// Cleanup leftover uploads from potential failed runs
 	os.RemoveAll(filepath.Join(projectRoot, "uploads", "temp"))
 	os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
 	os.RemoveAll(filepath.Join(projectRoot, "uploads", "logbook"))
 
 	var dbA, dbB, globalDB *database.DB
 	var err error
-	defer func() {
+	t.Cleanup(func() {
 		if dbA != nil { dbA.Close() }
 		if dbB != nil { dbB.Close() }
 		if globalDB != nil { globalDB.Close() }
-		for _, p := range []string{dbPathA, dbPathA + "-shm", dbPathA + "-wal"} {
-			for i := 0; i < 3; i++ {
-				if err := os.Remove(p); err == nil {
-					break
-				} else if os.IsNotExist(err) {
-					break
-				} else if i < 2 {
-					time.Sleep(200 * time.Millisecond)
-				} else {
-					t.Logf("cleanup %s: %v", filepath.Base(p), err)
-				}
-			}
-		}
-		for _, p := range []string{dbPathB, dbPathB + "-shm", dbPathB + "-wal"} {
-			for i := 0; i < 3; i++ {
-				if err := os.Remove(p); err == nil {
-					break
-				} else if os.IsNotExist(err) {
-					break
-				} else if i < 2 {
-					time.Sleep(200 * time.Millisecond)
-				} else {
-					t.Logf("cleanup %s: %v", filepath.Base(p), err)
-				}
-			}
-		}
-		for _, p := range []string{globalDBPath, globalDBPath + "-shm", globalDBPath + "-wal"} {
-			os.Remove(p)
-		}
 		os.RemoveAll(filepath.Join(projectRoot, "uploads", "temp"))
 		os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
 		os.RemoveAll(filepath.Join(projectRoot, "uploads", "logbook"))
-	}()
+	})
 
 	labAURL := "lab-kom-mi"
 	labAID := "MI-1"
@@ -284,6 +293,8 @@ func TestFullIntegration(t *testing.T) {
 	}
 	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_only", bcryptHash("test123"), "Lab A Only")
 	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labB_only", bcryptHash("test123"), "Lab B Only")
+	// User without any lab permissions (for 403 testing)
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "no_perm_user", bcryptHash("test123"), "No Permission")
 	var labAOnlyID, labBOnlyID int
 	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_only'").Scan(&labAOnlyID)
 	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labB_only'").Scan(&labBOnlyID)
