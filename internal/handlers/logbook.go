@@ -307,7 +307,7 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		"username": username, "role": role,
 		"entries": result.Entries, "total": len(result.Entries),
 		"source_file": fn, "success": "Gambar berhasil diproses",
-		"dupInfo": dupInfo,
+		"dupInfo": dupInfo, "uploaded_at": time.Now(),
 	})
 }
 

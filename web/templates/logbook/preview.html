@@ -52,7 +52,7 @@
                                 </div>
                             </div>
                             <div class="card-body p-2 text-center photo-container">
-                                <img id="previewPhoto" src="/uploads/{{$.lab}}/logbook/{{ .source_file }}"
+                                <img id="previewPhoto" src="/uploads/{{$.lab}}/logbook/{{ .source_file | imgv .uploaded_at }}"
                                      alt="Foto logbook" onerror="this.closest('.card').classList.add('d-none')">
                             </div>
                         </div>
