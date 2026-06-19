@@ -80,13 +80,14 @@ type Device struct {
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 	// Joined fields
-	CategoryName     string `json:"category_name,omitempty"`
-	CategoryPrefix   string `json:"category_prefix,omitempty"`
-	DeviceTypeName   string `json:"device_type_name,omitempty"`
-	DeviceTypePrefix string `json:"device_type_prefix,omitempty"`
-	UsageType        string `json:"usage_type,omitempty"`          // EFFECTIVE: device override > device type
-	UsageTypeOverride string `json:"usage_type_override,omitempty"` // raw d.usage_type (empty = inherit from type)
-	DeviceTypePhoto  string `json:"device_type_photo,omitempty"`
+	CategoryName      string    `json:"category_name,omitempty"`
+	CategoryPrefix    string    `json:"category_prefix,omitempty"`
+	DeviceTypeName    string    `json:"device_type_name,omitempty"`
+	DeviceTypePrefix  string    `json:"device_type_prefix,omitempty"`
+	UsageType         string    `json:"usage_type,omitempty"`           // EFFECTIVE: device override > device type
+	UsageTypeOverride string    `json:"usage_type_override,omitempty"`  // raw d.usage_type (empty = inherit from type)
+	DeviceTypePhoto   string    `json:"device_type_photo,omitempty"`
+	DeviceTypeUpdatedAt time.Time `json:"device_type_updated_at"`
 }
 
 // DeviceLoan represents a device loan/borrowing record

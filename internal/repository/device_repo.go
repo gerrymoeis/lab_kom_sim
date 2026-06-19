@@ -104,7 +104,8 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
 		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
 		COALESCE(d.usage_type, '') AS usage_type_override,
-		COALESCE(dt.photo,'')
+		COALESCE(dt.photo,''),
+		dt.updated_at
 		FROM devices d
 		JOIN device_types dt ON d.device_type_id = dt.id
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1`
@@ -145,7 +146,8 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 			&d.Condition, &d.Location, &pDate, &d.Notes,
 			&d.CreatedAt, &d.UpdatedAt,
 			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
-			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto); err != nil {
+			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto,
+			&d.DeviceTypeUpdatedAt); err != nil {
 			return nil, err
 		}
 		d.PurchaseDate = parseDate(pDate)
