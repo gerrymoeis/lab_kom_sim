@@ -1,3 +1,5 @@
+var bp = window.BASE_PATH || '';
+
 document.addEventListener('DOMContentLoaded', function() {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -121,6 +123,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         p.delete('toast');
                         if (data.message && data.message.indexOf('dihapus') !== -1) {
                             p.set('toast', 'delete');
+                        }
+                        var page = parseInt(p.get('page') || '1', 10);
+                        if (page > 1) {
+                            p.set('page', String(page - 1));
                         }
                         window.location.href = window.location.pathname + '?' + p.toString();
                     }).catch(function() {

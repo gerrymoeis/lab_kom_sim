@@ -540,11 +540,14 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	}
 	ip, ua := getRequestContext(c)
 
-	// Process photo ref
-	photoFile, err := processDeviceTypePhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef)
-	if err != nil {
-		h.renderEditPageWithError(c, dt, err.Error())
-		return
+	// Process photo ref — fallback ke existing photo jika tidak upload baru
+	photoFile := dt.Photo
+	if req.PhotoFileRef != "" {
+		photoFile, err = processDeviceTypePhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef)
+		if err != nil {
+			h.renderEditPageWithError(c, dt, err.Error())
+			return
+		}
 	}
 
 	if err := h.deviceTypeService.Update(dt.ID, services.DeviceTypeUpdateInput{
