@@ -22,8 +22,8 @@ func LandingPage(cfg *config.Config) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		s, _ := store.Get(c.Request, "inventaris_session")
-		if s != nil && s.Values["user_id"] != nil && len(cfg.Labs) > 0 {
-			c.Redirect(http.StatusFound, "/"+cfg.Labs[0].URLPath+"/dashboard")
+		if s != nil && s.Values["user_id"] != nil {
+			c.Redirect(http.StatusFound, "/labs")
 			return
 		}
 		c.HTML(http.StatusOK, "landing.html", gin.H{

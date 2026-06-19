@@ -231,6 +231,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	globalUserRepo := repository.NewGlobalUserRepository(globalDB)
 	globalAuthService := services.NewGlobalAuthService(globalUserRepo)
+	globalHandler := handlers.NewGlobalHandler(cfg, globalAuthService)
 
 	handlersMap := make(map[string]*handlers.Handler, len(dbs))
 	for labName, db := range dbs {
@@ -251,6 +252,10 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		}
 	}
 
+	// --- Root-level middleware (applies to ALL routes) ---
+	router.Use(middleware.GlobalDBInjector(globalDB))
+	router.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
+
 	router.GET("/healthz", func(c *gin.Context) {
 		c.String(200, "ok")
 	})
@@ -266,25 +271,59 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	router.GET("/", handlers.LandingPage(cfg))
 
+	// ========== GLOBAL ROUTES (tanpa lab context) ==========
+
+	// Global auth
+	router.GET("/login", globalHandler.LoginPage)
+	router.POST("/login", globalHandler.Login)
+	router.POST("/logout", globalHandler.Logout)
+
+	// Lab selector (requires auth)
+	router.GET("/labs", middleware.AuthRequired(), globalHandler.LabSelector)
+
+	// Super admin — system management (Fase 5+ will implement full UI)
+	adminGroup := router.Group("/admin")
+	adminGroup.Use(middleware.AuthRequired(), middleware.SuperAdminRequired())
+	{
+		adminGroup.GET("/labs", globalHandler.AdminNotImplemented)
+		adminGroup.GET("/labs/:urlPath/layout", globalHandler.AdminNotImplemented)
+		adminGroup.POST("/labs/:urlPath/layout", globalHandler.AdminNotImplemented)
+		adminGroup.GET("/labs/:urlPath/seeds", globalHandler.AdminNotImplemented)
+		adminGroup.POST("/labs/:urlPath/seeds/:type", globalHandler.AdminNotImplemented)
+		adminGroup.GET("/users", globalHandler.AdminNotImplemented)
+		adminGroup.GET("/users/create", globalHandler.AdminNotImplemented)
+		adminGroup.POST("/users/create", globalHandler.AdminNotImplemented)
+		adminGroup.GET("/users/:id/edit", globalHandler.AdminNotImplemented)
+		adminGroup.POST("/users/:id/edit", globalHandler.AdminNotImplemented)
+		adminGroup.POST("/users/:id/delete", globalHandler.AdminNotImplemented)
+		adminGroup.POST("/users/:id/permissions", globalHandler.AdminNotImplemented)
+	}
+
+	// ========== PER-LAB ROUTES ==========
+
+	// Backward compat: redirect old /:lab/login → /login
+	router.GET("/:lab/login", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/login")
+	})
+	router.POST("/:lab/login", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/login")
+	})
+	router.GET("/:lab/logout", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/logout")
+	})
+
 	labGroup := router.Group("/:lab")
-	labGroup.Use(middleware.GlobalDBInjector(globalDB))
 	labGroup.Use(middleware.DBInjector(dbs, labCfgs))
-	labGroup.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
+	labGroup.Use(middleware.AuthRequired())
+	labGroup.Use(middleware.LabPermissionRequired())
 	labGroup.Use(middleware.LabRoleInjector())
 	{
-		public := labGroup.Group("/")
-		public.Use(middleware.CSRF())
-		{
-			public.GET("/", adapter.Handle((*handlers.Handler).Home))
-			public.GET("/login", adapter.Handle((*handlers.Handler).LoginPage))
-			public.POST("/login", adapter.Handle((*handlers.Handler).Login))
-			public.POST("/logout", adapter.Handle((*handlers.Handler).Logout))
-		}
-
 		protected := labGroup.Group("/")
-		protected.Use(middleware.AuthRequired(), middleware.CSRF(), writeFlushMiddleware())
+		protected.Use(middleware.CSRF(), writeFlushMiddleware())
 		{
+			protected.GET("/", adapter.Handle((*handlers.Handler).Home))
 			protected.GET("/dashboard", adapter.Handle((*handlers.Handler).Dashboard))
+
 			protected.GET("/pc", adapter.Handle((*handlers.Handler).PCList))
 			protected.GET("/pc/create", adapter.Handle((*handlers.Handler).PCCreatePage))
 			protected.POST("/pc/create", adapter.Handle((*handlers.Handler).PCCreate))
@@ -399,7 +438,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		}
 
 		api := labGroup.Group("/api")
-		api.Use(middleware.AuthRequired(), middleware.CSRF(), writeFlushMiddleware())
+		api.Use(middleware.CSRF(), writeFlushMiddleware())
 		{
 			api.GET("/pc/status", adapter.Handle((*handlers.Handler).PCStatusAPI))
 			api.POST("/pc/:label/status", adapter.Handle((*handlers.Handler).UpdatePCStatusAPI))
