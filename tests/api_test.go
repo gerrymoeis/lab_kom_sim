@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -397,6 +398,153 @@ func TestAPIPCOperations(t *testing.T) {
 		defer resp.Body.Close()
 		if resp.StatusCode != 404 {
 			t.Errorf("expected 404, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// ============================================
+// TestAPIPCMoveRow — PCMoveRowToCadangan + fail
+// ============================================
+
+func TestAPIPCMoveRow(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+	if !loginAndRefresh(lab, "labA_only", "test123") {
+		t.Fatal("login failed")
+	}
+
+	t.Run("move_row_success", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		data := url.Values{
+			"row": {"8"}, "column": {"1"},
+			"status": {"normal"}, "placement": {"dipakai"},
+			"is_mahasiswa": {"true"},
+			"serial_number": {"SN-MOVE-ROW-TEST"},
+			"operating_system": {"Win11"}, "pc_type": {"PC"},
+			"brand_model": {"Dell"}, "accessories": {"KB"},
+			"processor": {"i5"}, "ram": {"8GB"}, "storage": {"256GB"},
+		}.Encode()
+		resp, err := lab.post("/pc/create", data)
+		if err != nil {
+			t.Fatalf("POST /pc/create: %v", err)
+		}
+		resp.Body.Close()
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err = lab.postJSON("/api/pc/move-row", `{"row":8}`)
+		if err != nil {
+			t.Fatalf("POST /api/pc/move-row: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+		var moveRes struct {
+			Success bool `json:"success"`
+		}
+		json.NewDecoder(resp.Body).Decode(&moveRes)
+		if !moveRes.Success {
+			t.Error("move-row success=false")
+		}
+	})
+
+	t.Run("fail_invalid_json", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.postJSON("/api/pc/move-row", `{}`)
+		if err != nil {
+			t.Fatalf("POST /api/pc/move-row empty: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 400 {
+			t.Errorf("expected 400 for missing row, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// ============================================
+// TestAPIGetNextAssetCode — GetNextAssetCode + GetNextAssetCodes
+// ============================================
+
+func TestAPIGetNextAssetCode(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+	if !loginAndRefresh(lab, "labA_only", "test123") {
+		t.Fatal("login failed")
+	}
+
+	t.Run("next_asset_code", func(t *testing.T) {
+		resp, err := lab.get("/api/devices/next-asset-code?prefix=TEST")
+		if err != nil {
+			t.Fatalf("GET /api/devices/next-asset-code: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+		var res struct {
+			NextCode string `json:"next_code"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		if res.NextCode == "" {
+			t.Error("next_code is empty")
+		}
+	})
+
+	t.Run("next_asset_codes", func(t *testing.T) {
+		resp, err := lab.get("/api/devices/next-asset-codes?prefix=TEST&count=3")
+		if err != nil {
+			t.Fatalf("GET /api/devices/next-asset-codes: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+		var res struct {
+			Codes []string `json:"codes"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		if len(res.Codes) == 0 {
+			t.Error("codes is empty")
+		}
+	})
+
+	t.Run("default_count_one", func(t *testing.T) {
+		resp, err := lab.get("/api/devices/next-asset-codes?prefix=TEST")
+		if err != nil {
+			t.Fatalf("GET /api/devices/next-asset-codes: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+		var res struct {
+			Codes []string `json:"codes"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+		if len(res.Codes) != 1 {
+			t.Errorf("expected 1 code, got %d", len(res.Codes))
+		}
+	})
+
+	t.Run("empty_prefix", func(t *testing.T) {
+		resp, err := lab.get("/api/devices/next-asset-code?prefix=")
+		if err != nil {
+			t.Fatalf("GET /api/devices/next-asset-code empty prefix: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
 		}
 	})
 }
