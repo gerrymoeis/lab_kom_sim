@@ -58,9 +58,24 @@ func (h *GlobalHandler) LoginPage(c *gin.Context) {
 	}
 	token := middleware.NewCSRFToken(session)
 	_ = session.Save()
+
+	defaultCredentials, _ := h.globalAuthService.GetDefaultPasswordUsers()
+	for i := range defaultCredentials {
+		for _, lab := range h.cfg.Labs {
+			if lab.URLPath == defaultCredentials[i].Username {
+				defaultCredentials[i].LabTitle = lab.Title
+				break
+			}
+		}
+		if defaultCredentials[i].IsSuperAdmin {
+			defaultCredentials[i].LabTitle = "Super Admin"
+		}
+	}
+
 	h.render(c, http.StatusOK, "login.html", gin.H{
-		"title":      "Login - Sistem Inventaris Lab",
-		"csrf_token": token,
+		"title":             "Login - Sistem Inventaris Lab",
+		"csrf_token":        token,
+		"defaultCredentials": defaultCredentials,
 	})
 }
 
