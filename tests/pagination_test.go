@@ -222,6 +222,17 @@ func TestPaginationDevice(t *testing.T) {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
 		}
 	})
+
+	t.Run("tab_installations", func(t *testing.T) {
+		resp, err := lab.get("/devices?tab=installations")
+		if err != nil {
+			t.Fatalf("GET /devices?tab=installations: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+	})
 }
 
 func TestPaginationLogbook(t *testing.T) {

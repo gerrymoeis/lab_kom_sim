@@ -486,7 +486,7 @@ func TestAdminCSRF(t *testing.T) {
 		}
 	})
 
-	t.Run("get_routes_without_auth_redirect", func(t *testing.T) {
+		t.Run("get_routes_without_auth_redirect", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", env.TS.URL+"/admin/labs", nil)
 		resp, err := env.Client.Do(req)
 		if err != nil {
@@ -499,6 +499,252 @@ func TestAdminCSRF(t *testing.T) {
 		loc := resp.Header.Get("Location")
 		if loc != "/login" {
 			t.Errorf("expected redirect to /login, got %q", loc)
+		}
+	})
+}
+
+// ============================================
+// 9. PerLabUserDetail — GET user detail page (per-lab admin)
+// ============================================
+
+func TestPerLabUserDetail(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+	if !loginAndRefresh(lab, "labA_only", "test123") {
+		t.Fatal("login failed")
+	}
+
+	t.Run("detail_existing_user", func(t *testing.T) {
+		resp, err := lab.get("/admin/users/labA_only")
+		if err != nil {
+			t.Fatalf("GET /admin/users/labA_only: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("detail_not_found", func(t *testing.T) {
+		resp, err := lab.get("/admin/users/nonexistent-user")
+		if err != nil {
+			t.Fatalf("GET /admin/users/nonexistent-user: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 for not found, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// ============================================
+// 10. PerLabUserBatchDelete — POST batch delete (per-lab admin)
+// ============================================
+
+func TestPerLabUserBatchDelete(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+	db := env.DB_A
+	if !loginAndRefresh(lab, "labA_only", "test123") {
+		t.Fatal("login failed")
+	}
+
+	// Ensure a user exists in per-lab DB for batch delete
+	var userID int
+	db.QueryRow("SELECT id FROM users ORDER BY id LIMIT 1").Scan(&userID)
+	if userID == 0 {
+		t.Fatal("no user found in per-lab DB")
+	}
+
+	t.Run("batch_delete_empty", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.postJSON("/admin/users/batch-delete", `{"ids":[]}`)
+		if err != nil {
+			t.Fatalf("POST /admin/users/batch-delete empty: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 400 {
+			t.Errorf("expected 400 for empty ids, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// ============================================
+// 11. PerLabUserList — GET user list (per-lab admin)
+// ============================================
+
+func TestPerLabUserList(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+	if !loginAndRefresh(lab, "labA_only", "test123") {
+		t.Fatal("login failed")
+	}
+
+	t.Run("list_users", func(t *testing.T) {
+		resp, err := lab.get("/admin/users")
+		if err != nil {
+			t.Fatalf("GET /admin/users: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("list_create_page", func(t *testing.T) {
+		resp, err := lab.get("/admin/users/create")
+		if err != nil {
+			t.Fatalf("GET /admin/users/create: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// ============================================
+// 12. PerLabUserCreate — POST user create (per-lab admin)
+// ============================================
+
+func TestPerLabUserCreate(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+	db := env.DB_A
+	if !loginAndRefresh(lab, "labA_only", "test123") {
+		t.Fatal("login failed")
+	}
+
+	t.Run("create_user_success", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/admin/users/create",
+			"username=newuser1&password=test123&full_name=New+User+1&role=dosen")
+		if err != nil {
+			t.Fatalf("POST /admin/users/create: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		var count int
+		db.QueryRow("SELECT COUNT(*) FROM users WHERE username='newuser1'").Scan(&count)
+		if count == 0 {
+			t.Error("user not created in per-lab DB")
+		}
+	})
+
+	t.Run("create_user_empty_form", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/admin/users/create", "username=&password=&full_name=&role=")
+		if err != nil {
+			t.Fatalf("POST /admin/users/create empty: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 400 {
+			t.Errorf("expected 400 for empty form, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// ============================================
+// 13. PerLabUserEdit — POST user edit (per-lab admin)
+// ============================================
+
+func TestPerLabUserEdit(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+	db := env.DB_A
+	if !loginAndRefresh(lab, "labA_only", "test123") {
+		t.Fatal("login failed")
+	}
+
+	t.Run("edit_user_success", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/admin/users/labA_only/edit",
+			"username=labA_only&full_name=Lab+A+Updated&role=admin")
+		if err != nil {
+			t.Fatalf("POST /admin/users/labA_only/edit: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		var fullName string
+		db.QueryRow("SELECT full_name FROM users WHERE username='labA_only'").Scan(&fullName)
+		if fullName != "Lab A Updated" {
+			t.Errorf("expected 'Lab A Updated', got %q", fullName)
+		}
+	})
+
+	t.Run("edit_not_found", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/admin/users/nonexistent-user/edit",
+			"username=nonexistent&full_name=No+One&role=dosen")
+		if err != nil {
+			t.Fatalf("POST /admin/users/nonexistent-user/edit: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 for not found, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// ============================================
+// 14. PerLabUserDelete — POST user delete (per-lab admin)
+// ============================================
+
+func TestPerLabUserDelete(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+	db := env.DB_A
+	// Login as super admin (admin) — only super admins can delete per-lab users
+	if !loginAndRefresh(lab, "admin", "admin123") {
+		t.Fatal("login failed")
+	}
+
+	t.Run("delete_user_success", func(t *testing.T) {
+		// Create a user first
+		db.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (999, 'delete_me', 'x', 'Delete Me', 'dosen')")
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/admin/users/delete_me/delete", "")
+		if err != nil {
+			t.Fatalf("POST /admin/users/delete_me/delete: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		var count int
+		db.QueryRow("SELECT COUNT(*) FROM users WHERE username='delete_me'").Scan(&count)
+		if count != 0 {
+			t.Error("user not deleted")
+		}
+	})
+
+	t.Run("delete_not_found", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/admin/users/nonexistent999/delete", "")
+		if err != nil {
+			t.Fatalf("POST /admin/users/nonexistent999/delete: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 for not found, got %d", resp.StatusCode)
 		}
 	})
 }
