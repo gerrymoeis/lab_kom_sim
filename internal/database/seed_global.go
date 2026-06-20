@@ -35,41 +35,30 @@ func SeedGlobalUsers(db *DB, labs []config.LabConfig) error {
 			VALUES (?, ?, 'admin')`, adminID, lab.URLPath)
 	}
 
-	// 2. Lab admin per lab — hanya akses lab nya sendiri
-	labPass := env("LAB_ADMIN_PASSWORD", "labadmin123")
-	hashedLab, err := bcrypt.GenerateFromPassword([]byte(labPass), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("failed to hash lab admin password: %w", err)
-	}
-
+	// 2. Akun utama per lab — username = urlPath, password = urlPath + "123"
 	for _, lab := range labs {
-		labAdminUser := lab.ID + "-admin"
+		mainPass := env("MAIN_ACCOUNT_PASSWORD", lab.URLPath+"123")
+		hashedMain, err := bcrypt.GenerateFromPassword([]byte(mainPass), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("failed to hash main account password for %s: %w", lab.URLPath, err)
+		}
+
 		var exists int
-		db.QueryRow(`SELECT COUNT(*) FROM global_users WHERE username = ?`, labAdminUser).Scan(&exists)
+		db.QueryRow(`SELECT COUNT(*) FROM global_users WHERE username = ?`, lab.URLPath).Scan(&exists)
 		if exists > 0 {
 			continue
 		}
 		res, err := db.Exec(`INSERT INTO global_users (username, password, full_name)
-			VALUES (?, ?, ?)`, labAdminUser, string(hashedLab), "Admin "+lab.Title)
+			VALUES (?, ?, ?)`, lab.URLPath, string(hashedMain), "Akun Utama "+lab.Title)
 		if err != nil {
-			return fmt.Errorf("failed to create lab admin %s: %w", labAdminUser, err)
+			return fmt.Errorf("failed to create main account %s: %w", lab.URLPath, err)
 		}
 		userID, _ := res.LastInsertId()
 		db.Exec(`INSERT INTO lab_permissions (user_id, lab_url_path, role)
 			VALUES (?, ?, 'admin')`, userID, lab.URLPath)
 	}
 
-	// 3. Seed lab_configs from env
-	for _, lab := range labs {
-		var exists int
-		db.QueryRow(`SELECT COUNT(*) FROM lab_configs WHERE lab_id = ?`, lab.ID).Scan(&exists)
-		if exists == 0 {
-			db.Exec(`INSERT INTO lab_configs (lab_id, title, url_path, db_path)
-				VALUES (?, ?, ?, ?)`, lab.ID, lab.Title, lab.URLPath, lab.DBPath)
-		}
-	}
-
-	// 4. Seed default grid layouts
+	// 3. Seed default grid layouts
 	for _, lab := range labs {
 		var exists int
 		db.QueryRow(`SELECT COUNT(*) FROM grid_layouts WHERE lab_url_path = ?`, lab.URLPath).Scan(&exists)

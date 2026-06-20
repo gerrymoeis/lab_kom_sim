@@ -539,7 +539,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		seedVal int
 		seedUsr string
 	}{
-		{"is_protected", "INTEGER NOT NULL DEFAULT 0", "BOOLEAN NOT NULL DEFAULT FALSE", 1, "IN ('admin', 'rekan')"},
+		{"is_protected", "INTEGER NOT NULL DEFAULT 0", "BOOLEAN NOT NULL DEFAULT FALSE", 1, "= 'admin'"},
 		{"is_super_admin", "INTEGER NOT NULL DEFAULT 0", "BOOLEAN NOT NULL DEFAULT FALSE", 1, "= 'admin'"},
 	} {
 		if exists, err := d.columnExists(db, "users", col.name); err != nil {
