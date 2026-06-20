@@ -8,9 +8,11 @@
         </div>
         <div class="col-md-6 text-end">
             {{ template "layout/header_actions_start.html" $ }}
+            {{ if or $.isSuperAdmin $.is_main_account }}
             <a href="{{ $.basePath }}/admin/users/create" class="btn btn-primary flex-grow-1">
                 <i class="bi bi-plus-circle"></i> Tambah User
             </a>
+            {{ end }}
             {{ template "layout/header_actions_end.html" }}
         </div>
     </div>
