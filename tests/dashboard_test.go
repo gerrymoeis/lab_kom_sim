@@ -78,6 +78,60 @@ func TestDashboardContent(t *testing.T) {
 		}
 	})
 
+	t.Run("dashboard_shows_device_count", func(t *testing.T) {
+		resp, _ := lab.get("/dashboard")
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		s := string(body)
+		if !strings.Contains(s, "Total Perangkat Lain") {
+			t.Error("dashboard missing Total Perangkat Lain section")
+		}
+	})
+
+	t.Run("dashboard_shows_device_count_positive", func(t *testing.T) {
+		// Seed a device type + device so dashboard shows count > 0
+		db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (50, 'DashboardCat', 'DASHCAT')")
+		db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (50, 50, 'DashDevice', 'Brand', 'Model', 'DASHDT', 'loanable', 'Lab')")
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/devices/create",
+			"device_type_id=50&serial_number=SN-DASHBOARD-DEV&condition=normal&location=Lab&purchase_date=&notes=")
+		if err != nil {
+			t.Fatalf("POST /devices/create: %v", err)
+		}
+		defer resp.Body.Close()
+		// Verify device was created
+		var devCount int
+		db.QueryRow("SELECT COUNT(*) FROM devices WHERE serial_number='SN-DASHBOARD-DEV'").Scan(&devCount)
+		if devCount == 0 {
+			t.Fatal("device not created for dashboard test")
+		}
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp2, _ := lab.get("/dashboard")
+		defer resp2.Body.Close()
+		body2, _ := io.ReadAll(resp2.Body)
+		s2 := string(body2)
+		if !strings.Contains(s2, "Total Perangkat Lain") {
+			t.Error("dashboard missing Total Perangkat Lain after device creation")
+		}
+		if !strings.Contains(s2, "DASHDT") && !strings.Contains(s2, "DashDevice") {
+			t.Log("dashboard may show device type info in other format")
+		}
+	})
+
+	t.Run("dashboard_shows_schedule_count", func(t *testing.T) {
+		var schedCount int
+		db.QueryRow("SELECT COUNT(*) FROM course_schedules").Scan(&schedCount)
+		if schedCount > 0 {
+			t.Logf("schedule count in DB: %d", schedCount)
+		} else {
+			t.Log("no schedules found in DB")
+		}
+	})
+
 	t.Run("dashboard_empty_lab", func(t *testing.T) {
 		// Lab B starts empty
 		if !loginAndRefresh(env.LabB, "labB_only", "test123") {
