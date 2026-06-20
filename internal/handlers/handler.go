@@ -118,6 +118,27 @@ func (h *Handler) isSuperAdmin(c *gin.Context) bool {
 	return ok && val
 }
 
+func (h *Handler) isMainAccount(c *gin.Context) bool {
+	userID, _, _, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		return false
+	}
+	lab := c.GetString("lab")
+	gdb, exists := c.Get("globalDB")
+	if !exists {
+		return false
+	}
+	globalDB := gdb.(*database.DB)
+	var count int
+	if err := globalDB.QueryRow(
+		`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND lab_url_path = ? AND is_main_account = 1`,
+		userID, lab,
+	).Scan(&count); err != nil {
+		return false
+	}
+	return count > 0
+}
+
 func (h *Handler) labURL(c *gin.Context, path string) string {
 	return middleware.LabURL(c, path)
 }
