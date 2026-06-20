@@ -7,9 +7,18 @@
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-person-circle"></i> Detail User: {{ .user.Username }}</h5>
                     <div class="d-flex flex-column flex-sm-row gap-2">
+                        {{ if or $.isSuperAdmin $.is_main_account (eq $.username .user.Username) }}
                         <a href="{{ $.basePath }}/admin/users/{{ .user.Username }}/edit" class="btn btn-sm btn-warning">
                             <i class="bi bi-pencil"></i> Edit
                         </a>
+                        {{ end }}
+                        {{ if and (not .user.IsProtected) (or $.isSuperAdmin $.is_main_account) }}
+                        <button type="button" class="btn btn-sm btn-danger" title="Hapus"
+                            onclick="confirmDelete({message:'Hapus user {{ .user.Username }}?', formId:'del-user-{{ .user.Username }}'})">
+                            <i class="bi bi-trash"></i> Hapus
+                        </button>
+                        <form id="del-user-{{ .user.Username }}" method="POST" action="{{ $.basePath }}/admin/users/{{ .user.Username }}/delete" class="d-none"></form>
+                        {{ end }}
                         <a href="{{ $.basePath }}/admin/users" class="btn btn-sm btn-secondary">
                             <i class="bi bi-arrow-left"></i> Kembali
                         </a>
