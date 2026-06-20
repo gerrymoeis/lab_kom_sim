@@ -238,9 +238,15 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	}
 
 	sess := sessions.Default(c)
+	oldUsername, _ := sess.Get("username").(string)
 	sess.Set("username", newUsername)
 	sess.Set("full_name", newFullName)
 	sess.Save()
+
+	if oldUsername != "" && oldUsername != newUsername {
+		_ = h.globalAuthService.ClearDefaultPasswordFlag(userID)
+	}
+
 	h.redirectWithSuccess(c, "/profile", "Profil berhasil diupdate", "update")
 }
 
