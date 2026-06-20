@@ -35,7 +35,7 @@ func (r *UserRepository) List() ([]models.User, error) {
 	return users, nil
 }
 
-func (r *UserRepository) ListPaginated(search, role, sortBy, sortOrder string, page, pageSize int) ([]models.User, int, error) {
+func (r *UserRepository) ListPaginated(search, role, sortBy, sortOrder string, page, pageSize int, usernameFilter string) ([]models.User, int, error) {
 	if page < 1 { page = 1 }
 	if pageSize < 1 { pageSize = 20 }
 
@@ -48,6 +48,9 @@ func (r *UserRepository) ListPaginated(search, role, sortBy, sortOrder string, p
 		}
 		if role != "" {
 			q += ` AND role = ?`; a = append(a, role)
+		}
+		if usernameFilter != "" {
+			q += ` AND username = ?`; a = append(a, usernameFilter)
 		}
 		return q, a
 	}
@@ -67,6 +70,9 @@ func (r *UserRepository) ListPaginated(search, role, sortBy, sortOrder string, p
 	}
 	if role != "" {
 		q += ` AND role = ?`; qa = append(qa, role)
+	}
+	if usernameFilter != "" {
+		q += ` AND username = ?`; qa = append(qa, usernameFilter)
 	}
 
 	validSort := map[string]bool{"username": true, "full_name": true, "role": true, "created_at": true}

@@ -12,14 +12,15 @@ import (
 )
 
 var (
-	ErrSelfDelete       = errors.New("tidak dapat menghapus akun sendiri")
-	ErrProtectedDelete  = errors.New("tidak dapat menghapus akun admin utama")
-	ErrDeleteNotAllowed = errors.New("hanya akun utama yang dapat menghapus user lain")
-	ErrUserNotFound     = errors.New("user tidak ditemukan")
-	ErrUsernameTaken    = errors.New("username sudah digunakan")
-	ErrPasswordMismatch = errors.New("password baru dan konfirmasi tidak cocok")
-	ErrWrongPassword    = errors.New("password lama salah")
-	ErrProtectedUpdate  = errors.New("tidak dapat mengubah role user ini")
+	ErrSelfDelete        = errors.New("tidak dapat menghapus akun sendiri")
+	ErrProtectedDelete   = errors.New("tidak dapat menghapus akun admin utama")
+	ErrDeleteNotAllowed  = errors.New("hanya akun utama yang dapat menghapus user lain")
+	ErrCreateNotAllowed  = errors.New("hanya super admin atau akun utama yang dapat menambah user")
+	ErrUserNotFound      = errors.New("user tidak ditemukan")
+	ErrUsernameTaken     = errors.New("username sudah digunakan")
+	ErrPasswordMismatch  = errors.New("password baru dan konfirmasi tidak cocok")
+	ErrWrongPassword     = errors.New("password lama salah")
+	ErrProtectedUpdate   = errors.New("tidak dapat mengubah role user ini")
 )
 
 type UserService struct {
@@ -35,8 +36,12 @@ func (s *UserService) List() ([]models.User, error) {
 	return s.userRepo.List()
 }
 
-func (s *UserService) ListPaginated(search, role, sortBy, sortOrder string, page, pageSize int) ([]models.User, int, error) {
-	return s.userRepo.ListPaginated(search, role, sortBy, sortOrder, page, pageSize)
+func (s *UserService) ListPaginated(search, role, sortBy, sortOrder string, page, pageSize int, actorIsSuperAdmin, actorIsMainAccount bool, actorUsername string) ([]models.User, int, error) {
+	usernameFilter := ""
+	if !actorIsSuperAdmin && !actorIsMainAccount {
+		usernameFilter = actorUsername
+	}
+	return s.userRepo.ListPaginated(search, role, sortBy, sortOrder, page, pageSize, usernameFilter)
 }
 
 func (s *UserService) GetByID(id int) (*models.User, error) {
@@ -47,7 +52,12 @@ func (s *UserService) GetByUsername(username string) (*models.User, error) {
 	return s.userRepo.GetByUsername(username)
 }
 
-func (s *UserService) CreateUser(actorID int, actorUsername, actorRole, username, password, fullName, role, ipAddress, userAgent string) error {
+func (s *UserService) CreateUser(actorID int, actorUsername, actorRole string, actorIsSuperAdmin, actorIsMainAccount bool, username, password, fullName, role, ipAddress, userAgent string) error {
+	if !actorIsSuperAdmin && !actorIsMainAccount {
+		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", 0,
+			map[string]any{"username": username}, ipAddress, userAgent, ErrCreateNotAllowed.Error())
+		return ErrCreateNotAllowed
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "user", 0,
@@ -65,7 +75,7 @@ func (s *UserService) CreateUser(actorID int, actorUsername, actorRole, username
 	return nil
 }
 
-func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actorRole string, actorIsSuperAdmin bool, ipAddress, userAgent string) error {
+func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actorRole string, actorIsSuperAdmin, actorIsMainAccount bool, targetIsMainAccount bool, ipAddress, userAgent string) error {
 	if actorID == targetID {
 		return ErrSelfDelete
 	}
@@ -77,7 +87,9 @@ func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actor
 		return ErrProtectedDelete
 	}
 	if !actorIsSuperAdmin {
-		return ErrDeleteNotAllowed
+		if !actorIsMainAccount || targetIsMainAccount {
+			return ErrDeleteNotAllowed
+		}
 	}
 	if err := s.userRepo.Delete(targetID); err != nil {
 		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", targetID,
@@ -199,7 +211,7 @@ func (s *UserService) ChangePassword(userID int, oldPassword, newPassword, confi
 	return nil
 }
 
-func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, actorUsername, actorRole string, actorIsSuperAdmin bool, ipAddress, userAgent string) error {
+func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, actorUsername, actorRole string, actorIsSuperAdmin, actorIsMainAccount bool, targetMainAccountUsernames map[string]bool, ipAddress, userAgent string) error {
 	items := make([]map[string]string, 0, len(targetUsernames))
 	for _, username := range targetUsernames {
 		if actorUsername == username {
@@ -222,10 +234,12 @@ func (s *UserService) BatchDeleteUser(actorID int, targetUsernames []string, act
 			return ErrProtectedDelete
 		}
 		if !actorIsSuperAdmin {
-			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
-				map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
-				ipAddress, userAgent, ErrDeleteNotAllowed.Error())
-			return ErrDeleteNotAllowed
+			if !actorIsMainAccount || targetMainAccountUsernames[username] {
+				s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "user", 0,
+					map[string]any{"action": "batch_delete", "count": len(targetUsernames), "items": items},
+					ipAddress, userAgent, ErrDeleteNotAllowed.Error())
+				return ErrDeleteNotAllowed
+			}
 		}
 		info := map[string]string{"username": target.Username, "full_name": target.FullName}
 		if err := s.userRepo.Delete(target.ID); err != nil {
