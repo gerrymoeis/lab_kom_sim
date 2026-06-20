@@ -136,10 +136,10 @@ func LabPermissionRequired() gin.HandlerFunc {
 			`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND lab_url_path = ?`,
 			userID, lab).Scan(&exists)
 		if exists == 0 {
-			c.HTML(http.StatusForbidden, "error.html", gin.H{
-				"title":   "Akses Ditolak",
-				"message": "Anda tidak memiliki akses ke laboratorium ini.",
-			})
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title": "Akses Ditolak", "currentPage": "",
+			"message": "Anda tidak memiliki akses ke laboratorium ini.",
+		})
 			c.Abort()
 			return
 		}
