@@ -66,7 +66,8 @@ func LabRoleInjector() gin.HandlerFunc {
 	}
 }
 
-// autoSyncUser ensures the global user exists in the current per-lab users table.
+// autoSyncUser ensures the global user exists in the current per-lab users table
+// and stays up-to-date via UPSERT (INSERT OR UPDATE).
 func autoSyncUser(c *gin.Context, userID int, username, fullName string) {
 	if fullName == "" {
 		session := sessions.Default(c)
@@ -86,12 +87,12 @@ func autoSyncUser(c *gin.Context, userID int, username, fullName string) {
 		return
 	}
 
-	var count int
-	db.QueryRow("SELECT COUNT(*) FROM users WHERE id = ?", userID).Scan(&count)
-	if count == 0 {
-		db.Exec(`INSERT INTO users (id, username, password, full_name, role, is_protected, is_super_admin)
-			VALUES (?, ?, '', ?, 'user', 0, 0)`, userID, username, fullName)
-	}
+	db.Exec(`INSERT INTO users (id, username, password, full_name, role, is_protected, is_super_admin)
+		VALUES (?, ?, '', ?, 'user', 0, 0)
+		ON CONFLICT(id) DO UPDATE SET
+			username = excluded.username,
+			full_name = excluded.full_name`,
+		userID, username, fullName)
 }
 
 // LabPermissionRequired checks if user has access to current lab
