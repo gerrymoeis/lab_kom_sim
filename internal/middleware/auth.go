@@ -76,7 +76,7 @@ func AdminRequired() gin.HandlerFunc {
 			userID, lab).Scan(&role)
 		if err != nil || role != "admin" {
 			c.HTML(http.StatusForbidden, "error.html", gin.H{
-				"title":   "Akses Ditolak",
+				"title": "Akses Ditolak", "currentPage": "",
 				"message": "Anda tidak memiliki akses ke halaman ini.",
 			})
 			c.Abort()
@@ -93,7 +93,7 @@ func SuperAdminRequired() gin.HandlerFunc {
 		_, _, isSuperAdmin, ok := GetCurrentUser(c)
 		if !ok || !isSuperAdmin {
 			c.HTML(http.StatusForbidden, "error.html", gin.H{
-				"title":   "Akses Ditolak",
+				"title": "Akses Ditolak", "currentPage": "",
 				"message": "Hanya super admin yang dapat mengakses halaman ini.",
 			})
 			c.Abort()

@@ -1009,14 +1009,18 @@ func setupTestEnvironment(t *testing.T) *TestEnvironment {
 	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_only", bcryptHash("test123"), "Lab A Only")
 	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labB_only", bcryptHash("test123"), "Lab B Only")
 	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "no_perm_user", bcryptHash("test123"), "No Permission")
-	var labAOnlyID, labBOnlyID int
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_dosen", bcryptHash("test123"), "Lab A Dosen")
+	var labAOnlyID, labBOnlyID, labADosenID int
 	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_only'").Scan(&labAOnlyID)
 	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labB_only'").Scan(&labBOnlyID)
+	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_dosen'").Scan(&labADosenID)
 	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labAOnlyID, labAURL)
 	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labBOnlyID, labBURL)
-	hashA, hashB := bcryptHash("test123"), bcryptHash("test123")
+	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'dosen')", labADosenID, labAURL)
+	hashA, hashB, hashDosen := bcryptHash("test123"), bcryptHash("test123"), bcryptHash("test123")
 	dbA.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, 'Lab A Only', 'admin')", labAOnlyID, "labA_only", hashA)
 	dbB.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, 'Lab B Only', 'admin')", labBOnlyID, "labB_only", hashB)
+	dbA.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, 'Lab A Dosen', 'dosen')", labADosenID, "labA_dosen", hashDosen)
 
 	dbs := map[string]*database.DB{labAURL: dbA, labBURL: dbB}
 	router, cleanup, flushLogs := server.SetupRouter(dbs, globalDB, cfg, nil)
