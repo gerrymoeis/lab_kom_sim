@@ -14,7 +14,6 @@ func SeedDefaultUser(db *DB) error {
 		FullName string
 	}{
 		{"admin", env("ADMIN_PASSWORD", "admin123"), "Administrator"},
-		{"rekan", env("REKAN_PASSWORD", "rekan123"), "Rekan Administrator"},
 	}
 
 	for _, a := range admins {
