@@ -84,7 +84,7 @@
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
-                                {{ if canAccessUser $.username . $.isSuperAdmin }}
+                                {{ if canAccessUser $.username . $.isSuperAdmin $.is_main_account }}
                                 <a href="{{ $.basePath }}/admin/users/{{ .Username }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
