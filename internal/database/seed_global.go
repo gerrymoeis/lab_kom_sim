@@ -22,8 +22,8 @@ func SeedGlobalUsers(db *DB, labs []config.LabConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to hash admin password: %w", err)
 	}
-	res, err := db.Exec(`INSERT INTO global_users (username, password, full_name, is_super_admin, is_protected)
-		VALUES ('admin', ?, 'Administrator', 1, 1)`, string(hashedAdmin))
+	res, err := db.Exec(`INSERT INTO global_users (username, password, full_name, is_super_admin, is_protected, password_is_default)
+		VALUES ('admin', ?, 'Administrator', 1, 1, 1)`, string(hashedAdmin))
 	if err != nil {
 		return fmt.Errorf("failed to create admin user: %w", err)
 	}
@@ -48,14 +48,14 @@ func SeedGlobalUsers(db *DB, labs []config.LabConfig) error {
 		if exists > 0 {
 			continue
 		}
-		res, err := db.Exec(`INSERT INTO global_users (username, password, full_name)
-			VALUES (?, ?, ?)`, lab.URLPath, string(hashedMain), "Akun Utama "+lab.Title)
+		res, err := db.Exec(`INSERT INTO global_users (username, password, full_name, password_is_default)
+			VALUES (?, ?, ?, 1)`, lab.URLPath, string(hashedMain), "Akun Utama "+lab.Title)
 		if err != nil {
 			return fmt.Errorf("failed to create main account %s: %w", lab.URLPath, err)
 		}
 		userID, _ := res.LastInsertId()
-		db.Exec(`INSERT INTO lab_permissions (user_id, lab_url_path, role)
-			VALUES (?, ?, 'admin')`, userID, lab.URLPath)
+		db.Exec(`INSERT INTO lab_permissions (user_id, lab_url_path, role, is_main_account)
+			VALUES (?, ?, 'admin', 1)`, userID, lab.URLPath)
 	}
 
 	// 3. Seed default grid layouts
