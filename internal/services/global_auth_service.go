@@ -124,6 +124,10 @@ func (s *GlobalAuthService) UpdateUserPassword(id int, password string) error {
 	return s.userRepo.UpdatePassword(id, string(hash))
 }
 
+func (s *GlobalAuthService) ClearDefaultPasswordFlag(userID int) error {
+	return s.userRepo.ClearDefaultPasswordFlag(userID)
+}
+
 func (s *GlobalAuthService) SetUserPermissions(userID int, permissions []struct {
 	LabURLPath string
 	Role       string

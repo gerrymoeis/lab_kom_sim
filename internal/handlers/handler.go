@@ -85,18 +85,18 @@ func getRequestContext(c *gin.Context) (ipAddress, userAgent string) {
 	return
 }
 
-func (h *Handler) canAccessProfile(actorUsername string, target *models.User, actorIsSuperAdmin bool) bool {
+func (h *Handler) canAccessProfile(actorUsername string, target *models.User, actorIsSuperAdmin, actorIsMainAccount bool) bool {
 	if target.IsProtected {
 		return actorUsername == target.Username
 	}
-	return actorUsername == target.Username || actorIsSuperAdmin
+	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount
 }
 
-func CanAccessProfile(actorUsername string, target models.User, actorIsSuperAdmin bool) bool {
+func CanAccessProfile(actorUsername string, target models.User, actorIsSuperAdmin, actorIsMainAccount bool) bool {
 	if target.IsProtected {
 		return actorUsername == target.Username
 	}
-	return actorUsername == target.Username || actorIsSuperAdmin
+	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount
 }
 
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {
@@ -163,6 +163,7 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	data["lab"] = lab
 	data["basePath"] = h.labURL(c, "")
 	data["is_super_admin"] = c.GetBool("is_super_admin")
+	data["is_main_account"] = h.isMainAccount(c)
 	for _, l := range h.cfg.Labs {
 		if l.URLPath == lab {
 			data["labTitle"] = l.Title
