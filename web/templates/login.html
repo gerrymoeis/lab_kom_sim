@@ -59,11 +59,16 @@
                         </button>
                     </form>
 
+                    {{if .defaultCredentials}}
                     <div class="mt-4 text-center">
                         <small class="text-muted">
-                            Default: admin / admin123
+                            <strong>Default Credentials:</strong><br>
+                            {{range .defaultCredentials}}
+                            {{.LabTitle}}: {{.Username}} / {{.Password}}<br>
+                            {{end}}
                         </small>
                     </div>
+                    {{end}}
                     <div class="mt-3 text-center pt-3 border-top">
                         <a href="/" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Pilih Lab Lain</a>
                     </div>

@@ -15,6 +15,12 @@ import (
 
 var ErrProtectedUser = errors.New("cannot delete protected user")
 
+var DefaultPasswordMap = map[string]string{
+	"admin": "admin123",
+}
+
+var MainAccountPasswordSuffix = "123"
+
 type GlobalAuthService struct {
 	userRepo *repository.GlobalUserRepository
 }
@@ -100,6 +106,13 @@ func (s *GlobalAuthService) CreateUser(username, password, fullName string, isSu
 }
 
 func (s *GlobalAuthService) UpdateUser(id int, username, fullName string, isSuperAdmin bool) error {
+	old, err := s.userRepo.GetByID(id)
+	if err != nil {
+		return err
+	}
+	if old.Username != username {
+		_ = s.userRepo.ClearDefaultPasswordFlag(id)
+	}
 	return s.userRepo.Update(id, username, fullName, isSuperAdmin)
 }
 
@@ -121,11 +134,31 @@ func (s *GlobalAuthService) UpdateUserPassword(id int, password string) error {
 	if err != nil {
 		return fmt.Errorf("gagal hash password: %w", err)
 	}
-	return s.userRepo.UpdatePassword(id, string(hash))
+	if err := s.userRepo.UpdatePassword(id, string(hash)); err != nil {
+		return err
+	}
+	return s.userRepo.ClearDefaultPasswordFlag(id)
 }
 
 func (s *GlobalAuthService) ClearDefaultPasswordFlag(userID int) error {
 	return s.userRepo.ClearDefaultPasswordFlag(userID)
+}
+
+func (s *GlobalAuthService) GetDefaultPasswordUsers() ([]models.DefaultCredential, error) {
+	creds, err := s.userRepo.GetUsersWithDefaultPassword()
+	if err != nil {
+		return nil, err
+	}
+	for i := range creds {
+		if creds[i].IsSuperAdmin {
+			if pw, ok := DefaultPasswordMap[creds[i].Username]; ok {
+				creds[i].Password = pw
+			}
+		} else if creds[i].IsMainAccount {
+			creds[i].Password = creds[i].Username + MainAccountPasswordSuffix
+		}
+	}
+	return creds, nil
 }
 
 func (s *GlobalAuthService) SetUserPermissions(userID int, permissions []struct {
