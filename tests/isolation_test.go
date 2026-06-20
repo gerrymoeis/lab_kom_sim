@@ -100,6 +100,32 @@ func TestCrossLabIsolation(t *testing.T) {
 			t.Errorf("Lab B should have 0 schedules, got %d", schedCountB)
 		}
 	})
+
+	t.Run("data_isolation_after_create", func(t *testing.T) {
+		// Verify that data created on Lab B is NOT visible in Lab A
+		if !labB.refreshCSRF() {
+			// Not logged in yet — clear cookies and do fresh login
+			labB.cookies = make(map[string]string)
+			if !loginAndRefresh(labB, "labB_only", "test123") {
+				t.Fatal("login failed")
+			}
+		}
+		resp, err := labB.post("/software/create", "name=Isolation-99")
+		if err != nil {
+			t.Fatalf("POST Lab B software create: %v", err)
+		}
+		resp.Body.Close()
+		var countInA int
+		dbA.QueryRow("SELECT COUNT(*) FROM software_catalog WHERE name='Isolation-99'").Scan(&countInA)
+		if countInA != 0 {
+			t.Error("Lab B created software should NOT appear in Lab A DB")
+		}
+		var swCreated int
+		dbB.QueryRow("SELECT COUNT(*) FROM software_catalog WHERE name='Isolation-99'").Scan(&swCreated)
+		if swCreated == 0 {
+			t.Error("Lab B created software should exist in Lab B DB")
+		}
+	})
 }
 
 // ============================================
