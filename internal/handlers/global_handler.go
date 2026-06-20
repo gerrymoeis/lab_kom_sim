@@ -137,7 +137,7 @@ func (h *GlobalHandler) Logout(c *gin.Context) {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
-	c.Redirect(http.StatusFound, "/login")
+	c.Redirect(http.StatusFound, "/")
 }
 
 func (h *GlobalHandler) LabSelector(c *gin.Context) {
@@ -147,6 +147,7 @@ func (h *GlobalHandler) LabSelector(c *gin.Context) {
 		return
 	}
 
+	userID, _ := session.Get("user_id").(int)
 	username, _ := session.Get("username").(string)
 	fullName, _ := session.Get("full_name").(string)
 	isSuperAdmin, _ := session.Get("is_super_admin").(bool)
@@ -172,12 +173,23 @@ func (h *GlobalHandler) LabSelector(c *gin.Context) {
 		}
 	}
 
+	isMainAccount := false
+	if !isSuperAdmin {
+		var count int
+		_ = h.globalDB.QueryRow(
+			`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND is_main_account = 1`,
+			userID,
+		).Scan(&count)
+		isMainAccount = count > 0
+	}
+
 	h.render(c, http.StatusOK, "lab_selector.html", gin.H{
-		"title":        "Pilih Laboratorium",
-		"username":     username,
-		"fullName":     fullName,
-		"isSuperAdmin": isSuperAdmin,
-		"labs":         labs,
+		"title":         "Pilih Laboratorium",
+		"username":      username,
+		"fullName":      fullName,
+		"isSuperAdmin":  isSuperAdmin,
+		"isMainAccount": isMainAccount,
+		"labs":          labs,
 	})
 }
 
