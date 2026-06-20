@@ -5,24 +5,35 @@ import (
 	"net/http"
 	"strconv"
 
+	"inventaris-lab-kom/internal/middleware"
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (h *GlobalHandler) AdminUserList(c *gin.Context) {
-	users, err := h.globalAuthService.ListUsers()
+	userID, _, _, ok := middleware.GetCurrentUser(c)
+	if !ok {
+		h.render(c, http.StatusUnauthorized, "error.html", gin.H{
+			"title":   "Unauthorized",
+			"message": "Silakan login terlebih dahulu",
+		})
+		return
+	}
+
+	user, err := h.globalAuthService.GetUser(userID)
 	if err != nil {
 		h.render(c, http.StatusInternalServerError, "admin_users.html", gin.H{
 			"title": "Manage Users",
-			"error": "Gagal memuat data users",
+			"error": "Gagal memuat data user",
 		})
 		return
 	}
 
 	h.render(c, http.StatusOK, "admin_users.html", gin.H{
 		"title": "Manage Users",
-		"users": users,
+		"users": []models.GlobalUser{*user},
 	})
 }
 

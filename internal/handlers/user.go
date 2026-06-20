@@ -87,7 +87,7 @@ func (h *Handler) UserDetail(c *gin.Context) {
 		return
 	}
 
-	if !h.canAccessProfile(username, user, h.isSuperAdmin(c)) {
+	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -110,7 +110,7 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 		return
 	}
 
-	if !h.canAccessProfile(username, user, h.isSuperAdmin(c)) {
+	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -133,7 +133,7 @@ func (h *Handler) UserEdit(c *gin.Context) {
 	_, u, _, ok := h.user(c)
 	if !ok { return }
 
-	if !h.canAccessProfile(u, target, h.isSuperAdmin(c)) {
+	if !h.canAccessProfile(u, target, h.isSuperAdmin(c), h.isMainAccount(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -261,6 +261,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		h.redirectWithError(c, "/profile", msg)
 		return
 	}
+	h.globalAuthService.ClearDefaultPasswordFlag(userID)
 	h.redirectWithSuccess(c, "/profile", "Password berhasil diubah", "update")
 }
 
