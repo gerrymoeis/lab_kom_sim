@@ -72,7 +72,7 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 	var req CreateScheduleRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.renderTemplate(c, http.StatusBadRequest, "schedule/create.html", gin.H{
-			"title": "Tambah Jadwal", "error": "Semua field wajib diisi",
+			"title": "Tambah Jadwal", "currentPage": "schedules", "error": "Semua field wajib diisi",
 		})
 		return
 	}
@@ -85,7 +85,7 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 	}, uid, u, r, ip, ua)
 	if err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "schedule/create.html", gin.H{
-			"title": "Tambah Jadwal", "error": "Gagal menyimpan data",
+			"title": "Tambah Jadwal", "currentPage": "schedules", "error": "Gagal menyimpan data",
 		})
 		return
 	}
