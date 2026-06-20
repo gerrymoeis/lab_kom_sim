@@ -300,6 +300,14 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		adminGroup.POST("/users/:id/permissions", globalHandler.AdminUserPermissionsSave)
 	}
 
+	// Global 404 handler
+	router.NoRoute(func(c *gin.Context) {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"title":   "404 - Halaman Tidak Ditemukan",
+			"message": "Halaman yang Anda cari tidak ditemukan.",
+		})
+	})
+
 	// ========== PER-LAB ROUTES ==========
 
 	// Backward compat: redirect old /:lab/login → /login

@@ -17,14 +17,14 @@ func AuthRequired() gin.HandlerFunc {
 		sessionToken := session.Get("session_token")
 
 		if userID == nil || sessionToken == nil {
-			LabRedirect(c, http.StatusFound, "/login")
+			c.Redirect(http.StatusFound, "/login")
 			c.Abort()
 			return
 		}
 
 		gdbVal, exists := c.Get("globalDB")
 		if !exists {
-			LabRedirect(c, http.StatusFound, "/login")
+			c.Redirect(http.StatusFound, "/login")
 			c.Abort()
 			return
 		}
@@ -45,7 +45,7 @@ func AuthRequired() gin.HandlerFunc {
 				SameSite: http.SameSiteLaxMode,
 			})
 			_ = session.Save()
-			LabRedirect(c, http.StatusFound, "/login")
+			c.Redirect(http.StatusFound, "/login")
 			c.Abort()
 			return
 		}
