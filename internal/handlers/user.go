@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-contrib/sessions"
@@ -33,7 +34,7 @@ func (h *Handler) UserList(c *gin.Context) {
 	var query interface{} = ""
 	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
-	users, total, err := h.userService.ListPaginated(search, roleFilter, sortBy, sortOrder, page, pageSize)
+	users, total, err := h.userService.ListPaginated(search, roleFilter, sortBy, sortOrder, page, pageSize, h.isSuperAdmin(c), h.isMainAccount(c), username)
 	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
 
 	totalPages := (total + pageSize - 1) / pageSize
@@ -66,8 +67,10 @@ func (h *Handler) UserCreate(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.userService.CreateUser(uid, u, r, req.Username, req.Password, req.FullName, req.Role, ip, ua); err != nil {
-		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal menyimpan user. Username mungkin sudah digunakan."})
+	if err := h.userService.CreateUser(uid, u, r, h.isSuperAdmin(c), h.isMainAccount(c), req.Username, req.Password, req.FullName, req.Role, ip, ua); err != nil {
+		msg := "Gagal menyimpan user. Username mungkin sudah digunakan."
+		if errors.Is(err, services.ErrCreateNotAllowed) { msg = "Hanya super admin atau akun utama yang dapat menambah user" }
+		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": msg})
 		return
 	}
 	h.redirectWithSuccess(c, "/admin/users", "User berhasil ditambahkan")
@@ -175,7 +178,20 @@ func (h *Handler) UserDelete(c *gin.Context) {
 	r, _ := sess.Get("role").(string)
 	ip, ua := getRequestContext(c)
 
-	if err := h.userService.DeleteUser(currentUserID, target.ID, u, r, h.isSuperAdmin(c), ip, ua); err != nil {
+	var targetIsMainAccount bool
+	if gdbVal, exists := c.Get("globalDB"); exists {
+		globalDB := gdbVal.(*database.DB)
+		lab := c.GetString("lab")
+		var count int
+		if err := globalDB.QueryRow(
+			`SELECT COUNT(*) FROM lab_permissions lp JOIN global_users gu ON gu.id = lp.user_id WHERE gu.username = ? AND lp.lab_url_path = ? AND lp.is_main_account = 1`,
+			targetUsername, lab,
+		).Scan(&count); err == nil && count > 0 {
+			targetIsMainAccount = true
+		}
+	}
+
+	if err := h.userService.DeleteUser(currentUserID, target.ID, u, r, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, ip, ua); err != nil {
 		msg := "Gagal menghapus user"
 		if errors.Is(err, services.ErrSelfDelete) { msg = "Tidak dapat menghapus akun sendiri" }
 		if errors.Is(err, services.ErrProtectedDelete) { msg = "Tidak dapat menghapus akun admin utama" }
@@ -258,7 +274,22 @@ func (h *Handler) UserBatchDelete(c *gin.Context) {
 	}
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
-	if err := h.userService.BatchDeleteUser(uid, req.IDs, u, r, h.isSuperAdmin(c), ip, ua); err != nil {
+	lab := c.GetString("lab")
+	targetMainAccountUsernames := make(map[string]bool)
+	if gdbVal, exists := c.Get("globalDB"); exists {
+		globalDB := gdbVal.(*database.DB)
+		for _, username := range req.IDs {
+			var count int
+			if err := globalDB.QueryRow(
+				`SELECT COUNT(*) FROM lab_permissions lp JOIN global_users gu ON gu.id = lp.user_id WHERE gu.username = ? AND lp.lab_url_path = ? AND lp.is_main_account = 1`,
+				username, lab,
+			).Scan(&count); err == nil && count > 0 {
+				targetMainAccountUsernames[username] = true
+			}
+		}
+	}
+
+	if err := h.userService.BatchDeleteUser(uid, req.IDs, u, r, h.isSuperAdmin(c), h.isMainAccount(c), targetMainAccountUsernames, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}

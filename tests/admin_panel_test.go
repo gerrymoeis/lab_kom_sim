@@ -613,7 +613,7 @@ func TestPerLabUserCreate(t *testing.T) {
 	env := setupTestEnvironment(t)
 	lab := env.LabA
 	db := env.DB_A
-	if !loginAndRefresh(lab, "labA_only", "test123") {
+	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
 	}
 
