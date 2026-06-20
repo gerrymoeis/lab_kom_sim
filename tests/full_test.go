@@ -200,6 +200,7 @@ func (l *testLab) refreshCSRF() bool {
 }
 
 func TestFullIntegration(t *testing.T) {
+	t.Skip("Deprecated — coverage moved to dedicated tests")
 	env := setupTestEnvironment(t)
 	labA, labB := env.LabA, env.LabB
 	ts := env.TS
