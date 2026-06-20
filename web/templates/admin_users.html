@@ -19,6 +19,10 @@
                 <a href="/admin/users/create" class="btn btn-primary btn-sm"><i class="bi bi-person-plus"></i> Tambah User</a>
                 <a href="/admin/labs" class="btn btn-outline-primary btn-sm"><i class="bi bi-building"></i> Labs</a>
                 <a href="/labs" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a>
+                <form method="POST" action="/logout" class="d-inline">
+                    <input type="hidden" name="_csrf" value="{{ $.csrf_token }}">
+                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-box-arrow-right"></i> Logout</button>
+                </form>
             </div>
         </div>
 
