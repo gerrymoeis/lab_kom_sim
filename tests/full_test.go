@@ -1017,11 +1017,11 @@ func setupTestEnvironment(t *testing.T) *TestEnvironment {
 	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_dosen'").Scan(&labADosenID)
 	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labAOnlyID, labAURL)
 	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labBOnlyID, labBURL)
-	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'dosen')", labADosenID, labAURL)
+	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labADosenID, labAURL)
 	hashA, hashB, hashDosen := bcryptHash("test123"), bcryptHash("test123"), bcryptHash("test123")
 	dbA.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, 'Lab A Only', 'admin')", labAOnlyID, "labA_only", hashA)
 	dbB.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, 'Lab B Only', 'admin')", labBOnlyID, "labB_only", hashB)
-	dbA.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, 'Lab A Dosen', 'dosen')", labADosenID, "labA_dosen", hashDosen)
+	dbA.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, 'Lab A Dosen', 'admin')", labADosenID, "labA_dosen", hashDosen)
 
 	dbs := map[string]*database.DB{labAURL: dbA, labBURL: dbB}
 	router, cleanup, flushLogs := server.SetupRouter(dbs, globalDB, cfg, nil)

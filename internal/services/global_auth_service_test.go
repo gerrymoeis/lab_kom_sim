@@ -36,7 +36,7 @@ func setupGlobalAuthTest(t *testing.T) (*GlobalAuthService, *repository.GlobalUs
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL REFERENCES global_users(id),
 			lab_url_path TEXT NOT NULL,
-			role TEXT NOT NULL DEFAULT 'dosen' CHECK(role IN ('admin', 'dosen')),
+			role TEXT NOT NULL DEFAULT 'admin' CHECK(role IN ('admin')),
 			is_main_account INTEGER NOT NULL DEFAULT 0,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE(user_id, lab_url_path)
@@ -181,7 +181,7 @@ func TestGlobalAuthPermissions(t *testing.T) {
 
 	t.Run("add_permission_then_get", func(t *testing.T) {
 		repo.AddPermission(id, "lab-a", "admin")
-		repo.AddPermission(id, "lab-b", "dosen")
+		repo.AddPermission(id, "lab-b", "admin")
 
 		perms, err := svc.GetPermissions(id)
 		if err != nil {
@@ -213,7 +213,7 @@ func TestGlobalAuthGetLabsForUser(t *testing.T) {
 	t.Run("regular_user_gets_only_permitted_labs", func(t *testing.T) {
 		id := seedTestUser(t, db, "regular", "pass", "Regular", false, false)
 		repo.AddPermission(id, "lab-a", "admin")
-		repo.AddPermission(id, "lab-c", "dosen")
+		repo.AddPermission(id, "lab-c", "admin")
 
 		paths := svc.GetLabsForUser(id, false, allLabs)
 		if len(paths) != 2 {

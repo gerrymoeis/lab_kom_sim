@@ -42,7 +42,7 @@ func setupMiddlewareTest(t *testing.T) (globalDB *database.DB, dbs map[string]*d
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER NOT NULL REFERENCES global_users(id),
 		lab_url_path TEXT NOT NULL,
-		role TEXT NOT NULL DEFAULT 'dosen' CHECK(role IN ('admin', 'dosen')),
+		role TEXT NOT NULL DEFAULT 'admin' CHECK(role IN ('admin')),
 		is_main_account INTEGER NOT NULL DEFAULT 0,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		UNIQUE(user_id, lab_url_path)
@@ -62,7 +62,7 @@ func setupMiddlewareTest(t *testing.T) (globalDB *database.DB, dbs map[string]*d
 		username TEXT UNIQUE NOT NULL,
 		password TEXT NOT NULL,
 		full_name TEXT NOT NULL,
-		role TEXT NOT NULL DEFAULT 'user',
+		role TEXT NOT NULL DEFAULT 'admin',
 		session_token TEXT,
 		is_protected INTEGER NOT NULL DEFAULT 0,
 		is_super_admin INTEGER NOT NULL DEFAULT 0,

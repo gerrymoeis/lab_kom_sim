@@ -622,8 +622,8 @@ func TestPerLabUserBatchDeleteSuccess(t *testing.T) {
 	t.Run("batch_delete_success", func(t *testing.T) {
 		// Create test users directly in per-lab DB
 		db.Exec("DELETE FROM users WHERE username IN ('batch_del_a', 'batch_del_b')")
-		db.Exec("INSERT INTO users (username, password, full_name, role) VALUES ('batch_del_a', 'x', 'Batch Del A', 'dosen')")
-		db.Exec("INSERT INTO users (username, password, full_name, role) VALUES ('batch_del_b', 'x', 'Batch Del B', 'dosen')")
+		db.Exec("INSERT INTO users (username, password, full_name, role) VALUES ('batch_del_a', 'x', 'Batch Del A', 'admin')")
+		db.Exec("INSERT INTO users (username, password, full_name, role) VALUES ('batch_del_b', 'x', 'Batch Del B', 'admin')")
 		var beforeCount int
 		db.QueryRow("SELECT COUNT(*) FROM users WHERE username IN ('batch_del_a', 'batch_del_b')").Scan(&beforeCount)
 		if beforeCount != 2 {
@@ -700,7 +700,7 @@ func TestPerLabUserCreate(t *testing.T) {
 			t.Fatal("failed to refresh CSRF")
 		}
 		resp, err := lab.post("/admin/users/create",
-			"username=newuser1&password=test123&full_name=New+User+1&role=dosen")
+			"username=newuser1&password=test123&full_name=New+User+1&role=admin")
 		if err != nil {
 			t.Fatalf("POST /admin/users/create: %v", err)
 		}
@@ -793,7 +793,7 @@ func TestPerLabUserDelete(t *testing.T) {
 
 	t.Run("delete_user_success", func(t *testing.T) {
 		// Create a user first
-		db.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (999, 'delete_me', 'x', 'Delete Me', 'dosen')")
+		db.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (999, 'delete_me', 'x', 'Delete Me', 'admin')")
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
