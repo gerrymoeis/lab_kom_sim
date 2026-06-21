@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/sessions"
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/handlers"
@@ -302,9 +303,40 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	// Global 404 handler
 	router.NoRoute(func(c *gin.Context) {
+		session := sessions.Default(c)
+		userID := session.Get("user_id")
+		username := ""
+		role := ""
+		basePath := ""
+		if userID != nil {
+			if u, ok := session.Get("username").(string); ok {
+				username = u
+			}
+			if r, ok := session.Get("role").(string); ok {
+				role = r
+			} else if session.Get("is_super_admin") == true {
+				role = "admin"
+			}
+			if labs, ok := session.Get("labs").([]string); ok && len(labs) > 0 {
+				// Extract lab from URL path for basePath
+				parts := strings.Split(strings.Trim(c.Request.URL.Path, "/"), "/")
+				if len(parts) > 0 && parts[0] != "" {
+					for _, l := range labs {
+						if l == parts[0] {
+							basePath = "/" + parts[0]
+							break
+						}
+					}
+				}
+			}
+		}
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"title":   "404 - Halaman Tidak Ditemukan",
-			"message": "Halaman yang Anda cari tidak ditemukan.",
+			"title":       "404 - Halaman Tidak Ditemukan",
+			"message":     "Halaman yang Anda cari tidak ditemukan.",
+			"currentPage": "",
+			"role":        role,
+			"username":    username,
+			"basePath":    basePath,
 		})
 	})
 
@@ -319,6 +351,10 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 	})
 	router.GET("/:lab/logout", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/logout")
+	})
+	router.POST("/:lab/logout", func(c *gin.Context) {
+		// Process logout directly to avoid method-changing redirect
+		globalHandler.Logout(c)
 	})
 
 	labGroup := router.Group("/:lab")

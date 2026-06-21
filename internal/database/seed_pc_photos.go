@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -42,7 +43,7 @@ func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
 
 	entries, err := downloadAndExtractPhotos(releaseURL, githubToken, pcDir)
 	if err != nil {
-		fmt.Printf("WARN: PC photo seeding skipped: %v\n", err)
+		fmt.Printf("WARN: PC photo seeding skipped: %v. Periksa koneksi internet dan DNS server.\n", err)
 		return nil
 	}
 
@@ -183,7 +184,12 @@ func downloadReleaseAsset(releaseURL, token string) (string, error) {
 	}
 	owner, repo, tag, filename := matches[1], matches[2], matches[3], matches[4]
 
-	client := &http.Client{Timeout: 300 * time.Second}
+	client := &http.Client{
+		Timeout: 300 * time.Second,
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+		},
+	}
 
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", owner, repo, tag)
 	req, err := http.NewRequest("GET", apiURL, nil)
