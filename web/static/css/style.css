@@ -54,34 +54,6 @@
     align-items: center;
     justify-content: center;
 }
-.landing-container {
-    background-color: #fff;
-    border-radius: 24px;
-    padding: 2.5rem;
-    margin: 2rem auto;
-    max-width: 960px;
-    width: 100%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-}
-.landing-container .bi-pc-display-horizontal {
-    color: var(--bs-primary, #0d6efd);
-}
-.landing-card.card {
-    border: 2px solid #000 !important;
-    border-radius: 12px;
-    transition: all 0.15s ease;
-    box-shadow: 5px 5px 0 rgba(0,0,0,0.18);
-}
-.landing-card.card:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 7px 7px 0 rgba(0,0,0,0.22);
-}
-.landing-card .card-title {
-    font-size: 1.3rem;
-}
-.landing-card .bi-pc-display-horizontal {
-    color: #000;
-}
 
 .login-card { max-width: 400px; width: 100%; }
 
