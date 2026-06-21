@@ -61,7 +61,7 @@ func (h *Handler) UserCreatePage(c *gin.Context) {
 func (h *Handler) UserCreate(c *gin.Context) {
 	var req CreateUserRequest
 	if err := c.ShouldBind(&req); err != nil {
-		h.renderTemplate(c, http.StatusBadRequest, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Semua field harus diisi"})
+		h.renderTemplate(c, http.StatusBadRequest, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Semua field harus diisi", "currentPage": "users"})
 		return
 	}
 	uid, u, r, _ := h.user(c)
@@ -70,7 +70,7 @@ func (h *Handler) UserCreate(c *gin.Context) {
 	if err := h.userService.CreateUser(uid, u, r, h.isSuperAdmin(c), h.isMainAccount(c), req.Username, req.Password, req.FullName, req.Role, ip, ua); err != nil {
 		msg := "Gagal menyimpan user. Username mungkin sudah digunakan."
 		if errors.Is(err, services.ErrCreateNotAllowed) { msg = "Hanya super admin atau akun utama yang dapat menambah user" }
-		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": msg})
+		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": msg, "currentPage": "users"})
 		return
 	}
 	h.redirectWithSuccess(c, "/admin/users", "User berhasil ditambahkan")
