@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func (h *Handler) UserList(c *gin.Context) {
@@ -37,6 +38,23 @@ func (h *Handler) UserList(c *gin.Context) {
 	users, total, err := h.userService.ListPaginated(search, roleFilter, sortBy, sortOrder, page, pageSize, h.isSuperAdmin(c), h.isMainAccount(c), username)
 	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
 
+	// Get main account IDs for this lab
+	mainAccountIDs := make(map[int]bool)
+	if gdbVal, ok := c.Get("globalDB"); ok {
+		if gdb, ok := gdbVal.(*database.DB); ok {
+			lab := c.GetString("lab")
+			rows, _ := gdb.Query(`SELECT user_id FROM lab_permissions WHERE lab_url_path = ? AND is_main_account = 1`, lab)
+			if rows != nil {
+				for rows.Next() {
+					var id int
+					rows.Scan(&id)
+					mainAccountIDs[id] = true
+				}
+				rows.Close()
+			}
+		}
+	}
+
 	totalPages := (total + pageSize - 1) / pageSize
 	startRow := (page-1)*pageSize + 1
 
@@ -44,6 +62,7 @@ func (h *Handler) UserList(c *gin.Context) {
 		"title": "Manajemen User", "currentPage": "users",
 		"username": username, "role": role, "users": users,
 		"isSuperAdmin": h.isSuperAdmin(c),
+		"mainAccountIDs": mainAccountIDs,
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query, "filters": gin.H{"search": search, "role": roleFilter, "sort_by": sortBy, "sort_order": sortOrder},
 	})
@@ -64,15 +83,43 @@ func (h *Handler) UserCreate(c *gin.Context) {
 		h.renderTemplate(c, http.StatusBadRequest, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Semua field harus diisi", "currentPage": "users"})
 		return
 	}
-	uid, u, r, _ := h.user(c)
-	ip, ua := getRequestContext(c)
 
-	if err := h.userService.CreateUser(uid, u, r, h.isSuperAdmin(c), h.isMainAccount(c), req.Username, req.Password, req.FullName, req.Role, ip, ua); err != nil {
-		msg := "Gagal menyimpan user. Username mungkin sudah digunakan."
-		if errors.Is(err, services.ErrCreateNotAllowed) { msg = "Hanya super admin atau akun utama yang dapat menambah user" }
-		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": msg, "currentPage": "users"})
+	if !h.isSuperAdmin(c) && !h.isMainAccount(c) {
+		h.renderTemplate(c, http.StatusForbidden, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Hanya super admin atau akun utama yang dapat menambah user", "currentPage": "users"})
 		return
 	}
+
+	// Create in global_users + add lab_permission so user can login globally
+	globalUser, err := h.globalAuthService.CreateUser(req.Username, req.Password, req.FullName, false)
+	if err != nil {
+		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal membuat user. Username mungkin sudah digunakan.", "currentPage": "users"})
+		return
+	}
+	lab := c.GetString("lab")
+	h.globalAuthService.SetUserPermissions(globalUser.ID, []struct {
+		LabURLPath string
+		Role       string
+	}{{LabURLPath: lab, Role: "admin"}})
+
+	// Sync to per-lab users table with the same global ID
+	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	dbVal, _ := c.Get("db")
+	if db, ok := dbVal.(*database.DB); ok {
+		db.Exec(`INSERT INTO users (id, username, password, full_name, role, is_protected, is_super_admin)
+			VALUES (?, ?, ?, ?, 'admin', 0, 0)
+			ON CONFLICT(id) DO UPDATE SET
+				username = excluded.username,
+				full_name = excluded.full_name`,
+			globalUser.ID, req.Username, string(hash), req.FullName)
+	}
+
+	// Activity log
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	h.activityLogService.LogCreate(uid, u, r, "user", globalUser.ID, map[string]any{
+		"username": req.Username, "full_name": req.FullName, "role": "admin",
+	}, ip, ua)
+
 	h.redirectWithSuccess(c, "/admin/users", "User berhasil ditambahkan")
 }
 
@@ -92,9 +139,22 @@ func (h *Handler) UserDetail(c *gin.Context) {
 		return
 	}
 
+	// Check if target is main account
+	targetIsMainAccount := false
+	if gdbVal, ok := c.Get("globalDB"); ok {
+		if gdb, ok := gdbVal.(*database.DB); ok {
+			lab := c.GetString("lab")
+			var count int
+			gdb.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND lab_url_path = ? AND is_main_account = 1`,
+				user.ID, lab).Scan(&count)
+			targetIsMainAccount = count > 0
+		}
+	}
+
 	h.renderTemplate(c, http.StatusOK, "user/detail.html", gin.H{
 		"title": "Detail User", "currentPage": "users",
 		"username": username, "role": role, "user": user,
+		"targetIsMainAccount": targetIsMainAccount,
 		"error": c.Query("error"), "success": c.Query("success"),
 	})
 }
@@ -115,9 +175,22 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 		return
 	}
 
+	// Check if target is main account
+	targetIsMainAccount := false
+	if gdbVal, ok := c.Get("globalDB"); ok {
+		if gdb, ok := gdbVal.(*database.DB); ok {
+			lab := c.GetString("lab")
+			var count int
+			gdb.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND lab_url_path = ? AND is_main_account = 1`,
+				user.ID, lab).Scan(&count)
+			targetIsMainAccount = count > 0
+		}
+	}
+
 	h.renderTemplate(c, http.StatusOK, "user/edit.html", gin.H{
 		"title": "Edit User", "currentPage": "users",
 		"username": username, "role": role, "user": user,
+		"targetIsMainAccount": targetIsMainAccount,
 		"error": c.Query("error"),
 	})
 }
