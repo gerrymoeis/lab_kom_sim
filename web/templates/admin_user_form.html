@@ -47,8 +47,13 @@
                         <label class="form-label">
                             {{ if .user }}Password Baru (kosongkan jika tidak diubah){{ else }}Password{{ end }}
                         </label>
-                        <input type="password" name="new_password" class="form-control"
-                               {{ if not .user }}required{{ end }}>
+                        <div class="input-group">
+                            <input type="password" name="new_password" id="admin_new_password" class="form-control"
+                                   {{ if not .user }}required{{ end }}>
+                            <button type="button" class="btn btn-outline-secondary toggle-password" data-target="admin_new_password" tabindex="-1">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="mb-3 form-check">
