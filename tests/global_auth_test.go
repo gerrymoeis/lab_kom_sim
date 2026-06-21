@@ -12,7 +12,7 @@ import (
 func TestLandingPage(t *testing.T) {
 	env := setupTestEnvironment(t)
 
-	t.Run("renders_landing_page_when_not_logged_in", func(t *testing.T) {
+	t.Run("redirects_to_login_when_not_logged_in", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", env.TS.URL+"/", nil)
 		resp, err := env.Client.Do(req)
 		if err != nil {
@@ -20,12 +20,17 @@ func TestLandingPage(t *testing.T) {
 		}
 		defer resp.Body.Close()
 		io.Copy(io.Discard, resp.Body)
-		if resp.StatusCode != 200 {
-			t.Errorf("expected 200, got %d", resp.StatusCode)
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+			return
+		}
+		loc := resp.Header.Get("Location")
+		if loc != "/login" {
+			t.Errorf("expected redirect to /login, got %q", loc)
 		}
 	})
 
-	t.Run("redirects_to_labs_when_logged_in", func(t *testing.T) {
+	t.Run("redirects_to_login_when_logged_in", func(t *testing.T) {
 		if !env.LabA.login("admin", "admin123") {
 			t.Fatal("admin login failed")
 		}
@@ -41,8 +46,8 @@ func TestLandingPage(t *testing.T) {
 			return
 		}
 		loc := resp.Header.Get("Location")
-		if loc != "/labs" {
-			t.Errorf("expected redirect to /labs, got %q", loc)
+		if loc != "/login" {
+			t.Errorf("expected redirect to /login, got %q", loc)
 		}
 	})
 }
