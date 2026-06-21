@@ -35,11 +35,12 @@ func (h *Handler) UserList(c *gin.Context) {
 	var query interface{} = ""
 	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
 
-	users, total, err := h.userService.ListPaginated(search, roleFilter, sortBy, sortOrder, page, pageSize, h.isSuperAdmin(c), h.isMainAccount(c), username)
+	users, total, err := h.userService.ListPaginated(search, roleFilter, sortBy, sortOrder, page, pageSize, "", "", "")
 	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
 
-	// Get main account IDs for this lab
+	// Get main account IDs and super admin usernames from global DB
 	mainAccountIDs := make(map[int]bool)
+	superAdminUsernames := make(map[string]bool)
 	if gdbVal, ok := c.Get("globalDB"); ok {
 		if gdb, ok := gdbVal.(*database.DB); ok {
 			lab := c.GetString("lab")
@@ -52,17 +53,37 @@ func (h *Handler) UserList(c *gin.Context) {
 				}
 				rows.Close()
 			}
+			rows, _ = gdb.Query(`SELECT username FROM global_users WHERE is_super_admin = 1`)
+			if rows != nil {
+				for rows.Next() {
+					var u string
+					rows.Scan(&u)
+					superAdminUsernames[u] = true
+				}
+				rows.Close()
+			}
 		}
 	}
 
 	totalPages := (total + pageSize - 1) / pageSize
 	startRow := (page-1)*pageSize + 1
 
+	// Precompute canAccess for each user using instance method (has global DB fallback)
+	isSuperAdmin := h.isSuperAdmin(c)
+	isMainAccount := h.isMainAccount(c)
+	canAccess := make(map[int]bool)
+	for i := range users {
+		canAccess[users[i].ID] = h.canAccessProfile(username, &users[i], isSuperAdmin, isMainAccount)
+	}
+
 	h.renderTemplate(c, http.StatusOK, "user/list.html", gin.H{
 		"title": "Manajemen User", "currentPage": "users",
 		"username": username, "role": role, "users": users,
-		"isSuperAdmin": h.isSuperAdmin(c),
+		"isSuperAdmin": isSuperAdmin,
+		"isMainAccount": isMainAccount,
 		"mainAccountIDs": mainAccountIDs,
+		"superAdminUsernames": superAdminUsernames,
+		"canAccess": canAccess,
 		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query, "filters": gin.H{"search": search, "role": roleFilter, "sort_by": sortBy, "sort_order": sortOrder},
 	})
@@ -251,7 +272,7 @@ func (h *Handler) UserDelete(c *gin.Context) {
 	r, _ := sess.Get("role").(string)
 	ip, ua := getRequestContext(c)
 
-	var targetIsMainAccount bool
+	var targetIsMainAccount, targetIsSuperAdmin bool
 	if gdbVal, exists := c.Get("globalDB"); exists {
 		globalDB := gdbVal.(*database.DB)
 		lab := c.GetString("lab")
@@ -262,9 +283,13 @@ func (h *Handler) UserDelete(c *gin.Context) {
 		).Scan(&count); err == nil && count > 0 {
 			targetIsMainAccount = true
 		}
+		globalDB.QueryRow(`SELECT COUNT(*) FROM global_users WHERE username = ? AND is_super_admin = 1`, targetUsername).Scan(&count)
+		if count > 0 {
+			targetIsSuperAdmin = true
+		}
 	}
 
-	if err := h.userService.DeleteUser(currentUserID, target.ID, u, r, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, ip, ua); err != nil {
+	if err := h.userService.DeleteUser(currentUserID, target.ID, u, r, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, targetIsSuperAdmin, ip, ua); err != nil {
 		msg := "Gagal menghapus user"
 		if errors.Is(err, services.ErrSelfDelete) { msg = "Tidak dapat menghapus akun sendiri" }
 		if errors.Is(err, services.ErrProtectedDelete) { msg = "Tidak dapat menghapus akun admin utama" }
@@ -356,6 +381,7 @@ func (h *Handler) UserBatchDelete(c *gin.Context) {
 	ip, ua := getRequestContext(c)
 	lab := c.GetString("lab")
 	targetMainAccountUsernames := make(map[string]bool)
+	targetSuperAdminUsernames := make(map[string]bool)
 	if gdbVal, exists := c.Get("globalDB"); exists {
 		globalDB := gdbVal.(*database.DB)
 		for _, username := range req.IDs {
@@ -366,10 +392,14 @@ func (h *Handler) UserBatchDelete(c *gin.Context) {
 			).Scan(&count); err == nil && count > 0 {
 				targetMainAccountUsernames[username] = true
 			}
+			globalDB.QueryRow(`SELECT COUNT(*) FROM global_users WHERE username = ? AND is_super_admin = 1`, username).Scan(&count)
+			if count > 0 {
+				targetSuperAdminUsernames[username] = true
+			}
 		}
 	}
 
-	if err := h.userService.BatchDeleteUser(uid, req.IDs, u, r, h.isSuperAdmin(c), h.isMainAccount(c), targetMainAccountUsernames, ip, ua); err != nil {
+	if err := h.userService.BatchDeleteUser(uid, req.IDs, u, r, h.isSuperAdmin(c), h.isMainAccount(c), targetMainAccountUsernames, targetSuperAdminUsernames, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
 		return
 	}
