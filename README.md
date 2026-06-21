@@ -256,7 +256,7 @@ echo "SESSION_SECRET=$SESSION_SECRET"
 nano .env
 ```
 
-**Konfigurasi minimal untuk production (copy-paste dengan nilai Anda):**
+**Konfigurasi minimal — Single-Lab (copy-paste dengan nilai Anda):**
 
 ```env
 ENVIRONMENT=production
@@ -274,9 +274,16 @@ BACKUP_ENABLED=true
 BACKUP_DIR=./backups
 ```
 
-> **Catatan:** Perintah `cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64` menghasilkan 64 karakter random. Simpan outputnya dan paste ke `SESSION_SECRET` di `.env`. Jangan gunakan string yang sama dengan contoh — setiap server harus punya secret unik.
+**Konfigurasi Multi-Lab (ganti DATABASE_PATH + tambah LABS):**
 
-Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
+```env
+GLOBAL_DB_PATH=data/global.db        # DB global (users, permissions)
+LABS=MI-1:data/lab_mi_1.db:Lab Kom MI 1:lab-kom-mi,VOKASI-1:data/lab_vokasi_1.db:Lab Kom Vokasi:vokasi
+# Format LABS: LAB-ID:dbPath:Title:urlPath (comma-separated)
+# Saat LABS diisi, DATABASE_PATH diabaikan — setiap lab punya DB sendiri.
+```
+
+> **Catatan:** Setiap server harus punya `SESSION_SECRET` unik. Lihat file `.env.example` (auto-sync dari branch refactoring) untuk dokumentasi lengkap semua opsi.
 
 ---
 
@@ -548,94 +555,20 @@ Path ke internal storage (`/storage/emulated/0/`) berguna agar backup bisa diaks
 
 ## Panduan .env Reference
 
-Semua konfigurasi via file `.env`. Copy dari `.env.example`.
+Dokumentasi lengkap semua environment variable ada di file `.env.example` (auto-sync dari branch `refactoring` via GitHub Actions). File ini selalu terupdate:
 
-```env
-# ============================
-# APLIKASI
-# ============================
-ENVIRONMENT=production
-HOST=0.0.0.0
-PORT=8080
-
-# ============================
-# DATABASE
-# ============================
-# SQLite: path relatif atau absolut
-DATABASE_PATH=inventaris_lab.db
-# PostgreSQL — kosongkan untuk SQLite
-# DATABASE_URL=postgres://user:pass@...
-
-# ============================
-# WRITE MODE
-# ============================
-# sync (default) | async
-WRITE_MODE=sync
-
-# ============================
-# SECURITY
-# ============================
-SESSION_SECRET=change-this-secret-in-production-to-random-string
-
-# Cookie Secure Flag
-# false = cookie bisa dikirim via HTTP (Tailscale HTTP / testing).
-# true  = cookie hanya via HTTPS. Set true jika sudah pakai TLS/HTTPS.
-# PENTING: Jangan set true jika masih HTTP — browser tolak cookie → login 403.
-COOKIE_SECURE=false
-
-# ============================
-# TIMEZONE
-# ============================
-TIMEZONE=Asia/Jakarta
-
-# ============================
-# UPLOAD
-# ============================
-UPLOAD_PATH=uploads
-
-# ============================
-# OCR API KEYS
-# ============================
-GEMINI_API_KEY=your-gemini-api-key-here
-OPENROUTER_API_KEY=sk-or-your-openrouter-api-key-here
-
-# ============================
-# ANDROID MODE — WAJIB true untuk Termux
-# ============================
-ANDROID=true
-
-# ============================
-# PC PHOTO SEEDING
-# ============================
-PC_PHOTO_RELEASE_URL=
-GITHUB_TOKEN=
-
-# ============================
-# PAGINATION
-# ============================
-DEFAULT_PAGE_SIZE=25
-
-# ============================
-# BACKUP (SQLite only)
-# ============================
-BACKUP_ENABLED=true
-BACKUP_INTERVAL=30
-BACKUP_DIR=./backups
-BACKUP_RETENTION=20
-BACKUP_MIN_DISK_MB=500
-BACKUP_COMPRESS=true
-
-# ============================
-# PUBLIC SITE (SSG)
-# ============================
-PUBLIC_BUILD_ENABLED=false
-PUBLIC_BUILD_INTERVAL=30
-PUBLIC_BUILD_OUT=dist
-PUBLIC_BUILD_TEMPLATE_DIR=web/templates/public
-PUBLIC_BUILD_STATIC_DIR=web/static
-PUBLIC_BUILD_REPO_DIR=
-PUBLIC_BUILD_BRANCH=main
+```bash
+cat .env.example | grep -E "^(#|$|[A-Z])" | head -80
 ```
+
+Atau buka [.env.example](.env.example) untuk semua opsi.
+
+### Catatan Penting
+
+- **Multi-Lab:** Saat `LABS` diisi, setiap lab punya database, session, upload folder, dan backup folder sendiri. `DATABASE_PATH` diabaikan.
+- **Global DB** (`GLOBAL_DB_PATH`): Menyimpan user global, lab_permissions, grid_layouts — wajib ada.
+- **Auto-Sync Middleware:** Setiap login, sistem otomatis membuat/update row di per-lab `users` table. Data global cukup diatur di `/admin/users`.
+- **ANDROID=true:** WAJIB untuk Termux (client-side image compress). Default `false` di `.env.example` — pastikan diubah sebelum build.
 
 ---
 
