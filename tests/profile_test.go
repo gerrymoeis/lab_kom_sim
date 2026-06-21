@@ -43,6 +43,11 @@ func TestProfile(t *testing.T) {
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
+		var name string
+		lab.db.QueryRow("SELECT full_name FROM users WHERE username='labA_only'").Scan(&name)
+		if name != "Lab A Admin Updated" {
+			t.Errorf("expected full_name 'Lab A Admin Updated', got %q", name)
+		}
 	})
 
 	t.Run("fail_empty_fields", func(t *testing.T) {
@@ -57,13 +62,16 @@ func TestProfile(t *testing.T) {
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
+		loc := resp.Header.Get("Location")
+		if !strings.Contains(loc, "error=") {
+			t.Error("expected error flash in redirect Location")
+		}
 	})
 
 	t.Run("fail_duplicate_username", func(t *testing.T) {
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
-		// Try to change username to "admin" which is taken
 		resp, err := lab.post("/profile",
 			"username=admin&full_name=Should+Fail")
 		if err != nil {
@@ -72,6 +80,10 @@ func TestProfile(t *testing.T) {
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		loc := resp.Header.Get("Location")
+		if !strings.Contains(loc, "error=") {
+			t.Error("expected error flash in redirect Location")
 		}
 	})
 }
@@ -89,12 +101,14 @@ func TestChangePassword(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
+		var oldHash string
+		lab.db.QueryRow("SELECT password FROM users WHERE username='labA_only'").Scan(&oldHash)
+
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
-		// Keep same password to avoid breaking subsequent subtests
 		resp, err := lab.post("/profile/password",
-			"old_password=test123&new_password=test123&confirm_password=test123")
+			"old_password=test123&new_password=newpass456&confirm_password=newpass456")
 		if err != nil {
 			t.Fatalf("POST /profile/password: %v", err)
 		}
@@ -102,9 +116,31 @@ func TestChangePassword(t *testing.T) {
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
+		var newHash string
+		lab.db.QueryRow("SELECT password FROM users WHERE username='labA_only'").Scan(&newHash)
+		if newHash == oldHash {
+			t.Error("password hash should have changed after successful password change")
+		}
+
+		// Change back to test123 so subsequent subtests still work
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp2, err := lab.post("/profile/password",
+			"old_password=newpass456&new_password=test123&confirm_password=test123")
+		if err != nil {
+			t.Fatalf("POST /profile/password restore: %v", err)
+		}
+		defer resp2.Body.Close()
+		if resp2.StatusCode != 302 {
+			t.Errorf("expected 302 restore, got %d", resp2.StatusCode)
+		}
 	})
 
 	t.Run("fail_wrong_old_password", func(t *testing.T) {
+		var hashBefore string
+		lab.db.QueryRow("SELECT password FROM users WHERE username='labA_only'").Scan(&hashBefore)
+
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
@@ -116,6 +152,15 @@ func TestChangePassword(t *testing.T) {
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		loc := resp.Header.Get("Location")
+		if !strings.Contains(loc, "error=") {
+			t.Error("expected error flash in redirect Location")
+		}
+		var hashAfter string
+		lab.db.QueryRow("SELECT password FROM users WHERE username='labA_only'").Scan(&hashAfter)
+		if hashAfter != hashBefore {
+			t.Error("password hash should remain unchanged on wrong old password")
 		}
 	})
 
@@ -132,6 +177,10 @@ func TestChangePassword(t *testing.T) {
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
+		loc := resp.Header.Get("Location")
+		if !strings.Contains(loc, "error=") {
+			t.Error("expected error flash in redirect Location")
+		}
 	})
 
 	t.Run("fail_empty_fields", func(t *testing.T) {
@@ -146,6 +195,10 @@ func TestChangePassword(t *testing.T) {
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		loc := resp.Header.Get("Location")
+		if !strings.Contains(loc, "error=") {
+			t.Error("expected error flash in redirect Location")
 		}
 	})
 }
