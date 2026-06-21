@@ -145,10 +145,15 @@ func LabPermissionRequired() gin.HandlerFunc {
 			`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND lab_url_path = ?`,
 			userID, lab).Scan(&exists)
 		if exists == 0 {
-		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"title": "Akses Ditolak", "currentPage": "",
-			"message": "Anda tidak memiliki akses ke laboratorium ini.",
-		})
+			// Redirect to first allowed lab instead of 403
+			if labsVal != nil {
+				if labs, ok := labsVal.([]string); ok && len(labs) > 0 {
+					c.Redirect(http.StatusFound, "/"+labs[0]+"/dashboard")
+					c.Abort()
+					return
+				}
+			}
+			c.Redirect(http.StatusFound, "/login")
 			c.Abort()
 			return
 		}

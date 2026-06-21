@@ -86,14 +86,19 @@ func getRequestContext(c *gin.Context) (ipAddress, userAgent string) {
 }
 
 func (h *Handler) canAccessProfile(actorUsername string, target *models.User, actorIsSuperAdmin, actorIsMainAccount bool) bool {
-	if target.IsProtected {
+	if target.IsProtected || target.IsSuperAdmin {
 		return actorUsername == target.Username
+	}
+	if globalUser, err := h.globalAuthService.GetUserByUsername(target.Username); err == nil {
+		if globalUser.IsProtected || globalUser.IsSuperAdmin {
+			return actorUsername == target.Username
+		}
 	}
 	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount
 }
 
 func CanAccessProfile(actorUsername string, target models.User, actorIsSuperAdmin, actorIsMainAccount bool) bool {
-	if target.IsProtected {
+	if target.IsProtected || target.IsSuperAdmin {
 		return actorUsername == target.Username
 	}
 	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount

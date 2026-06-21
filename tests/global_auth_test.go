@@ -430,8 +430,8 @@ func TestRoutingAuth(t *testing.T) {
 		}
 		defer resp.Body.Close()
 		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403, got %d: %s", resp.StatusCode, string(body))
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 (redirect to login), got %d: %s", resp.StatusCode, string(body))
 		}
 	})
 }
@@ -508,9 +508,9 @@ func TestUserAccessControl(t *testing.T) {
 		}
 		defer resp.Body.Close()
 		body, _ := io.ReadAll(resp.Body)
-		// Should render the create page again with error (500) or redirect with error
-		if resp.StatusCode != 200 && resp.StatusCode != 500 {
-			t.Errorf("expected 200 or 500 (error rendered), got %d", resp.StatusCode)
+		// Regular admin should get 403 Forbidden
+		if resp.StatusCode != 403 {
+			t.Errorf("expected 403, got %d", resp.StatusCode)
 		}
 		if !strings.Contains(string(body), "Hanya super admin") && !strings.Contains(string(body), "akun utama") {
 			t.Errorf("expected error message about permission, body: %s", string(body))

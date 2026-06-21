@@ -30,7 +30,7 @@
                     <table class="table table-bordered">
                         <tr><th width="30%">ID</th><td>{{ .user.ID }}</td></tr>
                         <tr><th>Username</th><td><strong>{{ .user.Username }}</strong></td></tr>
-                        <tr><th>Nama Lengkap</th><td>{{ .user.FullName }}</td></tr>
+                        <tr><th>Nama Lengkap</th><td>{{ .user.FullName }}{{ if .user.IsSuperAdmin }} <span class="badge bg-dark">Super Admin</span>{{ else if $.targetIsMainAccount }} <span class="badge bg-secondary">Akun Utama</span>{{ end }}</td></tr>
                         <tr>
                             <th>Role</th>
                             <td>

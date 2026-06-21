@@ -93,6 +93,10 @@ func (s *GlobalAuthService) GetUser(id int) (*models.GlobalUser, error) {
 	return s.userRepo.GetByID(id)
 }
 
+func (s *GlobalAuthService) GetUserByUsername(username string) (*models.GlobalUser, error) {
+	return s.userRepo.GetByUsername(username)
+}
+
 func (s *GlobalAuthService) CreateUser(username, password, fullName string, isSuperAdmin bool) (*models.GlobalUser, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
