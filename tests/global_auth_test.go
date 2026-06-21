@@ -262,7 +262,7 @@ func TestLabSelector(t *testing.T) {
 		}
 	})
 
-	t.Run("success_as_lab_admin_one_lab", func(t *testing.T) {
+	t.Run("redirects_non_super_admin_to_lab_dashboard", func(t *testing.T) {
 		if !env.LabA.login("labA_only", "test123") {
 			t.Fatal("labA_only login failed")
 		}
@@ -273,8 +273,13 @@ func TestLabSelector(t *testing.T) {
 			t.Fatalf("GET /labs failed: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			t.Errorf("expected 200, got %d", resp.StatusCode)
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+			return
+		}
+		loc := resp.Header.Get("Location")
+		if loc != "/lab-kom-mi/dashboard" {
+			t.Errorf("expected redirect to /lab-kom-mi/dashboard, got %q", loc)
 		}
 	})
 
@@ -352,9 +357,9 @@ func TestLabSelector(t *testing.T) {
 			t.Fatalf("GET /labs failed: %v", err)
 		}
 		defer resp.Body.Close()
-		// Should be 200 with empty labs list (no crash)
-		if resp.StatusCode != 200 && resp.StatusCode != 302 {
-			t.Errorf("expected 200 or 302, got %d", resp.StatusCode)
+		// no_perm_user has no labs — should get 403 forbidden
+		if resp.StatusCode != 403 {
+			t.Errorf("expected 403, got %d", resp.StatusCode)
 		}
 	})
 }
@@ -462,8 +467,7 @@ func TestLabSelectorContent(t *testing.T) {
 		}
 	})
 
-	t.Run("main_account_does_not_see_super_admin_buttons", func(t *testing.T) {
-		// lab-kom-mi is a main account with is_main_account=1
+	t.Run("redirects_main_account_to_lab_dashboard", func(t *testing.T) {
 		if !env.LabA.login("lab-kom-mi", "lab-kom-mi123") {
 			t.Fatal("lab-kom-mi login failed")
 		}
@@ -474,14 +478,13 @@ func TestLabSelectorContent(t *testing.T) {
 			t.Fatalf("GET /labs failed: %v", err)
 		}
 		defer resp.Body.Close()
-		body, _ := io.ReadAll(resp.Body)
-		html := string(body)
-		if resp.StatusCode != 200 {
-			t.Errorf("expected 200, got %d", resp.StatusCode)
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+			return
 		}
-		// Super admin should NOT see "+ Tambah Lab" — they are not super admin
-		if strings.Contains(html, "Tambah Lab") {
-			t.Error("main account should not see 'Tambah Lab' button (not super admin)")
+		loc := resp.Header.Get("Location")
+		if loc != "/lab-kom-mi/dashboard" {
+			t.Errorf("expected redirect to /lab-kom-mi/dashboard, got %q", loc)
 		}
 	})
 }
