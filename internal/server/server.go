@@ -270,7 +270,9 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		c.String(200, "ready")
 	})
 
-	router.GET("/", handlers.LandingPage(cfg))
+	router.GET("/", func(c *gin.Context) {
+		c.Redirect(302, "/login")
+	})
 
 	// ========== GLOBAL ROUTES (tanpa lab context) ==========
 
