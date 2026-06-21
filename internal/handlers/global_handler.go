@@ -142,6 +142,10 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 
 	ip, ua := getRequestContext(c)
 	h.logAuthToLabs(user.ID, user.Username, "login", "", ip, ua, labPaths)
+	if !user.IsSuperAdmin && len(labPaths) == 1 {
+		c.Redirect(http.StatusFound, "/"+labPaths[0]+"/dashboard")
+		return
+	}
 	c.Redirect(http.StatusFound, "/labs")
 }
 
@@ -184,7 +188,7 @@ func (h *GlobalHandler) Logout(c *gin.Context) {
 		role, _ := session.Get("role").(string)
 		h.logAuthToLabs(userID, username, "logout", role, ip, ua, labPaths)
 	}
-	c.Redirect(http.StatusFound, "/")
+	c.Redirect(http.StatusFound, "/login")
 }
 
 func (h *GlobalHandler) logAuthToLabs(userID int, username, action, role, ip, ua string, labPaths []string) {
@@ -195,7 +199,7 @@ func (h *GlobalHandler) logAuthToLabs(userID int, username, action, role, ip, ua
 		}
 		status := "success"
 		desc := fmt.Sprintf("User '%s' %s", username, action)
-		db.Exec(`INSERT INTO activity_logs (user_id, username, user_role, action, entity_type, entity_id, description, old_values, new_values, created_at, ip_address, user_agent, status, error_message) VALUES (?, ?, ?, ?, 'auth', NULL, ?, '', ?, ?, ?, ?, '')`,
+		db.Exec(`INSERT INTO activity_logs (user_id, username, user_role, action, entity_type, entity_id, description, old_values, new_values, created_at, ip_address, user_agent, status, error_message) VALUES (?, ?, ?, ?, 'auth', NULL, ?, '', '', ?, ?, ?, ?, '')`,
 			userID, username, role, action, desc, timeutil.Now(), ip, ua, status)
 	}
 }
