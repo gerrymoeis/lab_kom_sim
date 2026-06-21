@@ -828,6 +828,23 @@ function showToast(message, type = 'info', variant = 'solid', title) {
     });
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.toggle-password').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var target = document.getElementById(this.dataset.target);
+            if (!target) return;
+            var icon = this.querySelector('i');
+            if (target.type === 'password') {
+                target.type = 'text';
+                if (icon) icon.className = 'bi bi-eye-slash';
+            } else {
+                target.type = 'password';
+                if (icon) icon.className = 'bi bi-eye';
+            }
+        });
+    });
+});
+
 function initToastFromURL() {
     var params = new URLSearchParams(window.location.search);
     var success = params.get('success');

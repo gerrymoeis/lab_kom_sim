@@ -349,8 +349,13 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	sess.Set("full_name", newFullName)
 	sess.Save()
 
-	if oldUsername != "" && oldUsername != newUsername {
-		_ = h.globalAuthService.ClearDefaultPasswordFlag(userID)
+	if oldUsername != "" {
+		if globalUser, err := h.globalAuthService.GetUserByUsername(oldUsername); err == nil {
+			h.globalAuthService.UpdateUser(globalUser.ID, req.Username, req.FullName, globalUser.IsSuperAdmin)
+		}
+		if oldUsername != newUsername {
+			_ = h.globalAuthService.ClearDefaultPasswordFlag(userID)
+		}
 	}
 
 	h.redirectWithSuccess(c, "/profile", "Profil berhasil diupdate", "update")
@@ -374,6 +379,7 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 	h.globalAuthService.ClearDefaultPasswordFlag(userID)
+	h.globalAuthService.UpdateUserPassword(userID, req.NewPassword)
 	h.redirectWithSuccess(c, "/profile", "Password berhasil diubah", "update")
 }
 

@@ -8,6 +8,7 @@ import (
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/middleware"
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
 
@@ -52,6 +53,22 @@ func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin
 	c.HTML(status, tmpl, data)
 }
 
+func (h *GlobalHandler) getDefaultCredentials() []models.DefaultCredential {
+	creds, _ := h.globalAuthService.GetDefaultPasswordUsers()
+	for i := range creds {
+		for _, lab := range h.cfg.Labs {
+			if lab.URLPath == creds[i].Username {
+				creds[i].LabTitle = lab.Title
+				break
+			}
+		}
+		if creds[i].IsSuperAdmin {
+			creds[i].LabTitle = "Super Admin"
+		}
+	}
+	return creds
+}
+
 func (h *GlobalHandler) LoginPage(c *gin.Context) {
 	session := sessions.Default(c)
 	if session.Get("user_id") != nil {
@@ -74,23 +91,10 @@ func (h *GlobalHandler) LoginPage(c *gin.Context) {
 	token := middleware.NewCSRFToken(session)
 	_ = session.Save()
 
-	defaultCredentials, _ := h.globalAuthService.GetDefaultPasswordUsers()
-	for i := range defaultCredentials {
-		for _, lab := range h.cfg.Labs {
-			if lab.URLPath == defaultCredentials[i].Username {
-				defaultCredentials[i].LabTitle = lab.Title
-				break
-			}
-		}
-		if defaultCredentials[i].IsSuperAdmin {
-			defaultCredentials[i].LabTitle = "Super Admin"
-		}
-	}
-
 	h.render(c, http.StatusOK, "login.html", gin.H{
 		"title":             "Login - Sistem Inventaris Lab",
 		"csrf_token":        token,
-		"defaultCredentials": defaultCredentials,
+		"defaultCredentials": h.getDefaultCredentials(),
 	})
 }
 
@@ -98,8 +102,9 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.render(c, http.StatusBadRequest, "login.html", gin.H{
-			"title": "Login - Sistem Inventaris Lab",
-			"error": "Username dan password harus diisi",
+			"title":             "Login - Sistem Inventaris Lab",
+			"error":             "Username dan password harus diisi",
+			"defaultCredentials": h.getDefaultCredentials(),
 		})
 		return
 	}
@@ -115,8 +120,9 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 			status = http.StatusConflict
 		}
 		h.render(c, status, "login.html", gin.H{
-			"title": "Login - Sistem Inventaris Lab",
-			"error": msg,
+			"title":             "Login - Sistem Inventaris Lab",
+			"error":             msg,
+			"defaultCredentials": h.getDefaultCredentials(),
 		})
 		return
 	}
@@ -134,8 +140,9 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 	middleware.NewCSRFToken(session)
 	if err := session.Save(); err != nil {
 		h.render(c, http.StatusInternalServerError, "login.html", gin.H{
-			"title": "Login - Sistem Inventaris Lab",
-			"error": "Gagal menyimpan session",
+			"title":             "Login - Sistem Inventaris Lab",
+			"error":             "Gagal menyimpan session",
+			"defaultCredentials": h.getDefaultCredentials(),
 		})
 		return
 	}
