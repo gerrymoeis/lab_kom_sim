@@ -2,7 +2,6 @@ package database
 
 import (
 	"archive/zip"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -177,13 +176,6 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 }
 
 func downloadReleaseAsset(releaseURL, token string) (string, error) {
-	re := regexp.MustCompile(`^https://github\.com/([^/]+)/([^/]+)/releases/download/([^/]+)/([^/]+)$`)
-	matches := re.FindStringSubmatch(releaseURL)
-	if matches == nil {
-		return "", fmt.Errorf("invalid GitHub release URL: expected https://github.com/owner/repo/releases/download/tag/filename")
-	}
-	owner, repo, tag, filename := matches[1], matches[2], matches[3], matches[4]
-
 	client := &http.Client{
 		Timeout: 300 * time.Second,
 		Transport: &http.Transport{
@@ -191,61 +183,22 @@ func downloadReleaseAsset(releaseURL, token string) (string, error) {
 		},
 	}
 
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", owner, repo, tag)
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create API request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("API request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GitHub API returned %d (check PC_PHOTO_RELEASE_URL and GITHUB_TOKEN)", resp.StatusCode)
-	}
-
-	var release struct {
-		Assets []struct {
-			ID   int    `json:"id"`
-			Name string `json:"name"`
-		} `json:"assets"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return "", fmt.Errorf("failed to parse release JSON: %w", err)
-	}
-
-	var assetID int
-	for _, a := range release.Assets {
-		if a.Name == filename {
-			assetID = a.ID
-			break
-		}
-	}
-	if assetID == 0 {
-		return "", fmt.Errorf("asset '%s' not found in release '%s/%s' tag '%s'", filename, owner, repo, tag)
-	}
-
-	dlURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/assets/%d", owner, repo, assetID)
-	req, err = http.NewRequest("GET", dlURL, nil)
+	req, err := http.NewRequest("GET", releaseURL, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create download request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/octet-stream")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 
-	resp, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("asset download failed: %w", err)
+		return "", fmt.Errorf("download failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusFound {
-		return "", fmt.Errorf("asset download returned %d", resp.StatusCode)
+		return "", fmt.Errorf("download returned %d (check PC_PHOTO_RELEASE_URL)", resp.StatusCode)
 	}
 
 	tmpPath := filepath.Join(os.TempDir(), "pc_photos_"+strconv.FormatInt(time.Now().UnixNano(), 36)+".zip")
