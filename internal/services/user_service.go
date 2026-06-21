@@ -79,6 +79,9 @@ func (s *UserService) DeleteUser(actorID int, targetID int, actorUsername, actor
 	if err != nil {
 		return ErrUserNotFound
 	}
+	if actorUsername == u.Username {
+		return ErrSelfDelete
+	}
 	if u.IsProtected {
 		return ErrProtectedDelete
 	}
