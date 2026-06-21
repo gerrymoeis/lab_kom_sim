@@ -72,7 +72,7 @@ func (r *GlobalUserRepository) Delete(id int) error {
 }
 
 func (r *GlobalUserRepository) ClearSessionToken(id int) error {
-	_, err := r.db.Exec(`UPDATE global_users SET session_token = NULL WHERE id = ?`, id)
+	_, err := r.db.Exec(`UPDATE global_users SET session_token = '' WHERE id = ?`, id)
 	return err
 }
 
