@@ -6,14 +6,13 @@ import (
 	"strconv"
 
 	"inventaris-lab-kom/internal/middleware"
-	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (h *GlobalHandler) AdminUserList(c *gin.Context) {
-	userID, _, _, ok := middleware.GetCurrentUser(c)
+	_, _, _, ok := middleware.GetCurrentUser(c)
 	if !ok {
 		h.render(c, http.StatusUnauthorized, "error.html", gin.H{
 			"title":   "Unauthorized",
@@ -22,7 +21,7 @@ func (h *GlobalHandler) AdminUserList(c *gin.Context) {
 		return
 	}
 
-	user, err := h.globalAuthService.GetUser(userID)
+	users, err := h.globalAuthService.ListUsers()
 	if err != nil {
 		h.render(c, http.StatusInternalServerError, "admin_users.html", gin.H{
 			"title": "Manage Users",
@@ -33,7 +32,7 @@ func (h *GlobalHandler) AdminUserList(c *gin.Context) {
 
 	h.render(c, http.StatusOK, "admin_users.html", gin.H{
 		"title": "Manage Users",
-		"users": []models.GlobalUser{*user},
+		"users": users,
 	})
 }
 

@@ -74,8 +74,10 @@
                             <td><strong>{{ if eq $.username .Username }}<a href="{{ $.basePath }}/admin/users/{{ .Username }}" class="text-decoration-none fw-bold text-primary">{{ end }}{{ .Username }}{{ if eq $.username .Username }}</a>{{ end }}</strong></td>
                             <td>
                                 {{ .FullName }}
-                                {{ if .IsSuperAdmin }}<span class="badge bg-dark ms-1">Super Admin</span>{{ end }}
-                                {{ if and (not .IsSuperAdmin) (index $.mainAccountIDs .ID) }}<span class="badge bg-secondary ms-1">Akun Utama</span>{{ end }}
+                                {{ $isSuperAdmin := or .IsSuperAdmin (index $.superAdminUsernames .Username) }}
+                                {{ if $isSuperAdmin }}<span class="badge bg-dark ms-1">Super Admin</span>{{ end }}
+                                {{ if and (not $isSuperAdmin) (index $.mainAccountIDs .ID) }}<span class="badge bg-secondary ms-1">Akun Utama</span>{{ end }}
+                                {{ if and (not $isSuperAdmin) (not (index $.mainAccountIDs .ID)) }}<span class="badge bg-info ms-1">Admin</span>{{ end }}
                             </td>
                             <td>
                                 <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">
@@ -85,14 +87,14 @@
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
-                                {{ if canAccessUser $.username . $.isSuperAdmin $.is_main_account }}
+                                {{ if index $.canAccess .ID }}
                                 <a href="{{ $.basePath }}/admin/users/{{ .Username }}" class="btn btn-sm btn-info me-1" title="Detail">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 <a href="{{ $.basePath }}/admin/users/{{ .Username }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                {{ if and (not .IsProtected) $.isSuperAdmin }}
+                                {{ if and (not .IsProtected) (or $.isSuperAdmin (and $.isMainAccount (not $isSuperAdmin))) }}
                                 <button type="button" class="btn btn-sm btn-danger" title="Hapus"
                                     onclick="confirmDelete({message:'Hapus user ini?', formId:'del-user-{{ .Username }}'})">
                                     <i class="bi bi-trash"></i>
@@ -104,7 +106,7 @@
                                 {{ end }}
                                 </span>
                             </td>
-                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none">{{ if not .IsProtected }}<input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}">{{ end }}</span></td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none">{{ if and (not .IsProtected) (or $.isSuperAdmin (and $.isMainAccount (not $isSuperAdmin))) }}<input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}">{{ end }}</span></td>
                         </tr>
                         {{ else }}
                         <tr>
