@@ -53,6 +53,19 @@ func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin
 func (h *GlobalHandler) LoginPage(c *gin.Context) {
 	session := sessions.Default(c)
 	if session.Get("user_id") != nil {
+		isSuperAdmin, _ := session.Get("is_super_admin").(bool)
+		if isSuperAdmin {
+			c.Redirect(http.StatusFound, "/labs")
+			return
+		}
+		labsRaw := session.Get("labs")
+		if labsRaw != nil {
+			labs, ok := labsRaw.([]string)
+			if ok && len(labs) > 0 {
+				c.Redirect(http.StatusFound, "/"+labs[0]+"/dashboard")
+				return
+			}
+		}
 		c.Redirect(http.StatusFound, "/labs")
 		return
 	}
@@ -162,10 +175,28 @@ func (h *GlobalHandler) LabSelector(c *gin.Context) {
 		return
 	}
 
+	isSuperAdmin, _ := session.Get("is_super_admin").(bool)
+	if !isSuperAdmin {
+		labsRaw := session.Get("labs")
+		if labsRaw != nil {
+			labs, ok := labsRaw.([]string)
+			if ok && len(labs) > 0 {
+				c.Redirect(http.StatusFound, "/"+labs[0]+"/dashboard")
+				return
+			}
+		}
+		h.render(c, http.StatusForbidden, "error.html", gin.H{
+			"title":       "Akses Ditolak",
+			"message":     "Anda tidak memiliki akses ke laboratorium manapun.",
+			"currentPage": "",
+			"role":        "",
+		})
+		return
+	}
+
 	userID, _ := session.Get("user_id").(int)
 	username, _ := session.Get("username").(string)
 	fullName, _ := session.Get("full_name").(string)
-	isSuperAdmin, _ := session.Get("is_super_admin").(bool)
 
 	var labs []config.LabConfig
 	if isSuperAdmin {
