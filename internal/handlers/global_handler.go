@@ -128,6 +128,7 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 	session.Set("username", user.Username)
 	session.Set("full_name", user.FullName)
 	session.Set("is_super_admin", user.IsSuperAdmin)
+	session.Set("role", "admin")
 	session.Set("session_token", token)
 	session.Set("labs", labPaths)
 	middleware.NewCSRFToken(session)
@@ -140,7 +141,7 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 	}
 
 	ip, ua := getRequestContext(c)
-	h.logAuthToLabs(user.ID, user.Username, "login", ip, ua, labPaths)
+	h.logAuthToLabs(user.ID, user.Username, "login", "", ip, ua, labPaths)
 	c.Redirect(http.StatusFound, "/labs")
 }
 
@@ -180,12 +181,13 @@ func (h *GlobalHandler) Logout(c *gin.Context) {
 	})
 
 	if hasUserID {
-		h.logAuthToLabs(userID, username, "logout", ip, ua, labPaths)
+		role, _ := session.Get("role").(string)
+		h.logAuthToLabs(userID, username, "logout", role, ip, ua, labPaths)
 	}
 	c.Redirect(http.StatusFound, "/")
 }
 
-func (h *GlobalHandler) logAuthToLabs(userID int, username, action, ip, ua string, labPaths []string) {
+func (h *GlobalHandler) logAuthToLabs(userID int, username, action, role, ip, ua string, labPaths []string) {
 	for _, labPath := range labPaths {
 		db, ok := h.labsDB[labPath]
 		if !ok {
@@ -193,8 +195,8 @@ func (h *GlobalHandler) logAuthToLabs(userID int, username, action, ip, ua strin
 		}
 		status := "success"
 		desc := fmt.Sprintf("User '%s' %s", username, action)
-		db.Exec(`INSERT INTO activity_logs (user_id, username, user_role, action, entity_type, entity_id, description, old_values, new_values, created_at, ip_address, user_agent, status, error_message) VALUES (?, ?, '', ?, 'auth', NULL, ?, '', ?, ?, ?, ?, '')`,
-			userID, username, action, desc, timeutil.Now(), ip, ua, status)
+		db.Exec(`INSERT INTO activity_logs (user_id, username, user_role, action, entity_type, entity_id, description, old_values, new_values, created_at, ip_address, user_agent, status, error_message) VALUES (?, ?, ?, ?, 'auth', NULL, ?, '', ?, ?, ?, ?, '')`,
+			userID, username, role, action, desc, timeutil.Now(), ip, ua, status)
 	}
 }
 
