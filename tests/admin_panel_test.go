@@ -571,6 +571,45 @@ func TestPerLabUserBatchDelete(t *testing.T) {
 	})
 }
 
+func TestPerLabUserBatchDeleteSuccess(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+	db := env.DB_A
+	// Login as super admin (admin) — only super admins or main accounts can batch-delete
+	if !loginAndRefresh(lab, "admin", "admin123") {
+		t.Fatal("login failed")
+	}
+
+	t.Run("batch_delete_success", func(t *testing.T) {
+		// Create test users directly in per-lab DB
+		db.Exec("DELETE FROM users WHERE username IN ('batch_del_a', 'batch_del_b')")
+		db.Exec("INSERT INTO users (username, password, full_name, role) VALUES ('batch_del_a', 'x', 'Batch Del A', 'dosen')")
+		db.Exec("INSERT INTO users (username, password, full_name, role) VALUES ('batch_del_b', 'x', 'Batch Del B', 'dosen')")
+		var beforeCount int
+		db.QueryRow("SELECT COUNT(*) FROM users WHERE username IN ('batch_del_a', 'batch_del_b')").Scan(&beforeCount)
+		if beforeCount != 2 {
+			t.Fatalf("expected 2 test users, got %d", beforeCount)
+		}
+
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.postJSON("/admin/users/batch-delete", `{"ids":["batch_del_a","batch_del_b"]}`)
+		if err != nil {
+			t.Fatalf("POST /admin/users/batch-delete: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+		var afterCount int
+		db.QueryRow("SELECT COUNT(*) FROM users WHERE username IN ('batch_del_a', 'batch_del_b')").Scan(&afterCount)
+		if afterCount != 0 {
+			t.Errorf("expected 0 users after batch delete, got %d", afterCount)
+		}
+	})
+}
+
 // ============================================
 // 11. PerLabUserList — GET user list (per-lab admin)
 // ============================================

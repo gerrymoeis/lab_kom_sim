@@ -64,7 +64,7 @@ func TestDashboardContent(t *testing.T) {
 			t.Error("dashboard missing Total PC section")
 		}
 		if pcCount > 0 && !strings.Contains(s, itoa(pcCount)) {
-			t.Logf("dashboard may not show exact PC count %d (could be formatted)", pcCount)
+			t.Errorf("dashboard should show PC count %d, but not found in rendered HTML", pcCount)
 		}
 	})
 
@@ -119,6 +119,11 @@ func TestDashboardContent(t *testing.T) {
 		}
 		if !strings.Contains(s2, "DASHDT") && !strings.Contains(s2, "DashDevice") {
 			t.Log("dashboard may show device type info in other format")
+		}
+		var totalDevCount int
+		db.QueryRow("SELECT COUNT(*) FROM devices").Scan(&totalDevCount)
+		if totalDevCount > 0 && !strings.Contains(s2, itoa(totalDevCount)) {
+			t.Errorf("dashboard should show total device count %d, but not found in rendered HTML", totalDevCount)
 		}
 	})
 
