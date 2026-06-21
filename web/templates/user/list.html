@@ -94,7 +94,7 @@
                                 <a href="{{ $.basePath }}/admin/users/{{ .Username }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                {{ if and (not .IsProtected) (or $.isSuperAdmin (and $.isMainAccount (not $isSuperAdmin))) }}
+                                {{ if and (not .IsProtected) (ne $.username .Username) (or $.isSuperAdmin (and $.isMainAccount (not $isSuperAdmin))) }}
                                 <button type="button" class="btn btn-sm btn-danger" title="Hapus"
                                     onclick="confirmDelete({message:'Hapus user ini?', formId:'del-user-{{ .Username }}'})">
                                     <i class="bi bi-trash"></i>
@@ -106,7 +106,7 @@
                                 {{ end }}
                                 </span>
                             </td>
-                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none">{{ if and (not .IsProtected) (or $.isSuperAdmin (and $.isMainAccount (not $isSuperAdmin))) }}<input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}">{{ end }}</span></td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none">{{ if and (not .IsProtected) (ne $.username .Username) (or $.isSuperAdmin (and $.isMainAccount (not $isSuperAdmin))) }}<input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}">{{ end }}</span></td>
                         </tr>
                         {{ else }}
                         <tr>
