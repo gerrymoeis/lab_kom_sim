@@ -664,7 +664,8 @@ func TestDefaultPasswordHints(t *testing.T) {
 
 	t.Run("hint_hides_after_username_change", func(t *testing.T) {
 		// Login via loginAndRefresh to get proper CSRF token and session cookies
-		if !loginAndRefresh(env.LabA, "admin", "admin123") {
+		// Password changed globally by previous subtest, use new password
+		if !loginAndRefresh(env.LabA, "admin", "newpass456") {
 			t.Fatal("admin login failed")
 		}
 
