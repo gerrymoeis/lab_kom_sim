@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/services"
+	"inventaris-lab-kom/internal/timeutil"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -137,12 +139,23 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 		return
 	}
 
+	ip, ua := getRequestContext(c)
+	h.logAuthToLabs(user.ID, user.Username, "login", ip, ua, labPaths)
 	c.Redirect(http.StatusFound, "/labs")
 }
 
 func (h *GlobalHandler) Logout(c *gin.Context) {
 	session := sessions.Default(c)
-	if userID, ok := session.Get("user_id").(int); ok {
+	userID, hasUserID := session.Get("user_id").(int)
+	username, _ := session.Get("username").(string)
+	labsRaw := session.Get("labs")
+	var labPaths []string
+	if l, ok := labsRaw.([]string); ok {
+		labPaths = l
+	}
+	ip, ua := getRequestContext(c)
+
+	if hasUserID {
 		h.globalAuthService.Logout(userID)
 	}
 
@@ -165,7 +178,24 @@ func (h *GlobalHandler) Logout(c *gin.Context) {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
+
+	if hasUserID {
+		h.logAuthToLabs(userID, username, "logout", ip, ua, labPaths)
+	}
 	c.Redirect(http.StatusFound, "/")
+}
+
+func (h *GlobalHandler) logAuthToLabs(userID int, username, action, ip, ua string, labPaths []string) {
+	for _, labPath := range labPaths {
+		db, ok := h.labsDB[labPath]
+		if !ok {
+			continue
+		}
+		status := "success"
+		desc := fmt.Sprintf("User '%s' %s", username, action)
+		db.Exec(`INSERT INTO activity_logs (user_id, username, user_role, action, entity_type, entity_id, description, old_values, new_values, created_at, ip_address, user_agent, status, error_message) VALUES (?, ?, '', ?, 'auth', NULL, ?, '', ?, ?, ?, ?, '')`,
+			userID, username, action, desc, timeutil.Now(), ip, ua, status)
+	}
 }
 
 func (h *GlobalHandler) LabSelector(c *gin.Context) {

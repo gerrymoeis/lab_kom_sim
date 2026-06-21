@@ -104,7 +104,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 			username TEXT UNIQUE NOT NULL,
 			password TEXT NOT NULL,
 			full_name TEXT NOT NULL,
-			role TEXT NOT NULL CHECK(role IN ('admin', 'dosen')),
+			role TEXT NOT NULL DEFAULT 'admin' CHECK(role IN ('admin')),
 			session_token TEXT,
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
 			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP

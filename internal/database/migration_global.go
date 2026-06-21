@@ -22,7 +22,7 @@ func RunGlobalMigrations(db *DB) error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL REFERENCES global_users(id),
 			lab_url_path TEXT NOT NULL,
-			role TEXT NOT NULL DEFAULT 'dosen' CHECK(role IN ('admin', 'dosen')),
+			role TEXT NOT NULL DEFAULT 'admin' CHECK(role IN ('admin')),
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE(user_id, lab_url_path)
 		)`,
