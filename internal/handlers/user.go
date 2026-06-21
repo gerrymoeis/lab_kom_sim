@@ -250,6 +250,14 @@ func (h *Handler) UserEdit(c *gin.Context) {
 		return
 	}
 
+	// Sync changes to global_users so login works with new username/password
+	if globalUser, err := h.globalAuthService.GetUserByUsername(targetUsername); err == nil {
+		h.globalAuthService.UpdateUser(globalUser.ID, req.Username, req.FullName, globalUser.IsSuperAdmin)
+		if req.NewPassword != "" {
+			h.globalAuthService.UpdateUserPassword(globalUser.ID, req.NewPassword)
+		}
+	}
+
 	if u == targetUsername {
 		sess := sessions.Default(c)
 		sess.Set("username", req.Username)

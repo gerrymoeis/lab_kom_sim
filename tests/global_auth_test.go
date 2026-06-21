@@ -193,8 +193,8 @@ func TestLogout(t *testing.T) {
 			return
 		}
 		loc := resp.Header.Get("Location")
-		if loc != "/" {
-			t.Errorf("expected redirect to /, got %q", loc)
+		if loc != "/login" {
+			t.Errorf("expected redirect to /login, got %q", loc)
 		}
 	})
 
