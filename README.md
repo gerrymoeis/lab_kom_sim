@@ -253,7 +253,7 @@ echo "SESSION_SECRET=$SESSION_SECRET"
 nano .env
 ```
 
-**Konfigurasi minimal untuk production (copy-paste dengan nilai Anda):**
+**Konfigurasi minimal — Single-Lab (copy-paste dengan nilai Anda):**
 
 ```env
 ENVIRONMENT=production
@@ -270,9 +270,20 @@ BACKUP_ENABLED=true
 BACKUP_DIR=/opt/simlab/app/data/backups
 ```
 
-> **Catatan:** `openssl rand -hex 32` menghasilkan 64 karakter hex random. Simpan outputnya dan paste ke `SESSION_SECRET` di `.env`. Jangan gunakan string yang sama dengan contoh di atas — setiap server harus punya secret unik.
+**Konfigurasi Multi-Lab (ganti DATABASE_PATH + tambah LABS):**
 
-Lihat [Panduan .env Reference](#panduan-env-reference) untuk semua opsi.
+```env
+GLOBAL_DB_PATH=/opt/simlab/app/data/global.db        # DB global (users, permissions)
+LABS=MI-1:/opt/simlab/app/data/lab_mi_1.db:Lab Kom MI 1:lab-kom-mi,VOKASI-1:/opt/simlab/app/data/lab_vokasi_1.db:Lab Kom Vokasi:vokasi
+# Format LABS: LAB-ID:dbPath:Title:urlPath (comma-separated)
+# Saat LABS diisi, DATABASE_PATH diabaikan — setiap lab punya DB sendiri.
+# LAB-ID = lookup folder seeds/<lowercase(LAB-ID)>/
+# urlPath = routing slug (menentukan cookie, upload, backup folder per-lab)
+```
+
+> **Catatan:** `openssl rand -hex 32` menghasilkan 64 karakter hex random. Setiap server harus punya `SESSION_SECRET` unik.
+
+Lihat file `.env.example` (auto-sync dari branch refactoring) untuk dokumentasi lengkap semua opsi.
 
 ---
 
@@ -564,150 +575,20 @@ BACKUP_DIR="/opt/simlab/app/data/backups, /mnt/nas/backups, /opt/simlab/app/data
 
 ## Panduan .env Reference
 
-Semua konfigurasi aplikasi via file `.env`. Copy dari `.env.example`.
+Dokumentasi lengkap semua environment variable ada di file `.env.example` (auto-sync dari branch `refactoring` via GitHub Actions). File ini selalu terupdate — buka langsung di server:
 
-```env
-# ============================
-# APLIKASI
-# ============================
-
-# Environment: development | production
-ENVIRONMENT=production
-
-# Host binding — 0.0.0.0 untuk akses dari luar localhost
-HOST=0.0.0.0
-
-# Port aplikasi
-PORT=8080
-
-
-# ============================
-# DATABASE
-# ============================
-
-# SQLite: path absolut di production agar survive symlink swap deploy
-# Contoh: /opt/simlab/app/data/inventaris_lab.db
-DATABASE_PATH=inventaris_lab.db
-
-# PostgreSQL (Neon DB) — isi untuk pakai PostgreSQL, kosongkan untuk SQLite
-# DATABASE_URL=postgres://user:pass@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
-
-
-# ============================
-# WRITE MODE
-# ============================
-
-# sync (default): langsung tulis ke SQLite
-# async: queue-based batch writer (lebih cepat untuk burst request)
-WRITE_MODE=sync
-
-
-# ============================
-# SECURITY
-# ============================
-
-# Session secret — WAJIB ganti di production! Minimal 32 karakter random.
-# Generate: openssl rand -hex 32
-SESSION_SECRET=change-this-secret-in-production-to-random-string
-
-# Cookie Secure Flag
-# false = cookie bisa dikirim via HTTP (Tailscale HTTP / staging).
-# true  = cookie hanya via HTTPS. Set true jika sudah pakai TLS/HTTPS.
-# PENTING: Jangan set true jika masih HTTP — browser tolak cookie → login 403.
-COOKIE_SECURE=false
-
-
-# ============================
-# TIMEZONE
-# ============================
-
-# IANA timezone — Asia/Jakarta (WIB), Asia/Makassar (WITA), Asia/Jayapura (WIT)
-TIMEZONE=Asia/Jakarta
-
-
-# ============================
-# UPLOAD
-# ============================
-
-# Path upload — gunakan absolute path di production
-# Contoh: /opt/simlab/app/data/uploads
-UPLOAD_PATH=uploads
-
-
-# ============================
-# OCR API KEYS
-# ============================
-
-# Google Gemini API Key (fallback OCR)
-GEMINI_API_KEY=your-gemini-api-key-here
-
-# OpenRouter API Key (primary OCR — pakai free vision model)
-# Daftar: https://openrouter.ai/keys
-OPENROUTER_API_KEY=sk-or-your-openrouter-api-key-here
-
-
-# ============================
-# ANDROID MODE
-# ============================
-
-# false untuk Linux server (server-side compress)
-ANDROID=false
-
-
-# ============================
-# PC PHOTO SEEDING (via GitHub Releases)
-# ============================
-
-# URL ZIP foto PC — kosongkan jika tidak perlu seeding
-PC_PHOTO_RELEASE_URL=
-# GitHub PAT (read-only akses ke repo pc-photos)
-GITHUB_TOKEN=
-
-
-# ============================
-# PAGINATION
-# ============================
-
-# Default page size untuk semua list view (default: 25)
-DEFAULT_PAGE_SIZE=25
-
-
-# ============================
-# BACKUP (SQLite only)
-# ============================
-
-# Backup otomatis — trigger via CUD, debounce BACKUP_INTERVAL detik
-BACKUP_ENABLED=true
-
-# Debounce interval (detik) — 30 = backup 30 detik setelah CUD terakhir
-BACKUP_INTERVAL=30
-
-# Direktori backup — comma-separated, pakai quotes jika ada spasi
-BACKUP_DIR=/opt/simlab/app/data/backups
-
-# Retention — jumlah file backup maksimal
-BACKUP_RETENTION=20
-
-# Minimum disk space (MB) — skip backup jika kurang
-BACKUP_MIN_DISK_MB=500
-
-# Kompresi backup (.gz)
-BACKUP_COMPRESS=true
-
-
-# ============================
-# PUBLIC SITE (SSG Auto-Build)
-# ============================
-
-# Static site generator — rebuild public site tiap CUD
-PUBLIC_BUILD_ENABLED=false
-PUBLIC_BUILD_INTERVAL=30
-PUBLIC_BUILD_OUT=dist
-PUBLIC_BUILD_TEMPLATE_DIR=web/templates/public
-PUBLIC_BUILD_STATIC_DIR=web/static
-PUBLIC_BUILD_REPO_DIR=
-PUBLIC_BUILD_BRANCH=main
+```bash
+cat .env.example | grep -E "^(#|$|[A-Z])" | head -80
 ```
+
+Atau lihat [.env.example](.env.example) untuk semua opsi termasuk: LABS multi-lab, GLOBAL_DB_PATH, LOG_RETENTION_DAYS, WRITE_MODE async, PC photo seeding, dan PUBLIC_BUILD.
+
+### Catatan Penting
+
+- **Multi-Lab:** Saat `LABS` diisi, setiap lab punya database, session (cookie `inventaris_session_{urlPath}`), upload folder (`uploads/{urlPath}/`), dan backup folder sendiri. `DATABASE_PATH` diabaikan.
+- **Global DB** (`GLOBAL_DB_PATH`): Menyimpan user global, lab_permissions, grid_layouts — wajib ada bahkan di mode single-lab.
+- **Auto-Sync Middleware:** Setiap kali user login ke lab, sistem otomatis membuat/update row di per-lab `users` table (sync `full_name`, `role`, `is_super_admin`). Jadi data global cukup diatur di `/admin/users` — per-lab users sinkron otomatis.
+- **DATABASE_URL** (PostgreSQL/Neon): Jika diisi, semua SQLite path diabaikan — server menggunakan PostgreSQL. Berlaku untuk semua lab (single database server).
 
 ---
 
