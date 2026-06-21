@@ -110,6 +110,8 @@ ssh -p 8022 user@host 'cd ~/lab_kom_sim && git pull origin refactoring && CGO_EN
 ## Catatan Penting
 
 - **LABS format**: `LAB-ID:dbPath:Title:urlPath` — 4 segmen, comma-separated
+- **Global DB** (`GLOBAL_DB_PATH`, default `data/global.db`): Database global untuk users, permissions, grid layouts
+- **Auto-Sync**: Setiap login, middleware `LabRoleInjector` sinkronisasi data user ke per-lab `users` table (full_name, role, is_super_admin). Kelola user cukup di `/admin/users` — per-lab users sinkron otomatis
 - **Seed folder**: `seeds/<lowercase(LAB-ID)>/` — ada = apply, tidak ada = skip
 - **Database**: `DATABASE_URL` diisi = PostgreSQL (Neon), kosong = SQLite multi-DB
 - **Upload path**: `uploads/{urlPath}/{category}/` — per-lab, tidak ada shared
