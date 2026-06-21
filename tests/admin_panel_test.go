@@ -242,6 +242,23 @@ func TestAdminUserCreate(t *testing.T) {
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
 		}
+		body, _ := io.ReadAll(resp.Body)
+		html := string(body)
+		if !strings.Contains(html, "<form") {
+			t.Error("create page should contain a form")
+		}
+		if !strings.Contains(html, `name="username"`) {
+			t.Error("create page should have username input")
+		}
+		if !strings.Contains(html, `name="full_name"`) {
+			t.Error("create page should have full_name input")
+		}
+		if !strings.Contains(html, `name="new_password"`) {
+			t.Error("create page should have password input")
+		}
+		if !strings.Contains(html, `name="_csrf"`) {
+			t.Error("create page should have CSRF hidden input")
+		}
 	})
 
 	t.Run("create_user_success", func(t *testing.T) {
@@ -292,6 +309,17 @@ func TestAdminUserEdit(t *testing.T) {
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		html := string(body)
+		if !strings.Contains(html, `/admin/users/1/edit`) {
+			t.Error("edit page form action should point to /admin/users/1/edit")
+		}
+		if !strings.Contains(html, `value="admin"`) {
+			t.Error("edit page should pre-populate username")
+		}
+		if !strings.Contains(html, `name="_csrf"`) {
+			t.Error("edit page should have CSRF hidden input")
 		}
 	})
 
@@ -408,6 +436,17 @@ func TestAdminUserPermissions(t *testing.T) {
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		html := string(body)
+		if !strings.Contains(html, `name="labs"`) {
+			t.Error("permissions page should have lab checkboxes")
+		}
+		if !strings.Contains(html, `name="roles"`) {
+			t.Error("permissions page should have role selects")
+		}
+		if !strings.Contains(html, "lab-kom-mi") && !strings.Contains(html, "Lab Kom MI") {
+			t.Error("permissions page should show lab names")
 		}
 	})
 
