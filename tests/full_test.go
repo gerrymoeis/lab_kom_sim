@@ -963,8 +963,8 @@ func setupTestEnvironment(t *testing.T) *TestEnvironment {
 		OpenRouterAPIKey: os.Getenv("OPENROUTER_API_KEY"),
 	}
 	cfg.Labs = []config.LabConfig{
-		{ID: labAID, URLPath: labAURL, DBPath: dbPathA, UploadDir: filepath.Join(cfg.UploadPath, labAURL), Layout: config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}},
-		{ID: labBID, URLPath: labBURL, DBPath: dbPathB, UploadDir: filepath.Join(cfg.UploadPath, labBURL), Layout: config.GridLayout{ColsPerRow: []int{10, 8, 9, 9}, HasGap: true, GapPos: 4}},
+		{ID: labAID, Title: "Lab Kom MI", URLPath: labAURL, DBPath: dbPathA, UploadDir: filepath.Join(cfg.UploadPath, labAURL), Layout: config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}},
+		{ID: labBID, Title: "Vokasi", URLPath: labBURL, DBPath: dbPathB, UploadDir: filepath.Join(cfg.UploadPath, labBURL), Layout: config.GridLayout{ColsPerRow: []int{10, 8, 9, 9}, HasGap: true, GapPos: 4}},
 	}
 
 	dbA, err := database.InitDB(dbPathA, "")
