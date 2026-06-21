@@ -21,14 +21,14 @@ func TestCrossLabIsolation(t *testing.T) {
 		if !loginAndRefresh(labA, "labA_only", "test123") {
 			t.Fatal("login failed")
 		}
-		// Lab A-only user accessing Lab B
+		// Lab A-only user accessing Lab B — now redirects to own lab
 		resp, err := labA.getURL(tsURL + labB.prefix + "/dashboard")
 		if err != nil {
 			t.Fatalf("GET Lab B dashboard: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403 for cross-lab, got %d", resp.StatusCode)
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 (redirect to own lab), got %d", resp.StatusCode)
 		}
 		// Own lab still accessible
 		resp, err = labA.get("/dashboard")
@@ -45,14 +45,14 @@ func TestCrossLabIsolation(t *testing.T) {
 		if !loginAndRefresh(labB, "labB_only", "test123") {
 			t.Fatal("login failed")
 		}
-		// Lab B-only user accessing Lab A
+		// Lab B-only user accessing Lab A — now redirects to own lab
 		resp, err := labB.getURL(tsURL + labA.prefix + "/dashboard")
 		if err != nil {
 			t.Fatalf("GET Lab A dashboard from Lab B: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403 for cross-lab, got %d", resp.StatusCode)
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 (redirect to own lab), got %d", resp.StatusCode)
 		}
 		// Own lab still accessible
 		resp, err = labB.get("/dashboard")

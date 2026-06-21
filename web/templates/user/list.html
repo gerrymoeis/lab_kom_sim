@@ -74,9 +74,8 @@
                             <td><strong>{{ if eq $.username .Username }}<a href="{{ $.basePath }}/admin/users/{{ .Username }}" class="text-decoration-none fw-bold text-primary">{{ end }}{{ .Username }}{{ if eq $.username .Username }}</a>{{ end }}</strong></td>
                             <td>
                                 {{ .FullName }}
-{{ if .IsProtected }}
-								<span class="badge bg-secondary ms-1">Akun utama</span>
-								{{ end }}
+                                {{ if .IsSuperAdmin }}<span class="badge bg-dark ms-1">Super Admin</span>{{ end }}
+                                {{ if and (not .IsSuperAdmin) (index $.mainAccountIDs .ID) }}<span class="badge bg-secondary ms-1">Akun Utama</span>{{ end }}
                             </td>
                             <td>
                                 <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">

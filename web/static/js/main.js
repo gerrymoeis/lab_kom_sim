@@ -8,10 +8,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const alerts = document.querySelectorAll('.alert.alert-dismissible');
     alerts.forEach(alert => {
+        const isError = alert.classList.contains('alert-danger');
+        const delay = isError ? 15000 : 5000;
         setTimeout(() => {
             const bsAlert = new bootstrap.Alert(alert);
             bsAlert.close();
-        }, 5000);
+        }, delay);
     });
 
     document.querySelectorAll('.availability-select').forEach(sel => {
