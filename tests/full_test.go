@@ -231,7 +231,7 @@ func TestFullIntegration(t *testing.T) {
 	{
 		resp, err = rawGet(ts.URL + "/")
 		assert(err == nil, "GET / request")
-		assert(resp.StatusCode == 200, "GET / returns 200 (landing page): %d", resp.StatusCode)
+		assert(resp.StatusCode == 302, "GET / redirects to /login: %d", resp.StatusCode)
 		labA.closeResp(resp)
 	}
 	{
