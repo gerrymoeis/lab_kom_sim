@@ -208,11 +208,4 @@ func (h *GlobalHandler) LabSelector(c *gin.Context) {
 	})
 }
 
-// --- Admin route stubs (Fase 5 will implement full UI) ---
 
-func (h *GlobalHandler) AdminNotImplemented(c *gin.Context) {
-	h.render(c, http.StatusOK, "error.html", gin.H{
-		"title":   "Fitur dalam Pengembangan",
-		"message": "Halaman ini akan tersedia di fase berikutnya.",
-	})
-}

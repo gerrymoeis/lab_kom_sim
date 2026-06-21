@@ -31,14 +31,3 @@ type DefaultCredential struct {
 	IsSuperAdmin  bool
 	IsMainAccount bool
 }
-
-type LabConfig struct {
-	ID        int       `json:"id"`
-	LabID     string    `json:"lab_id"`
-	Title     string    `json:"title"`
-	URLPath   string    `json:"url_path"`
-	DBPath    string    `json:"db_path"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
