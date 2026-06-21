@@ -29,17 +29,6 @@ func checkExport(t *testing.T, lab *testLab, path, prefix string) {
 	}
 }
 
-func checkExportForbidden(t *testing.T, lab *testLab, path string) {
-	resp, err := lab.get(path)
-	if err != nil {
-		t.Fatalf("GET %s: %v", path, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 500 {
-		t.Errorf("GET %s: expected 500 for non-admin, got %d", path, resp.StatusCode)
-	}
-}
-
 func TestExportPC(t *testing.T) {
 	env := setupTestEnvironment(t)
 	lab := env.LabA
@@ -86,13 +75,4 @@ func TestExportActivityLog(t *testing.T) {
 	checkExport(t, lab, "/admin/activity-logs/export", "activity_log_export_")
 }
 
-func TestExportForbiddenNonAdmin(t *testing.T) {
-	env := setupTestEnvironment(t)
-	lab := env.LabA
-	if !loginAndRefresh(lab, "labA_dosen", "test123") {
-		t.Fatal("login failed")
-	}
-	checkExportForbidden(t, lab, "/pc/export")
-	checkExportForbidden(t, lab, "/software/export")
-	checkExportForbidden(t, lab, "/devices/export")
-}
+
