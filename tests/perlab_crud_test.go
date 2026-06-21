@@ -1065,6 +1065,17 @@ func TestDeviceLoan(t *testing.T) {
 		}
 	})
 
+	t.Run("create_page_loan", func(t *testing.T) {
+		resp, err := lab.get("/device-loans/create")
+		if err != nil {
+			t.Fatalf("GET /device-loans/create: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+	})
+
 	t.Run("edit_page_loan", func(t *testing.T) {
 		var loanID int
 		db.QueryRow("SELECT id FROM device_loans ORDER BY id LIMIT 1").Scan(&loanID)
