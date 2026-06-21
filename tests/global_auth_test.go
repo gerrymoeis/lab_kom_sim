@@ -122,6 +122,24 @@ func TestLogin(t *testing.T) {
 		}
 	})
 
+	t.Run("verify_session_token_stored", func(t *testing.T) {
+		var token string
+		env.GlobalDB.QueryRow("SELECT session_token FROM global_users WHERE username='admin'").Scan(&token)
+		if token == "" {
+			t.Error("session_token should not be empty after login")
+		}
+		var token2 string
+		env.GlobalDB.QueryRow("SELECT session_token FROM global_users WHERE username='rekan'").Scan(&token2)
+		if token2 == "" {
+			t.Error("session_token for rekan should not be empty after login")
+		}
+		var token3 string
+		env.GlobalDB.QueryRow("SELECT session_token FROM global_users WHERE username='labB_only'").Scan(&token3)
+		if token3 == "" {
+			t.Error("session_token for labB_only should not be empty after login")
+		}
+	})
+
 	t.Run("fail_wrong_password", func(t *testing.T) {
 		body := url.Values{"username": {"admin"}, "password": {"wrongpass"}}.Encode()
 		req, _ := http.NewRequest("POST", tsURL+"/login", strings.NewReader(body))
