@@ -228,13 +228,13 @@ type CreateUserRequest struct {
 	Username string `form:"username" binding:"required"`
 	Password string `form:"password" binding:"required"`
 	FullName string `form:"full_name" binding:"required,max=100"`
-	Role     string `form:"role" binding:"required,oneof=admin dosen"`
+	Role     string `form:"role" binding:"required,oneof=admin"`
 }
 
 type UpdateUserRequest struct {
 	Username    string `form:"username" binding:"required"`
 	FullName    string `form:"full_name" binding:"required,max=100"`
-	Role        string `form:"role" binding:"required,oneof=admin dosen"`
+	Role        string `form:"role" binding:"required,oneof=admin"`
 	NewPassword string `form:"new_password" binding:"omitempty"`
 }
 
