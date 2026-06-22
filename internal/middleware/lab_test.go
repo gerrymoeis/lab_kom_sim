@@ -51,27 +51,12 @@ func setupMiddlewareTest(t *testing.T) (globalDB *database.DB, dbs map[string]*d
 		t.Fatalf("create lab_permissions: %v", err)
 	}
 
-	// Create per-lab DB for LabRoleInjector autoSyncUser
+	// Create per-lab DB for middleware tests
 	labDB, err := database.InitDB(t.TempDir()+"/lab_test.db", "")
 	if err != nil {
 		t.Fatalf("InitDB lab: %v", err)
 	}
 	t.Cleanup(func() { labDB.Close() })
-	_, err = labDB.Exec(`CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY,
-		username TEXT UNIQUE NOT NULL,
-		password TEXT NOT NULL,
-		full_name TEXT NOT NULL,
-		role TEXT NOT NULL DEFAULT 'admin',
-		session_token TEXT,
-		is_protected INTEGER NOT NULL DEFAULT 0,
-		is_super_admin INTEGER NOT NULL DEFAULT 0,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	)`)
-	if err != nil {
-		t.Fatalf("create per-lab users: %v", err)
-	}
 
 	dbs = map[string]*database.DB{"test-lab": labDB}
 	labs = map[string]config.LabConfig{"test-lab": {URLPath: "test-lab"}}
