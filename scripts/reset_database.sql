@@ -7,7 +7,6 @@ DELETE FROM software;
 DELETE FROM logbook_entries;
 DELETE FROM devices;
 DELETE FROM pcs;
-DELETE FROM users;
 
 -- Reset auto-increment counters
 DELETE FROM sqlite_sequence WHERE name='maintenance_logs';
@@ -15,7 +14,6 @@ DELETE FROM sqlite_sequence WHERE name='software';
 DELETE FROM sqlite_sequence WHERE name='logbook_entries';
 DELETE FROM sqlite_sequence WHERE name='devices';
 DELETE FROM sqlite_sequence WHERE name='pcs';
-DELETE FROM sqlite_sequence WHERE name='users';
 
 -- Verify reset
 SELECT name, seq FROM sqlite_sequence;

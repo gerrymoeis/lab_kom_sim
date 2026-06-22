@@ -31,7 +31,7 @@ type insertTracker struct {
 func newInsertTracker(db *DB) *insertTracker {
 	t := &insertTracker{counters: make(map[string]int64)}
 	tables := []string{
-		"users", "pcs", "device_types", "devices",
+		"pcs", "device_types", "devices",
 		"device_loans", "device_usages", "software_catalog",
 		"course_schedules", "logbook_entries",
 	}
@@ -83,7 +83,7 @@ func (db *DB) NewWriteQueue(bufferSize, batchSize int, flushEvery time.Duration)
 		// Bypass async for constraints and critical tables
 		tbl := extractTableName(query)
 		switch tbl {
-		case "devices", "categories", "device_types", "users":
+		case "devices", "categories", "device_types":
 			return db.writer.Exec(query, args...)
 		}
 

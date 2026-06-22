@@ -10,7 +10,6 @@ DELETE FROM device_loans;
 DELETE FROM devices;
 DELETE FROM device_types;
 DELETE FROM pcs;
-DELETE FROM users;
 
 -- Reset sequences
 ALTER SEQUENCE maintenance_logs_id_seq RESTART WITH 1;
@@ -21,4 +20,3 @@ ALTER SEQUENCE device_loans_id_seq RESTART WITH 1;
 ALTER SEQUENCE devices_id_seq RESTART WITH 1;
 ALTER SEQUENCE device_types_id_seq RESTART WITH 1;
 ALTER SEQUENCE pcs_id_seq RESTART WITH 1;
-ALTER SEQUENCE users_id_seq RESTART WITH 1;
