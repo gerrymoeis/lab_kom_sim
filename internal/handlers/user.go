@@ -350,7 +350,13 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	sess.Save()
 
 	if globalUser, err := h.globalAuthService.GetUser(userID); err == nil {
-		h.globalAuthService.UpdateUser(globalUser.ID, req.Username, req.FullName, globalUser.IsSuperAdmin)
+		if err := h.globalAuthService.UpdateUser(globalUser.ID, req.Username, req.FullName, globalUser.IsSuperAdmin); err != nil {
+			h.redirectWithError(c, "/profile", "Gagal sinkronisasi profil, coba lagi")
+			return
+		}
+	} else {
+		h.redirectWithError(c, "/profile", "Sesi tidak valid, silakan login ulang")
+		return
 	}
 	if oldUsername != newUsername {
 		_ = h.globalAuthService.ClearDefaultPasswordFlag(userID)
@@ -376,8 +382,10 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		h.redirectWithError(c, "/profile", msg)
 		return
 	}
-	h.globalAuthService.ClearDefaultPasswordFlag(userID)
-	h.globalAuthService.UpdateUserPassword(userID, req.NewPassword)
+	if err := h.globalAuthService.UpdateUserPassword(userID, req.NewPassword); err != nil {
+		h.redirectWithError(c, "/profile", "Gagal sinkronisasi password, coba lagi")
+		return
+	}
 	h.redirectWithSuccess(c, "/profile", "Password berhasil diubah", "update")
 }
 
