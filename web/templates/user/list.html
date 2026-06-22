@@ -77,7 +77,6 @@
                                 {{ $isSuperAdmin := or .IsSuperAdmin (index $.superAdminUsernames .Username) }}
                                 {{ if $isSuperAdmin }}<span class="badge bg-dark ms-1">Super Admin</span>{{ end }}
                                 {{ if and (not $isSuperAdmin) (index $.mainAccountIDs .ID) }}<span class="badge bg-secondary ms-1">Akun Utama</span>{{ end }}
-                                {{ if and (not $isSuperAdmin) (not (index $.mainAccountIDs .ID)) }}<span class="badge bg-info ms-1">Admin</span>{{ end }}
                             </td>
                             <td>
                                 <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">
