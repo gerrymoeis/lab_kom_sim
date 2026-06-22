@@ -8,7 +8,7 @@ type User struct {
 	Username     string    `json:"username"`
 	Password     string    `json:"-"` // Never expose password in JSON
 	FullName     string    `json:"full_name"`
-	Role         string    `json:"role"` // "admin" or "dosen"
+	Role         string    `json:"role"` // "admin"
 	IsProtected  bool      `json:"is_protected"`
 	IsSuperAdmin bool      `json:"is_super_admin"`
 	CreatedAt    time.Time `json:"created_at"`

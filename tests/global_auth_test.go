@@ -502,7 +502,7 @@ func TestUserAccessControl(t *testing.T) {
 		if !loginAndRefresh(lab, "labA_only", "test123") {
 			t.Fatal("labA_only login failed")
 		}
-		resp, err := lab.post("/admin/users/create", "username=newuser&password=test123&full_name=New+User&role=dosen")
+		resp, err := lab.post("/admin/users/create", "username=newuser&password=test123&full_name=New+User&role=admin")
 		if err != nil {
 			t.Fatalf("POST /admin/users/create failed: %v", err)
 		}

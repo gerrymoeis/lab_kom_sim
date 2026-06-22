@@ -767,7 +767,7 @@ func TestPerLabUserEdit(t *testing.T) {
 			t.Fatal("failed to refresh CSRF")
 		}
 		resp, err := lab.post("/admin/users/nonexistent-user/edit",
-			"username=nonexistent&full_name=No+One&role=dosen")
+			"username=nonexistent&full_name=No+One&role=admin")
 		if err != nil {
 			t.Fatalf("POST /admin/users/nonexistent-user/edit: %v", err)
 		}
