@@ -114,6 +114,28 @@ func (r *GlobalUserRepository) ClearPermissions(userID int) error {
 	return err
 }
 
+func (r *GlobalUserRepository) GetUsernamesByLab(labURLPath string) ([]string, error) {
+	rows, err := r.db.Query(`
+		SELECT gu.username FROM global_users gu
+		JOIN lab_permissions lp ON lp.user_id = gu.id
+		WHERE lp.lab_url_path = ?
+		ORDER BY gu.username
+	`, labURLPath)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var usernames []string
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			return nil, err
+		}
+		usernames = append(usernames, u)
+	}
+	return usernames, rows.Err()
+}
+
 func (r *GlobalUserRepository) GetMainAccountForLab(labURLPath string) (*models.LabPermission, error) {
 	return getOne[models.LabPermission](r.db, "lab_permissions", labPermissionCols,
 		"lab_url_path = ? AND is_main_account = 1", labURLPath)

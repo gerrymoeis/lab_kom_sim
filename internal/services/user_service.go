@@ -32,19 +32,19 @@ func NewUserService(userRepo *repository.UserRepository, activityLogService *Act
 	return &UserService{userRepo: userRepo, activityLogService: activityLogService}
 }
 
-func (s *UserService) List() ([]models.User, error) {
+func (s *UserService) List() ([]models.GlobalUser, error) {
 	return s.userRepo.List()
 }
 
-func (s *UserService) ListPaginated(search, role, sortBy, sortOrder string, page, pageSize int, _, _, _ string) ([]models.User, int, error) {
+func (s *UserService) ListPaginated(search, role, sortBy, sortOrder string, page, pageSize int, _, _, _ string) ([]models.GlobalUser, int, error) {
 	return s.userRepo.ListPaginated(search, role, sortBy, sortOrder, page, pageSize, "")
 }
 
-func (s *UserService) GetByID(id int) (*models.User, error) {
+func (s *UserService) GetByID(id int) (*models.GlobalUser, error) {
 	return s.userRepo.GetByID(id)
 }
 
-func (s *UserService) GetByUsername(username string) (*models.User, error) {
+func (s *UserService) GetByUsername(username string) (*models.GlobalUser, error) {
 	return s.userRepo.GetByUsername(username)
 }
 
@@ -119,10 +119,22 @@ func (s *UserService) UpdateUser(actorID int, targetID int, actorUsername, actor
 
 	oldVals := map[string]any{}
 	newVals := map[string]any{}
-	if target.Username != username { oldVals["username"] = target.Username; newVals["username"] = username }
-	if target.FullName != fullName { oldVals["full_name"] = target.FullName; newVals["full_name"] = fullName }
-	if target.Role != role { oldVals["role"] = target.Role; newVals["role"] = role }
-	if newPassword != "" { oldVals["password_changed"] = false; newVals["password_changed"] = true }
+	if target.Username != username {
+		oldVals["username"] = target.Username
+		newVals["username"] = username
+	}
+	if target.FullName != fullName {
+		oldVals["full_name"] = target.FullName
+		newVals["full_name"] = fullName
+	}
+	if target.Role != role {
+		oldVals["role"] = target.Role
+		newVals["role"] = role
+	}
+	if newPassword != "" {
+		oldVals["password_changed"] = false
+		newVals["password_changed"] = true
+	}
 
 	if err := s.userRepo.UpdateUser(targetID, username, fullName, role); err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "user", targetID,
@@ -162,8 +174,14 @@ func (s *UserService) UpdateProfile(userID int, username, fullName, actorUsernam
 	oldVals := map[string]any{}
 	newVals := map[string]any{}
 	if user != nil {
-		if user.Username != username { oldVals["username"] = user.Username; newVals["username"] = username }
-		if user.FullName != fullName { oldVals["full_name"] = user.FullName; newVals["full_name"] = fullName }
+		if user.Username != username {
+			oldVals["username"] = user.Username
+			newVals["username"] = username
+		}
+		if user.FullName != fullName {
+			oldVals["full_name"] = user.FullName
+			newVals["full_name"] = fullName
+		}
 	}
 
 	if err := s.userRepo.UpdateProfile(userID, username, fullName); err != nil {

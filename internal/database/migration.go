@@ -72,7 +72,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		if err == nil && !strings.Contains(entityCheck, "'category'") {
 			actLogSQL := `CREATE TABLE IF NOT EXISTS activity_logs_v2 (
 				id {{PK}},
-				user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+				user_id INTEGER NOT NULL ,
 				username TEXT NOT NULL,
 				user_role TEXT NOT NULL,
 				action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
@@ -99,16 +99,6 @@ func runMigrations(db *DB, isPostgres bool) error {
 	}
 
 	tables := []string{
-		`CREATE TABLE IF NOT EXISTS users (
-			id {{PK}},
-			username TEXT UNIQUE NOT NULL,
-			password TEXT NOT NULL,
-			full_name TEXT NOT NULL,
-			role TEXT NOT NULL DEFAULT 'admin' CHECK(role IN ('admin')),
-			session_token TEXT,
-			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
-			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
-		)`,
 		`CREATE TABLE IF NOT EXISTS pcs (
 			id {{PK}},
 			{{ROW}} INTEGER NOT NULL DEFAULT 0 CHECK({{ROW}} >= 0),
@@ -270,7 +260,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS activity_logs (
 			id {{PK}},
-			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+			user_id INTEGER NOT NULL ,
 			username TEXT NOT NULL,
 			user_role TEXT NOT NULL,
 			action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
@@ -531,32 +521,6 @@ func runMigrations(db *DB, isPostgres bool) error {
 		return fmt.Errorf("failed to create unique index on software_catalog.slug: %w", err)
 	}
 
-	// Add is_protected and is_super_admin columns to users
-	for _, col := range []struct {
-		name    string
-		def     string
-		pqDef   string
-		seedVal int
-		seedUsr string
-	}{
-		{"is_protected", "INTEGER NOT NULL DEFAULT 0", "BOOLEAN NOT NULL DEFAULT FALSE", 1, "= 'admin'"},
-		{"is_super_admin", "INTEGER NOT NULL DEFAULT 0", "BOOLEAN NOT NULL DEFAULT FALSE", 1, "= 'admin'"},
-	} {
-		if exists, err := d.columnExists(db, "users", col.name); err != nil {
-			return fmt.Errorf("failed to check users.%s: %w", col.name, err)
-		} else if !exists {
-			pql := col.def
-			if isPostgres {
-				pql = col.pqDef
-			}
-			if _, err := db.Exec(fmt.Sprintf("ALTER TABLE users ADD COLUMN %s %s", col.name, pql)); err != nil {
-				return fmt.Errorf("failed to add users.%s: %w", col.name, err)
-			}
-			// Set flag for existing main accounts
-			db.Exec(fmt.Sprintf("UPDATE users SET %s = %d WHERE username %s", col.name, col.seedVal, col.seedUsr))
-		}
-	}
-
 	// Fix activity_logs.user_id NOT NULL — conflicts with ON DELETE SET NULL.
 	// When a user is deleted, SQLite tries to SET NULL on activity_logs.user_id,
 	// but NOT NULL prevents it → FK violation → DELETE fails silently.
@@ -565,7 +529,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		if rErr := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='activity_logs'`).Scan(&alSQL); rErr == nil && strings.Contains(alSQL, "user_id INTEGER NOT NULL") {
 			actLogSQL := `CREATE TABLE IF NOT EXISTS activity_logs_v2 (
 				id {{PK}},
-				user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+				user_id INTEGER ,
 				username TEXT NOT NULL,
 				user_role TEXT NOT NULL,
 				action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete', 'upload', 'login', 'logout', 'view', 'export')),
@@ -644,9 +608,6 @@ func normalizeExistingData(db *DB) error {
 		return err
 	}
 	if err := normalizeSoftwareCatalogs(db); err != nil {
-		return err
-	}
-	if err := normalizeUsers(db); err != nil {
 		return err
 	}
 	if err := normalizePCs(db); err != nil {
@@ -922,33 +883,6 @@ func mergeSoftwareRows(db *DB, fromID, intoID int) {
 	}
 	db.Exec("DELETE FROM software_catalog WHERE id = ?", fromID)
 	log.Printf("  Merged software id=%d into id=%d", fromID, intoID)
-}
-
-func normalizeUsers(db *DB) error {
-	rows, err := db.Query("SELECT id, COALESCE(full_name,''), COALESCE(username,'') FROM users")
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	var count int
-	for rows.Next() {
-		var id int
-		var fullName, username string
-		if rows.Scan(&id, &fullName, &username) != nil {
-			continue
-		}
-		newFullName := toTitleCaseWithAbbr(fullName)
-		newUsername := sanitizeText(username)
-		if newFullName != fullName || newUsername != username {
-			db.Exec("UPDATE users SET full_name = ?, username = ? WHERE id = ?",
-				newFullName, newUsername, id)
-			count++
-		}
-	}
-	if count > 0 {
-		log.Printf("  Normalized %d users", count)
-	}
-	return nil
 }
 
 func normalizePCs(db *DB) error {

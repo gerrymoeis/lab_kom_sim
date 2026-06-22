@@ -39,7 +39,7 @@ type Handler struct {
 	printService              *services.PrintService
 }
 
-func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifier, globalAuthService *services.GlobalAuthService) *Handler {
+func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifier, globalAuthService *services.GlobalAuthService, globalDB *database.DB, lab string) *Handler {
 	activityLogService := services.NewActivityLogService(db, notifier, cfg.LogRetentionDays, cfg.LogCleanupInterval)
 	deviceRepo := repository.NewDeviceRepository(db)
 	deviceTypeRepo := repository.NewDeviceTypeRepository(db)
@@ -52,7 +52,7 @@ func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifi
 	softwareRepo := repository.NewSoftwareRepository(db)
 	logbookRepo := repository.NewLogbookRepository(db)
 	scheduleRepo := repository.NewScheduleRepository(db)
-	userRepo := repository.NewUserRepository(db)
+	userRepo := repository.NewUserRepository(globalDB, lab)
 	dashboardRepo := repository.NewDashboardRepository(db)
 	stickerTemplateRepo := repository.NewStickerTemplateRepository(db)
 
@@ -85,19 +85,14 @@ func getRequestContext(c *gin.Context) (ipAddress, userAgent string) {
 	return
 }
 
-func (h *Handler) canAccessProfile(actorUsername string, target *models.User, actorIsSuperAdmin, actorIsMainAccount bool) bool {
+func (h *Handler) canAccessProfile(actorUsername string, target *models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount bool) bool {
 	if target.IsProtected || target.IsSuperAdmin {
 		return actorUsername == target.Username
-	}
-	if globalUser, err := h.globalAuthService.GetUserByUsername(target.Username); err == nil {
-		if globalUser.IsProtected || globalUser.IsSuperAdmin {
-			return actorUsername == target.Username
-		}
 	}
 	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount
 }
 
-func CanAccessProfile(actorUsername string, target models.User, actorIsSuperAdmin, actorIsMainAccount bool) bool {
+func CanAccessProfile(actorUsername string, target models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount bool) bool {
 	if target.IsProtected || target.IsSuperAdmin {
 		return actorUsername == target.Username
 	}

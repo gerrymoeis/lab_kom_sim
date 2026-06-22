@@ -165,6 +165,10 @@ func (s *GlobalAuthService) GetDefaultPasswordUsers() ([]models.DefaultCredentia
 	return creds, nil
 }
 
+func (s *GlobalAuthService) GetUsernamesForLab(labURLPath string) ([]string, error) {
+	return s.userRepo.GetUsernamesByLab(labURLPath)
+}
+
 func (s *GlobalAuthService) SetUserPermissions(userID int, permissions []struct {
 	LabURLPath string
 	Role       string

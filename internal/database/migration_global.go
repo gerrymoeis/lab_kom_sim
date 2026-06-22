@@ -35,16 +35,7 @@ func RunGlobalMigrations(db *DB) error {
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
-		`CREATE TABLE IF NOT EXISTS lab_configs (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			lab_id TEXT NOT NULL UNIQUE,
-			title TEXT NOT NULL,
-			url_path TEXT NOT NULL UNIQUE,
-			db_path TEXT NOT NULL,
-			is_active INTEGER NOT NULL DEFAULT 1,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		)`,
+
 	}
 
 	for _, t := range tables {
