@@ -44,7 +44,7 @@ func TestProfile(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var name string
-		lab.db.QueryRow("SELECT full_name FROM users WHERE username='labA_only'").Scan(&name)
+		env.GlobalDB.QueryRow("SELECT full_name FROM global_users WHERE username='labA_only'").Scan(&name)
 		if name != "Lab A Admin Updated" {
 			t.Errorf("expected full_name 'Lab A Admin Updated', got %q", name)
 		}
@@ -102,7 +102,7 @@ func TestChangePassword(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		var oldHash string
-		lab.db.QueryRow("SELECT password FROM users WHERE username='labA_only'").Scan(&oldHash)
+		env.GlobalDB.QueryRow("SELECT password FROM global_users WHERE username='labA_only'").Scan(&oldHash)
 
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -117,7 +117,7 @@ func TestChangePassword(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var newHash string
-		lab.db.QueryRow("SELECT password FROM users WHERE username='labA_only'").Scan(&newHash)
+		env.GlobalDB.QueryRow("SELECT password FROM global_users WHERE username='labA_only'").Scan(&newHash)
 		if newHash == oldHash {
 			t.Error("password hash should have changed after successful password change")
 		}
@@ -139,7 +139,7 @@ func TestChangePassword(t *testing.T) {
 
 	t.Run("fail_wrong_old_password", func(t *testing.T) {
 		var hashBefore string
-		lab.db.QueryRow("SELECT password FROM users WHERE username='labA_only'").Scan(&hashBefore)
+		env.GlobalDB.QueryRow("SELECT password FROM global_users WHERE username='labA_only'").Scan(&hashBefore)
 
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -158,7 +158,7 @@ func TestChangePassword(t *testing.T) {
 			t.Error("expected error flash in redirect Location")
 		}
 		var hashAfter string
-		lab.db.QueryRow("SELECT password FROM users WHERE username='labA_only'").Scan(&hashAfter)
+		env.GlobalDB.QueryRow("SELECT password FROM global_users WHERE username='labA_only'").Scan(&hashAfter)
 		if hashAfter != hashBefore {
 			t.Error("password hash should remain unchanged on wrong old password")
 		}

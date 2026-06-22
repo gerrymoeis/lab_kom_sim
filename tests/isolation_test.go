@@ -129,15 +129,13 @@ func TestCrossLabIsolation(t *testing.T) {
 }
 
 // ============================================
-// TestAutoSync — verifies global user auto-sync to per-lab users table
+// TestAutoSync — verifies global user permissions-based access
 // ============================================
 
 func TestAutoSync(t *testing.T) {
 	env := setupTestEnvironment(t)
 	labA := env.LabA
 	labB := env.LabB
-	dbA := env.DB_A
-	dbB := env.DB_B
 	tsURL := env.TS.URL
 	gdb := env.GlobalDB
 
@@ -151,23 +149,22 @@ func TestAutoSync(t *testing.T) {
 		t.Fatal("labA_only not found in global DB")
 	}
 
-	t.Run("admin_auto_synced_lab_a", func(t *testing.T) {
+	t.Run("super_admin_access_lab_a", func(t *testing.T) {
 		if !loginAndRefresh(labA, "admin", "admin123") {
 			t.Fatal("login failed")
 		}
-		// loginAndRefresh calls refreshCSRF() which GETs /dashboard → triggers LabRoleInjector → autoSyncUser
-
-		var after int
-		dbA.QueryRow("SELECT COUNT(*) FROM users WHERE id=?", adminID).Scan(&after)
-		if after == 0 {
-			t.Error("admin not auto-synced to Lab A's users table")
+		// Super admin should be able to access any lab dashboard
+		resp, err := labA.get("/dashboard")
+		if err != nil {
+			t.Fatalf("GET Lab A dashboard: %v", err)
 		}
-		if after > 1 {
-			t.Errorf("duplicate auto-sync: count=%d", after)
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200 for super admin, got %d", resp.StatusCode)
 		}
 	})
 
-	t.Run("admin_access_lab_b", func(t *testing.T) {
+	t.Run("super_admin_access_lab_b", func(t *testing.T) {
 		// admin session is already in labA.cookies from previous login
 		resp, err := labA.getURL(tsURL + labB.prefix + "/dashboard")
 		if err != nil {
@@ -177,28 +174,22 @@ func TestAutoSync(t *testing.T) {
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200 for super admin on Lab B, got %d", resp.StatusCode)
 		}
-		// autoSyncUser should also sync admin to Lab B's users table
-		var count int
-		dbB.QueryRow("SELECT COUNT(*) FROM users WHERE id=?", adminID).Scan(&count)
-		if count == 0 {
-			t.Error("admin not auto-synced to Lab B after access")
-		}
 	})
 
-	t.Run("auto_sync_no_duplicate", func(t *testing.T) {
+	t.Run("no_duplicate_lab_permissions", func(t *testing.T) {
 		if !loginAndRefresh(labA, "labA_only", "test123") {
 			t.Fatal("login failed")
 		}
-		// Access dashboard twice; autoSyncUser should not create duplicate
+		// Access dashboard twice; should not create duplicate lab_permissions
 		resp, _ := labA.get("/dashboard")
 		resp.Body.Close()
 		resp, _ = labA.get("/dashboard")
 		resp.Body.Close()
 
 		var count int
-		dbA.QueryRow("SELECT COUNT(*) FROM users WHERE id=?", labAOnlyID).Scan(&count)
+		gdb.QueryRow("SELECT COUNT(*) FROM lab_permissions WHERE user_id=? AND lab_url_path='lab-kom-mi'", labAOnlyID).Scan(&count)
 		if count != 1 {
-			t.Errorf("expected exactly 1 (no duplicate), got %d", count)
+			t.Errorf("expected exactly 1 lab_permission (no duplicate), got %d", count)
 		}
 	})
 
