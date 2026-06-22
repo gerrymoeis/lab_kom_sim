@@ -7,6 +7,7 @@ type GlobalUser struct {
 	Username           string    `json:"username"`
 	Password           string    `json:"-"`
 	FullName           string    `json:"full_name"`
+	Role               string    `json:"role"`
 	IsSuperAdmin       bool      `json:"is_super_admin"`
 	IsProtected        bool      `json:"is_protected"`
 	SessionToken       string    `json:"-"`

@@ -8,19 +8,32 @@ import (
 	"strconv"
 
 	"inventaris-lab-kom/internal/database"
-	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	ErrSelfDelete       = errors.New("tidak dapat menghapus akun sendiri")
+	ErrProtectedDelete  = errors.New("tidak dapat menghapus akun admin utama")
+	ErrDeleteNotAllowed = errors.New("hanya akun utama yang dapat menghapus user lain")
+	ErrUserNotFound     = errors.New("user tidak ditemukan")
+	ErrUsernameTaken    = errors.New("username sudah digunakan")
+	ErrPasswordMismatch = errors.New("password baru dan konfirmasi tidak cocok")
+	ErrWrongPassword    = errors.New("password lama salah")
+)
+
 func (h *Handler) UserList(c *gin.Context) {
 	_, username, role, ok := h.user(c)
-	if !ok { return }
+	if !ok {
+		return
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	if page < 1 { page = 1 }
+	if page < 1 {
+		page = 1
+	}
 	pageSize := h.cfg.DefaultPageSize
 	search := c.Query("search")
 	roleFilter := c.Query("role")
@@ -33,17 +46,21 @@ func (h *Handler) UserList(c *gin.Context) {
 	values.Del("error")
 	values.Del("toast")
 	var query interface{} = ""
-	if len(values) > 0 { query = template.URL("&" + values.Encode()) }
+	if len(values) > 0 {
+		query = template.URL("&" + values.Encode())
+	}
 
-	users, total, err := h.userService.ListPaginated(search, roleFilter, sortBy, sortOrder, page, pageSize, "", "", "")
-	if err != nil { h.errHTML(c, "Gagal mengambil data user"); return }
+	lab := c.GetString("lab")
+	users, total, err := h.globalAuthService.ListUsersByLab(lab, search, roleFilter, sortBy, sortOrder, page, pageSize)
+	if err != nil {
+		h.errHTML(c, "Gagal mengambil data user")
+		return
+	}
 
-	// Get main account IDs and super admin usernames from global DB
 	mainAccountIDs := make(map[int]bool)
 	superAdminUsernames := make(map[string]bool)
 	if gdbVal, ok := c.Get("globalDB"); ok {
 		if gdb, ok := gdbVal.(*database.DB); ok {
-			lab := c.GetString("lab")
 			rows, _ := gdb.Query(`SELECT user_id FROM lab_permissions WHERE lab_url_path = ? AND is_main_account = 1`, lab)
 			if rows != nil {
 				for rows.Next() {
@@ -68,7 +85,6 @@ func (h *Handler) UserList(c *gin.Context) {
 	totalPages := (total + pageSize - 1) / pageSize
 	startRow := (page-1)*pageSize + 1
 
-	// Precompute canAccess for each user using instance method (has global DB fallback)
 	isSuperAdmin := h.isSuperAdmin(c)
 	isMainAccount := h.isMainAccount(c)
 	canAccess := make(map[int]bool)
@@ -79,19 +95,21 @@ func (h *Handler) UserList(c *gin.Context) {
 	h.renderTemplate(c, http.StatusOK, "user/list.html", gin.H{
 		"title": "Manajemen User", "currentPage": "users",
 		"username": username, "role": role, "users": users,
-		"isSuperAdmin": isSuperAdmin,
-		"isMainAccount": isMainAccount,
-		"mainAccountIDs": mainAccountIDs,
+		"isSuperAdmin":       isSuperAdmin,
+		"isMainAccount":      isMainAccount,
+		"mainAccountIDs":     mainAccountIDs,
 		"superAdminUsernames": superAdminUsernames,
-		"canAccess": canAccess,
-		"page": page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
+		"canAccess":          canAccess,
+		"page":               page, "startRow": startRow, "totalPages": totalPages, "totalItems": total,
 		"query": query, "filters": gin.H{"search": search, "role": roleFilter, "sort_by": sortBy, "sort_order": sortOrder},
 	})
 }
 
 func (h *Handler) UserCreatePage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
-	if !ok { return }
+	if !ok {
+		return
+	}
 	h.renderTemplate(c, http.StatusOK, "user/create.html", gin.H{
 		"title": "Tambah User Baru", "currentPage": "users",
 		"username": username, "role": role,
@@ -110,7 +128,6 @@ func (h *Handler) UserCreate(c *gin.Context) {
 		return
 	}
 
-	// Create in global_users + add lab_permission so user can login globally
 	globalUser, err := h.globalAuthService.CreateUser(req.Username, req.Password, req.FullName, false)
 	if err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal membuat user. Username mungkin sudah digunakan.", "currentPage": "users"})
@@ -122,19 +139,6 @@ func (h *Handler) UserCreate(c *gin.Context) {
 		Role       string
 	}{{LabURLPath: lab, Role: "admin"}})
 
-	// Sync to per-lab users table with the same global ID
-	hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	dbVal, _ := c.Get("db")
-	if db, ok := dbVal.(*database.DB); ok {
-		db.Exec(`INSERT INTO users (id, username, password, full_name, role, is_protected, is_super_admin)
-			VALUES (?, ?, ?, ?, 'admin', 0, 0)
-			ON CONFLICT(id) DO UPDATE SET
-				username = excluded.username,
-				full_name = excluded.full_name`,
-			globalUser.ID, req.Username, string(hash), req.FullName)
-	}
-
-	// Activity log
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 	h.activityLogService.LogCreate(uid, u, r, "user", globalUser.ID, map[string]any{
@@ -146,10 +150,13 @@ func (h *Handler) UserCreate(c *gin.Context) {
 
 func (h *Handler) UserDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
-	if !ok { return }
+	if !ok {
+		return
+	}
 
 	targetUsername := c.Param("username")
-	user, err := h.userService.GetByUsername(targetUsername)
+	lab := c.GetString("lab")
+	user, err := h.globalAuthService.GetUserByUsernameAndLab(targetUsername, lab)
 	if err != nil {
 		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
 		return
@@ -160,11 +167,9 @@ func (h *Handler) UserDetail(c *gin.Context) {
 		return
 	}
 
-	// Check if target is main account
 	targetIsMainAccount := false
 	if gdbVal, ok := c.Get("globalDB"); ok {
 		if gdb, ok := gdbVal.(*database.DB); ok {
-			lab := c.GetString("lab")
 			var count int
 			gdb.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND lab_url_path = ? AND is_main_account = 1`,
 				user.ID, lab).Scan(&count)
@@ -176,16 +181,19 @@ func (h *Handler) UserDetail(c *gin.Context) {
 		"title": "Detail User", "currentPage": "users",
 		"username": username, "role": role, "user": user,
 		"targetIsMainAccount": targetIsMainAccount,
-		"error": c.Query("error"), "success": c.Query("success"),
+		"error":               c.Query("error"), "success": c.Query("success"),
 	})
 }
 
 func (h *Handler) UserEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
-	if !ok { return }
+	if !ok {
+		return
+	}
 
 	targetUsername := c.Param("username")
-	user, err := h.userService.GetByUsername(targetUsername)
+	lab := c.GetString("lab")
+	user, err := h.globalAuthService.GetUserByUsernameAndLab(targetUsername, lab)
 	if err != nil {
 		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
 		return
@@ -196,11 +204,9 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 		return
 	}
 
-	// Check if target is main account
 	targetIsMainAccount := false
 	if gdbVal, ok := c.Get("globalDB"); ok {
 		if gdb, ok := gdbVal.(*database.DB); ok {
-			lab := c.GetString("lab")
 			var count int
 			gdb.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND lab_url_path = ? AND is_main_account = 1`,
 				user.ID, lab).Scan(&count)
@@ -212,20 +218,23 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 		"title": "Edit User", "currentPage": "users",
 		"username": username, "role": role, "user": user,
 		"targetIsMainAccount": targetIsMainAccount,
-		"error": c.Query("error"),
+		"error":               c.Query("error"),
 	})
 }
 
 func (h *Handler) UserEdit(c *gin.Context) {
 	targetUsername := c.Param("username")
-	target, err := h.userService.GetByUsername(targetUsername)
+	lab := c.GetString("lab")
+	target, err := h.globalAuthService.GetUserByUsernameAndLab(targetUsername, lab)
 	if err != nil {
 		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
 		return
 	}
 
 	_, u, _, ok := h.user(c)
-	if !ok { return }
+	if !ok {
+		return
+	}
 
 	if !h.canAccessProfile(u, target, h.isSuperAdmin(c), h.isMainAccount(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
@@ -238,24 +247,36 @@ func (h *Handler) UserEdit(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, ok := h.user(c)
-	if !ok { return }
-	ip, ua := getRequestContext(c)
-
-	if err := h.userService.UpdateUser(uid, target.ID, u, r, ip, ua, req.Username, req.FullName, req.Role, req.NewPassword); err != nil {
-		msg := "Gagal mengupdate user"
-		if errors.Is(err, services.ErrUsernameTaken) { msg = "Username sudah digunakan" }
-		if errors.Is(err, services.ErrProtectedUpdate) { msg = "Tidak dapat mengubah username atau role user ini" }
-		h.redirectWithError(c, "/admin/users/"+targetUsername+"/edit", msg)
+	if err := h.globalAuthService.UpdateUser(target.ID, req.Username, req.FullName, target.IsSuperAdmin); err != nil {
+		h.redirectWithError(c, "/admin/users/"+targetUsername+"/edit", "Gagal mengupdate user")
 		return
 	}
 
-	// Sync changes to global_users so login works with new username/password
-	if globalUser, err := h.globalAuthService.GetUserByUsername(targetUsername); err == nil {
-		h.globalAuthService.UpdateUser(globalUser.ID, req.Username, req.FullName, globalUser.IsSuperAdmin)
-		if req.NewPassword != "" {
-			h.globalAuthService.UpdateUserPassword(globalUser.ID, req.NewPassword)
+	if req.NewPassword != "" {
+		if err := h.globalAuthService.UpdateUserPassword(target.ID, req.NewPassword); err != nil {
+			h.redirectWithError(c, "/admin/users/"+targetUsername+"/edit", "Gagal mengupdate password")
+			return
 		}
+	}
+
+	uid, u, r, _ := h.user(c)
+	ip, ua := getRequestContext(c)
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
+	if target.Username != req.Username {
+		oldVals["username"] = target.Username
+		newVals["username"] = req.Username
+	}
+	if target.FullName != req.FullName {
+		oldVals["full_name"] = target.FullName
+		newVals["full_name"] = req.FullName
+	}
+	if req.NewPassword != "" {
+		oldVals["password_changed"] = false
+		newVals["password_changed"] = true
+	}
+	if len(oldVals) > 0 || len(newVals) > 0 {
+		h.activityLogService.LogUpdate(uid, u, r, "user", target.ID, oldVals, newVals, ip, ua)
 	}
 
 	if u == targetUsername {
@@ -269,7 +290,8 @@ func (h *Handler) UserEdit(c *gin.Context) {
 
 func (h *Handler) UserDelete(c *gin.Context) {
 	targetUsername := c.Param("username")
-	target, err := h.userService.GetByUsername(targetUsername)
+	lab := c.GetString("lab")
+	target, err := h.globalAuthService.GetUserByUsernameAndLab(targetUsername, lab)
 	if err != nil {
 		h.redirectWithError(c, "/admin/users", "User tidak ditemukan")
 		return
@@ -280,10 +302,22 @@ func (h *Handler) UserDelete(c *gin.Context) {
 	r, _ := sess.Get("role").(string)
 	ip, ua := getRequestContext(c)
 
+	if currentUserID == target.ID {
+		h.redirectWithError(c, "/admin/users", ErrSelfDelete.Error())
+		return
+	}
+	if u == targetUsername {
+		h.redirectWithError(c, "/admin/users", ErrSelfDelete.Error())
+		return
+	}
+	if target.IsProtected {
+		h.redirectWithError(c, "/admin/users", ErrProtectedDelete.Error())
+		return
+	}
+
 	var targetIsMainAccount, targetIsSuperAdmin bool
 	if gdbVal, exists := c.Get("globalDB"); exists {
 		globalDB := gdbVal.(*database.DB)
-		lab := c.GetString("lab")
 		var count int
 		if err := globalDB.QueryRow(
 			`SELECT COUNT(*) FROM lab_permissions lp JOIN global_users gu ON gu.id = lp.user_id WHERE gu.username = ? AND lp.lab_url_path = ? AND lp.is_main_account = 1`,
@@ -297,23 +331,32 @@ func (h *Handler) UserDelete(c *gin.Context) {
 		}
 	}
 
-	if err := h.userService.DeleteUser(currentUserID, target.ID, u, r, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, targetIsSuperAdmin, ip, ua); err != nil {
-		msg := "Gagal menghapus user"
-		if errors.Is(err, services.ErrSelfDelete) { msg = "Tidak dapat menghapus akun sendiri" }
-		if errors.Is(err, services.ErrProtectedDelete) { msg = "Tidak dapat menghapus akun admin utama" }
-		if errors.Is(err, services.ErrDeleteNotAllowed) { msg = "Hanya akun utama yang dapat menghapus user lain" }
-		if errors.Is(err, services.ErrUserNotFound) { msg = "User tidak ditemukan" }
-		h.redirectWithError(c, "/admin/users", msg)
+	if !h.isSuperAdmin(c) {
+		if targetIsSuperAdmin || !h.isMainAccount(c) || targetIsMainAccount {
+			h.redirectWithError(c, "/admin/users", ErrDeleteNotAllowed.Error())
+			return
+		}
+	}
+
+	if err := h.globalAuthService.RemoveLabPermission(target.ID, lab); err != nil {
+		h.activityLogService.LogDelete(currentUserID, u, r, "user", target.ID,
+			map[string]any{"deleted_username": target.Username}, ip, ua, err.Error())
+		h.redirectWithError(c, "/admin/users", "Gagal menghapus user")
 		return
 	}
+
+	h.activityLogService.LogDelete(currentUserID, u, r, "user", target.ID,
+		map[string]any{"deleted_username": target.Username}, ip, ua)
 	h.redirectWithSuccess(c, "/admin/users", "User berhasil dihapus", "delete")
 }
 
 func (h *Handler) Profile(c *gin.Context) {
 	userID, username, role, ok := h.user(c)
-	if !ok { return }
+	if !ok {
+		return
+	}
 
-	user, err := h.userService.GetByID(userID)
+	user, err := h.globalAuthService.GetUser(userID)
 	if err != nil {
 		h.redirectWithError(c, "/profile", "User tidak ditemukan")
 		return
@@ -332,33 +375,52 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 	userID, u, r, ok := h.user(c)
-	if !ok { return }
+	if !ok {
+		return
+	}
 	ip, ua := getRequestContext(c)
 
-	newUsername, newFullName, err := h.userService.UpdateProfile(userID, req.Username, req.FullName, u, r, ip, ua)
-	if err != nil {
-		msg := "Gagal mengupdate profil"
-		if errors.Is(err, services.ErrUsernameTaken) { msg = "Username sudah digunakan" }
-		h.redirectWithError(c, "/profile", msg)
+	exists, _ := h.globalAuthService.GetUserByUsername(req.Username)
+	if exists != nil && exists.ID != userID {
+		h.redirectWithError(c, "/profile", ErrUsernameTaken.Error())
 		return
+	}
+
+	currentUser, err := h.globalAuthService.GetUser(userID)
+	if err != nil {
+		h.redirectWithError(c, "/profile", "Sesi tidak valid, silakan login ulang")
+		return
+	}
+
+	if err := h.globalAuthService.UpdateUser(userID, req.Username, req.FullName, currentUser.IsSuperAdmin); err != nil {
+		h.redirectWithError(c, "/profile", "Gagal sinkronisasi profil, coba lagi")
+		return
+	}
+	if u != req.Username {
+		_ = h.globalAuthService.ClearDefaultPasswordFlag(userID)
+	}
+
+	oldVals := map[string]any{}
+	newVals := map[string]any{}
+	if currentUser.Username != req.Username {
+		oldVals["username"] = currentUser.Username
+		newVals["username"] = req.Username
+	}
+	if currentUser.FullName != req.FullName {
+		oldVals["full_name"] = currentUser.FullName
+		newVals["full_name"] = req.FullName
+	}
+	if len(oldVals) > 0 || len(newVals) > 0 {
+		h.activityLogService.LogUpdate(userID, u, r, "user", userID, oldVals, newVals, ip, ua)
 	}
 
 	sess := sessions.Default(c)
 	oldUsername, _ := sess.Get("username").(string)
-	sess.Set("username", newUsername)
-	sess.Set("full_name", newFullName)
+	sess.Set("username", req.Username)
+	sess.Set("full_name", req.FullName)
 	sess.Save()
 
-	if globalUser, err := h.globalAuthService.GetUser(userID); err == nil {
-		if err := h.globalAuthService.UpdateUser(globalUser.ID, req.Username, req.FullName, globalUser.IsSuperAdmin); err != nil {
-			h.redirectWithError(c, "/profile", "Gagal sinkronisasi profil, coba lagi")
-			return
-		}
-	} else {
-		h.redirectWithError(c, "/profile", "Sesi tidak valid, silakan login ulang")
-		return
-	}
-	if oldUsername != newUsername {
+	if oldUsername != req.Username {
 		_ = h.globalAuthService.ClearDefaultPasswordFlag(userID)
 	}
 
@@ -372,20 +434,42 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 	userID, u, r, ok := h.user(c)
-	if !ok { return }
+	if !ok {
+		return
+	}
 	ip, ua := getRequestContext(c)
 
-	if err := h.userService.ChangePassword(userID, req.OldPassword, req.NewPassword, req.ConfirmPassword, u, r, ip, ua); err != nil {
-		msg := "Gagal mengubah password"
-		if errors.Is(err, services.ErrPasswordMismatch) { msg = "Password baru dan konfirmasi tidak cocok" }
-		if errors.Is(err, services.ErrWrongPassword) { msg = "Password lama salah" }
-		h.redirectWithError(c, "/profile", msg)
+	if req.NewPassword != req.ConfirmPassword {
+		h.activityLogService.LogAction(userID, u, r, "update", "user", userID,
+			map[string]any{"password_changed": true}, map[string]any{"password_changed": false},
+			ip, ua, ErrPasswordMismatch.Error())
+		h.redirectWithError(c, "/profile", ErrPasswordMismatch.Error())
 		return
 	}
+
+	user, err := h.globalAuthService.GetUser(userID)
+	if err != nil {
+		return
+	}
+	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)) != nil {
+		h.activityLogService.LogAction(userID, u, r, "update", "user", userID,
+			map[string]any{"password_changed": true}, map[string]any{"password_changed": false},
+			ip, ua, ErrWrongPassword.Error())
+		h.redirectWithError(c, "/profile", ErrWrongPassword.Error())
+		return
+	}
+
 	if err := h.globalAuthService.UpdateUserPassword(userID, req.NewPassword); err != nil {
-		h.redirectWithError(c, "/profile", "Gagal sinkronisasi password, coba lagi")
+		h.activityLogService.LogAction(userID, u, r, "update", "user", userID,
+			map[string]any{"password_changed": true}, map[string]any{"password_changed": false},
+			ip, ua, err.Error())
+		h.redirectWithError(c, "/profile", "Gagal mengubah password")
 		return
 	}
+
+	h.activityLogService.LogAction(userID, u, r, "update", "user", userID,
+		map[string]any{"password_changed": true}, map[string]any{"password_changed": true},
+		ip, ua)
 	h.redirectWithSuccess(c, "/profile", "Password berhasil diubah", "update")
 }
 
@@ -400,6 +484,7 @@ func (h *Handler) UserBatchDelete(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 	lab := c.GetString("lab")
+
 	targetMainAccountUsernames := make(map[string]bool)
 	targetSuperAdminUsernames := make(map[string]bool)
 	if gdbVal, exists := c.Get("globalDB"); exists {
@@ -419,9 +504,51 @@ func (h *Handler) UserBatchDelete(c *gin.Context) {
 		}
 	}
 
-	if err := h.userService.BatchDeleteUser(uid, req.IDs, u, r, h.isSuperAdmin(c), h.isMainAccount(c), targetMainAccountUsernames, targetSuperAdminUsernames, ip, ua); err != nil {
-		h.errJSON(c, http.StatusInternalServerError, err.Error())
-		return
+	items := make([]map[string]string, 0, len(req.IDs))
+	for _, username := range req.IDs {
+		if u == username {
+			h.activityLogService.LogDelete(uid, u, r, "user", 0,
+				map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
+				ip, ua, ErrSelfDelete.Error())
+			h.errJSON(c, http.StatusInternalServerError, ErrSelfDelete.Error())
+			return
+		}
+		target, err := h.globalAuthService.GetUserByUsernameAndLab(username, lab)
+		if err != nil {
+			h.activityLogService.LogDelete(uid, u, r, "user", 0,
+				map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
+				ip, ua, "user "+username+" not found")
+			h.errJSON(c, http.StatusInternalServerError, "User "+username+" tidak ditemukan")
+			return
+		}
+		if target.IsProtected {
+			h.activityLogService.LogDelete(uid, u, r, "user", 0,
+				map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
+				ip, ua, ErrProtectedDelete.Error())
+			h.errJSON(c, http.StatusInternalServerError, ErrProtectedDelete.Error())
+			return
+		}
+		if !h.isSuperAdmin(c) {
+			if targetSuperAdminUsernames[username] || !h.isMainAccount(c) || targetMainAccountUsernames[username] {
+				h.activityLogService.LogDelete(uid, u, r, "user", 0,
+					map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
+					ip, ua, ErrDeleteNotAllowed.Error())
+				h.errJSON(c, http.StatusInternalServerError, ErrDeleteNotAllowed.Error())
+				return
+			}
+		}
+		info := map[string]string{"username": target.Username, "full_name": target.FullName}
+		if err := h.globalAuthService.RemoveLabPermission(target.ID, lab); err != nil {
+			h.activityLogService.LogDelete(uid, u, r, "user", 0,
+				map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
+				ip, ua, err.Error())
+			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus user")
+			return
+		}
+		items = append(items, info)
 	}
+	h.activityLogService.LogDelete(uid, u, r, "user", 0,
+		map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
+		ip, ua)
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "User berhasil dihapus"})
 }

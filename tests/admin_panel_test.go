@@ -583,16 +583,15 @@ func TestPerLabUserDetail(t *testing.T) {
 func TestPerLabUserBatchDelete(t *testing.T) {
 	env := setupTestEnvironment(t)
 	lab := env.LabA
-	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {
 		t.Fatal("login failed")
 	}
 
-	// Ensure a user exists in per-lab DB for batch delete
-	var userID int
-	db.QueryRow("SELECT id FROM users ORDER BY id LIMIT 1").Scan(&userID)
-	if userID == 0 {
-		t.Fatal("no user found in per-lab DB")
+	// Ensure a user exists in global DB for batch delete
+	var userCount int
+	env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users").Scan(&userCount)
+	if userCount == 0 {
+		t.Fatal("no user found in global DB")
 	}
 
 	t.Run("batch_delete_empty", func(t *testing.T) {
@@ -613,22 +612,23 @@ func TestPerLabUserBatchDelete(t *testing.T) {
 func TestPerLabUserBatchDeleteSuccess(t *testing.T) {
 	env := setupTestEnvironment(t)
 	lab := env.LabA
-	db := env.DB_A
+	gdb := env.GlobalDB
 	// Login as super admin (admin) — only super admins or main accounts can batch-delete
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
 	}
 
 	t.Run("batch_delete_success", func(t *testing.T) {
-		// Create test users directly in per-lab DB
-		db.Exec("DELETE FROM users WHERE username IN ('batch_del_a', 'batch_del_b')")
-		db.Exec("INSERT INTO users (username, password, full_name, role) VALUES ('batch_del_a', 'x', 'Batch Del A', 'admin')")
-		db.Exec("INSERT INTO users (username, password, full_name, role) VALUES ('batch_del_b', 'x', 'Batch Del B', 'admin')")
-		var beforeCount int
-		db.QueryRow("SELECT COUNT(*) FROM users WHERE username IN ('batch_del_a', 'batch_del_b')").Scan(&beforeCount)
-		if beforeCount != 2 {
-			t.Fatalf("expected 2 test users, got %d", beforeCount)
-		}
+		// Create test users in global DB
+		gdb.Exec("DELETE FROM lab_permissions WHERE user_id IN (SELECT id FROM global_users WHERE username IN ('batch_del_a', 'batch_del_b'))")
+		gdb.Exec("DELETE FROM global_users WHERE username IN ('batch_del_a', 'batch_del_b')")
+		gdb.Exec("INSERT INTO global_users (username, password, full_name) VALUES ('batch_del_a', '$2a$10$dummy', 'Batch Del A')")
+		gdb.Exec("INSERT INTO global_users (username, password, full_name) VALUES ('batch_del_b', '$2a$10$dummy', 'Batch Del B')")
+		var idA, idB int
+		gdb.QueryRow("SELECT id FROM global_users WHERE username='batch_del_a'").Scan(&idA)
+		gdb.QueryRow("SELECT id FROM global_users WHERE username='batch_del_b'").Scan(&idB)
+		gdb.Exec("INSERT INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, 'lab-kom-mi', 'admin')", idA)
+		gdb.Exec("INSERT INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, 'lab-kom-mi', 'admin')", idB)
 
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -641,10 +641,11 @@ func TestPerLabUserBatchDeleteSuccess(t *testing.T) {
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
 		}
+		// Verify lab_permissions are removed for this lab
 		var afterCount int
-		db.QueryRow("SELECT COUNT(*) FROM users WHERE username IN ('batch_del_a', 'batch_del_b')").Scan(&afterCount)
+		gdb.QueryRow(`SELECT COUNT(*) FROM lab_permissions lp JOIN global_users gu ON gu.id=lp.user_id WHERE gu.username IN ('batch_del_a','batch_del_b') AND lp.lab_url_path='lab-kom-mi'`).Scan(&afterCount)
 		if afterCount != 0 {
-			t.Errorf("expected 0 users after batch delete, got %d", afterCount)
+			t.Errorf("expected 0 lab_permissions after batch delete, got %d", afterCount)
 		}
 	})
 }
@@ -690,7 +691,7 @@ func TestPerLabUserList(t *testing.T) {
 func TestPerLabUserCreate(t *testing.T) {
 	env := setupTestEnvironment(t)
 	lab := env.LabA
-	db := env.DB_A
+	gdb := env.GlobalDB
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
 	}
@@ -708,10 +709,17 @@ func TestPerLabUserCreate(t *testing.T) {
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
-		var count int
-		db.QueryRow("SELECT COUNT(*) FROM users WHERE username='newuser1'").Scan(&count)
-		if count == 0 {
-			t.Error("user not created in per-lab DB")
+		// Verify user created in global_users
+		var userCount int
+		gdb.QueryRow("SELECT COUNT(*) FROM global_users WHERE username='newuser1'").Scan(&userCount)
+		if userCount == 0 {
+			t.Error("user not created in global_users")
+		}
+		// Verify lab_permission created
+		var permCount int
+		gdb.QueryRow("SELECT COUNT(*) FROM lab_permissions lp JOIN global_users gu ON gu.id=lp.user_id WHERE gu.username='newuser1' AND lp.lab_url_path='lab-kom-mi'").Scan(&permCount)
+		if permCount == 0 {
+			t.Error("lab_permission not created for user")
 		}
 	})
 
@@ -737,7 +745,7 @@ func TestPerLabUserCreate(t *testing.T) {
 func TestPerLabUserEdit(t *testing.T) {
 	env := setupTestEnvironment(t)
 	lab := env.LabA
-	db := env.DB_A
+	gdb := env.GlobalDB
 	if !loginAndRefresh(lab, "labA_only", "test123") {
 		t.Fatal("login failed")
 	}
@@ -756,7 +764,7 @@ func TestPerLabUserEdit(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var fullName string
-		db.QueryRow("SELECT full_name FROM users WHERE username='labA_only'").Scan(&fullName)
+		gdb.QueryRow("SELECT full_name FROM global_users WHERE username='labA_only'").Scan(&fullName)
 		if fullName != "Lab A Updated" {
 			t.Errorf("expected 'Lab A Updated', got %q", fullName)
 		}
