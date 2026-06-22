@@ -349,13 +349,11 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	sess.Set("full_name", newFullName)
 	sess.Save()
 
-	if oldUsername != "" {
-		if globalUser, err := h.globalAuthService.GetUserByUsername(oldUsername); err == nil {
-			h.globalAuthService.UpdateUser(globalUser.ID, req.Username, req.FullName, globalUser.IsSuperAdmin)
-		}
-		if oldUsername != newUsername {
-			_ = h.globalAuthService.ClearDefaultPasswordFlag(userID)
-		}
+	if globalUser, err := h.globalAuthService.GetUser(userID); err == nil {
+		h.globalAuthService.UpdateUser(globalUser.ID, req.Username, req.FullName, globalUser.IsSuperAdmin)
+	}
+	if oldUsername != newUsername {
+		_ = h.globalAuthService.ClearDefaultPasswordFlag(userID)
 	}
 
 	h.redirectWithSuccess(c, "/profile", "Profil berhasil diupdate", "update")
