@@ -793,15 +793,18 @@ func TestPerLabUserEdit(t *testing.T) {
 func TestPerLabUserDelete(t *testing.T) {
 	env := setupTestEnvironment(t)
 	lab := env.LabA
-	db := env.DB_A
+	gdb := env.GlobalDB
 	// Login as super admin (admin) — only super admins can delete per-lab users
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
 	}
 
 	t.Run("delete_user_success", func(t *testing.T) {
-		// Create a user first
-		db.Exec("INSERT OR IGNORE INTO users (id, username, password, full_name, role) VALUES (999, 'delete_me', 'x', 'Delete Me', 'admin')")
+		// Create a user in global DB with lab permission
+		gdb.Exec("DELETE FROM lab_permissions WHERE user_id IN (SELECT id FROM global_users WHERE username='delete_me')")
+		gdb.Exec("DELETE FROM global_users WHERE username='delete_me'")
+		gdb.Exec("INSERT INTO global_users (id, username, password, full_name) VALUES (999, 'delete_me', '$2a$10$dummy', 'Delete Me')")
+		gdb.Exec("INSERT INTO lab_permissions (user_id, lab_url_path, role) VALUES (999, 'lab-kom-mi', 'admin')")
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
@@ -813,10 +816,17 @@ func TestPerLabUserDelete(t *testing.T) {
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
-		var count int
-		db.QueryRow("SELECT COUNT(*) FROM users WHERE username='delete_me'").Scan(&count)
-		if count != 0 {
-			t.Error("user not deleted")
+		// Verify lab_permission removed for this lab
+		var permCount int
+		gdb.QueryRow("SELECT COUNT(*) FROM lab_permissions WHERE user_id=999 AND lab_url_path='lab-kom-mi'").Scan(&permCount)
+		if permCount != 0 {
+			t.Error("lab_permission not removed after delete")
+		}
+		// Global user should still exist (only lab_permission removed)
+		var userCount int
+		gdb.QueryRow("SELECT COUNT(*) FROM global_users WHERE username='delete_me'").Scan(&userCount)
+		if userCount == 0 {
+			t.Error("global user should still exist after per-lab delete")
 		}
 	})
 
