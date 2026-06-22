@@ -23,8 +23,6 @@ type Handler struct {
 	imageService       *services.ImageService
 	globalAuthService  *services.GlobalAuthService
 
-	authService               *services.AuthService
-	userService               *services.UserService
 	deviceService             *services.DeviceService
 	pcService                 *services.PCService
 	deviceLoanService         *services.DeviceLoanService
@@ -52,7 +50,6 @@ func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifi
 	softwareRepo := repository.NewSoftwareRepository(db)
 	logbookRepo := repository.NewLogbookRepository(db)
 	scheduleRepo := repository.NewScheduleRepository(db)
-	userRepo := repository.NewUserRepository(globalDB, lab)
 	dashboardRepo := repository.NewDashboardRepository(db)
 	stickerTemplateRepo := repository.NewStickerTemplateRepository(db)
 
@@ -62,8 +59,6 @@ func NewHandler(db *database.DB, cfg *config.Config, notifier services.CUDNotifi
 		imageService:       services.NewImageService(),
 		globalAuthService:  globalAuthService,
 
-		authService: services.NewAuthService(userRepo, activityLogService),
-		userService:               services.NewUserService(userRepo, activityLogService),
 		deviceService:             services.NewDeviceService(deviceRepo, deviceTypeRepo, activityLogService),
 		pcService:                 services.NewPCService(pcRepo, activityLogService),
 		deviceLoanService:         services.NewDeviceLoanService(deviceLoanRepo, loanExtensionRepo, activityLogService),

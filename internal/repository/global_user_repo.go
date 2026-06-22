@@ -10,6 +10,7 @@ import (
 
 var globalUserCols = []string{
 	"id", "username", "password", "full_name",
+	"'admin' AS role",
 	"is_super_admin", "is_protected", "session_token",
 	"password_is_default",
 	"created_at", "updated_at",
@@ -112,6 +113,95 @@ func (r *GlobalUserRepository) RemovePermission(userID int, labURLPath string) e
 func (r *GlobalUserRepository) ClearPermissions(userID int) error {
 	_, err := r.db.Exec(`DELETE FROM lab_permissions WHERE user_id = ?`, userID)
 	return err
+}
+
+func (r *GlobalUserRepository) ListByLabPaginated(labURLPath, searchTerm, role, sortBy, sortOrder string, page, pageSize int) ([]models.GlobalUser, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+
+	baseFrom := `FROM global_users gu JOIN lab_permissions lp ON lp.user_id = gu.id`
+	baseWhere := ` WHERE lp.lab_url_path = ?`
+	var args []any
+	args = append(args, labURLPath)
+
+	if searchTerm != "" {
+		baseWhere += ` AND (gu.username LIKE ? OR gu.full_name LIKE ?)`
+		s := "%" + searchTerm + "%"
+		args = append(args, s, s)
+	}
+	if role != "" {
+		baseWhere += ` AND lp.role = ?`
+		args = append(args, role)
+	}
+
+	var total int
+	countQ := `SELECT COUNT(*) ` + baseFrom + baseWhere
+	if err := r.db.QueryRow(countQ, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	validSort := map[string]bool{"username": true, "full_name": true, "role": true, "created_at": true}
+	if !validSort[sortBy] {
+		sortBy = "created_at"
+	}
+	if sortOrder != "ASC" {
+		sortOrder = "DESC"
+	}
+
+	sortCol := sortBy
+	switch sortBy {
+	case "username":
+		sortCol = "gu.username"
+	case "full_name":
+		sortCol = "gu.full_name"
+	case "role":
+		sortCol = "lp.role"
+	case "created_at":
+		sortCol = "gu.created_at"
+	}
+
+	q := `SELECT gu.id, gu.username, gu.full_name, lp.role,
+	             gu.is_protected, gu.is_super_admin, gu.created_at
+	       ` + baseFrom + baseWhere + ` ORDER BY ` + sortCol + ` ` + sortOrder + ` LIMIT ? OFFSET ?`
+	queryArgs := append(args, pageSize, offset)
+
+	rows, err := r.db.Query(q, queryArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var users []models.GlobalUser
+	for rows.Next() {
+		var u models.GlobalUser
+		if err := rows.Scan(&u.ID, &u.Username, &u.FullName, &u.Role,
+			&u.IsProtected, &u.IsSuperAdmin, &u.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		users = append(users, u)
+	}
+	return users, total, nil
+}
+
+func (r *GlobalUserRepository) GetByUsernameAndLab(username, labURLPath string) (*models.GlobalUser, error) {
+	var u models.GlobalUser
+	err := r.db.QueryRow(`
+		SELECT gu.id, gu.username, gu.full_name, lp.role,
+		       gu.is_protected, gu.is_super_admin, gu.created_at, gu.updated_at
+		FROM global_users gu
+		JOIN lab_permissions lp ON lp.user_id = gu.id
+		WHERE gu.username = ? AND lp.lab_url_path = ?
+	`, username, labURLPath).Scan(&u.ID, &u.Username, &u.FullName, &u.Role,
+		&u.IsProtected, &u.IsSuperAdmin, &u.CreatedAt, &u.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
 }
 
 func (r *GlobalUserRepository) GetUsernamesByLab(labURLPath string) ([]string, error) {

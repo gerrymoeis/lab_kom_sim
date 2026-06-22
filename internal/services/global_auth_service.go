@@ -13,7 +13,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ErrProtectedUser = errors.New("cannot delete protected user")
+var (
+	ErrInvalidCredentials = errors.New("username atau password salah")
+	ErrAlreadyLoggedIn    = errors.New("akun sudah login di tempat lain")
+	ErrProtectedUser      = errors.New("cannot delete protected user")
+)
 
 var DefaultPasswordMap = map[string]string{
 	"admin": "admin123",
@@ -163,6 +167,18 @@ func (s *GlobalAuthService) GetDefaultPasswordUsers() ([]models.DefaultCredentia
 		}
 	}
 	return creds, nil
+}
+
+func (s *GlobalAuthService) ListUsersByLab(labURLPath, search, role, sortBy, sortOrder string, page, pageSize int) ([]models.GlobalUser, int, error) {
+	return s.userRepo.ListByLabPaginated(labURLPath, search, role, sortBy, sortOrder, page, pageSize)
+}
+
+func (s *GlobalAuthService) GetUserByUsernameAndLab(username, labURLPath string) (*models.GlobalUser, error) {
+	return s.userRepo.GetByUsernameAndLab(username, labURLPath)
+}
+
+func (s *GlobalAuthService) RemoveLabPermission(userID int, labURLPath string) error {
+	return s.userRepo.RemovePermission(userID, labURLPath)
 }
 
 func (s *GlobalAuthService) GetUsernamesForLab(labURLPath string) ([]string, error) {
