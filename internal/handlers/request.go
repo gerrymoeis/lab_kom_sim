@@ -1,8 +1,8 @@
 package handlers
 
 type LoginRequest struct {
-	Username string `form:"username" binding:"required,max=50"`
-	Password string `form:"password" binding:"required,max=255"`
+	Username string `form:"username" binding:"required"`
+	Password string `form:"password" binding:"required"`
 }
 
 type CreatePCRequest struct {
@@ -225,28 +225,28 @@ type CreateSoftwareRequest struct {
 }
 
 type CreateUserRequest struct {
-	Username string `form:"username" binding:"required,max=50"`
-	Password string `form:"password" binding:"required,max=255"`
+	Username string `form:"username" binding:"required"`
+	Password string `form:"password" binding:"required"`
 	FullName string `form:"full_name" binding:"required,max=100"`
 	Role     string `form:"role" binding:"required,oneof=admin dosen"`
 }
 
 type UpdateUserRequest struct {
-	Username    string `form:"username" binding:"required,max=50"`
+	Username    string `form:"username" binding:"required"`
 	FullName    string `form:"full_name" binding:"required,max=100"`
 	Role        string `form:"role" binding:"required,oneof=admin dosen"`
-	NewPassword string `form:"new_password" binding:"omitempty,max=255"`
+	NewPassword string `form:"new_password" binding:"omitempty"`
 }
 
 type UpdateProfileRequest struct {
-	Username string `form:"username" binding:"required,max=50"`
+	Username string `form:"username" binding:"required"`
 	FullName string `form:"full_name" binding:"required,max=100"`
 }
 
 type ChangePasswordRequest struct {
-	OldPassword     string `form:"old_password" binding:"required,max=255"`
-	NewPassword     string `form:"new_password" binding:"required,max=255"`
-	ConfirmPassword string `form:"confirm_password" binding:"required,max=255"`
+	OldPassword     string `form:"old_password" binding:"required"`
+	NewPassword     string `form:"new_password" binding:"required"`
+	ConfirmPassword string `form:"confirm_password" binding:"required"`
 }
 
 type LogbookSaveRequest struct {
