@@ -25,7 +25,7 @@ func LabRoleInjector() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("role", "admin")
 
-		userID, username, isSuperAdmin, ok := GetCurrentUser(c)
+		userID, _, isSuperAdmin, ok := GetCurrentUser(c)
 		if !ok {
 			c.Next()
 			return
@@ -34,7 +34,6 @@ func LabRoleInjector() gin.HandlerFunc {
 		c.Set("is_super_admin", isSuperAdmin)
 		if isSuperAdmin {
 			c.Set("role", "admin")
-			autoSyncUser(c, userID, username, "")
 			c.Next()
 			return
 		}
@@ -60,48 +59,8 @@ func LabRoleInjector() gin.HandlerFunc {
 			c.Set("role", role)
 		}
 
-		autoSyncUser(c, userID, username, "")
-
 		c.Next()
 	}
-}
-
-// autoSyncUser ensures the global user exists in the current per-lab users table
-// and stays up-to-date via UPSERT (INSERT OR UPDATE).
-func autoSyncUser(c *gin.Context, userID int, username, fullName string) {
-	if fullName == "" {
-		session := sessions.Default(c)
-		if fn, ok := session.Get("full_name").(string); ok {
-			fullName = fn
-		} else {
-			fullName = username
-		}
-	}
-
-	dbVal, hasDB := c.Get("db")
-	if !hasDB {
-		return
-	}
-	db, ok := dbVal.(*database.DB)
-	if !ok {
-		return
-	}
-
-	var isProtected, isSuperAdmin int
-	if gdbVal, ok := c.Get("globalDB"); ok {
-		if gdb, ok := gdbVal.(*database.DB); ok {
-			gdb.QueryRow(`SELECT is_protected, is_super_admin FROM global_users WHERE id = ?`, userID).Scan(&isProtected, &isSuperAdmin)
-		}
-	}
-
-	db.Exec(`INSERT INTO users (id, username, password, full_name, role, is_protected, is_super_admin)
-		VALUES (?, ?, '', ?, 'admin', ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			username = excluded.username,
-			full_name = excluded.full_name,
-			is_protected = excluded.is_protected,
-			is_super_admin = excluded.is_super_admin`,
-		userID, username, fullName, isProtected, isSuperAdmin)
 }
 
 // LabPermissionRequired checks if user has access to current lab

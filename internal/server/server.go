@@ -150,7 +150,7 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 			return t
 		},
 		"tzCode": func() string { return timeutil.Code() },
-		"canAccessUser": func(actorUsername string, targetUser models.User, actorIsSuperAdmin, actorIsMainAccount bool) bool {
+		"canAccessUser": func(actorUsername string, targetUser models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount bool) bool {
 			return handlers.CanAccessProfile(actorUsername, targetUser, actorIsSuperAdmin, actorIsMainAccount)
 		},
 		"currentDateAfter": func(t time.Time) bool { return time.Now().After(t) },
@@ -236,7 +236,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	handlersMap := make(map[string]*handlers.Handler, len(dbs))
 	for labName, db := range dbs {
-		handlersMap[labName] = handlers.NewHandler(db, cfg, notifier, globalAuthService)
+		handlersMap[labName] = handlers.NewHandler(db, cfg, notifier, globalAuthService, globalDB, labName)
 	}
 	adapter := NewHandlerAdapter(handlersMap)
 

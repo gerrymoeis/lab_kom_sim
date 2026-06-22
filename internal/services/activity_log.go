@@ -264,20 +264,6 @@ type ActivityLogFilters struct {
 	Direction       string
 }
 
-// GetLogs retrieves activity logs with filters
-func (s *ActivityLogService) GetAllUsernames() ([]string, error) {
-	rows, err := s.db.Query(`SELECT username FROM users ORDER BY username`)
-	if err != nil { return nil, err }
-	defer rows.Close()
-	var usernames []string
-	for rows.Next() {
-		var u string
-		if err := rows.Scan(&u); err != nil { return nil, err }
-		usernames = append(usernames, u)
-	}
-	return usernames, rows.Err()
-}
-
 func (s *ActivityLogService) GetAllEntityTypes() ([]string, error) {
 	rows, err := s.db.Query(`SELECT DISTINCT entity_type FROM activity_logs ORDER BY entity_type`)
 	if err != nil { return nil, err }

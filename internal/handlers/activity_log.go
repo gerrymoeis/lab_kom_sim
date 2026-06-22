@@ -60,7 +60,8 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 	totalPages := (totalCount + pageSize - 1) / pageSize
 	if totalPages < 1 { totalPages = 1 }
 
-	usernames, _ := h.activityLogService.GetAllUsernames()
+	lab := c.GetString("lab")
+	usernames, _ := h.globalAuthService.GetUsernamesForLab(lab)
 	entityTypes, _ := h.activityLogService.GetAllEntityTypes()
 
 	filterMap := gin.H{
