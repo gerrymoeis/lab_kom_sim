@@ -12,7 +12,7 @@ import (
 )
 
 func (h *GlobalHandler) AdminUserList(c *gin.Context) {
-	_, _, _, ok := middleware.GetCurrentUser(c)
+	_, _, _, _, ok := middleware.GetCurrentUser(c)
 	if !ok {
 		h.render(c, http.StatusUnauthorized, "error.html", gin.H{
 			"title":   "Unauthorized",
@@ -288,6 +288,8 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 			errMsg = "User ini tidak bisa dihapus (akun protected)"
 		} else if errors.Is(err, services.ErrCannotDeleteSuperAdmin) {
 			errMsg = "Tidak dapat menghapus super admin"
+		} else if errors.Is(err, services.ErrCannotDeleteGlobalAdmin) {
+			errMsg = "Tidak dapat menghapus Global Admin Biasa"
 		}
 		h.render(c, http.StatusForbidden, "admin_users.html", gin.H{
 			"title": "Manage Users",

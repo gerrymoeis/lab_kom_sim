@@ -55,6 +55,9 @@
                                 {{ if $user.IsProtected }}
                                     <span class="badge bg-danger">Protected</span>
                                 {{ end }}
+                                {{ if $user.IsGlobalAdmin }}
+                                    <span class="badge bg-info">Global Admin</span>
+                                {{ end }}
                             </td>
                             <td>
                                 <a href="/admin/users/{{ $user.ID }}/edit" class="btn btn-warning btn-sm">
@@ -63,7 +66,7 @@
                                 <a href="/admin/users/{{ $user.ID }}/permissions" class="btn btn-info btn-sm">
                                     <i class="bi bi-shield"></i>
                                 </a>
-                                {{ if and (not $user.IsProtected) (not $user.IsSuperAdmin) }}
+                                {{ if and (not $user.IsProtected) (not $user.IsSuperAdmin) (or $.is_protected (not $user.IsGlobalAdmin)) }}
                                 <form method="POST" action="/admin/users/{{ $user.ID }}/delete" class="d-inline">
                                     <input type="hidden" name="_csrf" value="{{ $.csrf_token }}">
                                     <button class="btn btn-danger btn-sm" onclick="return confirm('Hapus user ini?')">
