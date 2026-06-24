@@ -68,8 +68,8 @@ func (s *GlobalAuthService) GetPermissions(userID int) ([]models.LabPermission, 
 	return s.userRepo.GetPermissions(userID)
 }
 
-func (s *GlobalAuthService) GetLabsForUser(userID int, isSuperAdmin bool, allLabs []config.LabConfig) []string {
-	if isSuperAdmin {
+func (s *GlobalAuthService) GetLabsForUser(userID int, isSuperAdmin, isGlobalAdmin bool, allLabs []config.LabConfig) []string {
+	if isSuperAdmin || isGlobalAdmin {
 		paths := make([]string, len(allLabs))
 		for i, lab := range allLabs {
 			paths[i] = lab.URLPath
@@ -103,19 +103,19 @@ func (s *GlobalAuthService) GetUserByUsername(username string) (*models.GlobalUs
 	return s.userRepo.GetByUsername(username)
 }
 
-func (s *GlobalAuthService) CreateUser(username, password, fullName string, isSuperAdmin, isGlobalAdmin bool) (*models.GlobalUser, error) {
+func (s *GlobalAuthService) CreateUser(username, password, fullName string, isSuperAdmin, isGlobalAdmin, isProtected bool) (*models.GlobalUser, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("gagal hash password: %w", err)
 	}
-	_, err = s.userRepo.Create(username, string(hash), fullName, isSuperAdmin, isGlobalAdmin)
+	_, err = s.userRepo.Create(username, string(hash), fullName, isSuperAdmin, isGlobalAdmin, isProtected)
 	if err != nil {
 		return nil, err
 	}
 	return s.userRepo.GetByUsername(username)
 }
 
-func (s *GlobalAuthService) UpdateUser(id int, username, fullName string, isSuperAdmin, isGlobalAdmin bool) error {
+func (s *GlobalAuthService) UpdateUser(id int, username, fullName string, isSuperAdmin, isGlobalAdmin, isProtected bool) error {
 	old, err := s.userRepo.GetByID(id)
 	if err != nil {
 		return err
@@ -123,7 +123,7 @@ func (s *GlobalAuthService) UpdateUser(id int, username, fullName string, isSupe
 	if old.Username != username {
 		_ = s.userRepo.ClearDefaultPasswordFlag(id)
 	}
-	return s.userRepo.Update(id, username, fullName, isSuperAdmin, isGlobalAdmin)
+	return s.userRepo.Update(id, username, fullName, isSuperAdmin, isGlobalAdmin, isProtected)
 }
 
 func (s *GlobalAuthService) DeleteUser(id int) error {

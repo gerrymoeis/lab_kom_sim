@@ -8,6 +8,7 @@ import (
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/services"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -49,6 +50,7 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 	password := c.PostForm("password")
 	fullName := c.PostForm("full_name")
 	isGlobalAdmin := c.PostForm("is_global_admin") == "1"
+	isProtected := c.PostForm("is_protected") == "1"
 
 	if username == "" || password == "" {
 		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
@@ -68,7 +70,16 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 		return
 	}
 
-	user, err := h.globalAuthService.CreateUser(username, password, fullName, false, isGlobalAdmin)
+	if isProtected && !h.isProtected(c) {
+		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
+			"title": "Buat User Baru",
+			"error": "Hanya Super Admin (root) yang dapat membuat user protected",
+			"labs":  h.cfg.Labs,
+		})
+		return
+	}
+
+	user, err := h.globalAuthService.CreateUser(username, password, fullName, false, isGlobalAdmin, isProtected)
 	if err != nil {
 		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
 			"title": "Buat User Baru",
@@ -179,11 +190,20 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 	fullName := c.PostForm("full_name")
 	newPassword := c.PostForm("new_password")
 	isGlobalAdmin := c.PostForm("is_global_admin") == "1"
+	isProtected := c.PostForm("is_protected") == "1"
 
 	if isGlobalAdmin && !h.isProtected(c) {
 		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
 			"title": "Edit User",
 			"error": "Hanya Super Admin yang dapat mengubah status Global Admin Biasa",
+		})
+		return
+	}
+
+	if isProtected != targetUser.IsProtected && !h.isProtected(c) {
+		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
+			"title": "Edit User",
+			"error": "Hanya Super Admin (root) yang dapat mengubah status protected",
 		})
 		return
 	}
@@ -196,7 +216,7 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 		return
 	}
 
-	if err := h.globalAuthService.UpdateUser(id, username, fullName, targetUser.IsSuperAdmin, isGlobalAdmin); err != nil {
+	if err := h.globalAuthService.UpdateUser(id, username, fullName, targetUser.IsSuperAdmin, isGlobalAdmin, isProtected); err != nil {
 		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
 			"title": "Edit User",
 			"error": "Gagal update user: " + err.Error(),
@@ -268,6 +288,18 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 		return
 	}
 
+	session := sessions.Default(c)
+	currentUserID, _ := session.Get("user_id").(int)
+	if currentUserID == id {
+		users, _ := h.globalAuthService.ListUsers()
+		h.render(c, http.StatusForbidden, "admin_users.html", gin.H{
+			"title": "Manage Users",
+			"error": "Tidak dapat menghapus akun Anda sendiri",
+			"users": users,
+		})
+		return
+	}
+
 	// Check if user is main account in any lab
 	var mainCount int
 	h.globalDB.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND is_main_account = 1`, id).Scan(&mainCount)
@@ -322,6 +354,11 @@ func (h *GlobalHandler) AdminUserPermissionsSave(c *gin.Context) {
 
 	labs := c.PostFormArray("labs")
 	roles := c.PostFormArray("roles")
+	mainAccounts := c.PostFormArray("is_main_account")
+	mainSet := make(map[string]bool, len(mainAccounts))
+	for _, lab := range mainAccounts {
+		mainSet[lab] = true
+	}
 	perms := make([]struct {
 		LabURLPath string
 		Role       string
@@ -346,6 +383,27 @@ func (h *GlobalHandler) AdminUserPermissionsSave(c *gin.Context) {
 		return
 	}
 
+	if _, err := h.globalDB.Exec(`UPDATE lab_permissions SET is_main_account = 0 WHERE user_id = ?`, id); err != nil {
+		h.render(c, http.StatusInternalServerError, "admin_user_permissions.html", gin.H{
+			"title": "Permissions - " + user.Username,
+			"user":  user,
+			"labs":  h.cfg.Labs,
+			"error": "Gagal menyimpan akun utama",
+		})
+		return
+	}
+	for lab := range mainSet {
+		if _, err := h.globalDB.Exec(`UPDATE lab_permissions SET is_main_account = 1 WHERE user_id = ? AND lab_url_path = ?`, id, lab); err != nil {
+			h.render(c, http.StatusInternalServerError, "admin_user_permissions.html", gin.H{
+				"title": "Permissions - " + user.Username,
+				"user":  user,
+				"labs":  h.cfg.Labs,
+				"error": "Gagal menyimpan akun utama",
+			})
+			return
+		}
+	}
+
 	c.Redirect(http.StatusFound, "/admin/users")
 }
 
@@ -364,14 +422,19 @@ func (h *GlobalHandler) AdminUserPermissions(c *gin.Context) {
 
 	perms, _ := h.globalAuthService.GetPermissions(user.ID)
 	permMap := make(map[string]string)
+	mainMap := make(map[string]bool)
 	for _, p := range perms {
 		permMap[p.LabURLPath] = p.Role
+		if p.IsMainAccount {
+			mainMap[p.LabURLPath] = true
+		}
 	}
 
 	h.render(c, http.StatusOK, "admin_user_permissions.html", gin.H{
-		"title":       "Permissions - " + user.Username,
-		"user":        user,
-		"labs":        h.cfg.Labs,
-		"permissions": permMap,
+		"title":         "Permissions - " + user.Username,
+		"user":          user,
+		"labs":          h.cfg.Labs,
+		"permissions":   permMap,
+		"isMainAccount": mainMap,
 	})
 }

@@ -205,7 +205,7 @@ func TestGlobalAuthGetLabsForUser(t *testing.T) {
 
 	t.Run("super_admin_gets_all_labs", func(t *testing.T) {
 		id := seedTestUser(t, db, "super", "pass", "Super", true, false)
-		paths := svc.GetLabsForUser(id, true, allLabs)
+		paths := svc.GetLabsForUser(id, true, false, allLabs)
 		if len(paths) != 3 {
 			t.Errorf("expected 3 labs for super admin, got %d", len(paths))
 		}
@@ -216,7 +216,7 @@ func TestGlobalAuthGetLabsForUser(t *testing.T) {
 		repo.AddPermission(id, "lab-a", "admin")
 		repo.AddPermission(id, "lab-c", "admin")
 
-		paths := svc.GetLabsForUser(id, false, allLabs)
+		paths := svc.GetLabsForUser(id, false, false, allLabs)
 		if len(paths) != 2 {
 			t.Errorf("expected 2 labs, got %d", len(paths))
 		}
@@ -226,7 +226,7 @@ func TestGlobalAuthGetLabsForUser(t *testing.T) {
 	})
 
 	t.Run("no_permissions_returns_empty_slice", func(t *testing.T) {
-		paths := svc.GetLabsForUser(999, false, allLabs)
+		paths := svc.GetLabsForUser(999, false, false, allLabs)
 		if len(paths) != 0 {
 			t.Errorf("expected empty slice for unknown user, got %v (len=%d)", paths, len(paths))
 		}

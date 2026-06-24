@@ -142,7 +142,7 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 		return
 	}
 
-	labPaths := h.globalAuthService.GetLabsForUser(user.ID, user.IsSuperAdmin, h.cfg.Labs)
+	labPaths := h.globalAuthService.GetLabsForUser(user.ID, user.IsSuperAdmin, user.IsGlobalAdmin, h.cfg.Labs)
 
 	session := sessions.Default(c)
 	session.Set("user_id", user.ID)
@@ -236,7 +236,8 @@ func (h *GlobalHandler) LabSelector(c *gin.Context) {
 	}
 
 	isSuperAdmin, _ := session.Get("is_super_admin").(bool)
-	if !isSuperAdmin {
+	isGlobalAdmin, _ := session.Get("is_global_admin").(bool)
+	if !isSuperAdmin && !isGlobalAdmin {
 		labsRaw := session.Get("labs")
 		if labsRaw != nil {
 			labs, ok := labsRaw.([]string)
@@ -259,7 +260,7 @@ func (h *GlobalHandler) LabSelector(c *gin.Context) {
 	fullName, _ := session.Get("full_name").(string)
 
 	var labs []config.LabConfig
-	if isSuperAdmin {
+	if isSuperAdmin || isGlobalAdmin {
 		labs = h.cfg.Labs
 	} else {
 		allowedRaw := session.Get("labs")
@@ -280,7 +281,7 @@ func (h *GlobalHandler) LabSelector(c *gin.Context) {
 	}
 
 	isMainAccount := false
-	if !isSuperAdmin {
+	if !isSuperAdmin && !isGlobalAdmin {
 		var count int
 		_ = h.globalDB.QueryRow(
 			`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND is_main_account = 1`,
@@ -295,6 +296,7 @@ func (h *GlobalHandler) LabSelector(c *gin.Context) {
 		"fullName":      fullName,
 		"isSuperAdmin":  isSuperAdmin,
 		"isMainAccount": isMainAccount,
+		"isGlobalAdmin": isGlobalAdmin,
 		"labs":          labs,
 	})
 }
