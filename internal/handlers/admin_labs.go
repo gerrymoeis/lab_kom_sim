@@ -2,13 +2,16 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/repository"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -143,4 +146,45 @@ func (h *GlobalHandler) AdminLabReseed(c *gin.Context) {
 		"lab":   lab,
 		"success": "Seed berhasil: " + seedType,
 	})
+}
+
+func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
+	urlPath := c.Param("urlPath")
+	lab := h.labFromPath(urlPath)
+	if lab == nil {
+		c.AbortWithStatus(404)
+		return
+	}
+
+	// Hapus semua lab_permissions untuk lab ini
+	h.globalDB.Exec("DELETE FROM lab_permissions WHERE lab_url_path = ?", urlPath)
+
+	// Tutup koneksi DB lab
+	if db, ok := h.labsDB[urlPath]; ok {
+		db.Close()
+		delete(h.labsDB, urlPath)
+	}
+
+	// Hapus dari config slice
+	newLabs := make([]config.LabConfig, 0, len(h.cfg.Labs)-1)
+	for _, l := range h.cfg.Labs {
+		if l.URLPath != urlPath {
+			newLabs = append(newLabs, l)
+		}
+	}
+	h.cfg.Labs = newLabs
+
+	// Comment out di .env jika menggunakan format baru (EnvIndex > 0)
+	if lab.EnvIndex > 0 {
+		if err := config.CommentOutLabEnv(h.cfg.EnvPath, lab.EnvIndex); err != nil {
+			log.Printf("Warning: gagal comment out .env: %v", err)
+		}
+	}
+
+	// Set flash success via session
+	session := sessions.Default(c)
+	session.AddFlash("Lab berhasil dihapus", "success")
+	session.Save()
+
+	c.Redirect(http.StatusFound, "/labs")
 }

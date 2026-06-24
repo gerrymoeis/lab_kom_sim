@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -21,6 +22,7 @@ type Config struct {
 	CookieSecure     bool
 	UploadPath       string
 	GlobalDBPath     string
+	EnvPath          string
 	GeminiAPIKey     string
 	OpenRouterAPIKey string
 	Android          bool
@@ -57,17 +59,33 @@ type PublicBuildConfig struct {
 // Load loads configuration from environment variables with defaults
 func Load() *Config {
 	// Load .env file if exists
-	if err := godotenv.Load(); err != nil {
+	envPath := ".env"
+	if err := godotenv.Load(envPath); err != nil {
 		log.Println("Warning: .env file not found, using environment variables or defaults")
 	}
 
 	dbPath := getEnv("DATABASE_PATH", "inventaris_lab.db")
 	uploadPath := getEnv("UPLOAD_PATH", "uploads")
-	labsEnv := getEnv("LABS", "")
 	var labs []LabConfig
-	if labsEnv != "" {
-		labs = parseLabs(labsEnv, uploadPath, dbPath)
+
+	// Try new format first (LABS_<N>_*)
+	v2Labs, found := parseLabsV2(uploadPath, dbPath)
+	if found {
+		labs = v2Labs
+		log.Printf("Loaded %d lab(s) from LABS_<N>_* format", len(labs))
 	} else {
+		// Fallback: old format (LABS=...)
+		labsEnv := getEnv("LABS", "")
+		if labsEnv != "" {
+			labs = parseLabs(labsEnv, uploadPath, dbPath)
+			log.Println("Warning: LABS= (old format) is deprecated. Use LABS_<N>_* format instead.")
+		} else {
+			labs = []LabConfig{defaultLab(dbPath, uploadPath)}
+		}
+	}
+
+	if len(labs) == 0 {
+		log.Println("Warning: no labs configured, using default")
 		labs = []LabConfig{defaultLab(dbPath, uploadPath)}
 	}
 
@@ -76,6 +94,7 @@ func Load() *Config {
 		Host:          getEnv("HOST", "0.0.0.0"),
 		Port:          getEnv("PORT", "8080"),
 		Labs:          labs,
+		EnvPath:       envPath,
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
 		CookieSecure:  getEnv("COOKIE_SECURE", "false") == "true",
@@ -150,6 +169,128 @@ func parseLabs(raw, uploadPath, fallbackDBPath string) []LabConfig {
 		return []LabConfig{defaultLab(fallbackDBPath, uploadPath)}
 	}
 	return labs
+}
+
+// parseLabsV2 reads LABS_<N>_* env vars into LabConfig slice
+// Format: LABS_<N>_ID=<id>, LABS_<N>_DB=<path>, LABS_<N>_TITLE=<title>, LABS_<N>_URL=<slug>
+// Returns labs slice and whether any V2 format vars were found
+func parseLabsV2(uploadPath, fallbackDBPath string) ([]LabConfig, bool) {
+	type labDef struct {
+		ID, DBPath, Title, URLPath string
+		Index                      int
+	}
+	labMap := make(map[int]*labDef)
+
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, "LABS_") {
+			continue
+		}
+		eqIdx := strings.Index(env, "=")
+		if eqIdx < 0 {
+			continue
+		}
+		key := env[:eqIdx]
+		value := env[eqIdx+1:]
+
+		if !strings.HasSuffix(key, "_ID") && !strings.HasSuffix(key, "_DB") &&
+			!strings.HasSuffix(key, "_TITLE") && !strings.HasSuffix(key, "_URL") {
+			continue
+		}
+		// Extract N from "LABS_<N>_SUFFIX"
+		trimmed := strings.TrimPrefix(key, "LABS_")
+		lastUnderscore := strings.LastIndex(trimmed, "_")
+		if lastUnderscore < 0 {
+			continue
+		}
+		nStr := trimmed[:lastUnderscore]
+		n, err := strconv.Atoi(nStr)
+		if err != nil || n <= 0 {
+			continue
+		}
+		suffix := trimmed[lastUnderscore+1:]
+
+		if labMap[n] == nil {
+			labMap[n] = &labDef{Index: n}
+		}
+		switch suffix {
+		case "ID":
+			labMap[n].ID = value
+		case "DB":
+			labMap[n].DBPath = value
+		case "TITLE":
+			labMap[n].Title = value
+		case "URL":
+			labMap[n].URLPath = value
+		}
+	}
+
+	if len(labMap) == 0 {
+		return nil, false
+	}
+
+	labs := make([]LabConfig, 0, len(labMap))
+	for _, def := range labMap {
+		if def.ID == "" || def.DBPath == "" {
+			log.Printf("Warning: LABS_%d missing ID or DB, skipping", def.Index)
+			continue
+		}
+		title := def.Title
+		if title == "" {
+			title = labTitleFromName(def.ID)
+		}
+		urlPath := def.URLPath
+		if urlPath == "" {
+			urlPath = strings.ToLower(def.ID)
+		}
+		uploadDir := filepath.Join(uploadPath, urlPath)
+		labs = append(labs, LabConfig{
+			ID:        def.ID,
+			Title:     title,
+			DBPath:    def.DBPath,
+			URLPath:   urlPath,
+			UploadDir: uploadDir,
+			Layout:    GetGridLayout(urlPath),
+			EnvIndex:  def.Index,
+		})
+	}
+	return labs, true
+}
+
+// CommentOutLabEnv comments out 4 LABS_<N>_* lines in the .env file
+func CommentOutLabEnv(envPath string, n int) error {
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return fmt.Errorf("gagal baca %s: %w", envPath, err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	modified := false
+	prefixes := []string{
+		fmt.Sprintf("LABS_%d_ID=", n),
+		fmt.Sprintf("LABS_%d_DB=", n),
+		fmt.Sprintf("LABS_%d_TITLE=", n),
+		fmt.Sprintf("LABS_%d_URL=", n),
+	}
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(trimmed, prefix) {
+				lines[i] = "#" + line
+				modified = true
+				break
+			}
+		}
+	}
+
+	if !modified {
+		return fmt.Errorf("tidak menemukan LABS_%d_* di %s", n, envPath)
+	}
+
+	return os.WriteFile(envPath, []byte(strings.Join(lines, "\n")), 0644)
 }
 
 func defaultLab(dbPath, uploadPath string) LabConfig {
