@@ -57,7 +57,7 @@ func AuthRequired() gin.HandlerFunc {
 // AdminRequired checks if user has admin role for current lab (or is super admin)
 func AdminRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, _, isSuperAdmin, ok := GetCurrentUser(c)
+		userID, _, isSuperAdmin, _, ok := GetCurrentUser(c)
 		if !ok {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
@@ -90,7 +90,7 @@ func AdminRequired() gin.HandlerFunc {
 // SuperAdminRequired checks if user is a global super admin
 func SuperAdminRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, _, isSuperAdmin, ok := GetCurrentUser(c)
+		_, _, isSuperAdmin, _, ok := GetCurrentUser(c)
 		if !ok || !isSuperAdmin {
 			c.HTML(http.StatusForbidden, "error.html", gin.H{
 				"title": "Akses Ditolak", "currentPage": "",
@@ -105,16 +105,17 @@ func SuperAdminRequired() gin.HandlerFunc {
 }
 
 // GetCurrentUser gets current user info from global session
-func GetCurrentUser(c *gin.Context) (userID int, username string, isSuperAdmin bool, ok bool) {
+func GetCurrentUser(c *gin.Context) (userID int, username string, isSuperAdmin bool, isGlobalAdmin bool, ok bool) {
 	session := sessions.Default(c)
 
 	userIDVal := session.Get("user_id")
 	usernameVal := session.Get("username")
 
 	if userIDVal == nil || usernameVal == nil {
-		return 0, "", false, false
+		return 0, "", false, false, false
 	}
 
 	isSuperAdmin, _ = session.Get("is_super_admin").(bool)
-	return userIDVal.(int), usernameVal.(string), isSuperAdmin, true
+	isGlobalAdmin, _ = session.Get("is_global_admin").(bool)
+	return userIDVal.(int), usernameVal.(string), isSuperAdmin, isGlobalAdmin, true
 }
