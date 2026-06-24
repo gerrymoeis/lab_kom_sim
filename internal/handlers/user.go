@@ -87,9 +87,11 @@ func (h *Handler) UserList(c *gin.Context) {
 
 	isSuperAdmin := h.isSuperAdmin(c)
 	isMainAccount := h.isMainAccount(c)
+	isProtected := h.isProtected(c)
 	canAccess := make(map[int]bool)
 	for i := range users {
-		canAccess[users[i].ID] = h.canAccessProfile(username, &users[i], isSuperAdmin, isMainAccount)
+		targetIsMainAccount := mainAccountIDs[users[i].ID]
+		canAccess[users[i].ID] = h.canAccessProfile(username, &users[i], isSuperAdmin, isMainAccount, targetIsMainAccount, isProtected)
 	}
 
 	h.renderTemplate(c, http.StatusOK, "user/list.html", gin.H{
@@ -162,11 +164,6 @@ func (h *Handler) UserDetail(c *gin.Context) {
 		return
 	}
 
-	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c)) {
-		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
-		return
-	}
-
 	targetIsMainAccount := false
 	if gdbVal, ok := c.Get("globalDB"); ok {
 		if gdb, ok := gdbVal.(*database.DB); ok {
@@ -175,6 +172,11 @@ func (h *Handler) UserDetail(c *gin.Context) {
 				user.ID, lab).Scan(&count)
 			targetIsMainAccount = count > 0
 		}
+	}
+
+	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, h.isProtected(c)) {
+		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
+		return
 	}
 
 	h.renderTemplate(c, http.StatusOK, "user/detail.html", gin.H{
@@ -199,11 +201,6 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 		return
 	}
 
-	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c)) {
-		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
-		return
-	}
-
 	targetIsMainAccount := false
 	if gdbVal, ok := c.Get("globalDB"); ok {
 		if gdb, ok := gdbVal.(*database.DB); ok {
@@ -212,6 +209,11 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 				user.ID, lab).Scan(&count)
 			targetIsMainAccount = count > 0
 		}
+	}
+
+	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, h.isProtected(c)) {
+		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
+		return
 	}
 
 	h.renderTemplate(c, http.StatusOK, "user/edit.html", gin.H{
@@ -236,7 +238,17 @@ func (h *Handler) UserEdit(c *gin.Context) {
 		return
 	}
 
-	if !h.canAccessProfile(u, target, h.isSuperAdmin(c), h.isMainAccount(c)) {
+	targetIsMainAccount := false
+	if gdbVal, ok := c.Get("globalDB"); ok {
+		if gdb, ok := gdbVal.(*database.DB); ok {
+			var count int
+			gdb.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND lab_url_path = ? AND is_main_account = 1`,
+				target.ID, lab).Scan(&count)
+			targetIsMainAccount = count > 0
+		}
+	}
+
+	if !h.canAccessProfile(u, target, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, h.isProtected(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -331,11 +343,17 @@ func (h *Handler) UserDelete(c *gin.Context) {
 		}
 	}
 
-	if !h.isSuperAdmin(c) {
-		if targetIsSuperAdmin || !h.isMainAccount(c) || targetIsMainAccount {
-			h.redirectWithError(c, "/admin/users", ErrDeleteNotAllowed.Error())
-			return
-		}
+	if targetIsSuperAdmin {
+		h.redirectWithError(c, "/admin/users", "Tidak dapat menghapus super admin")
+		return
+	}
+	if targetIsMainAccount && !h.isProtected(c) {
+		h.redirectWithError(c, "/admin/users", "Tidak dapat menghapus akun utama lab")
+		return
+	}
+	if !h.isSuperAdmin(c) && !h.isMainAccount(c) {
+		h.redirectWithError(c, "/admin/users", ErrDeleteNotAllowed.Error())
+		return
 	}
 
 	if err := h.globalAuthService.RemoveLabPermission(target.ID, lab); err != nil {
@@ -528,14 +546,26 @@ func (h *Handler) UserBatchDelete(c *gin.Context) {
 			h.errJSON(c, http.StatusInternalServerError, ErrProtectedDelete.Error())
 			return
 		}
-		if !h.isSuperAdmin(c) {
-			if targetSuperAdminUsernames[username] || !h.isMainAccount(c) || targetMainAccountUsernames[username] {
-				h.activityLogService.LogDelete(uid, u, r, "user", 0,
-					map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
-					ip, ua, ErrDeleteNotAllowed.Error())
-				h.errJSON(c, http.StatusInternalServerError, ErrDeleteNotAllowed.Error())
-				return
-			}
+		if targetSuperAdminUsernames[username] {
+			h.activityLogService.LogDelete(uid, u, r, "user", 0,
+				map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
+				ip, ua, "tidak dapat menghapus super admin")
+			h.errJSON(c, http.StatusInternalServerError, "Tidak dapat menghapus super admin")
+			return
+		}
+		if targetMainAccountUsernames[username] {
+			h.activityLogService.LogDelete(uid, u, r, "user", 0,
+				map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
+				ip, ua, "tidak dapat menghapus akun utama lab")
+			h.errJSON(c, http.StatusInternalServerError, "Tidak dapat menghapus akun utama lab")
+			return
+		}
+		if !h.isSuperAdmin(c) && !h.isMainAccount(c) {
+			h.activityLogService.LogDelete(uid, u, r, "user", 0,
+				map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
+				ip, ua, ErrDeleteNotAllowed.Error())
+			h.errJSON(c, http.StatusInternalServerError, ErrDeleteNotAllowed.Error())
+			return
 		}
 		info := map[string]string{"username": target.Username, "full_name": target.FullName}
 		if err := h.globalAuthService.RemoveLabPermission(target.ID, lab); err != nil {
