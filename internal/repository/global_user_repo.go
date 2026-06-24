@@ -38,7 +38,7 @@ func (r *GlobalUserRepository) GetByID(id int) (*models.GlobalUser, error) {
 	return getOne[models.GlobalUser](r.db, "global_users", globalUserCols, "id = ?", id)
 }
 
-func (r *GlobalUserRepository) Create(username, hashedPassword, fullName string, isSuperAdmin, isGlobalAdmin bool) (sql.Result, error) {
+func (r *GlobalUserRepository) Create(username, hashedPassword, fullName string, isSuperAdmin, isGlobalAdmin, isProtected bool) (sql.Result, error) {
 	sa := 0
 	if isSuperAdmin {
 		sa = 1
@@ -47,11 +47,15 @@ func (r *GlobalUserRepository) Create(username, hashedPassword, fullName string,
 	if isGlobalAdmin {
 		ga = 1
 	}
-	return r.db.Exec(`INSERT INTO global_users (username, password, full_name, is_super_admin, is_global_admin, password_is_default) VALUES (?, ?, ?, ?, ?, 0)`,
-		username, hashedPassword, fullName, sa, ga)
+	prot := 0
+	if isProtected {
+		prot = 1
+	}
+	return r.db.Exec(`INSERT INTO global_users (username, password, full_name, is_super_admin, is_global_admin, is_protected, password_is_default) VALUES (?, ?, ?, ?, ?, ?, 0)`,
+		username, hashedPassword, fullName, sa, ga, prot)
 }
 
-func (r *GlobalUserRepository) Update(id int, username, fullName string, isSuperAdmin, isGlobalAdmin bool) error {
+func (r *GlobalUserRepository) Update(id int, username, fullName string, isSuperAdmin, isGlobalAdmin, isProtected bool) error {
 	sa := 0
 	if isSuperAdmin {
 		sa = 1
@@ -60,8 +64,12 @@ func (r *GlobalUserRepository) Update(id int, username, fullName string, isSuper
 	if isGlobalAdmin {
 		ga = 1
 	}
-	_, err := r.db.Exec(`UPDATE global_users SET username = ?, full_name = ?, is_super_admin = ?, is_global_admin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		username, fullName, sa, ga, id)
+	prot := 0
+	if isProtected {
+		prot = 1
+	}
+	_, err := r.db.Exec(`UPDATE global_users SET username = ?, full_name = ?, is_super_admin = ?, is_global_admin = ?, is_protected = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		username, fullName, sa, ga, prot, id)
 	return err
 }
 

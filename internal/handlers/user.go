@@ -131,7 +131,7 @@ func (h *Handler) UserCreate(c *gin.Context) {
 		return
 	}
 
-	globalUser, err := h.globalAuthService.CreateUser(req.Username, req.Password, req.FullName, false, false)
+	globalUser, err := h.globalAuthService.CreateUser(req.Username, req.Password, req.FullName, false, false, false)
 	if err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal membuat user. Username mungkin sudah digunakan.", "currentPage": "users"})
 		return
@@ -260,7 +260,7 @@ func (h *Handler) UserEdit(c *gin.Context) {
 		return
 	}
 
-	if err := h.globalAuthService.UpdateUser(target.ID, req.Username, req.FullName, target.IsSuperAdmin, target.IsGlobalAdmin); err != nil {
+	if err := h.globalAuthService.UpdateUser(target.ID, req.Username, req.FullName, target.IsSuperAdmin, target.IsGlobalAdmin, target.IsProtected); err != nil {
 		h.redirectWithError(c, "/admin/users/"+targetUsername+"/edit", "Gagal mengupdate user")
 		return
 	}
@@ -411,7 +411,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	if err := h.globalAuthService.UpdateUser(userID, req.Username, req.FullName, currentUser.IsSuperAdmin, currentUser.IsGlobalAdmin); err != nil {
+	if err := h.globalAuthService.UpdateUser(userID, req.Username, req.FullName, currentUser.IsSuperAdmin, currentUser.IsGlobalAdmin, currentUser.IsProtected); err != nil {
 		h.redirectWithError(c, "/profile", "Gagal sinkronisasi profil, coba lagi")
 		return
 	}
