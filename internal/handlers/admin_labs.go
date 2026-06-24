@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -165,6 +166,9 @@ func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
 		delete(h.labsDB, urlPath)
 	}
 
+	// Rename file DB + WAL/SHM ke .deleted (soft-delete, reversible)
+	renameLabDB(lab.DBPath)
+
 	// Hapus dari config slice
 	newLabs := make([]config.LabConfig, 0, len(h.cfg.Labs)-1)
 	for _, l := range h.cfg.Labs {
@@ -187,4 +191,23 @@ func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
 	session.Save()
 
 	c.Redirect(http.StatusFound, "/labs")
+}
+
+// renameLabDB merename file SQLite .db + WAL/SHM dengan suffix .deleted
+// untuk soft-delete yang reversible tanpa kehilangan data di disk.
+func renameLabDB(dbPath string) {
+	if dbPath == "" {
+		return
+	}
+	if err := os.Rename(dbPath, dbPath+".deleted"); err != nil {
+		log.Printf("Warning: gagal rename DB %s: %v", dbPath, err)
+	}
+	for _, ext := range []string{"-wal", "-shm"} {
+		p := dbPath + ext
+		if _, err := os.Stat(p); err == nil {
+			if err := os.Rename(p, p+".deleted"); err != nil {
+				log.Printf("Warning: gagal rename %s: %v", p, err)
+			}
+		}
+	}
 }
