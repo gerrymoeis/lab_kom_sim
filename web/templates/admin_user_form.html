@@ -56,12 +56,15 @@
                         </div>
                     </div>
 
+                    {{ if and $.is_super_admin $.is_protected }}
                     <div class="mb-3 form-check">
-                        <input type="checkbox" name="is_super_admin" class="form-check-input" value="1"
-                            id="is_super_admin"
-                            {{ if .user.IsSuperAdmin }}checked{{ end }}>
-                        <label class="form-check-label" for="is_super_admin">Super Admin</label>
+                        <input type="checkbox" name="is_global_admin" class="form-check-input" value="1"
+                            id="is_global_admin"
+                            {{ if .user.IsGlobalAdmin }}checked{{ end }}>
+                        <label class="form-check-label" for="is_global_admin">Global Admin Biasa</label>
+                        <small class="text-muted d-block">Akses semua lab + dapat hapus user biasa di semua lab</small>
                     </div>
+                    {{ end }}
 
                     <div id="lab_permissions_section" class="mb-3">
                         <label class="form-label">Akses Lab</label>
@@ -95,11 +98,19 @@
         </div>
     </div>
     <script>
-        document.getElementById('is_super_admin').addEventListener('change', function() {
-            document.getElementById('lab_permissions_section').style.display = this.checked ? 'none' : 'block';
+        document.getElementById('is_global_admin')?.addEventListener('change', function() {
+            document.getElementById('lab_permissions_section').style.opacity = this.checked ? '0.5' : '1';
+            document.querySelectorAll('#lab_permissions_section input[type="checkbox"]').forEach(function(cb) {
+                cb.disabled = this.checked;
+                if (this.checked) cb.checked = true;
+            }, this);
         });
-        if (document.getElementById('is_super_admin').checked) {
-            document.getElementById('lab_permissions_section').style.display = 'none';
+        if (document.getElementById('is_global_admin')?.checked) {
+            document.getElementById('lab_permissions_section').style.opacity = '0.5';
+            document.querySelectorAll('#lab_permissions_section input[type="checkbox"]').forEach(function(cb) {
+                cb.disabled = true;
+                cb.checked = true;
+            });
         }
     </script>
     <script src="{{ staticURL "vendor/bootstrap/js/bootstrap.bundle.min.js" }}"></script>

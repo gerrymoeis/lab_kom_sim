@@ -48,7 +48,7 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 	fullName := c.PostForm("full_name")
-	isSuperAdmin := c.PostForm("is_super_admin") == "1"
+	isGlobalAdmin := c.PostForm("is_global_admin") == "1"
 
 	if username == "" || password == "" {
 		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
@@ -59,16 +59,16 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 		return
 	}
 
-	if isSuperAdmin && !h.isProtected(c) {
+	if isGlobalAdmin && !h.isProtected(c) {
 		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
 			"title": "Buat User Baru",
-			"error": "Hanya Super Admin yang dapat membuat Super Admin baru",
+			"error": "Hanya Super Admin yang dapat membuat Global Admin Biasa",
 			"labs":  h.cfg.Labs,
 		})
 		return
 	}
 
-	user, err := h.globalAuthService.CreateUser(username, password, fullName, isSuperAdmin)
+	user, err := h.globalAuthService.CreateUser(username, password, fullName, false, isGlobalAdmin)
 	if err != nil {
 		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
 			"title": "Buat User Baru",
@@ -78,7 +78,26 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 		return
 	}
 
-	if !isSuperAdmin {
+	if isGlobalAdmin {
+		perms := make([]struct {
+			LabURLPath string
+			Role       string
+		}, len(h.cfg.Labs))
+		for i, lab := range h.cfg.Labs {
+			perms[i] = struct {
+				LabURLPath string
+				Role       string
+			}{lab.URLPath, "admin"}
+		}
+		if err := h.globalAuthService.SetUserPermissions(user.ID, perms); err != nil {
+			h.render(c, http.StatusInternalServerError, "admin_user_form.html", gin.H{
+				"title": "Buat User Baru",
+				"error": "User dibuat tetapi gagal set permissions",
+				"labs":  h.cfg.Labs,
+			})
+			return
+		}
+	} else {
 		labs := c.PostFormArray("labs")
 		roles := c.PostFormArray("roles")
 		perms := make([]struct {
@@ -158,8 +177,16 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 
 	username := c.PostForm("username")
 	fullName := c.PostForm("full_name")
-	isSuperAdmin := c.PostForm("is_super_admin") == "1"
 	newPassword := c.PostForm("new_password")
+	isGlobalAdmin := c.PostForm("is_global_admin") == "1"
+
+	if isGlobalAdmin && !h.isProtected(c) {
+		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
+			"title": "Edit User",
+			"error": "Hanya Super Admin yang dapat mengubah status Global Admin Biasa",
+		})
+		return
+	}
 
 	if username == "" {
 		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
@@ -169,7 +196,7 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 		return
 	}
 
-	if err := h.globalAuthService.UpdateUser(id, username, fullName, isSuperAdmin); err != nil {
+	if err := h.globalAuthService.UpdateUser(id, username, fullName, targetUser.IsSuperAdmin, isGlobalAdmin); err != nil {
 		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
 			"title": "Edit User",
 			"error": "Gagal update user: " + err.Error(),
@@ -187,7 +214,25 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 		}
 	}
 
-	if !isSuperAdmin {
+	if isGlobalAdmin {
+		perms := make([]struct {
+			LabURLPath string
+			Role       string
+		}, len(h.cfg.Labs))
+		for i, lab := range h.cfg.Labs {
+			perms[i] = struct {
+				LabURLPath string
+				Role       string
+			}{lab.URLPath, "admin"}
+		}
+		if err := h.globalAuthService.SetUserPermissions(id, perms); err != nil {
+			h.render(c, http.StatusInternalServerError, "admin_user_form.html", gin.H{
+				"title": "Edit User",
+				"error": "Gagal update permissions",
+			})
+			return
+		}
+	} else {
 		labs := c.PostFormArray("labs")
 		roles := c.PostFormArray("roles")
 		perms := make([]struct {

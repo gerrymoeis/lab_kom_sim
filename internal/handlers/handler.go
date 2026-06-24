@@ -80,7 +80,7 @@ func getRequestContext(c *gin.Context) (ipAddress, userAgent string) {
 	return
 }
 
-func (h *Handler) canAccessProfile(actorUsername string, target *models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount, targetIsMainAccount, actorIsProtected bool) bool {
+func (h *Handler) canAccessProfile(actorUsername string, target *models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount, targetIsMainAccount, actorIsProtected, actorIsGlobalAdmin bool) bool {
 	if target.IsProtected || target.IsSuperAdmin {
 		return actorUsername == target.Username
 	}
@@ -93,10 +93,13 @@ func (h *Handler) canAccessProfile(actorUsername string, target *models.GlobalUs
 	if actorIsMainAccount && targetIsMainAccount && actorUsername != target.Username {
 		return false
 	}
-	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount
+	if actorIsGlobalAdmin && targetIsMainAccount {
+		return false
+	}
+	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount || actorIsGlobalAdmin
 }
 
-func CanAccessProfile(actorUsername string, target models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount, targetIsMainAccount, actorIsProtected bool) bool {
+func CanAccessProfile(actorUsername string, target models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount, targetIsMainAccount, actorIsProtected, actorIsGlobalAdmin bool) bool {
 	if target.IsProtected || target.IsSuperAdmin {
 		return actorUsername == target.Username
 	}
@@ -109,7 +112,10 @@ func CanAccessProfile(actorUsername string, target models.GlobalUser, actorIsSup
 	if actorIsMainAccount && targetIsMainAccount && actorUsername != target.Username {
 		return false
 	}
-	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount
+	if actorIsGlobalAdmin && targetIsMainAccount {
+		return false
+	}
+	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount || actorIsGlobalAdmin
 }
 
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {
@@ -134,6 +140,12 @@ func (h *Handler) isSuperAdmin(c *gin.Context) bool {
 func (h *Handler) isProtected(c *gin.Context) bool {
 	session := sessions.Default(c)
 	val, _ := session.Get("is_protected").(bool)
+	return val
+}
+
+func (h *Handler) isGlobalAdmin(c *gin.Context) bool {
+	session := sessions.Default(c)
+	val, _ := session.Get("is_global_admin").(bool)
 	return val
 }
 
@@ -184,6 +196,7 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	data["is_super_admin"] = c.GetBool("is_super_admin")
 	data["is_protected"] = h.isProtected(c)
 	data["is_main_account"] = h.isMainAccount(c)
+	data["is_global_admin"] = h.isGlobalAdmin(c)
 	_, username, role, _ := h.user(c)
 	data["username"] = username
 	data["role"] = role
