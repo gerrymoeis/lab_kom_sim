@@ -64,6 +64,13 @@
                         <label class="form-check-label" for="is_global_admin">Global Admin Biasa</label>
                         <small class="text-muted d-block">Akses semua lab + dapat hapus user biasa di semua lab</small>
                     </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="is_protected" class="form-check-input" value="1"
+                            id="is_protected"
+                            {{ if .user.IsProtected }}checked{{ end }}>
+                        <label class="form-check-label" for="is_protected">Protected</label>
+                        <small class="text-muted d-block">Tidak dapat dihapus/diedit oleh Global Admin Biasa</small>
+                    </div>
                     {{ end }}
 
                     <div id="lab_permissions_section" class="mb-3">
