@@ -119,7 +119,7 @@ func CanAccessProfile(actorUsername string, target models.GlobalUser, actorIsSup
 }
 
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {
-	userID, username, _, ok = middleware.GetCurrentUser(c)
+	userID, username, _, _, ok = middleware.GetCurrentUser(c)
 	if !ok {
 		h.redirect(c, "/login")
 		return
@@ -133,7 +133,7 @@ func (h *Handler) redirect(c *gin.Context, path string) {
 }
 
 func (h *Handler) isSuperAdmin(c *gin.Context) bool {
-	_, _, val, ok := middleware.GetCurrentUser(c)
+	_, _, val, _, ok := middleware.GetCurrentUser(c)
 	return ok && val
 }
 
@@ -150,7 +150,7 @@ func (h *Handler) isGlobalAdmin(c *gin.Context) bool {
 }
 
 func (h *Handler) isMainAccount(c *gin.Context) bool {
-	userID, _, _, ok := middleware.GetCurrentUser(c)
+	userID, _, _, _, ok := middleware.GetCurrentUser(c)
 	if !ok {
 		return false
 	}
@@ -196,7 +196,7 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	data["is_super_admin"] = c.GetBool("is_super_admin")
 	data["is_protected"] = h.isProtected(c)
 	data["is_main_account"] = h.isMainAccount(c)
-	data["is_global_admin"] = h.isGlobalAdmin(c)
+	data["is_global_admin"] = c.GetBool("is_global_admin")
 	_, username, role, _ := h.user(c)
 	data["username"] = username
 	data["role"] = role
