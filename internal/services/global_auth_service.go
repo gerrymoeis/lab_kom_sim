@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("username atau password salah")
-	ErrAlreadyLoggedIn    = errors.New("akun sudah login di tempat lain")
-	ErrProtectedUser      = errors.New("cannot delete protected user")
+	ErrInvalidCredentials      = errors.New("username atau password salah")
+	ErrAlreadyLoggedIn         = errors.New("akun sudah login di tempat lain")
+	ErrProtectedUser           = errors.New("cannot delete protected user")
+	ErrCannotDeleteSuperAdmin  = errors.New("cannot delete super admin")
 )
 
 var DefaultPasswordMap = map[string]string{
@@ -131,6 +132,9 @@ func (s *GlobalAuthService) DeleteUser(id int) error {
 	}
 	if user.IsProtected {
 		return ErrProtectedUser
+	}
+	if user.IsSuperAdmin {
+		return ErrCannotDeleteSuperAdmin
 	}
 	s.userRepo.ClearPermissions(id)
 	s.userRepo.ClearSessionToken(id)

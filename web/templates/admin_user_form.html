@@ -79,8 +79,7 @@
                             </div>
                             <div class="col-auto">
                                 <select name="roles" class="form-select form-select-sm">
-                                    <option value="user" {{ if eq (index $.permissions $lab.URLPath) "user" }}selected{{ end }}>User</option>
-                                    <option value="admin" {{ if eq (index $.permissions $lab.URLPath) "admin" }}selected{{ end }}>Admin Lab</option>
+                                    <option value="admin" selected>Admin Lab</option>
                                 </select>
                             </div>
                         </div>

@@ -73,8 +73,9 @@
                             <td>
                                 {{ .FullName }}
                                 {{ $isSuperAdmin := or .IsSuperAdmin (index $.superAdminUsernames .Username) }}
+                                {{ $isTargetMA := index $.mainAccountIDs .ID }}
                                 {{ if $isSuperAdmin }}<span class="badge bg-dark ms-1">Super Admin</span>{{ end }}
-                                {{ if and (not $isSuperAdmin) (index $.mainAccountIDs .ID) }}<span class="badge bg-secondary ms-1">Akun Utama</span>{{ end }}
+                                {{ if and (not $isSuperAdmin) $isTargetMA }}<span class="badge bg-secondary ms-1">Akun Utama</span>{{ end }}
                             </td>
                             <td>
                                 <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">
@@ -82,6 +83,7 @@
                                 </span>
                             </td>
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
+                            {{ $canDelete := and (not .IsProtected) (ne $.username .Username) (not $isSuperAdmin) }}
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                 {{ if index $.canAccess .ID }}
@@ -91,9 +93,10 @@
                                 <a href="{{ $.basePath }}/admin/users/{{ .Username }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                {{ if and (not .IsProtected) (ne $.username .Username) (or $.isSuperAdmin (and $.isMainAccount (not $isSuperAdmin))) }}
-                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"
-                                    onclick="confirmDelete({message:'Hapus user ini?', formId:'del-user-{{ .Username }}'})">
+                                {{ if and $canDelete (or $.is_protected (and (not $isTargetMA) (or $.isSuperAdmin $.is_main_account))) }}
+                                <button type="button" class="btn btn-sm btn-danger" title="Hapus"{{ if $isTargetMA }}
+                                    onclick="confirmDelete({message:'Hapus akun utama {{ .Username }}?', requirePrefix:true, prefix:'{{ .Username }}', type:'akun utama', formId:'del-user-{{ .Username }}'})"{{ else }}
+                                    onclick="confirmDelete({message:'Hapus user {{ .Username }}?', formId:'del-user-{{ .Username }}'})"{{ end }}>
                                     <i class="bi bi-trash"></i>
                                 </button>
                                 <form id="del-user-{{ .Username }}" method="POST" action="{{ $.basePath }}/admin/users/{{ .Username }}/delete" class="d-none"></form>
@@ -103,7 +106,7 @@
                                 {{ end }}
                                 </span>
                             </td>
-                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none">{{ if and (not .IsProtected) (ne $.username .Username) (or $.isSuperAdmin (and $.isMainAccount (not $isSuperAdmin))) }}<input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}">{{ end }}</span></td>
+                            <td class="batch-toggle-col text-end" style="width:1%"><span class="batch-mode-on d-none">{{ if and $canDelete (or $.is_protected (and (not $isTargetMA) (or $.isSuperAdmin $.is_main_account))) }}<input type="checkbox" class="batch-check form-check-input" value="{{ .Username }}">{{ end }}</span></td>
                         </tr>
                         {{ else }}
                         <tr>
