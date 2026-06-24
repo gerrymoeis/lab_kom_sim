@@ -102,19 +102,19 @@ func (s *GlobalAuthService) GetUserByUsername(username string) (*models.GlobalUs
 	return s.userRepo.GetByUsername(username)
 }
 
-func (s *GlobalAuthService) CreateUser(username, password, fullName string, isSuperAdmin bool) (*models.GlobalUser, error) {
+func (s *GlobalAuthService) CreateUser(username, password, fullName string, isSuperAdmin, isGlobalAdmin bool) (*models.GlobalUser, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("gagal hash password: %w", err)
 	}
-	_, err = s.userRepo.Create(username, string(hash), fullName, isSuperAdmin)
+	_, err = s.userRepo.Create(username, string(hash), fullName, isSuperAdmin, isGlobalAdmin)
 	if err != nil {
 		return nil, err
 	}
 	return s.userRepo.GetByUsername(username)
 }
 
-func (s *GlobalAuthService) UpdateUser(id int, username, fullName string, isSuperAdmin bool) error {
+func (s *GlobalAuthService) UpdateUser(id int, username, fullName string, isSuperAdmin, isGlobalAdmin bool) error {
 	old, err := s.userRepo.GetByID(id)
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func (s *GlobalAuthService) UpdateUser(id int, username, fullName string, isSupe
 	if old.Username != username {
 		_ = s.userRepo.ClearDefaultPasswordFlag(id)
 	}
-	return s.userRepo.Update(id, username, fullName, isSuperAdmin)
+	return s.userRepo.Update(id, username, fullName, isSuperAdmin, isGlobalAdmin)
 }
 
 func (s *GlobalAuthService) DeleteUser(id int) error {

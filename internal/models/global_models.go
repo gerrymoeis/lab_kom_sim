@@ -10,6 +10,7 @@ type GlobalUser struct {
 	Role               string    `json:"role"`
 	IsSuperAdmin       bool      `json:"is_super_admin"`
 	IsProtected        bool      `json:"is_protected"`
+	IsGlobalAdmin      bool      `json:"is_global_admin"`
 	SessionToken       string    `json:"-"`
 	PasswordIsDefault  bool      `json:"password_is_default"`
 	CreatedAt          time.Time `json:"created_at"`

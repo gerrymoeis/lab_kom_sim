@@ -88,10 +88,11 @@ func (h *Handler) UserList(c *gin.Context) {
 	isSuperAdmin := h.isSuperAdmin(c)
 	isMainAccount := h.isMainAccount(c)
 	isProtected := h.isProtected(c)
+	isGlobalAdmin := h.isGlobalAdmin(c)
 	canAccess := make(map[int]bool)
 	for i := range users {
 		targetIsMainAccount := mainAccountIDs[users[i].ID]
-		canAccess[users[i].ID] = h.canAccessProfile(username, &users[i], isSuperAdmin, isMainAccount, targetIsMainAccount, isProtected)
+		canAccess[users[i].ID] = h.canAccessProfile(username, &users[i], isSuperAdmin, isMainAccount, targetIsMainAccount, isProtected, isGlobalAdmin)
 	}
 
 	h.renderTemplate(c, http.StatusOK, "user/list.html", gin.H{
@@ -125,12 +126,12 @@ func (h *Handler) UserCreate(c *gin.Context) {
 		return
 	}
 
-	if !h.isSuperAdmin(c) && !h.isMainAccount(c) {
+	if !h.isSuperAdmin(c) && !h.isMainAccount(c) && !h.isGlobalAdmin(c) {
 		h.renderTemplate(c, http.StatusForbidden, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Hanya super admin atau akun utama yang dapat menambah user", "currentPage": "users"})
 		return
 	}
 
-	globalUser, err := h.globalAuthService.CreateUser(req.Username, req.Password, req.FullName, false)
+	globalUser, err := h.globalAuthService.CreateUser(req.Username, req.Password, req.FullName, false, false)
 	if err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "user/create.html", gin.H{"title": "Tambah User Baru", "error": "Gagal membuat user. Username mungkin sudah digunakan.", "currentPage": "users"})
 		return
@@ -174,7 +175,7 @@ func (h *Handler) UserDetail(c *gin.Context) {
 		}
 	}
 
-	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, h.isProtected(c)) {
+	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, h.isProtected(c), h.isGlobalAdmin(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -211,7 +212,7 @@ func (h *Handler) UserEditPage(c *gin.Context) {
 		}
 	}
 
-	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, h.isProtected(c)) {
+	if !h.canAccessProfile(username, user, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, h.isProtected(c), h.isGlobalAdmin(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -248,7 +249,7 @@ func (h *Handler) UserEdit(c *gin.Context) {
 		}
 	}
 
-	if !h.canAccessProfile(u, target, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, h.isProtected(c)) {
+	if !h.canAccessProfile(u, target, h.isSuperAdmin(c), h.isMainAccount(c), targetIsMainAccount, h.isProtected(c), h.isGlobalAdmin(c)) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat mengakses profil user ini")
 		return
 	}
@@ -259,7 +260,7 @@ func (h *Handler) UserEdit(c *gin.Context) {
 		return
 	}
 
-	if err := h.globalAuthService.UpdateUser(target.ID, req.Username, req.FullName, target.IsSuperAdmin); err != nil {
+	if err := h.globalAuthService.UpdateUser(target.ID, req.Username, req.FullName, target.IsSuperAdmin, target.IsGlobalAdmin); err != nil {
 		h.redirectWithError(c, "/admin/users/"+targetUsername+"/edit", "Gagal mengupdate user")
 		return
 	}
@@ -351,7 +352,7 @@ func (h *Handler) UserDelete(c *gin.Context) {
 		h.redirectWithError(c, "/admin/users", "Tidak dapat menghapus akun utama lab")
 		return
 	}
-	if !h.isSuperAdmin(c) && !h.isMainAccount(c) {
+	if !h.isSuperAdmin(c) && !h.isMainAccount(c) && !h.isGlobalAdmin(c) {
 		h.redirectWithError(c, "/admin/users", ErrDeleteNotAllowed.Error())
 		return
 	}
@@ -410,7 +411,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	if err := h.globalAuthService.UpdateUser(userID, req.Username, req.FullName, currentUser.IsSuperAdmin); err != nil {
+	if err := h.globalAuthService.UpdateUser(userID, req.Username, req.FullName, currentUser.IsSuperAdmin, currentUser.IsGlobalAdmin); err != nil {
 		h.redirectWithError(c, "/profile", "Gagal sinkronisasi profil, coba lagi")
 		return
 	}
@@ -560,7 +561,7 @@ func (h *Handler) UserBatchDelete(c *gin.Context) {
 			h.errJSON(c, http.StatusInternalServerError, "Tidak dapat menghapus akun utama lab")
 			return
 		}
-		if !h.isSuperAdmin(c) && !h.isMainAccount(c) {
+		if !h.isSuperAdmin(c) && !h.isMainAccount(c) && !h.isGlobalAdmin(c) {
 			h.activityLogService.LogDelete(uid, u, r, "user", 0,
 				map[string]any{"action": "batch_delete", "count": len(req.IDs), "items": items},
 				ip, ua, ErrDeleteNotAllowed.Error())
