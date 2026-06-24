@@ -25,13 +25,14 @@ func LabRoleInjector() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("role", "admin")
 
-		userID, _, isSuperAdmin, ok := GetCurrentUser(c)
+		userID, _, isSuperAdmin, isGlobalAdmin, ok := GetCurrentUser(c)
 		if !ok {
 			c.Next()
 			return
 		}
 
 		c.Set("is_super_admin", isSuperAdmin)
+		c.Set("is_global_admin", isGlobalAdmin)
 		if isSuperAdmin {
 			c.Set("role", "admin")
 			c.Next()
@@ -66,7 +67,7 @@ func LabRoleInjector() gin.HandlerFunc {
 // LabPermissionRequired checks if user has access to current lab
 func LabPermissionRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID, _, isSuperAdmin, ok := GetCurrentUser(c)
+		userID, _, isSuperAdmin, _, ok := GetCurrentUser(c)
 		if !ok {
 			LabRedirect(c, http.StatusFound, "/login")
 			c.Abort()

@@ -84,7 +84,7 @@
                                 </span>
                             </td>
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
-                            {{ $canDelete := and (not .IsProtected) (ne $.username .Username) (not $isSuperAdmin) }}
+                            {{ $canDelete := and (not .IsProtected) (ne $.username .Username) (not $isSuperAdmin) (or $.is_protected (not .IsGlobalAdmin)) }}
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                 {{ if index $.canAccess .ID }}
