@@ -18,6 +18,7 @@ type LabConfig struct {
 	URLPath     string // "lab-kom-mi" — routing URL, cookies, map keys
 	UploadDir   string // "uploads/lab-kom-mi"
 	Layout      GridLayout
+	EnvIndex    int    // N from LABS_<N>_* (0 = from old format, cannot permanently delete)
 	PublicBuild *PublicBuildConfig
 }
 
