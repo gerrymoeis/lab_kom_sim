@@ -150,8 +150,8 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 			return t
 		},
 		"tzCode": func() string { return timeutil.Code() },
-		"canAccessUser": func(actorUsername string, targetUser models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount bool) bool {
-			return handlers.CanAccessProfile(actorUsername, targetUser, actorIsSuperAdmin, actorIsMainAccount)
+		"canAccessUser": func(actorUsername string, targetUser models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount, targetIsMainAccount, actorIsProtected bool) bool {
+			return handlers.CanAccessProfile(actorUsername, targetUser, actorIsSuperAdmin, actorIsMainAccount, targetIsMainAccount, actorIsProtected)
 		},
 		"currentDateAfter": func(t time.Time) bool { return time.Now().After(t) },
 		"daysBetween": func(start, end *time.Time) string {

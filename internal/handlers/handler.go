@@ -80,16 +80,34 @@ func getRequestContext(c *gin.Context) (ipAddress, userAgent string) {
 	return
 }
 
-func (h *Handler) canAccessProfile(actorUsername string, target *models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount bool) bool {
+func (h *Handler) canAccessProfile(actorUsername string, target *models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount, targetIsMainAccount, actorIsProtected bool) bool {
 	if target.IsProtected || target.IsSuperAdmin {
 		return actorUsername == target.Username
+	}
+	if actorIsProtected {
+		return true
+	}
+	if actorIsSuperAdmin && targetIsMainAccount {
+		return false
+	}
+	if actorIsMainAccount && targetIsMainAccount && actorUsername != target.Username {
+		return false
 	}
 	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount
 }
 
-func CanAccessProfile(actorUsername string, target models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount bool) bool {
+func CanAccessProfile(actorUsername string, target models.GlobalUser, actorIsSuperAdmin, actorIsMainAccount, targetIsMainAccount, actorIsProtected bool) bool {
 	if target.IsProtected || target.IsSuperAdmin {
 		return actorUsername == target.Username
+	}
+	if actorIsProtected {
+		return true
+	}
+	if actorIsSuperAdmin && targetIsMainAccount {
+		return false
+	}
+	if actorIsMainAccount && targetIsMainAccount && actorUsername != target.Username {
+		return false
 	}
 	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount
 }
@@ -111,6 +129,12 @@ func (h *Handler) redirect(c *gin.Context, path string) {
 func (h *Handler) isSuperAdmin(c *gin.Context) bool {
 	_, _, val, ok := middleware.GetCurrentUser(c)
 	return ok && val
+}
+
+func (h *Handler) isProtected(c *gin.Context) bool {
+	session := sessions.Default(c)
+	val, _ := session.Get("is_protected").(bool)
+	return val
 }
 
 func (h *Handler) isMainAccount(c *gin.Context) bool {
@@ -158,6 +182,7 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	data["lab"] = lab
 	data["basePath"] = h.labURL(c, "")
 	data["is_super_admin"] = c.GetBool("is_super_admin")
+	data["is_protected"] = h.isProtected(c)
 	data["is_main_account"] = h.isMainAccount(c)
 	_, username, role, _ := h.user(c)
 	data["username"] = username

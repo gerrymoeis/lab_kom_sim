@@ -59,6 +59,15 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 		return
 	}
 
+	if isSuperAdmin && !h.isProtected(c) {
+		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
+			"title": "Buat User Baru",
+			"error": "Hanya Super Admin yang dapat membuat Super Admin baru",
+			"labs":  h.cfg.Labs,
+		})
+		return
+	}
+
 	user, err := h.globalAuthService.CreateUser(username, password, fullName, isSuperAdmin)
 	if err != nil {
 		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
@@ -77,7 +86,7 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 			Role       string
 		}, 0, len(labs))
 		for i, lab := range labs {
-			role := "user"
+			role := "admin"
 			if i < len(roles) && roles[i] != "" {
 				role = roles[i]
 			}
@@ -133,8 +142,17 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 		return
 	}
 
-	if _, err := h.globalAuthService.GetUser(id); err != nil {
+	targetUser, err := h.globalAuthService.GetUser(id)
+	if err != nil {
 		c.AbortWithStatus(404)
+		return
+	}
+
+	if targetUser.IsSuperAdmin && !h.isProtected(c) {
+		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
+			"title": "Edit User",
+			"error": "Hanya Super Admin yang dapat mengedit Super Admin",
+		})
 		return
 	}
 
@@ -177,7 +195,7 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 			Role       string
 		}, 0, len(labs))
 		for i, lab := range labs {
-			role := "user"
+			role := "admin"
 			if i < len(roles) && roles[i] != "" {
 				role = roles[i]
 			}
@@ -205,11 +223,26 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 		return
 	}
 
+	// Check if user is main account in any lab
+	var mainCount int
+	h.globalDB.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND is_main_account = 1`, id).Scan(&mainCount)
+	if mainCount > 0 {
+		users, _ := h.globalAuthService.ListUsers()
+		h.render(c, http.StatusForbidden, "admin_users.html", gin.H{
+			"title": "Manage Users",
+			"error": "User ini adalah akun utama lab dan tidak bisa dihapus",
+			"users": users,
+		})
+		return
+	}
+
 	if err := h.globalAuthService.DeleteUser(id); err != nil {
 		users, _ := h.globalAuthService.ListUsers()
 		errMsg := "Gagal menghapus user"
 		if errors.Is(err, services.ErrProtectedUser) {
 			errMsg = "User ini tidak bisa dihapus (akun protected)"
+		} else if errors.Is(err, services.ErrCannotDeleteSuperAdmin) {
+			errMsg = "Tidak dapat menghapus super admin"
 		}
 		h.render(c, http.StatusForbidden, "admin_users.html", gin.H{
 			"title": "Manage Users",
@@ -247,7 +280,7 @@ func (h *GlobalHandler) AdminUserPermissionsSave(c *gin.Context) {
 		Role       string
 	}, 0, len(labs))
 	for i, lab := range labs {
-		role := "user"
+		role := "admin"
 		if i < len(roles) && roles[i] != "" {
 			role = roles[i]
 		}

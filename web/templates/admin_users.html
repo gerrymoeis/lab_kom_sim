@@ -63,7 +63,7 @@
                                 <a href="/admin/users/{{ $user.ID }}/permissions" class="btn btn-info btn-sm">
                                     <i class="bi bi-shield"></i>
                                 </a>
-                                {{ if not $user.IsProtected }}
+                                {{ if and (not $user.IsProtected) (not $user.IsSuperAdmin) }}
                                 <form method="POST" action="/admin/users/{{ $user.ID }}/delete" class="d-inline">
                                     <input type="hidden" name="_csrf" value="{{ $.csrf_token }}">
                                     <button class="btn btn-danger btn-sm" onclick="return confirm('Hapus user ini?')">
