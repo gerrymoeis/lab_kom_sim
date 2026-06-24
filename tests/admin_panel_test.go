@@ -1,12 +1,15 @@
 package tests
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"testing"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // loginAsAdmin logs in as super admin, extracts CSRF token, returns cookies + token.
@@ -409,9 +412,15 @@ func TestAdminUserDelete(t *testing.T) {
 		if !env.LabA.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
-		// Mark admin (id=1) as protected in DB
-		env.GlobalDB.Exec("UPDATE global_users SET is_protected = 1 WHERE id = 1")
-		resp := adminPost(env, "/users/1/delete", "")
+		// Create a non-SA user marked as protected
+		hash, _ := bcrypt.GenerateFromPassword([]byte("test123"), bcrypt.DefaultCost)
+		env.GlobalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin, is_protected) VALUES (?, ?, ?, 0, 1)", "protected_user", string(hash), "Protected User")
+		var protID int
+		env.GlobalDB.QueryRow("SELECT id FROM global_users WHERE username='protected_user'").Scan(&protID)
+		if protID == 0 {
+			t.Fatal("could not get protected user id")
+		}
+		resp := adminPost(env, fmt.Sprintf("/users/%d/delete", protID), "")
 		defer resp.Body.Close()
 		if resp.StatusCode != 403 {
 			t.Errorf("expected 403 for protected user, got %d", resp.StatusCode)
