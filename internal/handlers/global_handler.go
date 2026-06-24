@@ -51,7 +51,14 @@ func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin
 	data["username"] = username
 	data["is_super_admin"] = isSuperAdmin
 	data["is_protected"] = h.isProtected(c)
+	data["is_global_admin"] = h.isGlobalAdmin(c)
 	c.HTML(status, tmpl, data)
+}
+
+func (h *GlobalHandler) isGlobalAdmin(c *gin.Context) bool {
+	session := sessions.Default(c)
+	val, _ := session.Get("is_global_admin").(bool)
+	return val
 }
 
 func (h *GlobalHandler) isProtected(c *gin.Context) bool {
@@ -142,6 +149,7 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 	session.Set("full_name", user.FullName)
 	session.Set("is_super_admin", user.IsSuperAdmin)
 	session.Set("is_protected", user.IsProtected)
+	session.Set("is_global_admin", user.IsGlobalAdmin)
 	session.Set("role", "admin")
 	session.Set("session_token", token)
 	session.Set("labs", labPaths)

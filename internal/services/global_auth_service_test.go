@@ -27,6 +27,7 @@ func setupGlobalAuthTest(t *testing.T) (*GlobalAuthService, *repository.GlobalUs
 			full_name TEXT NOT NULL DEFAULT '',
 			is_super_admin INTEGER NOT NULL DEFAULT 0,
 			is_protected INTEGER NOT NULL DEFAULT 0,
+			is_global_admin INTEGER NOT NULL DEFAULT 0,
 			session_token TEXT DEFAULT '',
 			password_is_default INTEGER NOT NULL DEFAULT 1,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -11,7 +11,7 @@ import (
 var globalUserCols = []string{
 	"id", "username", "password", "full_name",
 	"'admin' AS role",
-	"is_super_admin", "is_protected", "session_token",
+	"is_super_admin", "is_protected", "is_global_admin", "session_token",
 	"password_is_default",
 	"created_at", "updated_at",
 }
@@ -38,22 +38,30 @@ func (r *GlobalUserRepository) GetByID(id int) (*models.GlobalUser, error) {
 	return getOne[models.GlobalUser](r.db, "global_users", globalUserCols, "id = ?", id)
 }
 
-func (r *GlobalUserRepository) Create(username, hashedPassword, fullName string, isSuperAdmin bool) (sql.Result, error) {
+func (r *GlobalUserRepository) Create(username, hashedPassword, fullName string, isSuperAdmin, isGlobalAdmin bool) (sql.Result, error) {
 	sa := 0
 	if isSuperAdmin {
 		sa = 1
 	}
-	return r.db.Exec(`INSERT INTO global_users (username, password, full_name, is_super_admin, password_is_default) VALUES (?, ?, ?, ?, 0)`,
-		username, hashedPassword, fullName, sa)
+	ga := 0
+	if isGlobalAdmin {
+		ga = 1
+	}
+	return r.db.Exec(`INSERT INTO global_users (username, password, full_name, is_super_admin, is_global_admin, password_is_default) VALUES (?, ?, ?, ?, ?, 0)`,
+		username, hashedPassword, fullName, sa, ga)
 }
 
-func (r *GlobalUserRepository) Update(id int, username, fullName string, isSuperAdmin bool) error {
+func (r *GlobalUserRepository) Update(id int, username, fullName string, isSuperAdmin, isGlobalAdmin bool) error {
 	sa := 0
 	if isSuperAdmin {
 		sa = 1
 	}
-	_, err := r.db.Exec(`UPDATE global_users SET username = ?, full_name = ?, is_super_admin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-		username, fullName, sa, id)
+	ga := 0
+	if isGlobalAdmin {
+		ga = 1
+	}
+	_, err := r.db.Exec(`UPDATE global_users SET username = ?, full_name = ?, is_super_admin = ?, is_global_admin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+		username, fullName, sa, ga, id)
 	return err
 }
 
@@ -166,7 +174,7 @@ func (r *GlobalUserRepository) ListByLabPaginated(labURLPath, searchTerm, role, 
 	}
 
 	q := `SELECT gu.id, gu.username, gu.full_name, lp.role,
-	             gu.is_protected, gu.is_super_admin, gu.created_at
+	             gu.is_protected, gu.is_super_admin, gu.is_global_admin, gu.created_at
 	       ` + baseFrom + baseWhere + ` ORDER BY ` + sortCol + ` ` + sortOrder + ` LIMIT ? OFFSET ?`
 	queryArgs := append(args, pageSize, offset)
 
@@ -180,7 +188,7 @@ func (r *GlobalUserRepository) ListByLabPaginated(labURLPath, searchTerm, role, 
 	for rows.Next() {
 		var u models.GlobalUser
 		if err := rows.Scan(&u.ID, &u.Username, &u.FullName, &u.Role,
-			&u.IsProtected, &u.IsSuperAdmin, &u.CreatedAt); err != nil {
+			&u.IsProtected, &u.IsSuperAdmin, &u.IsGlobalAdmin, &u.CreatedAt); err != nil {
 			return nil, 0, err
 		}
 		users = append(users, u)
@@ -192,12 +200,12 @@ func (r *GlobalUserRepository) GetByUsernameAndLab(username, labURLPath string) 
 	var u models.GlobalUser
 	err := r.db.QueryRow(`
 		SELECT gu.id, gu.username, gu.full_name, lp.role,
-		       gu.is_protected, gu.is_super_admin, gu.created_at, gu.updated_at
+		       gu.is_protected, gu.is_super_admin, gu.is_global_admin, gu.created_at, gu.updated_at
 		FROM global_users gu
 		JOIN lab_permissions lp ON lp.user_id = gu.id
 		WHERE gu.username = ? AND lp.lab_url_path = ?
 	`, username, labURLPath).Scan(&u.ID, &u.Username, &u.FullName, &u.Role,
-		&u.IsProtected, &u.IsSuperAdmin, &u.CreatedAt, &u.UpdatedAt)
+		&u.IsProtected, &u.IsSuperAdmin, &u.IsGlobalAdmin, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

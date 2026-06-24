@@ -58,6 +58,13 @@ func RunGlobalMigrations(db *DB) error {
 		}
 	}
 
+	// Add is_global_admin to global_users
+	if !colExistsGlobal(db, "global_users", "is_global_admin") {
+		if _, err := db.Exec(`ALTER TABLE global_users ADD COLUMN is_global_admin INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("failed to add is_global_admin to global_users: %w", err)
+		}
+	}
+
 	return nil
 }
 
