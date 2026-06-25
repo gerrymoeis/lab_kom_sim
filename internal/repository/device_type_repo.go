@@ -52,7 +52,7 @@ func (r *DeviceTypeRepository) ListPaginated(category, search, sortBy string, pa
 }
 
 func (r *DeviceTypeRepository) listWithQuery(category, search, sortBy string, suffix string, limit, offset int) ([]models.DeviceType, error) {
-	query := `SELECT dt.id, dt.category_id, c.name, dt.name, dt.brand, dt.model, dt.asset_code_prefix,
+	query := `SELECT dt.id, dt.category_id, c.name, dt.name, dt.brand, dt.model, dt.label_prefix,
 		dt.usage_type, dt.default_location, COALESCE(dt.photo,''), dt.created_at, dt.updated_at
 		FROM device_types dt JOIN categories c ON c.id = dt.category_id WHERE 1=1`
 	var args []any
@@ -87,7 +87,7 @@ func (r *DeviceTypeRepository) listWithQuery(category, search, sortBy string, su
 		var dt models.DeviceType
 		var brand, model, loc, photo sql.NullString
 		if err := rows.Scan(&dt.ID, &dt.CategoryID, &dt.CategoryName, &dt.Name,
-			&brand, &model, &dt.AssetCodePrefix, &dt.UsageType, &loc, &photo, &dt.CreatedAt, &dt.UpdatedAt); err != nil {
+			&brand, &model, &dt.LabelPrefix, &dt.UsageType, &loc, &photo, &dt.CreatedAt, &dt.UpdatedAt); err != nil {
 			return nil, err
 		}
 		dt.Brand = valStr(brand)
@@ -101,7 +101,7 @@ func (r *DeviceTypeRepository) listWithQuery(category, search, sortBy string, su
 
 func (r *DeviceTypeRepository) GetAllSimple() ([]models.DeviceType, error) {
 	rows, err := r.db.Query(`SELECT dt.id, dt.category_id, c.name, dt.name,
-		dt.asset_code_prefix, dt.usage_type, dt.default_location, COALESCE(dt.photo,'')
+		dt.label_prefix, dt.usage_type, dt.default_location, COALESCE(dt.photo,'')
 		FROM device_types dt JOIN categories c ON c.id = dt.category_id ORDER BY c.name, dt.name`)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func (r *DeviceTypeRepository) GetAllSimple() ([]models.DeviceType, error) {
 		var dt models.DeviceType
 		var loc, photo sql.NullString
 		if rows.Scan(&dt.ID, &dt.CategoryID, &dt.CategoryName, &dt.Name,
-			&dt.AssetCodePrefix, &dt.UsageType, &loc, &photo) != nil {
+			&dt.LabelPrefix, &dt.UsageType, &loc, &photo) != nil {
 			continue
 		}
 		dt.DefaultLocation = valStr(loc)
@@ -127,8 +127,8 @@ func (r *DeviceTypeRepository) GetBySlug(slug string) (*models.DeviceType, error
 	return r.getByField("slug", slug)
 }
 
-func (r *DeviceTypeRepository) GetByPrefixSlug(slug string) (*models.DeviceType, error) {
-	return scanDeviceTypeRowWithPrefix(r.db, "LOWER(dt.asset_code_prefix) = LOWER(?)", slug)
+func (r *DeviceTypeRepository) GetByLabelSlug(slug string) (*models.DeviceType, error) {
+	return scanDeviceTypeRowWithPrefix(r.db, "LOWER(dt.label_prefix) = LOWER(?)", slug)
 }
 
 func (r *DeviceTypeRepository) getByField(field, value string) (*models.DeviceType, error) {
@@ -142,9 +142,9 @@ func (r *DeviceTypeRepository) GetByID(id int) (*models.DeviceType, error) {
 func (r *DeviceTypeRepository) GetByIDSimple(id int) (*models.DeviceType, error) {
 	var dt models.DeviceType
 	var loc, photo sql.NullString
-	err := r.db.QueryRow(`SELECT id, category_id, name, asset_code_prefix, usage_type,
+		err := r.db.QueryRow(`SELECT id, category_id, name, label_prefix, usage_type,
 		COALESCE(default_location,''), COALESCE(photo,'') FROM device_types WHERE id = ?`, id).
-		Scan(&dt.ID, &dt.CategoryID, &dt.Name, &dt.AssetCodePrefix, &dt.UsageType, &loc, &photo)
+		Scan(&dt.ID, &dt.CategoryID, &dt.Name, &dt.LabelPrefix, &dt.UsageType, &loc, &photo)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (r *DeviceTypeRepository) GetByIDSimple(id int) (*models.DeviceType, error)
 
 func (r *DeviceTypeRepository) GetPrefix(id int) (string, error) {
 	var prefix string
-	err := r.db.QueryRow("SELECT asset_code_prefix FROM device_types WHERE id = ?", id).Scan(&prefix)
+	err := r.db.QueryRow("SELECT label_prefix FROM device_types WHERE id = ?", id).Scan(&prefix)
 	return prefix, err
 }
 
@@ -166,13 +166,13 @@ func (r *DeviceTypeRepository) GetName(id int) (string, error) {
 }
 
 func (r *DeviceTypeRepository) Create(categoryID int, name, brand, model, prefix, usageType, location, photo string) (sql.Result, error) {
-	return r.db.Exec(`INSERT INTO device_types (category_id, name, brand, model, asset_code_prefix, usage_type, default_location, photo)
+	return r.db.Exec(`INSERT INTO device_types (category_id, name, brand, model, label_prefix, usage_type, default_location, photo)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, categoryID, name, brand, model, prefix, usageType, location, photo)
 }
 
 func (r *DeviceTypeRepository) Update(id, categoryID int, name, brand, model, prefix, usageType, location, photo string) error {
 	_, err := r.db.Exec(`UPDATE device_types SET category_id=?, name=?, brand=?, model=?,
-		asset_code_prefix=?, usage_type=?, default_location=?, photo=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
+		label_prefix=?, usage_type=?, default_location=?, photo=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
 		categoryID, name, brand, model, prefix, usageType, location, photo, id)
 	return err
 }
@@ -192,7 +192,7 @@ func (r *DeviceTypeRepository) CountByCategoryID(categoryID int) (int, error) {
 }
 
 func (r *DeviceTypeRepository) GetByCategoryID(categoryID int) ([]models.DeviceType, error) {
-	rows, err := r.db.Query(`SELECT id, category_id, name, brand, model, asset_code_prefix, usage_type,
+	rows, err := r.db.Query(`SELECT id, category_id, name, brand, model, label_prefix, usage_type,
 		COALESCE(default_location,''), COALESCE(photo,'') FROM device_types WHERE category_id = ? ORDER BY name`, categoryID)
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ func (r *DeviceTypeRepository) GetByCategoryID(categoryID int) ([]models.DeviceT
 		var dt models.DeviceType
 		var brand, model, loc, photo sql.NullString
 		if rows.Scan(&dt.ID, &dt.CategoryID, &dt.Name, &brand, &model,
-			&dt.AssetCodePrefix, &dt.UsageType, &loc, &photo) != nil {
+			&dt.LabelPrefix, &dt.UsageType, &loc, &photo) != nil {
 			continue
 		}
 		dt.Brand = valStr(brand)

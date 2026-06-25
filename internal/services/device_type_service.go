@@ -10,7 +10,7 @@ type DeviceTypeCreateInput struct {
 	Name            string
 	Brand           string
 	Model           string
-	AssetCodePrefix string
+	LabelPrefix string
 	UsageType       string
 	DefaultLocation string
 	Photo           string
@@ -21,7 +21,7 @@ type DeviceTypeUpdateInput struct {
 	Name            string
 	Brand           string
 	Model           string
-	AssetCodePrefix string
+	LabelPrefix string
 	UsageType       string
 	DefaultLocation string
 	Photo           string
@@ -40,9 +40,9 @@ func (s *DeviceTypeService) Create(in DeviceTypeCreateInput, actorID int, actorU
 	in.Name = ToTitleCase(in.Name)
 	in.Brand = ToTitleCase(in.Brand)
 	in.Model = ToTitleCase(in.Model)
-	in.AssetCodePrefix = ToUpperTrim(in.AssetCodePrefix)
+	in.LabelPrefix = ToUpperTrim(in.LabelPrefix)
 	in.DefaultLocation = ToTitleCase(in.DefaultLocation)
-	result, err := s.repo.Create(in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
+	result, err := s.repo.Create(in.CategoryID, in.Name, in.Brand, in.Model, in.LabelPrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "device_type", 0,
 			map[string]any{"name": in.Name}, ipAddress, userAgent, err.Error())
@@ -59,7 +59,7 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 	in.Name = ToTitleCase(in.Name)
 	in.Brand = ToTitleCase(in.Brand)
 	in.Model = ToTitleCase(in.Model)
-	in.AssetCodePrefix = ToUpperTrim(in.AssetCodePrefix)
+	in.LabelPrefix = ToUpperTrim(in.LabelPrefix)
 	in.DefaultLocation = ToTitleCase(in.DefaultLocation)
 
 	oldDT, _ := s.repo.GetByID(id)
@@ -70,12 +70,12 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 		if oldDT.Brand != in.Brand { oldVals["brand"] = oldDT.Brand; newVals["brand"] = in.Brand }
 		if oldDT.Model != in.Model { oldVals["model"] = oldDT.Model; newVals["model"] = in.Model }
 		if oldDT.CategoryID != in.CategoryID { oldVals["category_id"] = oldDT.CategoryID; newVals["category_id"] = in.CategoryID }
-		if oldDT.AssetCodePrefix != in.AssetCodePrefix { oldVals["asset_code_prefix"] = oldDT.AssetCodePrefix; newVals["asset_code_prefix"] = in.AssetCodePrefix }
+		if oldDT.LabelPrefix != in.LabelPrefix { oldVals["label_prefix"] = oldDT.LabelPrefix; newVals["label_prefix"] = in.LabelPrefix }
 		if oldDT.UsageType != in.UsageType { oldVals["usage_type"] = oldDT.UsageType; newVals["usage_type"] = in.UsageType }
 		if oldDT.DefaultLocation != in.DefaultLocation { oldVals["default_location"] = oldDT.DefaultLocation; newVals["default_location"] = in.DefaultLocation }
 	}
 
-	err := s.repo.Update(id, in.CategoryID, in.Name, in.Brand, in.Model, in.AssetCodePrefix, in.UsageType, in.DefaultLocation, in.Photo)
+	err := s.repo.Update(id, in.CategoryID, in.Name, in.Brand, in.Model, in.LabelPrefix, in.UsageType, in.DefaultLocation, in.Photo)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", id,
 			oldVals, nil, ipAddress, userAgent, err.Error())
@@ -106,8 +106,8 @@ func (s *DeviceTypeService) GetBySlug(slug string) (*models.DeviceType, error) {
 	return s.repo.GetBySlug(slug)
 }
 
-func (s *DeviceTypeService) GetByPrefixSlug(slug string) (*models.DeviceType, error) {
-	return s.repo.GetByPrefixSlug(slug)
+func (s *DeviceTypeService) GetByLabelSlug(slug string) (*models.DeviceType, error) {
+	return s.repo.GetByLabelSlug(slug)
 }
 
 func (s *DeviceTypeService) GetAllSimple() ([]models.DeviceType, error) {

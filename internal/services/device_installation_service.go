@@ -127,7 +127,7 @@ func (s *DeviceInstallationService) BatchDelete(ids []int, actorID int, actorUse
 	for _, id := range ids {
 		info := map[string]any{"id": id}
 		if row, err := s.repo.GetByID(id); err == nil {
-			info["device_asset_code"] = row.DeviceAssetCode
+			info["device_label"] = row.DeviceLabel
 			info["location_installed"] = row.LocationInstalled
 		}
 		if err := s.repo.Delete(id); err != nil {

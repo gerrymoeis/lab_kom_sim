@@ -378,8 +378,8 @@ func TestFullIntegration(t *testing.T) {
 
 	// Seed categories & device types for device CRUD
 	t.Log("  --- 2d. SEED CATEGORY + DEVICE TYPE ---")
-	dbA.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (1, 'Pentab', 'PENTAB')")
-	dbA.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (1, 1, 'Pentab', 'Wacom', 'One', 'PENTAB', 'loanable', 'Lab')")
+	dbA.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (1, 'Pentab', 'PENTAB')")
+	dbA.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (1, 1, 'Pentab', 'Wacom', 'One', 'PENTAB', 'loanable', 'Lab')")
 
 	// 2d. Device CRUD
 	t.Log("  --- 2e. DEVICE CRUD ---")
@@ -394,13 +394,13 @@ func TestFullIntegration(t *testing.T) {
 	dbA.QueryRow("SELECT id FROM devices WHERE serial_number='SN-TEST001'").Scan(&devID)
 	assert(devID > 0, "Device ID=%d", devID)
 
-	var devAssetCode, devCatPrefix, devTypePrefix string
-	dbA.QueryRow(`SELECT d.asset_code, COALESCE(c.default_prefix,''), COALESCE(dt.asset_code_prefix,'')
+	var devLabel, devCatPrefix, devTypePrefix string
+	dbA.QueryRow(`SELECT d.label, COALESCE(c.label_prefix,''), COALESCE(dt.label_prefix,'')
 		FROM devices d
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id
-		WHERE d.id=?`, devID).Scan(&devAssetCode, &devCatPrefix, &devTypePrefix)
-	devSlug := strings.ToLower(devAssetCode)
+		WHERE d.id=?`, devID).Scan(&devLabel, &devCatPrefix, &devTypePrefix)
+	devSlug := strings.ToLower(devLabel)
 	devCatSlug := strings.ToLower(devCatPrefix)
 	devTypeSlug := strings.ToLower(devTypePrefix)
 	assert(devSlug != "", "Device slug=%s", devSlug)
@@ -415,7 +415,7 @@ func TestFullIntegration(t *testing.T) {
 	labA.closeResp(resp)
 
 	resp, _ = labA.post("/devices/"+devSlug+"/edit",
-		"device_type_id=1&asset_code=PENTAB-001&serial_number=SN-TEST002&condition=rusak&location=Lab2&purchase_date=&notes=Updated")
+		"device_type_id=1&label=PENTAB-001&serial_number=SN-TEST002&condition=rusak&location=Lab2&purchase_date=&notes=Updated")
 	assert(resp.StatusCode == 302, "edit device: %d", resp.StatusCode)
 	labA.closeResp(resp)
 	var devSerial string
@@ -719,8 +719,8 @@ func TestFullIntegration(t *testing.T) {
 
 	// Cleanup device
 	t.Log("  --- 2q. DEVICE CLEANUP ---")
-	dbA.QueryRow("SELECT asset_code FROM devices WHERE id=?", devID).Scan(&devAssetCode)
-	devSlug = strings.ToLower(devAssetCode)
+	dbA.QueryRow("SELECT label FROM devices WHERE id=?", devID).Scan(&devLabel)
+	devSlug = strings.ToLower(devLabel)
 	resp, _ = labA.post("/devices/"+devSlug+"/delete", "")
 	assert(resp.StatusCode == 302, "delete device: %d", resp.StatusCode)
 	labA.closeResp(resp)
@@ -813,8 +813,8 @@ func TestFullIntegration(t *testing.T) {
 
 	// 4c. Seed category+device_type for Lab B, then Device CRUD
 	t.Log("  --- 4c. DEVICE CRUD on Lab B ---")
-	dbB.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (1, 'Monitor', 'MONITOR')")
-	dbB.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (1, 1, 'LCD Monitor', 'Dell', '22in', 'MONITOR', 'loanable', 'Lab B')")
+	dbB.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (1, 'Monitor', 'MONITOR')")
+	dbB.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (1, 1, 'LCD Monitor', 'Dell', '22in', 'MONITOR', 'loanable', 'Lab B')")
 
 	resp, _ = labB.get("/devices")
 	assert(resp.StatusCode == 200, "Lab B /devices: %d", resp.StatusCode)

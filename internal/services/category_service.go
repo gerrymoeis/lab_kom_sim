@@ -26,8 +26,8 @@ func (s *CategoryService) GetByID(id int) (*models.Category, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *CategoryService) GetByPrefixSlug(slug string) (*models.Category, error) {
-	return s.repo.GetByPrefixSlug(slug)
+func (s *CategoryService) GetByLabelSlug(slug string) (*models.Category, error) {
+	return s.repo.GetByLabelSlug(slug)
 }
 
 func (s *CategoryService) Create(name, prefix string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
@@ -54,7 +54,7 @@ func (s *CategoryService) Update(id int, name, prefix string, actorID int, actor
 	newVals := map[string]any{}
 	if oldCat != nil {
 		if oldCat.Name != name { oldVals["name"] = oldCat.Name; newVals["name"] = name }
-		if oldCat.DefaultPrefix != prefix { oldVals["prefix"] = oldCat.DefaultPrefix; newVals["prefix"] = prefix }
+		if oldCat.LabelPrefix != prefix { oldVals["prefix"] = oldCat.LabelPrefix; newVals["prefix"] = prefix }
 	}
 
 	err := s.repo.Update(id, name, prefix)

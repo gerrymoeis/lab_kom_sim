@@ -90,8 +90,8 @@ func TestDashboardContent(t *testing.T) {
 
 	t.Run("dashboard_shows_device_count_positive", func(t *testing.T) {
 		// Seed a device type + device so dashboard shows count > 0
-		db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (50, 'DashboardCat', 'DASHCAT')")
-		db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (50, 50, 'DashDevice', 'Brand', 'Model', 'DASHDT', 'loanable', 'Lab')")
+		db.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (50, 'DashboardCat', 'DASHCAT')")
+		db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (50, 50, 'DashDevice', 'Brand', 'Model', 'DASHDT', 'loanable', 'Lab')")
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}

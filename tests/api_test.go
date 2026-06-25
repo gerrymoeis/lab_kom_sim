@@ -501,10 +501,10 @@ func TestAPIPCMoveRow(t *testing.T) {
 }
 
 // ============================================
-// TestAPIGetNextAssetCode — GetNextAssetCode + GetNextAssetCodes
+// TestAPINextLabel — NextLabel + NextLabels
 // ============================================
 
-func TestAPIGetNextAssetCode(t *testing.T) {
+func TestAPINextLabel(t *testing.T) {
 	env := setupTestEnvironment(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -512,69 +512,69 @@ func TestAPIGetNextAssetCode(t *testing.T) {
 	}
 
 	t.Run("next_asset_code", func(t *testing.T) {
-		resp, err := lab.get("/api/devices/next-asset-code?prefix=TEST")
+		resp, err := lab.get("/api/devices/next-label?prefix=TEST")
 		if err != nil {
-			t.Fatalf("GET /api/devices/next-asset-code: %v", err)
+			t.Fatalf("GET /api/devices/next-label: %v", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
 		}
 		var res struct {
-			NextCode string `json:"next_code"`
+			NextLabel string `json:"next_label"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
 			t.Fatalf("decode response: %v", err)
 		}
-		if res.NextCode == "" {
-			t.Error("next_code is empty")
+		if res.NextLabel == "" {
+			t.Error("next_label is empty")
 		}
 	})
 
 	t.Run("next_asset_codes", func(t *testing.T) {
-		resp, err := lab.get("/api/devices/next-asset-codes?prefix=TEST&count=3")
+		resp, err := lab.get("/api/devices/next-labels?prefix=TEST&count=3")
 		if err != nil {
-			t.Fatalf("GET /api/devices/next-asset-codes: %v", err)
+			t.Fatalf("GET /api/devices/next-labels: %v", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
 		}
 		var res struct {
-			Codes []string `json:"codes"`
+			Labels []string `json:"labels"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
 			t.Fatalf("decode response: %v", err)
 		}
-		if len(res.Codes) == 0 {
-			t.Error("codes is empty")
+		if len(res.Labels) == 0 {
+			t.Error("labels is empty")
 		}
 	})
 
 	t.Run("default_count_one", func(t *testing.T) {
-		resp, err := lab.get("/api/devices/next-asset-codes?prefix=TEST")
+		resp, err := lab.get("/api/devices/next-labels?prefix=TEST")
 		if err != nil {
-			t.Fatalf("GET /api/devices/next-asset-codes: %v", err)
+			t.Fatalf("GET /api/devices/next-labels: %v", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
 		}
 		var res struct {
-			Codes []string `json:"codes"`
+			Labels []string `json:"labels"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
 			t.Fatalf("decode response: %v", err)
 		}
-		if len(res.Codes) != 1 {
-			t.Errorf("expected 1 code, got %d", len(res.Codes))
+		if len(res.Labels) != 1 {
+			t.Errorf("expected 1 label, got %d", len(res.Labels))
 		}
 	})
 
 	t.Run("empty_prefix", func(t *testing.T) {
-		resp, err := lab.get("/api/devices/next-asset-code?prefix=")
+		resp, err := lab.get("/api/devices/next-label?prefix=")
 		if err != nil {
-			t.Fatalf("GET /api/devices/next-asset-code empty prefix: %v", err)
+			t.Fatalf("GET /api/devices/next-label empty prefix: %v", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {

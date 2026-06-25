@@ -663,8 +663,8 @@ func TestDevice(t *testing.T) {
 	}
 
 	// Seed category + device type
-	db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (1, 'Pentab', 'PENTAB')")
-	db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (1, 1, 'Pentab', 'Wacom', 'One', 'PENTAB', 'loanable', 'Lab')")
+	db.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (1, 'Pentab', 'PENTAB')")
+	db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (1, 1, 'Pentab', 'Wacom', 'One', 'PENTAB', 'loanable', 'Lab')")
 
 	t.Run("list_devices", func(t *testing.T) {
 		resp, err := lab.get("/devices")
@@ -695,16 +695,16 @@ func TestDevice(t *testing.T) {
 	})
 
 	t.Run("detail_device", func(t *testing.T) {
-		var devAssetCode, catPrefix, typePrefix string
-		db.QueryRow(`SELECT d.asset_code, COALESCE(c.default_prefix,''), COALESCE(dt.asset_code_prefix,'')
+		var devLabel, catPrefix, typePrefix string
+		db.QueryRow(`SELECT d.label, COALESCE(c.label_prefix,''), COALESCE(dt.label_prefix,'')
 			FROM devices d
 			JOIN device_types dt ON dt.id = d.device_type_id
 			JOIN categories c ON c.id = dt.category_id
-			WHERE d.serial_number='SN-DEV-001'`).Scan(&devAssetCode, &catPrefix, &typePrefix)
-		if devAssetCode == "" {
+			WHERE d.serial_number='SN-DEV-001'`).Scan(&devLabel, &catPrefix, &typePrefix)
+		if devLabel == "" {
 			t.Skip("device not found for detail")
 		}
-		devSlug := strings.ToLower(devAssetCode)
+		devSlug := strings.ToLower(devLabel)
 		catSlug := strings.ToLower(catPrefix)
 		typeSlug := strings.ToLower(typePrefix)
 		nestedURL := "/devices/" + catSlug + "/" + typeSlug + "/" + devSlug
@@ -719,17 +719,17 @@ func TestDevice(t *testing.T) {
 	})
 
 	t.Run("edit_device", func(t *testing.T) {
-		var devAssetCode string
-		db.QueryRow("SELECT asset_code FROM devices WHERE serial_number='SN-DEV-001'").Scan(&devAssetCode)
-		if devAssetCode == "" {
+		var devLabel string
+		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-DEV-001'").Scan(&devLabel)
+		if devLabel == "" {
 			t.Skip("device not found for edit")
 		}
-		devSlug := strings.ToLower(devAssetCode)
+		devSlug := strings.ToLower(devLabel)
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
 		resp, err := lab.post("/devices/"+devSlug+"/edit",
-			"device_type_id=1&asset_code="+devAssetCode+"&serial_number=SN-DEV-002&condition=rusak&location=Lab2&purchase_date=&notes=Updated")
+			"device_type_id=1&label="+devLabel+"&serial_number=SN-DEV-002&condition=rusak&location=Lab2&purchase_date=&notes=Updated")
 		if err != nil {
 			t.Fatalf("POST /devices/%s/edit: %v", devSlug, err)
 		}
@@ -739,7 +739,7 @@ func TestDevice(t *testing.T) {
 		}
 		db.Flush()
 		var serial string
-		db.QueryRow("SELECT serial_number FROM devices WHERE asset_code=?", devAssetCode).Scan(&serial)
+		db.QueryRow("SELECT serial_number FROM devices WHERE label=?", devLabel).Scan(&serial)
 		if serial != "SN-DEV-002" {
 			t.Errorf("expected serial SN-DEV-002, got %q", serial)
 		}
@@ -776,12 +776,12 @@ func TestDevice(t *testing.T) {
 	})
 
 	t.Run("delete_device", func(t *testing.T) {
-		var devAssetCode string
-		db.QueryRow("SELECT asset_code FROM devices WHERE serial_number='SN-DEV-002'").Scan(&devAssetCode)
-		if devAssetCode == "" {
+		var devLabel string
+		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-DEV-002'").Scan(&devLabel)
+		if devLabel == "" {
 			t.Skip("device not found for delete")
 		}
-		devSlug := strings.ToLower(devAssetCode)
+		devSlug := strings.ToLower(devLabel)
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
@@ -794,7 +794,7 @@ func TestDevice(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var count int
-		db.QueryRow("SELECT COUNT(*) FROM devices WHERE asset_code=?", devAssetCode).Scan(&count)
+		db.QueryRow("SELECT COUNT(*) FROM devices WHERE label=?", devLabel).Scan(&count)
 		if count != 0 {
 			t.Errorf("expected deleted, count=%d", count)
 		}
@@ -835,14 +835,14 @@ func TestDevice(t *testing.T) {
 	})
 
 	t.Run("edit_page_device", func(t *testing.T) {
-		var devAssetCode string
-		db.QueryRow("SELECT asset_code FROM devices ORDER BY id LIMIT 1").Scan(&devAssetCode)
-		if devAssetCode == "" {
+		var devLabel string
+		db.QueryRow("SELECT label FROM devices ORDER BY id LIMIT 1").Scan(&devLabel)
+		if devLabel == "" {
 			t.Skip("no device for edit page")
 		}
-		resp, err := lab.get("/devices/" + strings.ToLower(devAssetCode) + "/edit")
+		resp, err := lab.get("/devices/" + strings.ToLower(devLabel) + "/edit")
 		if err != nil {
-			t.Fatalf("GET /devices/%s/edit: %v", strings.ToLower(devAssetCode), err)
+			t.Fatalf("GET /devices/%s/edit: %v", strings.ToLower(devLabel), err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
@@ -892,17 +892,17 @@ func TestDevice(t *testing.T) {
 }
 
 // seedDevice creates a category, device_type, and device via POST handler for testing.
-// Returns the device asset_code slug.
+// Returns the device label slug.
 func seedDeviceViaHandler(lab *testLab, db *database.DB, serial, catName, catPrefix, dtName, dtBrand, dtModel, dtPrefix string) string {
-	db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (1, ?, ?)", catName, catPrefix)
-	db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (1, 1, ?, ?, ?, ?, 'loanable', 'Lab')", dtName, dtBrand, dtModel, dtPrefix)
+	db.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (1, ?, ?)", catName, catPrefix)
+	db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (1, 1, ?, ?, ?, ?, 'loanable', 'Lab')", dtName, dtBrand, dtModel, dtPrefix)
 	if !lab.refreshCSRF() {
 		return ""
 	}
 	lab.post("/devices/create",
 		fmt.Sprintf("device_type_id=1&serial_number=%s&condition=normal&location=Lab&purchase_date=&notes=", serial))
 	var assetCode string
-	db.QueryRow("SELECT asset_code FROM devices WHERE serial_number=?", serial).Scan(&assetCode)
+	db.QueryRow("SELECT label FROM devices WHERE serial_number=?", serial).Scan(&assetCode)
 	return strings.ToLower(assetCode)
 }
 
@@ -1809,8 +1809,8 @@ func TestDeviceType(t *testing.T) {
 	}
 
 	// Seed category + device type if not exists
-	db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (10, 'TestCategory', 'TESTCAT')")
-	db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (10, 10, 'TestDeviceType', 'TestBrand', 'TestModel', 'TESTDT', 'loanable', 'Lab')")
+	db.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (10, 'TestCategory', 'TESTCAT')")
+	db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (10, 10, 'TestDeviceType', 'TestBrand', 'TestModel', 'TESTDT', 'loanable', 'Lab')")
 
 	t.Run("detail_device_type", func(t *testing.T) {
 		resp, err := lab.get("/device-types/testdt")
@@ -1840,7 +1840,7 @@ func TestDeviceType(t *testing.T) {
 			t.Fatal("failed to refresh CSRF")
 		}
 		resp, err := lab.post("/device-types/testdt/edit",
-			"category_id=10&name=TestDTUpdated&brand=BrandUpdated&model=ModelUpdated&asset_code_prefix=TESTDT&usage_type=loanable&default_location=Lab+Updated")
+			"category_id=10&name=TestDTUpdated&brand=BrandUpdated&model=ModelUpdated&label_prefix=TESTDT&usage_type=loanable&default_location=Lab+Updated")
 		if err != nil {
 			t.Fatalf("POST /device-types/testdt/edit: %v", err)
 		}
@@ -1849,7 +1849,7 @@ func TestDeviceType(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var name string
-		db.QueryRow("SELECT name FROM device_types WHERE asset_code_prefix='TESTDT'").Scan(&name)
+		db.QueryRow("SELECT name FROM device_types WHERE label_prefix='TESTDT'").Scan(&name)
 		if name != "TestDTUpdated" {
 			t.Errorf("expected 'TestDTUpdated', got %q", name)
 		}
@@ -1860,9 +1860,9 @@ func TestDeviceType(t *testing.T) {
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
-		db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (11, 10, 'ToDeleteDT', 'Brand', 'Model', 'TODEL', 'loanable', 'Lab')")
+		db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (11, 10, 'ToDeleteDT', 'Brand', 'Model', 'TODEL', 'loanable', 'Lab')")
 		var dtID int
-		db.QueryRow("SELECT id FROM device_types WHERE asset_code_prefix='TODEL'").Scan(&dtID)
+		db.QueryRow("SELECT id FROM device_types WHERE label_prefix='TODEL'").Scan(&dtID)
 		if dtID == 0 {
 			t.Fatal("device type to delete not found")
 		}
@@ -1885,9 +1885,9 @@ func TestDeviceType(t *testing.T) {
 	})
 
 	t.Run("batch_delete_device_type", func(t *testing.T) {
-		db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, asset_code_prefix, usage_type, default_location) VALUES (12, 10, 'BatchDelDT', 'Brand', 'Model', 'BATCHDEL', 'loanable', 'Lab')")
+		db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (12, 10, 'BatchDelDT', 'Brand', 'Model', 'BATCHDEL', 'loanable', 'Lab')")
 		var dtID int
-		db.QueryRow("SELECT id FROM device_types WHERE asset_code_prefix='BATCHDEL'").Scan(&dtID)
+		db.QueryRow("SELECT id FROM device_types WHERE label_prefix='BATCHDEL'").Scan(&dtID)
 		if dtID == 0 {
 			t.Fatal("device type for batch delete not found")
 		}
@@ -1941,7 +1941,7 @@ func TestCategory(t *testing.T) {
 	}
 
 	// Seed category if not exists
-	db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (20, 'TestCategory', 'TESTCAT')")
+	db.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (20, 'TestCategory', 'TESTCAT')")
 
 	t.Run("detail_category", func(t *testing.T) {
 		resp, err := lab.get("/categories/testcat")
@@ -1970,7 +1970,7 @@ func TestCategory(t *testing.T) {
 			t.Fatal("failed to refresh CSRF")
 		}
 		resp, err := lab.post("/categories/testcat/edit",
-			"name=CatUpdated&default_prefix=TESTCAT")
+			"name=CatUpdated&label_prefix=TESTCAT")
 		if err != nil {
 			t.Fatalf("POST /categories/testcat/edit: %v", err)
 		}
@@ -1979,7 +1979,7 @@ func TestCategory(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var name string
-		db.QueryRow("SELECT name FROM categories WHERE default_prefix='TESTCAT'").Scan(&name)
+		db.QueryRow("SELECT name FROM categories WHERE label_prefix='TESTCAT'").Scan(&name)
 		if name != "CatUpdated" {
 			t.Errorf("expected 'CatUpdated', got %q", name)
 		}
@@ -1987,7 +1987,7 @@ func TestCategory(t *testing.T) {
 
 	t.Run("delete_category", func(t *testing.T) {
 		// Insert a separate category to delete
-		db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (21, 'ToDeleteCat', 'TODELCAT')")
+		db.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (21, 'ToDeleteCat', 'TODELCAT')")
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
@@ -2000,16 +2000,16 @@ func TestCategory(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var count int
-		db.QueryRow("SELECT COUNT(*) FROM categories WHERE default_prefix='TODELCAT'").Scan(&count)
+		db.QueryRow("SELECT COUNT(*) FROM categories WHERE label_prefix='TODELCAT'").Scan(&count)
 		if count != 0 {
 			t.Error("category not deleted")
 		}
 	})
 
 	t.Run("batch_delete_category", func(t *testing.T) {
-		db.Exec("INSERT OR IGNORE INTO categories (id, name, default_prefix) VALUES (22, 'BatchDelCat', 'BATCHCAT')")
+		db.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (22, 'BatchDelCat', 'BATCHCAT')")
 		var catID int
-		db.QueryRow("SELECT id FROM categories WHERE default_prefix='BATCHCAT'").Scan(&catID)
+		db.QueryRow("SELECT id FROM categories WHERE label_prefix='BATCHCAT'").Scan(&catID)
 		if catID == 0 {
 			t.Fatal("category for batch delete not found")
 		}
