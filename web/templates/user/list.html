@@ -79,9 +79,10 @@
                                 {{ if .IsGlobalAdmin }}<span class="badge bg-info ms-1">Global Admin</span>{{ end }}
                             </td>
                             <td>
-                                <span class="badge bg-{{ if eq .Role "admin" }}danger{{ else }}info{{ end }}">
-                                    {{ .Role }}
-                                </span>
+                                {{ if .IsSuperAdmin }}<span class="badge bg-dark">Super Admin</span>
+                                {{ else if .IsGlobalAdmin }}<span class="badge bg-info">Global Admin</span>
+                                {{ else if $isTargetMA }}<span class="badge bg-secondary">Akun Utama</span>
+                                {{ end }}
                             </td>
                             <td>{{ (localTime .CreatedAt).Format "02/01/2006" }} {{ tzCode }}</td>
                             {{ $canDelete := and (not .IsProtected) (ne $.username .Username) (not $isSuperAdmin) (or $.is_protected (not .IsGlobalAdmin)) }}
