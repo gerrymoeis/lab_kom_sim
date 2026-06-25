@@ -52,8 +52,8 @@ func (r *DeviceLoanRepository) ListPaginated(filters DeviceLoanFilters, page, pa
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE 1=1`+loanClause, loanArgs...).Scan(&total)
 
-	query := `SELECT l.id, l.device_id, d.asset_code, dt.name, c.name,
-		c.default_prefix, dt.asset_code_prefix,
+	query := `SELECT l.id, l.device_id, d.label, dt.name, c.name,
+		c.label_prefix, dt.label_prefix,
 		l.borrower_name, l.borrower_type, l.loan_date, l.return_date, l.actual_return_date,
 		COALESCE(l.purpose,''), COALESCE(l.notes,''),
 		l.created_at, l.updated_at,
@@ -96,7 +96,7 @@ func (r *DeviceLoanRepository) ListPaginated(filters DeviceLoanFilters, page, pa
 	var loans []DeviceLoanRow
 	for rows.Next() {
 		var l DeviceLoanRow
-		if err := rows.Scan(&l.ID, &l.DeviceID, &l.DeviceAssetCode, &l.DeviceTypeName, &l.CategoryName,
+		if err := rows.Scan(&l.ID, &l.DeviceID, &l.DeviceLabel, &l.DeviceTypeName, &l.CategoryName,
 			&l.CategoryPrefix, &l.DeviceTypePrefix,
 			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ReturnDate, &l.ActualReturnDate,
 			&l.Purpose, &l.Notes, &l.CreatedAt, &l.UpdatedAt,
@@ -143,8 +143,8 @@ func (r *DeviceLoanRepository) ListByDeviceID(deviceID int) ([]DeviceLoanRow, er
 
 func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix string) ([]DeviceLoanRow, error) {
 	_, loanArgs := r.buildLoanClause(filters)
-	query := `SELECT l.id, l.device_id, d.asset_code, dt.name, c.name,
-		c.default_prefix, dt.asset_code_prefix,
+	query := `SELECT l.id, l.device_id, d.label, dt.name, c.name,
+		c.label_prefix, dt.label_prefix,
 		l.borrower_name, l.borrower_type, l.loan_date, l.return_date, l.actual_return_date,
 		COALESCE(l.purpose,''), COALESCE(l.notes,''),
 		l.created_at, l.updated_at,
@@ -184,7 +184,7 @@ func (r *DeviceLoanRepository) listWithQuery(filters DeviceLoanFilters, suffix s
 	var loans []DeviceLoanRow
 	for rows.Next() {
 		var l DeviceLoanRow
-		if err := rows.Scan(&l.ID, &l.DeviceID, &l.DeviceAssetCode, &l.DeviceTypeName, &l.CategoryName,
+		if err := rows.Scan(&l.ID, &l.DeviceID, &l.DeviceLabel, &l.DeviceTypeName, &l.CategoryName,
 			&l.CategoryPrefix, &l.DeviceTypePrefix,
 			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ReturnDate, &l.ActualReturnDate,
 			&l.Purpose, &l.Notes, &l.CreatedAt, &l.UpdatedAt,
@@ -208,8 +208,8 @@ type DeviceLoanRow struct {
 
 func (r *DeviceLoanRepository) GetByID(id int) (*DeviceLoanRow, error) {
 	var l DeviceLoanRow
-	err := r.db.QueryRow(`SELECT l.id, l.device_id, d.asset_code, dt.name, c.name,
-		c.default_prefix, dt.asset_code_prefix,
+	err := r.db.QueryRow(`SELECT l.id, l.device_id, d.label, dt.name, c.name,
+		c.label_prefix, dt.label_prefix,
 		l.borrower_name, l.borrower_type, l.loan_date, l.return_date, l.actual_return_date,
 		COALESCE(l.purpose,''), COALESCE(l.notes,''),
 		l.created_at, l.updated_at,
@@ -222,7 +222,7 @@ func (r *DeviceLoanRepository) GetByID(id int) (*DeviceLoanRow, error) {
 		JOIN devices d ON d.id = l.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE l.id = ?`, id).
-		Scan(&l.ID, &l.DeviceID, &l.DeviceAssetCode, &l.DeviceTypeName, &l.CategoryName,
+		Scan(&l.ID, &l.DeviceID, &l.DeviceLabel, &l.DeviceTypeName, &l.CategoryName,
 			&l.CategoryPrefix, &l.DeviceTypePrefix,
 			&l.BorrowerName, &l.BorrowerType, &l.LoanDate, &l.ReturnDate, &l.ActualReturnDate,
 			&l.Purpose, &l.Notes, &l.CreatedAt, &l.UpdatedAt,
@@ -234,13 +234,13 @@ func (r *DeviceLoanRepository) GetByID(id int) (*DeviceLoanRow, error) {
 }
 
 func (r *DeviceLoanRepository) GetLoanableDevices() ([]models.Device, error) {
-	rows, err := r.db.Query(`SELECT d.id, d.asset_code, d.serial_number, d.condition
+	rows, err := r.db.Query(`SELECT d.id, d.label, d.serial_number, d.condition
 		FROM devices d
 		JOIN device_types dt ON dt.id = d.device_type_id
 		WHERE dt.usage_type = 'loanable'
 		AND d.condition = 'normal'
 		AND d.id NOT IN (SELECT device_id FROM device_loans WHERE actual_return_date IS NULL)
-		ORDER BY d.asset_code`)
+		ORDER BY d.label`)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func (r *DeviceLoanRepository) GetLoanableDevices() ([]models.Device, error) {
 	for rows.Next() {
 		var d models.Device
 		var serial, cond sql.NullString
-		if rows.Scan(&d.ID, &d.AssetCode, &serial, &cond) == nil {
+		if rows.Scan(&d.ID, &d.Label, &serial, &cond) == nil {
 			d.SerialNumber = valStr(serial)
 			d.Condition = valStr(cond)
 			devices = append(devices, d)

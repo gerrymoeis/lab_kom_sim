@@ -20,7 +20,7 @@ func sanitizeDBError(err error) error {
 		if strings.Contains(lower, "name") {
 			return fmt.Errorf("Nama sudah digunakan")
 		}
-		if strings.Contains(lower, "prefix") || strings.Contains(lower, "asset_code_prefix") {
+		if strings.Contains(lower, "prefix") || strings.Contains(lower, "label_prefix") {
 			return fmt.Errorf("Prefix sudah digunakan")
 		}
 		return fmt.Errorf("Data sudah ada")
@@ -48,7 +48,7 @@ type CreateDeviceInput struct {
 
 type UpdateDeviceInput struct {
 	DeviceTypeID int
-	AssetCode    string
+	Label        string
 	SerialNumber string
 	Condition    string
 	Location     string
@@ -83,12 +83,12 @@ func (s *DeviceService) GetBySlug(slug string) (*models.Device, error) {
 	return s.deviceRepo.GetBySlug(slug)
 }
 
-func (s *DeviceService) GetByAssetCodeSlug(slug string) (*models.Device, error) {
-	return s.deviceRepo.GetByAssetCodeSlug(slug)
+func (s *DeviceService) GetByLabelSlug(slug string) (*models.Device, error) {
+	return s.deviceRepo.GetByLabelSlug(slug)
 }
 
-func (s *DeviceService) GetByAssetCode(code string) (*models.Device, error) {
-	return s.deviceRepo.GetByAssetCode(code)
+func (s *DeviceService) GetByLabel(code string) (*models.Device, error) {
+	return s.deviceRepo.GetByLabel(code)
 }
 
 func (s *DeviceService) GetActiveLoanIDs() (map[int]bool, error) {
@@ -103,12 +103,12 @@ func (s *DeviceService) GetInstallationStatuses() (map[int]string, error) {
 	return s.deviceRepo.GetInstallationStatuses()
 }
 
-func (s *DeviceService) GetNextAssetCode(prefix string) string {
-	return s.deviceRepo.GetNextAssetCode(prefix)
+func (s *DeviceService) NextLabel(prefix string) string {
+	return s.deviceRepo.NextLabel(prefix)
 }
 
-func (s *DeviceService) GetNextAssetCodes(prefix string, count int) []string {
-	return s.deviceRepo.GetNextAssetCodes(prefix, count)
+func (s *DeviceService) NextLabels(prefix string, count int) []string {
+	return s.deviceRepo.NextLabels(prefix, count)
 }
 
 func (s *DeviceService) CreateDevice(in CreateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, string, error) {
@@ -121,17 +121,17 @@ func (s *DeviceService) CreateDevice(in CreateDeviceInput, actorID int, actorUse
 			map[string]any{"device_type_id": in.DeviceTypeID}, ipAddress, userAgent, err.Error())
 		return 0, "", err
 	}
-	code := s.deviceRepo.GetNextAssetCode(prefix)
-	result, err := s.deviceRepo.Create(in.DeviceTypeID, code, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes)
+	label := s.deviceRepo.NextLabel(prefix)
+	result, err := s.deviceRepo.Create(in.DeviceTypeID, label, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "device", 0,
-			map[string]any{"asset_code": code}, ipAddress, userAgent, err.Error())
+			map[string]any{"label": label}, ipAddress, userAgent, err.Error())
 		return 0, "", err
 	}
 	id, _ := result.LastInsertId()
 	s.log.LogCreate(actorID, actorUsername, actorRole, "device", int(id),
-		map[string]any{"asset_code": code}, ipAddress, userAgent)
-	return int(id), code, nil
+		map[string]any{"label": label}, ipAddress, userAgent)
+	return int(id), label, nil
 }
 
 type BatchDeviceCreateInput struct {
@@ -150,7 +150,7 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 		return nil, err
 	}
 
-	codes := s.deviceRepo.GetNextAssetCodes(prefix, len(devices))
+	labels := s.deviceRepo.NextLabels(prefix, len(devices))
 
 	var inputs []repository.BatchCreateInput
 	for i, dev := range devices {
@@ -159,7 +159,7 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 		dev.SerialNumber = SanitizeText(dev.SerialNumber)
 		inputs = append(inputs, repository.BatchCreateInput{
 			DeviceTypeID: deviceTypeID,
-			AssetCode:    codes[i],
+			Label:        labels[i],
 			SerialNumber: dev.SerialNumber,
 			Condition:    dev.Condition,
 			Location:     dev.Location,
@@ -170,15 +170,15 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 
 	if err := s.deviceRepo.BatchCreate(inputs); err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "device", 0,
-			map[string]any{"action": "batch_create", "count": len(codes), "codes": codes},
+			map[string]any{"action": "batch_create", "count": len(labels), "labels": labels},
 			ipAddress, userAgent, err.Error())
 		return nil, err
 	}
 
 	s.log.LogCreate(actorID, actorUsername, actorRole, "device", 0,
-		map[string]any{"action": "batch_create", "count": len(codes), "codes": codes},
+		map[string]any{"action": "batch_create", "count": len(labels), "labels": labels},
 		ipAddress, userAgent)
-	return codes, nil
+	return labels, nil
 }
 
 func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
@@ -186,7 +186,7 @@ func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, 
 	in.Notes = SanitizeText(in.Notes)
 	in.SerialNumber = SanitizeText(in.SerialNumber)
 	old, _ := s.deviceRepo.GetByID(id)
-	err := s.deviceRepo.Update(id, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes, in.UsageType)
+	err := s.deviceRepo.Update(id, in.DeviceTypeID, in.Label, in.SerialNumber, in.Condition, in.Location, in.PurchaseDate, in.Notes, in.UsageType)
 	if err != nil {
 		s.log.LogUpdate(actorID, actorUsername, actorRole, "device", id,
 			map[string]any{"id": id}, nil, ipAddress, userAgent, err.Error())
@@ -195,7 +195,7 @@ func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, 
 	oldVals := map[string]any{}
 	newVals := map[string]any{}
 	if old != nil {
-		if old.AssetCode != in.AssetCode { oldVals["asset_code"] = old.AssetCode; newVals["asset_code"] = in.AssetCode }
+		if old.Label != in.Label { oldVals["label"] = old.Label; newVals["label"] = in.Label }
 		if old.SerialNumber != in.SerialNumber { oldVals["serial_number"] = old.SerialNumber; newVals["serial_number"] = in.SerialNumber }
 		if old.Condition != in.Condition { oldVals["condition"] = old.Condition; newVals["condition"] = in.Condition }
 		if old.Location != in.Location { oldVals["location"] = old.Location; newVals["location"] = in.Location }
@@ -219,7 +219,7 @@ func (s *DeviceService) DeleteDevice(id int, actorID int, actorUsername, actorRo
 	d, _ := s.deviceRepo.GetByID(id)
 	oldVals := map[string]any{"id": id}
 	if d != nil {
-		oldVals["asset_code"] = d.AssetCode
+		oldVals["label"] = d.Label
 		oldVals["serial_number"] = d.SerialNumber
 	}
 	if err := s.deviceRepo.Delete(id); err != nil {
@@ -237,7 +237,7 @@ func (s *DeviceService) BatchDelete(ids []int, actorID int, actorUsername, actor
 	for _, id := range ids {
 		info := map[string]any{"id": id}
 		if d, err := s.deviceRepo.GetByID(id); err == nil {
-			info["asset_code"] = d.AssetCode
+			info["label"] = d.Label
 			info["serial_number"] = d.SerialNumber
 		}
 		if err := s.deviceRepo.Delete(id); err != nil {

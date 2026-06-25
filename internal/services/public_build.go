@@ -363,8 +363,8 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 
 	// Device detail — one file per device
 	for _, d := range devices {
-		re("device/detail.html", filepath.Join(outDir, "devices", "detail", strings.ToLower(d.AssetCode)+".html"), mergeData(commonData, map[string]interface{}{
-			"title":          "Detail - " + d.AssetCode,
+		re("device/detail.html", filepath.Join(outDir, "devices", "detail", strings.ToLower(d.Label)+".html"), mergeData(commonData, map[string]interface{}{
+			"title":          "Detail - " + d.Label,
 			"currentPage":    "devices",
 			"device":         d,
 			"deviceTypeName": d.DeviceTypeName,
