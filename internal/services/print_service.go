@@ -89,11 +89,11 @@ func (s *PrintService) GetLabels(cfg PrintConfig) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("query devices: %w", err)
 		}
-		sort.Slice(devices, func(i, j int) bool { return naturalLess(devices[i].AssetCode, devices[j].AssetCode) })
+		sort.Slice(devices, func(i, j int) bool { return naturalLess(devices[i].Label, devices[j].Label) })
 		labels := make([]string, 0, len(devices))
 		for _, d := range devices {
-			if d.AssetCode != "" {
-				labels = append(labels, d.AssetCode)
+			if d.Label != "" {
+				labels = append(labels, d.Label)
 			}
 		}
 		return labels, nil

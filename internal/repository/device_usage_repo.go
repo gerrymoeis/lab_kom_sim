@@ -64,8 +64,8 @@ func (r *DeviceUsageRepository) ListPaginated(filters DeviceUsageFilters, page, 
 		sortBy = "c.name"
 	}
 
-	query := `SELECT u.id, u.device_id, d.asset_code, dt.name, c.name,
-		c.default_prefix, dt.asset_code_prefix,
+	query := `SELECT u.id, u.device_id, d.label, dt.name, c.name,
+		c.label_prefix, dt.label_prefix,
 		u.user_name, u.user_type, u.usage_date, u.is_available, COALESCE(u.purpose,''), COALESCE(u.notes,'')
 		FROM device_usages u
 		JOIN devices d ON d.id = u.device_id
@@ -87,7 +87,7 @@ func (r *DeviceUsageRepository) ListPaginated(filters DeviceUsageFilters, page, 
 	var usages []DeviceUsageRow
 	for rows.Next() {
 		var u DeviceUsageRow
-		if err := rows.Scan(&u.ID, &u.DeviceID, &u.DeviceAssetCode, &u.DeviceTypeName, &u.CategoryName,
+		if err := rows.Scan(&u.ID, &u.DeviceID, &u.DeviceLabel, &u.DeviceTypeName, &u.CategoryName,
 			&u.CategoryPrefix, &u.DeviceTypePrefix,
 			&u.UserName, &u.UserType, &u.UsageDate, &u.IsAvailable, &u.Purpose, &u.Notes); err != nil {
 			return nil, 0, err
@@ -126,8 +126,8 @@ func (r *DeviceUsageRepository) ExportAll() ([]DeviceUsageRow, error) {
 
 func (r *DeviceUsageRepository) listWithQuery(filters DeviceUsageFilters, suffix string) ([]DeviceUsageRow, error) {
 	usageClause, usageArgs := r.buildUsageClause(filters)
-	query := `SELECT u.id, u.device_id, d.asset_code, dt.name, c.name,
-		c.default_prefix, dt.asset_code_prefix,
+	query := `SELECT u.id, u.device_id, d.label, dt.name, c.name,
+		c.label_prefix, dt.label_prefix,
 		u.user_name, u.user_type, u.usage_date, u.is_available, COALESCE(u.purpose,''), COALESCE(u.notes,'')
 		FROM device_usages u
 		JOIN devices d ON d.id = u.device_id
@@ -156,7 +156,7 @@ func (r *DeviceUsageRepository) listWithQuery(filters DeviceUsageFilters, suffix
 	var usages []DeviceUsageRow
 	for rows.Next() {
 		var u DeviceUsageRow
-		if err := rows.Scan(&u.ID, &u.DeviceID, &u.DeviceAssetCode, &u.DeviceTypeName, &u.CategoryName,
+		if err := rows.Scan(&u.ID, &u.DeviceID, &u.DeviceLabel, &u.DeviceTypeName, &u.CategoryName,
 			&u.CategoryPrefix, &u.DeviceTypePrefix,
 			&u.UserName, &u.UserType, &u.UsageDate, &u.IsAvailable, &u.Purpose, &u.Notes); err != nil {
 			return nil, err
@@ -176,14 +176,14 @@ type DeviceUsageRow struct {
 
 func (r *DeviceUsageRepository) GetByID(id int) (*DeviceUsageRow, error) {
 	var u DeviceUsageRow
-	err := r.db.QueryRow(`SELECT u.id, u.device_id, d.asset_code, dt.name, c.name,
-		c.default_prefix, dt.asset_code_prefix,
+	err := r.db.QueryRow(`SELECT u.id, u.device_id, d.label, dt.name, c.name,
+		c.label_prefix, dt.label_prefix,
 		u.user_name, u.user_type, u.usage_date, u.is_available, COALESCE(u.purpose,''), COALESCE(u.notes,'')
 		FROM device_usages u
 		JOIN devices d ON d.id = u.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE u.id = ?`, id).
-		Scan(&u.ID, &u.DeviceID, &u.DeviceAssetCode, &u.DeviceTypeName, &u.CategoryName,
+		Scan(&u.ID, &u.DeviceID, &u.DeviceLabel, &u.DeviceTypeName, &u.CategoryName,
 			&u.CategoryPrefix, &u.DeviceTypePrefix,
 			&u.UserName, &u.UserType, &u.UsageDate, &u.IsAvailable, &u.Purpose, &u.Notes)
 	if err != nil {
@@ -193,14 +193,14 @@ func (r *DeviceUsageRepository) GetByID(id int) (*DeviceUsageRow, error) {
 }
 
 func (r *DeviceUsageRepository) GetConsumableDevices() ([]models.Device, error) {
-	rows, err := r.db.Query(`SELECT d.id, d.asset_code, COALESCE(d.serial_number,''), d.condition
+	rows, err := r.db.Query(`SELECT d.id, d.label, COALESCE(d.serial_number,''), d.condition
 		FROM devices d
 		JOIN device_types dt ON dt.id = d.device_type_id
 		WHERE dt.usage_type = 'consumable'
 		AND d.condition = 'normal'
 		AND (d.id NOT IN (SELECT device_id FROM device_usages) OR
 			(SELECT is_available FROM device_usages WHERE device_id = d.id ORDER BY usage_date DESC, id DESC LIMIT 1) = 'yes')
-		ORDER BY d.asset_code`)
+		ORDER BY d.label`)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (r *DeviceUsageRepository) GetConsumableDevices() ([]models.Device, error) 
 	var devices []models.Device
 	for rows.Next() {
 		var d models.Device
-		if rows.Scan(&d.ID, &d.AssetCode, &d.SerialNumber, &d.Condition) == nil {
+		if rows.Scan(&d.ID, &d.Label, &d.SerialNumber, &d.Condition) == nil {
 			devices = append(devices, d)
 		}
 	}

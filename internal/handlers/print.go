@@ -89,7 +89,7 @@ func (h *Handler) PrintForm(c *gin.Context) {
 			}
 		}
 		if longest != "" {
-			longestPerPrefix[dt.AssetCodePrefix] = longest
+			longestPerPrefix[dt.LabelPrefix] = longest
 		}
 	}
 
@@ -125,7 +125,7 @@ func (h *Handler) PrintForm(c *gin.Context) {
 			c := printCategoryGroup{Name: cn}
 			for _, dt := range cats[cn] {
 				c.DeviceTypes = append(c.DeviceTypes, printDeviceTypeItem{
-					Prefix: dt.AssetCodePrefix,
+					Prefix: dt.LabelPrefix,
 					Name:   dt.Name,
 				})
 			}
@@ -175,7 +175,7 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 			if p == "" {
 				continue
 			}
-			dt, err := h.deviceTypeService.GetByPrefixSlug(p)
+			dt, err := h.deviceTypeService.GetByLabelSlug(p)
 			if err != nil {
 				h.errHTML(c, "Device type tidak ditemukan: "+p)
 				return

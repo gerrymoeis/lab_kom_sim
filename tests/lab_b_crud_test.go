@@ -313,16 +313,16 @@ func TestLabB_Device_CreateFromScratch(t *testing.T) {
 	}
 
 	// Seed prerequisite: category + device type directly in Lab B's DB
-	db.Exec("INSERT OR IGNORE INTO categories (name, default_prefix) VALUES ('Lab B Category', 'LABCAT')")
+	db.Exec("INSERT OR IGNORE INTO categories (name, label_prefix) VALUES ('Lab B Category', 'LABCAT')")
 	var catID int
-	db.QueryRow("SELECT id FROM categories WHERE default_prefix='LABCAT'").Scan(&catID)
+	db.QueryRow("SELECT id FROM categories WHERE label_prefix='LABCAT'").Scan(&catID)
 	if catID == 0 {
 		t.Fatal("failed to seed category")
 	}
 	var dtID int
 	db.QueryRow("SELECT id FROM device_types WHERE category_id=? AND name='Lab B Type'", catID).Scan(&dtID)
 	if dtID == 0 {
-		db.Exec("INSERT INTO device_types (category_id, name, asset_code_prefix, usage_type) VALUES (?, 'Lab B Type', 'LBT', 'loanable')", catID)
+		db.Exec("INSERT INTO device_types (category_id, name, label_prefix, usage_type) VALUES (?, 'Lab B Type', 'LBT', 'loanable')", catID)
 		db.QueryRow("SELECT id FROM device_types WHERE category_id=? AND name='Lab B Type'", catID).Scan(&dtID)
 	}
 	if dtID == 0 {
@@ -350,12 +350,12 @@ func TestLabB_Device_CreateFromScratch(t *testing.T) {
 	})
 
 	t.Run("detail_device", func(t *testing.T) {
-		var devAssetCode string
-		db.QueryRow("SELECT asset_code FROM devices WHERE serial_number='SN-LABB-DEV-001'").Scan(&devAssetCode)
-		if devAssetCode == "" {
+		var devLabel string
+		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-LABB-DEV-001'").Scan(&devLabel)
+		if devLabel == "" {
 			t.Skip("device not found")
 		}
-		devSlug := strings.ToLower(devAssetCode)
+		devSlug := strings.ToLower(devLabel)
 		resp, err := lab.get("/devices/labcat/lbt/" + devSlug)
 		if err != nil {
 			t.Fatalf("GET /devices/labcat/lbt/%s: %v", devSlug, err)
@@ -367,17 +367,17 @@ func TestLabB_Device_CreateFromScratch(t *testing.T) {
 	})
 
 	t.Run("edit_device", func(t *testing.T) {
-		var devAssetCode string
-		db.QueryRow("SELECT asset_code FROM devices WHERE serial_number='SN-LABB-DEV-001'").Scan(&devAssetCode)
-		if devAssetCode == "" {
+		var devLabel string
+		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-LABB-DEV-001'").Scan(&devLabel)
+		if devLabel == "" {
 			t.Skip("device not found")
 		}
-		devSlug := strings.ToLower(devAssetCode)
+		devSlug := strings.ToLower(devLabel)
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
 		resp, err := lab.post("/devices/"+devSlug+"/edit",
-			"device_type_id="+itoa(dtID)+"&asset_code="+devAssetCode+"&serial_number=SN-LABB-DEV-002&condition=rusak&location=Lab+B&purchase_date=&notes=Updated")
+			"device_type_id="+itoa(dtID)+"&label="+devLabel+"&serial_number=SN-LABB-DEV-002&condition=rusak&location=Lab+B&purchase_date=&notes=Updated")
 		if err != nil {
 			t.Fatalf("POST /devices/%s/edit: %v", devSlug, err)
 		}
@@ -386,19 +386,19 @@ func TestLabB_Device_CreateFromScratch(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var serial string
-		db.QueryRow("SELECT serial_number FROM devices WHERE asset_code=?", devAssetCode).Scan(&serial)
+		db.QueryRow("SELECT serial_number FROM devices WHERE label=?", devLabel).Scan(&serial)
 		if serial != "SN-LABB-DEV-002" {
 			t.Errorf("expected serial SN-LABB-DEV-002, got %q", serial)
 		}
 	})
 
 	t.Run("delete_device", func(t *testing.T) {
-		var devAssetCode string
-		db.QueryRow("SELECT asset_code FROM devices WHERE serial_number='SN-LABB-DEV-002'").Scan(&devAssetCode)
-		if devAssetCode == "" {
+		var devLabel string
+		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-LABB-DEV-002'").Scan(&devLabel)
+		if devLabel == "" {
 			t.Skip("device not found")
 		}
-		devSlug := strings.ToLower(devAssetCode)
+		devSlug := strings.ToLower(devLabel)
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
@@ -411,7 +411,7 @@ func TestLabB_Device_CreateFromScratch(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var count int
-		db.QueryRow("SELECT COUNT(*) FROM devices WHERE asset_code=?", devAssetCode).Scan(&count)
+		db.QueryRow("SELECT COUNT(*) FROM devices WHERE label=?", devLabel).Scan(&count)
 		if count != 0 {
 			t.Errorf("expected deleted, count=%d", count)
 		}

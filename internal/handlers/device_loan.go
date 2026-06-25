@@ -130,7 +130,7 @@ func (h *Handler) DeviceLoanDetail(c *gin.Context) {
 		"title": "Detail Peminjaman", "currentPage": "devices",
 		"username": username, "role": role,
 		"loan":       loan,
-		"assetCode":  loan.DeviceAssetCode,
+		"deviceLabel":  loan.DeviceLabel,
 		"extensions": extensions,
 	})
 }
@@ -152,7 +152,7 @@ func (h *Handler) DeviceLoanEditPage(c *gin.Context) {
 		"title": "Edit Peminjaman", "currentPage": "devices",
 		"username": username, "role": role,
 		"loan": loan,
-		"assetCode": loan.DeviceAssetCode,
+		"deviceLabel": loan.DeviceLabel,
 		"deviceTypeName": loan.DeviceTypeName,
 	})
 }

@@ -126,7 +126,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE TABLE IF NOT EXISTS categories (
 			id {{PK}},
 			name TEXT NOT NULL UNIQUE,
-			default_prefix TEXT NOT NULL UNIQUE,
+			label_prefix TEXT NOT NULL UNIQUE,
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE TABLE IF NOT EXISTS device_types (
@@ -135,7 +135,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 			name TEXT NOT NULL,
 			brand TEXT,
 			model TEXT,
-			asset_code_prefix TEXT NOT NULL UNIQUE,
+			label_prefix TEXT NOT NULL UNIQUE,
 			usage_type TEXT NOT NULL CHECK(usage_type IN ('loanable', 'consumable', 'installable')),
 			default_location TEXT,
 			photo TEXT,
@@ -146,7 +146,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE TABLE IF NOT EXISTS devices (
 			id {{PK}},
 			device_type_id INTEGER NOT NULL REFERENCES device_types(id) ON DELETE RESTRICT,
-			asset_code TEXT NOT NULL UNIQUE,
+			label TEXT NOT NULL UNIQUE,
 			serial_number TEXT,
 			condition TEXT NOT NULL DEFAULT 'normal' CHECK(condition IN ('normal', 'warning', 'rusak')),
 			location TEXT,
@@ -304,7 +304,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		`CREATE INDEX IF NOT EXISTS idx_device_types_category_id ON device_types(category_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_devices_condition ON devices(condition)`,
 		`CREATE INDEX IF NOT EXISTS idx_devices_device_type_id ON devices(device_type_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_devices_asset_code ON devices(asset_code)`,
+		`CREATE INDEX IF NOT EXISTS idx_devices_label ON devices(label)`,
 		`CREATE INDEX IF NOT EXISTS idx_devices_serial ON devices(serial_number)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_loans_device_id ON device_loans(device_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_device_loans_loan_date ON device_loans(loan_date)`,
@@ -351,7 +351,7 @@ func runMigrations(db *DB, isPostgres bool) error {
 		"photo_serial": "TEXT", "photo_front": "TEXT",
 	}
 	devicesExtra := map[string]string{
-		"device_type_id": "INTEGER", "asset_code": "TEXT", "serial_number": "TEXT",
+		"device_type_id": "INTEGER", "label": "TEXT", "serial_number": "TEXT",
 	}
 
 	for colName, colDef := range pcsExtra {
@@ -555,6 +555,68 @@ func runMigrations(db *DB, isPostgres bool) error {
 		}
 	}
 
+	// Column rename migration: old asset_code/asset_code_prefix/default_prefix → label/label_prefix
+	if hasOldCatCol, _ := d.columnExists(db, "categories", "default_prefix"); hasOldCatCol {
+		log.Println("Migrating categories: default_prefix → label_prefix")
+		catV2 := `CREATE TABLE categories_v2 (
+			id {{PK}}, name TEXT NOT NULL UNIQUE,
+			label_prefix TEXT NOT NULL UNIQUE,
+			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP
+		)`
+		catV2 = strings.ReplaceAll(catV2, "{{PK}}", d.pkType)
+		catV2 = strings.ReplaceAll(catV2, "{{TS}}", d.tsType)
+		if _, err := db.Exec(catV2); err == nil {
+			db.Exec(`INSERT INTO categories_v2 (id, name, label_prefix) SELECT id, name, LOWER(default_prefix) FROM categories`)
+			db.Exec("DROP TABLE categories")
+			db.Exec("ALTER TABLE categories_v2 RENAME TO categories")
+			log.Println("  Done: categories migrated")
+		}
+	}
+	if hasOldDTPrefix, _ := d.columnExists(db, "device_types", "asset_code_prefix"); hasOldDTPrefix {
+		log.Println("Migrating device_types: asset_code_prefix → label_prefix")
+		dtV2 := `CREATE TABLE device_types_v2 (
+			id {{PK}}, category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+			name TEXT NOT NULL, brand TEXT, model TEXT,
+			label_prefix TEXT NOT NULL UNIQUE,
+			usage_type TEXT NOT NULL CHECK(usage_type IN ('loanable', 'consumable', 'installable')),
+			default_location TEXT, photo TEXT,
+			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
+			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(category_id, name)
+		)`
+		dtV2 = strings.ReplaceAll(dtV2, "{{PK}}", d.pkType)
+		dtV2 = strings.ReplaceAll(dtV2, "{{TS}}", d.tsType)
+		if _, err := db.Exec(dtV2); err == nil {
+			db.Exec(`INSERT INTO device_types_v2 SELECT id, category_id, name, brand, model, LOWER(asset_code_prefix), usage_type, default_location, photo, created_at, updated_at FROM device_types`)
+			db.Exec("DROP TABLE device_types")
+			db.Exec("ALTER TABLE device_types_v2 RENAME TO device_types")
+			log.Println("  Done: device_types migrated")
+		}
+	}
+	if hasOldDevCol, _ := d.columnExists(db, "devices", "asset_code"); hasOldDevCol {
+		log.Println("Migrating devices: asset_code → label (lowercase + remove zero-pad)")
+		devV2 := `CREATE TABLE devices_v2 (
+			id {{PK}}, device_type_id INTEGER NOT NULL REFERENCES device_types(id) ON DELETE RESTRICT,
+			label TEXT NOT NULL UNIQUE, serial_number TEXT,
+			condition TEXT NOT NULL DEFAULT 'normal' CHECK(condition IN ('normal', 'warning', 'rusak')),
+			location TEXT, purchase_date DATE, notes TEXT,
+			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
+			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
+		)`
+		devV2 = strings.ReplaceAll(devV2, "{{PK}}", d.pkType)
+		devV2 = strings.ReplaceAll(devV2, "{{TS}}", d.tsType)
+		if _, err := db.Exec(devV2); err == nil {
+			db.Exec(`INSERT INTO devices_v2 (id, device_type_id, label, serial_number, condition, location, purchase_date, notes, created_at, updated_at)
+				SELECT id, device_type_id, LOWER(SUBSTR(asset_code, 1, LENGTH(asset_code) - LENGTH(SUBSTR(asset_code, INSTR(asset_code, '-') + 1))) || CAST(SUBSTR(asset_code, INSTR(asset_code, '-') + 1) AS INTEGER)),
+				serial_number, condition, location, purchase_date, notes, created_at, updated_at FROM devices`)
+			db.Exec("DROP INDEX IF EXISTS idx_devices_asset_code")
+			db.Exec(`CREATE INDEX IF NOT EXISTS idx_devices_label ON devices_v2(label)`)
+			db.Exec("DROP TABLE devices")
+			db.Exec("ALTER TABLE devices_v2 RENAME TO devices")
+			log.Println("  Done: devices migrated")
+		}
+	}
+
 	if err := normalizeExistingData(db); err != nil {
 		return fmt.Errorf("failed to normalize existing data: %w", err)
 	}
@@ -624,7 +686,7 @@ func normalizeExistingData(db *DB) error {
 }
 
 func normalizeCategories(db *DB) error {
-	rows, err := db.Query("SELECT id, name, default_prefix FROM categories")
+	rows, err := db.Query("SELECT id, name, label_prefix FROM categories")
 	if err != nil {
 		return err
 	}
@@ -639,7 +701,7 @@ func normalizeCategories(db *DB) error {
 		newName := toTitleCase(name)
 		newPrefix := toUpperTrim(prefix)
 		if newName != name || newPrefix != prefix {
-			db.Exec("UPDATE categories SET name = ?, default_prefix = ? WHERE id = ?", newName, newPrefix, id)
+			db.Exec("UPDATE categories SET name = ?, label_prefix = ? WHERE id = ?", newName, newPrefix, id)
 			count++
 		}
 	}
@@ -650,7 +712,7 @@ func normalizeCategories(db *DB) error {
 }
 
 func normalizeDeviceTypes(db *DB) error {
-	rows, err := db.Query("SELECT id, name, COALESCE(brand,''), COALESCE(model,''), asset_code_prefix, COALESCE(default_location,'') FROM device_types")
+	rows, err := db.Query("SELECT id, name, COALESCE(brand,''), COALESCE(model,''), label_prefix, COALESCE(default_location,'') FROM device_types")
 	if err != nil {
 		return err
 	}
@@ -668,7 +730,7 @@ func normalizeDeviceTypes(db *DB) error {
 		newPrefix := toUpperTrim(prefix)
 		newLoc := toTitleCase(loc)
 		if newName != name || newBrand != brand || newModel != model || newPrefix != prefix || newLoc != loc {
-			db.Exec("UPDATE device_types SET name = ?, brand = ?, model = ?, asset_code_prefix = ?, default_location = ? WHERE id = ?",
+			db.Exec("UPDATE device_types SET name = ?, brand = ?, model = ?, label_prefix = ?, default_location = ? WHERE id = ?",
 				newName, newBrand, newModel, newPrefix, newLoc, id)
 			count++
 		}

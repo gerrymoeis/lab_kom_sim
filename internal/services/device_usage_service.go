@@ -122,7 +122,7 @@ func (s *DeviceUsageService) BatchDelete(ids []int, actorID int, actorUsername, 
 		info := map[string]any{"id": id}
 		if row, err := s.repo.GetByID(id); err == nil {
 			info["user_name"] = row.UserName
-			info["device_asset_code"] = row.DeviceAssetCode
+			info["device_label"] = row.DeviceLabel
 		}
 		if err := s.repo.Delete(id); err != nil {
 			s.log.LogDelete(actorID, actorUsername, actorRole, "device_usage", 0,

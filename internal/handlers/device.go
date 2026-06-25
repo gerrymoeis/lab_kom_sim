@@ -314,7 +314,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Pilih atau buat kategori terlebih dahulu"})
 			return
 		}
-		prefix := req.NewTypeAssetCodePrefix
+		prefix := req.NewTypeLabelPrefix
 		if prefix == "" {
 			prefix = strings.ToUpper(strings.ReplaceAll(req.NewTypeName, " ", "_"))
 		}
@@ -323,7 +323,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 			Name:            req.NewTypeName,
 			Brand:           req.NewTypeBrand,
 			Model:           req.NewTypeModel,
-			AssetCodePrefix: prefix,
+			LabelPrefix: prefix,
 			UsageType:       req.NewTypeUsageType,
 			DefaultLocation: req.NewTypeDefaultLocation,
 			Photo:           photoFile,
@@ -366,7 +366,7 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 	}
 
 	assetCode := c.Param("assetCode")
-	d, err := h.deviceService.GetByAssetCodeSlug(assetCode)
+	d, err := h.deviceService.GetByLabelSlug(assetCode)
 	if err != nil {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
@@ -417,7 +417,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 	}
 
 	slug := c.Param("slug")
-	d, err := h.deviceService.GetByAssetCodeSlug(slug)
+	d, err := h.deviceService.GetByLabelSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
@@ -433,7 +433,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceEdit(c *gin.Context) {
 	slug := c.Param("slug")
-	d, err := h.deviceService.GetByAssetCodeSlug(slug)
+	d, err := h.deviceService.GetByLabelSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Perangkat tidak ditemukan")
 		return
@@ -450,7 +450,7 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 
 	if err := h.deviceService.UpdateDevice(d.ID, services.UpdateDeviceInput{
 		DeviceTypeID: req.DeviceTypeID,
-		AssetCode:    req.AssetCode,
+		Label:    req.Label,
 		SerialNumber: req.SerialNumber,
 		Condition:    req.Condition,
 		Location:     req.Location,
@@ -466,7 +466,7 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 
 func (h *Handler) DeviceDelete(c *gin.Context) {
 	slug := c.Param("slug")
-	d, err := h.deviceService.GetByAssetCodeSlug(slug)
+	d, err := h.deviceService.GetByLabelSlug(slug)
 	if err != nil {
 		h.redirectWithError(c, "/devices?tab=types", "Perangkat tidak ditemukan")
 		return
@@ -482,13 +482,13 @@ func (h *Handler) DeviceDelete(c *gin.Context) {
 	h.redirectWithSuccess(c, "/devices?tab=types", "Perangkat berhasil dihapus", "delete")
 }
 
-func (h *Handler) GetNextAssetCode(c *gin.Context) {
+func (h *Handler) NextLabel(c *gin.Context) {
 	prefix := c.Query("prefix")
-	code := h.deviceService.GetNextAssetCode(prefix)
-	c.JSON(http.StatusOK, gin.H{"next_code": code})
+	code := h.deviceService.NextLabel(prefix)
+	c.JSON(http.StatusOK, gin.H{"next_label": code})
 }
 
-func (h *Handler) GetNextAssetCodes(c *gin.Context) {
+func (h *Handler) NextLabels(c *gin.Context) {
 	prefix := c.Query("prefix")
 	count, _ := strconv.Atoi(c.DefaultQuery("count", "1"))
 	if count < 1 {
@@ -497,8 +497,8 @@ func (h *Handler) GetNextAssetCodes(c *gin.Context) {
 	if count > 100 {
 		count = 100
 	}
-	codes := h.deviceService.GetNextAssetCodes(prefix, count)
-	c.JSON(http.StatusOK, gin.H{"codes": codes})
+	codes := h.deviceService.NextLabels(prefix, count)
+	c.JSON(http.StatusOK, gin.H{"labels": codes})
 }
 
 func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
@@ -507,7 +507,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 		return
 	}
 	slug := c.Param("slug")
-	dt, err := h.deviceTypeService.GetByPrefixSlug(slug)
+	dt, err := h.deviceTypeService.GetByLabelSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Tipe perangkat tidak ditemukan")
 		return
@@ -524,7 +524,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	slug := c.Param("slug")
-	dt, err := h.deviceTypeService.GetByPrefixSlug(slug)
+	dt, err := h.deviceTypeService.GetByLabelSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Tipe perangkat tidak ditemukan")
 		return
@@ -555,7 +555,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		Name:            req.Name,
 		Brand:           req.Brand,
 		Model:           req.Model,
-		AssetCodePrefix: req.AssetCodePrefix,
+		LabelPrefix: req.LabelPrefix,
 		UsageType:       req.UsageType,
 		DefaultLocation: req.DefaultLocation,
 		Photo:           photoFile,
@@ -581,7 +581,7 @@ func (h *Handler) renderEditPageWithError(c *gin.Context, dt *models.DeviceType,
 
 func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 	slug := c.Param("slug")
-	dt, err := h.deviceTypeService.GetByPrefixSlug(slug)
+	dt, err := h.deviceTypeService.GetByLabelSlug(slug)
 	if err != nil {
 		h.redirectWithError(c, "/devices?tab=types", "Tipe perangkat tidak ditemukan")
 		return
@@ -600,7 +600,7 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
 	slug := c.Param("slug")
-	dt, err := h.deviceTypeService.GetByPrefixSlug(slug)
+	dt, err := h.deviceTypeService.GetByLabelSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Tipe perangkat tidak ditemukan")
 		return
@@ -639,7 +639,7 @@ func (h *Handler) CategoryDetail(c *gin.Context) {
 		return
 	}
 	slug := c.Param("slug")
-	cat, err := h.categoryService.GetByPrefixSlug(slug)
+	cat, err := h.categoryService.GetByLabelSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Kategori tidak ditemukan")
 		return
@@ -663,7 +663,7 @@ func (h *Handler) CategoryEditPage(c *gin.Context) {
 		return
 	}
 	slug := c.Param("slug")
-	cat, err := h.categoryService.GetByPrefixSlug(slug)
+	cat, err := h.categoryService.GetByLabelSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Kategori tidak ditemukan")
 		return
@@ -677,7 +677,7 @@ func (h *Handler) CategoryEditPage(c *gin.Context) {
 
 func (h *Handler) CategoryEdit(c *gin.Context) {
 	slug := c.Param("slug")
-	cat, err := h.categoryService.GetByPrefixSlug(slug)
+	cat, err := h.categoryService.GetByLabelSlug(slug)
 	if err != nil {
 		h.errHTML(c, "Kategori tidak ditemukan")
 		return
@@ -690,7 +690,7 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.categoryService.Update(cat.ID, req.Name, req.DefaultPrefix, uid, u, r, ip, ua); err != nil {
+	if err := h.categoryService.Update(cat.ID, req.Name, req.LabelPrefix, uid, u, r, ip, ua); err != nil {
 		h.errHTML(c, err.Error())
 		return
 	}
@@ -699,7 +699,7 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 
 func (h *Handler) CategoryDelete(c *gin.Context) {
 	slug := c.Param("slug")
-	cat, err := h.categoryService.GetByPrefixSlug(slug)
+	cat, err := h.categoryService.GetByLabelSlug(slug)
 	if err != nil {
 		h.redirectWithError(c, "/devices?tab=types", "Kategori tidak ditemukan")
 		return
@@ -777,12 +777,12 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 		if pi != pj { return pi < pj }
 		if devices[i].CategoryName != devices[j].CategoryName { return devices[i].CategoryName < devices[j].CategoryName }
 		if devices[i].DeviceTypeName != devices[j].DeviceTypeName { return devices[i].DeviceTypeName < devices[j].DeviceTypeName }
-		return devices[i].AssetCode < devices[j].AssetCode
+		return devices[i].Label < devices[j].Label
 	})
 	deviceData := make([][]any, 0, len(devices))
 	for i, d := range devices {
 		deviceData = append(deviceData, []any{
-			i + 1, d.AssetCode, d.SerialNumber, d.DeviceTypeName, d.CategoryName,
+			i + 1, d.Label, d.SerialNumber, d.DeviceTypeName, d.CategoryName,
 			d.Condition, d.Location, d.UsageType, formatDate(d.PurchaseDate), d.Notes,
 		})
 	}
@@ -799,7 +799,7 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 			status = "Terlambat"
 		}
 		loanData = append(loanData, []any{
-			i + 1, l.DeviceAssetCode, l.DeviceTypeName, l.CategoryName,
+			i + 1, l.DeviceLabel, l.DeviceTypeName, l.CategoryName,
 			l.BorrowerName, l.BorrowerType,
 			formatTime(l.LoanDate), formatTime(l.ReturnDate), formatDate(l.ActualReturnDate),
 			status, l.ExtensionCount, l.Purpose, l.Notes,
@@ -813,7 +813,7 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 			available = "Masih Ada"
 		}
 		usageData = append(usageData, []any{
-			i + 1, u.DeviceAssetCode, u.DeviceTypeName, u.CategoryName,
+			i + 1, u.DeviceLabel, u.DeviceTypeName, u.CategoryName,
 			u.UserName, u.UserType, formatTime(u.UsageDate), available, u.Purpose, u.Notes,
 		})
 	}
@@ -829,7 +829,7 @@ func (h *Handler) DeviceExport(c *gin.Context) {
 			status = "Belum Mulai"
 		}
 		installData = append(installData, []any{
-			i + 1, inst.DeviceAssetCode, inst.DeviceTypeName, inst.CategoryName,
+			i + 1, inst.DeviceLabel, inst.DeviceTypeName, inst.CategoryName,
 			inst.LocationInstalled, status,
 			formatDate(inst.InstallationStartDate), formatDate(inst.InstallationFinishDate),
 		})
@@ -889,7 +889,7 @@ func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bo
 		if sorted[i].DeviceTypeName != sorted[j].DeviceTypeName {
 			return sorted[i].DeviceTypeName < sorted[j].DeviceTypeName
 		}
-		return sorted[i].AssetCode < sorted[j].AssetCode
+		return sorted[i].Label < sorted[j].Label
 	})
 
 	grouped := models.DeviceGroupedData{

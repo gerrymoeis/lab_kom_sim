@@ -66,8 +66,8 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 	switch filters.SortBy {
 	case "location":
 		orderBy = "di.location_installed"
-	case "asset_code":
-		orderBy = "d.asset_code"
+	case "label":
+		orderBy = "d.label"
 	case "start_date":
 		orderBy = "di.installation_start_date"
 	case "category":
@@ -86,8 +86,8 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 		orderDir = "ASC"
 	}
 
-	query := `SELECT di.id, di.device_id, d.asset_code, d.condition, dt.name, c.name,
-		c.default_prefix, dt.asset_code_prefix,
+	query := `SELECT di.id, di.device_id, d.label, d.condition, dt.name, c.name,
+		c.label_prefix, dt.label_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
 		COALESCE(di.photo,''), COALESCE(di.notes,''), di.created_at, di.updated_at
 		FROM device_installations di
@@ -106,7 +106,7 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 	var installations []InstallationRow
 	for rows.Next() {
 		var ir InstallationRow
-		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceCondition, &ir.DeviceTypeName, &ir.CategoryName,
+		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceLabel, &ir.DeviceCondition, &ir.DeviceTypeName, &ir.CategoryName,
 			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
 			&ir.LocationInstalled, &ir.InstallationStartDate, &ir.InstallationFinishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt); err != nil {
@@ -118,8 +118,8 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 }
 
 func (r *DeviceInstallationRepository) ExportAll() ([]InstallationRow, error) {
-	rows, err := r.db.Query(`SELECT di.id, di.device_id, d.asset_code, d.condition, dt.name, c.name,
-		c.default_prefix, dt.asset_code_prefix,
+	rows, err := r.db.Query(`SELECT di.id, di.device_id, d.label, d.condition, dt.name, c.name,
+		c.label_prefix, dt.label_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
 		COALESCE(di.photo,''), COALESCE(di.notes,''), di.created_at, di.updated_at
 		FROM device_installations di
@@ -135,7 +135,7 @@ func (r *DeviceInstallationRepository) ExportAll() ([]InstallationRow, error) {
 	var installations []InstallationRow
 	for rows.Next() {
 		var ir InstallationRow
-		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceCondition, &ir.DeviceTypeName, &ir.CategoryName,
+		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceLabel, &ir.DeviceCondition, &ir.DeviceTypeName, &ir.CategoryName,
 			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
 			&ir.LocationInstalled, &ir.InstallationStartDate, &ir.InstallationFinishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt); err != nil {
@@ -148,15 +148,15 @@ func (r *DeviceInstallationRepository) ExportAll() ([]InstallationRow, error) {
 
 func (r *DeviceInstallationRepository) GetByID(id int) (*InstallationRow, error) {
 	var ir InstallationRow
-	err := r.db.QueryRow(`SELECT di.id, di.device_id, d.asset_code, d.condition, dt.name, c.name,
-		c.default_prefix, dt.asset_code_prefix,
+	err := r.db.QueryRow(`SELECT di.id, di.device_id, d.label, d.condition, dt.name, c.name,
+		c.label_prefix, dt.label_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
 		COALESCE(di.photo,''), COALESCE(di.notes,''), di.created_at, di.updated_at
 		FROM device_installations di
 		JOIN devices d ON d.id = di.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE di.id = ?`, id).
-		Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceCondition, &ir.DeviceTypeName, &ir.CategoryName,
+		Scan(&ir.ID, &ir.DeviceID, &ir.DeviceLabel, &ir.DeviceCondition, &ir.DeviceTypeName, &ir.CategoryName,
 			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
 			&ir.LocationInstalled, &ir.InstallationStartDate, &ir.InstallationFinishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt)
@@ -200,12 +200,12 @@ func (r *DeviceInstallationRepository) GetDistinctLocations() ([]string, error) 
 }
 
 func (r *DeviceInstallationRepository) GetInstallableDevices() ([]models.Device, error) {
-	rows, err := r.db.Query(`SELECT d.id, d.asset_code, COALESCE(d.serial_number,''), d.condition
+	rows, err := r.db.Query(`SELECT d.id, d.label, COALESCE(d.serial_number,''), d.condition
 		FROM devices d
 		JOIN device_types dt ON dt.id = d.device_type_id
 		WHERE dt.usage_type = 'installable'
 		AND d.id NOT IN (SELECT device_id FROM device_installations)
-		ORDER BY d.asset_code`)
+		ORDER BY d.label`)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (r *DeviceInstallationRepository) GetInstallableDevices() ([]models.Device,
 	var devices []models.Device
 	for rows.Next() {
 		var d models.Device
-		if rows.Scan(&d.ID, &d.AssetCode, &d.SerialNumber, &d.Condition) == nil {
+		if rows.Scan(&d.ID, &d.Label, &d.SerialNumber, &d.Condition) == nil {
 			devices = append(devices, d)
 		}
 	}
@@ -240,7 +240,7 @@ func (r *DeviceInstallationRepository) Delete(id int) error {
 
 type InstallationRow struct {
 	models.DeviceInstallation
-	DeviceAssetCode  string
+	DeviceLabel  string
 	DeviceCondition  string
 	DeviceTypeName   string
 	CategoryName     string

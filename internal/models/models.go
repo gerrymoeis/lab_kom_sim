@@ -34,7 +34,7 @@ type PC struct {
 type Category struct {
 	ID            int       `json:"id"`
 	Name          string    `json:"name"`           // TitleCase: "Mouse", "CCTV"
-	DefaultPrefix string    `json:"default_prefix"` // UPPERCASE: "MOUSE", "CCTV"
+	LabelPrefix string    `json:"label_prefix"` // UPPERCASE: "MOUSE", "CCTV"
 	CreatedAt     time.Time `json:"created_at"`
 }
 
@@ -45,7 +45,7 @@ type DeviceType struct {
 	Name            string    `json:"name"`             // TitleCase — variant: "Axioo"
 	Brand           string    `json:"brand"`
 	Model           string    `json:"model"`
-	AssetCodePrefix string    `json:"asset_code_prefix"` // UPPERCASE UNIQUE: "MOUSE-AXIOO"
+	LabelPrefix string    `json:"label_prefix"` // UPPERCASE UNIQUE: "MOUSE-AXIOO"
 	UsageType       string    `json:"usage_type"`        // 'loanable'|'consumable'|'installable'
 	DefaultLocation string    `json:"default_location"`
 	Photo           string    `json:"photo"`
@@ -60,7 +60,7 @@ type DeviceType struct {
 type Device struct {
 	ID           int        `json:"id"`
 	DeviceTypeID int        `json:"device_type_id"`
-	AssetCode    string     `json:"asset_code"`     // UNIQUE: "MOUSE-AXIOO-001"
+	Label    string     `json:"label"`     // UNIQUE: "MOUSE-AXIOO-001"
 	SerialNumber string     `json:"serial_number"`
 	Condition    string     `json:"condition"`      // 'normal'|'warning'|'rusak'
 	Location     string     `json:"location"`
@@ -93,7 +93,7 @@ type DeviceLoan struct {
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 	// Joined fields
-	DeviceAssetCode string `json:"device_asset_code,omitempty"`
+	DeviceLabel string `json:"device_label,omitempty"`
 	DeviceTypeName  string `json:"device_type_name,omitempty"`
 	CategoryName    string `json:"category_name,omitempty"`
 	ExtensionCount  int    `json:"extension_count,omitempty"`
@@ -120,7 +120,7 @@ type DeviceUsage struct {
 	Notes       string    `json:"notes"`
 	CreatedAt   time.Time `json:"created_at"`
 	// Joined fields
-	DeviceAssetCode string `json:"device_asset_code,omitempty"`
+	DeviceLabel string `json:"device_label,omitempty"`
 	DeviceTypeName  string `json:"device_type_name,omitempty"`
 	CategoryName    string `json:"category_name,omitempty"`
 }
@@ -137,7 +137,7 @@ type DeviceInstallation struct {
 	CreatedAt             time.Time  `json:"created_at"`
 	UpdatedAt             time.Time  `json:"updated_at"`
 	// Joined fields
-	DeviceAssetCode string `json:"device_asset_code,omitempty"`
+	DeviceLabel string `json:"device_label,omitempty"`
 	DeviceTypeName  string `json:"device_type_name,omitempty"`
 	CategoryName    string `json:"category_name,omitempty"`
 }
