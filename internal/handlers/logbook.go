@@ -331,7 +331,7 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 
 		p := ""
 		if i < len(req.Purpose) { p = req.Purpose[i] }
-		if p != "" { p = services.ToTitleCaseWithAbbr(p) }
+		if p != "" { p = services.ToTitleCase(p) }
 		bulk = append(bulk, repository.BulkEntry{
 			Date: dv, StudentName: req.StudentName[i], NIM: req.NIM[i],
 			TimeIn: tiv.Format("15:04"), TimeOut: tov.Format("15:04"),

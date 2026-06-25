@@ -568,6 +568,10 @@ func runMigrations(db *DB, isPostgres bool) error {
 	return nil
 }
 
+func toTitleCase(s string) string {
+	return util.ToTitleCase(s)
+}
+
 func toTitleCaseWithAbbr(s string) string {
 	return util.ToTitleCaseWithAbbr(s)
 }
@@ -632,7 +636,7 @@ func normalizeCategories(db *DB) error {
 		if rows.Scan(&id, &name, &prefix) != nil {
 			continue
 		}
-		newName := toTitleCaseWithAbbr(name)
+		newName := toTitleCase(name)
 		newPrefix := toUpperTrim(prefix)
 		if newName != name || newPrefix != prefix {
 			db.Exec("UPDATE categories SET name = ?, default_prefix = ? WHERE id = ?", newName, newPrefix, id)
@@ -658,11 +662,11 @@ func normalizeDeviceTypes(db *DB) error {
 		if rows.Scan(&id, &name, &brand, &model, &prefix, &loc) != nil {
 			continue
 		}
-		newName := toTitleCaseWithAbbr(name)
-		newBrand := toTitleCaseWithAbbr(brand)
-		newModel := toTitleCaseWithAbbr(model)
+		newName := toTitleCase(name)
+		newBrand := toTitleCase(brand)
+		newModel := toTitleCase(model)
 		newPrefix := toUpperTrim(prefix)
-		newLoc := toTitleCaseWithAbbr(loc)
+		newLoc := toTitleCase(loc)
 		if newName != name || newBrand != brand || newModel != model || newPrefix != prefix || newLoc != loc {
 			db.Exec("UPDATE device_types SET name = ?, brand = ?, model = ?, asset_code_prefix = ?, default_location = ? WHERE id = ?",
 				newName, newBrand, newModel, newPrefix, newLoc, id)
@@ -688,7 +692,7 @@ func normalizeDevices(db *DB) error {
 		if rows.Scan(&id, &loc, &notes, &serial) != nil {
 			continue
 		}
-		newLoc := toTitleCaseWithAbbr(loc)
+		newLoc := toTitleCase(loc)
 		newNotes := sanitizeText(notes)
 		newSerial := sanitizeText(serial)
 		if newLoc != loc || newNotes != notes || newSerial != serial {
@@ -772,7 +776,7 @@ func normalizeDeviceInstallations(db *DB) error {
 		if rows.Scan(&id, &loc, &notes) != nil {
 			continue
 		}
-		newLoc := toTitleCaseWithAbbr(loc)
+		newLoc := toTitleCase(loc)
 		newNotes := sanitizeText(notes)
 		if newLoc != loc || newNotes != notes {
 			db.Exec("UPDATE device_installations SET location_installed = ?, notes = ? WHERE id = ?",
@@ -799,7 +803,7 @@ func normalizeSchedules(db *DB) error {
 		if rows.Scan(&id, &course, &lecturer, &class, &notes) != nil {
 			continue
 		}
-		newCourse := toTitleCaseWithAbbr(course)
+		newCourse := toTitleCase(course)
 		newLecturer := toTitleCaseWithAbbr(lecturer)
 		newClass := strings.ToUpper(strings.TrimSpace(class))
 		newNotes := sanitizeText(notes)
@@ -828,7 +832,7 @@ func normalizeSoftwareCatalogs(db *DB) error {
 		if rows.Scan(&id, &name, &desc, &oldSlug) != nil {
 			continue
 		}
-		newName := toTitleCaseWithAbbr(name)
+		newName := toTitleCase(name)
 		newDesc := sanitizeText(desc)
 		newSlug := util.Slugify(newName)
 		if newName == name && newDesc == desc && newSlug == oldSlug {
@@ -937,7 +941,7 @@ func normalizeLogbookEntries(db *DB) error {
 		}
 		newName := toTitleCaseWithAbbr(name)
 		newNIM := strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(nim, " ", "")))
-		newPurpose := toTitleCaseWithAbbr(purpose)
+		newPurpose := toTitleCase(purpose)
 		if newName != name || newNIM != nim || newPurpose != purpose {
 			db.Exec("UPDATE logbook_entries SET student_name = ?, nim = ?, purpose = ? WHERE id = ?",
 				newName, newNIM, newPurpose, id)

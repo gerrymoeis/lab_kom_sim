@@ -23,7 +23,7 @@ func NewScheduleService(repo *repository.ScheduleRepository, log *ActivityLogSer
 }
 
 func (s *ScheduleService) Create(in ScheduleCreateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	in.CourseName = ToTitleCaseWithAbbr(in.CourseName)
+	in.CourseName = ToTitleCase(in.CourseName)
 	in.Lecturer = ToTitleCaseWithAbbr(in.Lecturer)
 	in.Class = ToUpperTrim(in.Class)
 	in.Notes = SanitizeText(in.Notes)
@@ -43,7 +43,7 @@ func (s *ScheduleService) Create(in ScheduleCreateInput, actorID int, actorUsern
 }
 
 func (s *ScheduleService) Update(id int, in ScheduleUpdateInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	in.CourseName = ToTitleCaseWithAbbr(in.CourseName)
+	in.CourseName = ToTitleCase(in.CourseName)
 	in.Lecturer = ToTitleCaseWithAbbr(in.Lecturer)
 	in.Class = ToUpperTrim(in.Class)
 	in.Notes = SanitizeText(in.Notes)

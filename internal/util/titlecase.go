@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func ToTitleCaseWithAbbr(s string) string {
+func ToTitleCase(s string) string {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return ""
@@ -20,9 +20,13 @@ func ToTitleCaseWithAbbr(s string) string {
 		if len(w) > 1 && strings.ToUpper(w) == w {
 			continue
 		}
-		words[i] = strings.ToUpper(string(w[0])) + strings.ToLower(w[1:])
+		words[i] = strings.ToUpper(string(w[0])) + w[1:]
 	}
-	r := strings.Join(words, " ")
+	return strings.Join(words, " ")
+}
+
+func ToTitleCaseWithAbbr(s string) string {
+	r := ToTitleCase(s)
 	r = regexp.MustCompile(`\b([A-Z])([A-Z])\b`).ReplaceAllString(r, "$1.$2")
 	return strings.TrimSuffix(r, ".")
 }
