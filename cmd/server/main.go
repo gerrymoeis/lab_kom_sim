@@ -44,7 +44,7 @@ func main() {
 		}
 		defer db.Close()
 
-		useDefaultFallback := os.Getenv("LABS") == ""
+		useDefaultFallback := !cfg.MultiLabMode
 		if err := database.RunMigrations(db, isPostgres, lab.ID, lab.URLPath, cfg.UploadPath, useDefaultFallback); err != nil {
 			log.Fatalf("Failed to run migrations for lab %s: %v", lab.URLPath, err)
 		}
