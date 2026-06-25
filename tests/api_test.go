@@ -285,7 +285,9 @@ func TestAPIPCOperations(t *testing.T) {
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
-		body := fmt.Sprintf(`{"label":"%s","row":1,"col":5}`, cadanganLabel)
+		// Place cadangan at the position that was freed by move_to_cadangan (1,2)
+		// Label will become "pc-2" (position 2 = row 1, col 2 in 8-col grid)
+		body := fmt.Sprintf(`{"label":"%s","row":1,"col":2}`, cadanganLabel)
 		resp, err := lab.postJSON("/api/pc/place", body)
 		if err != nil {
 			t.Fatalf("POST /api/pc/place: %v", err)
@@ -325,11 +327,43 @@ func TestAPIPCOperations(t *testing.T) {
 		}
 	})
 
+	t.Run("move_to_cadangan2", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		body := `{"label":"pc-7"}`
+		resp, err := lab.postJSON("/api/pc/move-to-cadangan", body)
+		if err != nil {
+			t.Fatalf("POST /api/pc/move-to-cadangan: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+		var moveRes2 struct {
+			Success bool `json:"success"`
+			Changes []struct {
+				NewLabel string `json:"new_label"`
+			} `json:"changes"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&moveRes2); err != nil {
+			t.Fatalf("decode move response: %v", err)
+		}
+		if !moveRes2.Success {
+			t.Error("move_to_cadangan2 success=false")
+		}
+		if len(moveRes2.Changes) > 0 {
+			cadanganLabel = moveRes2.Changes[0].NewLabel
+		}
+	})
+
 	t.Run("move", func(t *testing.T) {
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
-		body := `{"label":"pc-5","row":2,"col":3}`
+		// pc-7 moved to cadangan → position (1,7) free, label "pc-7" reusable
+		// Move pc-3 to (1,7) → label becomes "pc-7"
+		body := `{"label":"pc-3","row":1,"col":7}`
 		resp, err := lab.postJSON("/api/pc/move", body)
 		if err != nil {
 			t.Fatalf("POST /api/pc/move: %v", err)
