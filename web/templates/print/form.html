@@ -89,33 +89,62 @@
                 </div>
 
                 <div id="deviceTypeGroup" style="{{ if ne .selectedType "device" }}display:none{{ end }}">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="selectAllDeviceTypes"
+                            onchange="toggleAllDeviceTypes(this)">
+                        <label class="form-check-label fw-semibold" for="selectAllDeviceTypes">
+                            Pilih Semua Device Type
+                        </label>
+                    </div>
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Device Type</label>
-                            <div class="device-type-checkboxes">
+                        {{ range .groupedDeviceTypes }}
+                        {{ $usageType := .UsageType }}
+                        <div class="col-md-4">
+                            <label class="form-label">{{ .Label }}</label>
+                            <div class="pc-checkbox-group">
                                 <div class="form-check mb-1">
-                                    <input class="form-check-input" type="checkbox" id="selectAllDeviceTypes"
-                                        onchange="toggleAllDeviceTypes(this)">
-                                    <label class="form-check-label fw-semibold" for="selectAllDeviceTypes">
-                                        Pilih Semua
-                                    </label>
+                                    <input class="form-check-input usage-select-all" type="checkbox"
+                                        data-usage="{{ $usageType }}"
+                                        onchange="toggleUsageType(this)">
+                                    <label class="form-check-label fw-semibold">Pilih Semua {{ .Label }}</label>
                                 </div>
                                 <hr class="my-1">
-                                {{ range .deviceTypes }}
-                                <div class="form-check mb-1">
-                                    <input class="form-check-input device-type-check" type="checkbox"
-                                        name="device_type" value="{{ .AssetCodePrefix }}"
-                                        id="dt_{{ .AssetCodePrefix }}"
-                                        onchange="onDeviceTypeChange()">
-                                    <label class="form-check-label" for="dt_{{ .AssetCodePrefix }}">
-                                        {{ .AssetCodePrefix }}
-                                    </label>
+                                {{ range .Categories }}
+                                {{ $catName := .Name }}
+                                <div class="mb-1 ps-2 border-start border-2">
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input category-select-all" type="checkbox"
+                                            data-usage="{{ $usageType }}"
+                                            data-category="{{ $catName }}"
+                                            onchange="toggleCategory(this)">
+                                        <label class="form-check-label small fw-semibold">{{ .Name }}</label>
+                                    </div>
+                                    <div class="ps-3">
+                                        {{ range .DeviceTypes }}
+                                        <div class="form-check mb-1">
+                                            <input class="form-check-input device-type-check" type="checkbox"
+                                                name="device_type" value="{{ .Prefix }}"
+                                                id="dt_{{ .Prefix }}"
+                                                data-usage="{{ $usageType }}"
+                                                data-category="{{ $catName }}"
+                                                onchange="onDeviceTypeChange()">
+                                            <label class="form-check-label" for="dt_{{ .Prefix }}">{{ .Prefix }}</label>
+                                        </div>
+                                        {{ end }}
+                                    </div>
                                 </div>
+                                {{ else }}
+                                <div class="text-muted small">Tidak ada kategori</div>
                                 {{ end }}
                             </div>
-                            <div class="form-text mt-1">Pilih satu atau lebih device type. Kosongkan = print semua device.</div>
                         </div>
+                        {{ else }}
+                        <div class="col-12">
+                            <div class="text-muted small">Tidak ada device type</div>
+                        </div>
+                        {{ end }}
                     </div>
+                    <div class="form-text mt-1">Pilih satu atau lebih device type. Kosongkan = print semua device.</div>
                 </div>
 
                 <h5 class="mb-3">Langkah 2: Ukuran Stiker (cm)</h5>
@@ -247,8 +276,7 @@
     white-space: nowrap;
     transition: all 0.2s;
 }
-.pc-checkbox-group,
-.device-type-checkboxes {
+.pc-checkbox-group {
     max-height: 260px;
     overflow-y: auto;
     border: 1px solid #ced4da;
@@ -321,8 +349,37 @@ function toggleAllPCSpesial(src) {
     toggleAll('.pc-spesial-check', src);
 }
 
+function toggleUsageType(src) {
+    var usage = src.getAttribute('data-usage');
+    var typeChecks = document.querySelectorAll('.device-type-check[data-usage="' + usage + '"]');
+    typeChecks.forEach(function(c) { c.checked = src.checked; });
+    var catChecks = document.querySelectorAll('.category-select-all[data-usage="' + usage + '"]');
+    catChecks.forEach(function(c) {
+        c.checked = src.checked;
+        c.indeterminate = false;
+    });
+    onDeviceTypeChange();
+}
+
+function toggleCategory(src) {
+    var cat = src.getAttribute('data-category');
+    var usage = src.getAttribute('data-usage');
+    var checks = document.querySelectorAll('.device-type-check[data-category="' + cat + '"][data-usage="' + usage + '"]');
+    checks.forEach(function(c) { c.checked = src.checked; });
+    onDeviceTypeChange();
+}
+
 function toggleAllDeviceTypes(src) {
-    toggleAll('.device-type-check', src);
+    var checks = document.querySelectorAll('.device-type-check');
+    checks.forEach(function(c) { c.checked = src.checked; });
+    document.querySelectorAll('.usage-select-all').forEach(function(u) {
+        u.checked = src.checked;
+        u.indeterminate = false;
+    });
+    document.querySelectorAll('.category-select-all').forEach(function(c) {
+        c.checked = src.checked;
+        c.indeterminate = false;
+    });
     onDeviceTypeChange();
 }
 
@@ -334,6 +391,21 @@ function onPCChange() {
 
 function onDeviceTypeChange() {
     updateSelectAllState('.device-type-check', 'selectAllDeviceTypes');
+    document.querySelectorAll('.usage-select-all').forEach(function(ucb) {
+        var usage = ucb.getAttribute('data-usage');
+        var total = document.querySelectorAll('.device-type-check[data-usage="' + usage + '"]').length;
+        var checked = document.querySelectorAll('.device-type-check[data-usage="' + usage + '"]:checked').length;
+        ucb.checked = total > 0 && checked === total;
+        ucb.indeterminate = checked > 0 && checked < total;
+    });
+    document.querySelectorAll('.category-select-all').forEach(function(ccb) {
+        var cat = ccb.getAttribute('data-category');
+        var usage = ccb.getAttribute('data-usage');
+        var total = document.querySelectorAll('.device-type-check[data-category="' + cat + '"][data-usage="' + usage + '"]').length;
+        var checked = document.querySelectorAll('.device-type-check[data-category="' + cat + '"][data-usage="' + usage + '"]:checked').length;
+        ccb.checked = total > 0 && checked === total;
+        ccb.indeterminate = checked > 0 && checked < total;
+    });
     updatePreview();
 }
 
