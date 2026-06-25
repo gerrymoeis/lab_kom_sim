@@ -81,7 +81,7 @@
                                 <div class="form-check">
                                     <input type="checkbox" name="labs" class="form-check-input lab-check"
                                         value="{{ $lab.URLPath }}" id="lab_{{ $lab.URLPath }}"
-                                        {{ if index $.permissions $lab.URLPath }}checked{{ end }}>
+                                        {{ if and $.permissions (index $.permissions $lab.URLPath) }}checked{{ end }}>
                                     <label class="form-check-label" for="lab_{{ $lab.URLPath }}">
                                         {{ $lab.Title }}
                                     </label>

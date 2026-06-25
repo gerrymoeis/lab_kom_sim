@@ -60,6 +60,29 @@ func adminPost(env *TestEnvironment, path, data string) *http.Response {
 	return resp
 }
 
+// loginAs clears existing session, performs login as an arbitrary user and extracts CSRF token.
+func loginAs(env *TestEnvironment, username, password string) (cookies map[string]string, csrf string) {
+	env.LabA.cookies = make(map[string]string)
+	env.LabA.csrf = ""
+	// Clear any existing session_token to avoid ErrAlreadyLoggedIn
+	env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = ?", username)
+	if !env.LabA.login(username, password) {
+		env.LabA.t.Fatalf("%s login failed", username)
+	}
+	resp, err := env.LabA.getURL(env.TS.URL + "/labs")
+	if err != nil {
+		env.LabA.t.Fatalf("GET /labs: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	token := env.LabA.extractCSRFToken(string(body))
+	if token == "" {
+		env.LabA.t.Fatal("could not extract CSRF token from /labs")
+	}
+	env.LabA.csrf = token
+	return env.LabA.cookies, token
+}
+
 // adminPostNoCSRF performs POST /admin/<path> WITHOUT CSRF token to test CSRF rejection.
 func adminPostNoCSRF(env *TestEnvironment, path string) *http.Response {
 	req, _ := http.NewRequest("POST", env.TS.URL+"/admin"+path, strings.NewReader(""))
@@ -850,6 +873,209 @@ func TestPerLabUserDelete(t *testing.T) {
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 for not found, got %d", resp.StatusCode)
+		}
+	})
+}
+
+// ============================================
+// 15. AuthZ Hierarchy — 10 test scenarios
+// ============================================
+
+func TestAuthZScenarios(t *testing.T) {
+	env := setupTestEnvironment(t)
+	gdb := env.GlobalDB
+
+	bcryptHash := func(pw string) string {
+		h, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+		return string(h)
+	}
+
+	// Create: non-protected SA (rekan is already is_super_admin=1, is_protected=0 from seed)
+	// Create: GAB user
+	gdb.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_global_admin) VALUES (?, ?, ?, 1)",
+		"gab_user", bcryptHash("test123"), "GAB User")
+	var gabID int
+	gdb.QueryRow("SELECT id FROM global_users WHERE username='gab_user'").Scan(&gabID)
+	gdb.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", gabID, "lab-kom-mi")
+
+	// Create: second MA user for testing (first MA "lab-kom-mi" already exists from seed)
+	gdb.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name) VALUES (?, ?, ?)",
+		"ma_user2", bcryptHash("test123"), "MA User 2")
+	var maUser2ID int
+	gdb.QueryRow("SELECT id FROM global_users WHERE username='ma_user2'").Scan(&maUser2ID)
+	gdb.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role, is_main_account) VALUES (?, ?, 'admin', 1)",
+		maUser2ID, "lab-kom-mi")
+
+	t.Run("01_create_GAB_as_non_protected_SA_returns_403", func(t *testing.T) {
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		loginAs(env, "rekan", "rekan123")
+		resp := adminPost(env, "/users/create", "username=gab_fail&password=test123&full_name=GAB+Fail&is_global_admin=1")
+		defer resp.Body.Close()
+		if resp.StatusCode != 403 {
+			t.Errorf("expected 403 for non-protected SA creating GAB, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("02_edit_SA_as_non_protected_SA_returns_403", func(t *testing.T) {
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		loginAs(env, "rekan", "rekan123")
+		resp := adminPost(env, "/users/1/edit", "username=admin&full_name=Hacked&is_super_admin=1")
+		defer resp.Body.Close()
+		if resp.StatusCode != 403 {
+			t.Errorf("expected 403 for non-protected SA editing SA, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("03_delete_SA_from_global_panel_returns_error", func(t *testing.T) {
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		loginAs(env, "rekan", "rekan123")
+		resp := adminPost(env, "/users/1/delete", "")
+		defer resp.Body.Close()
+		if resp.StatusCode != 403 {
+			t.Errorf("expected 403 for non-protected SA deleting SA, got %d", resp.StatusCode)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), "tidak bisa dihapus") && !strings.Contains(string(body), "protected") {
+			t.Error("body should contain protected/super admin error message")
+		}
+	})
+
+	t.Run("04_delete_MA_as_non_protected_SA_redirects", func(t *testing.T) {
+		lab := env.LabA
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		lab.cookies = make(map[string]string)
+		if !loginAndRefresh(lab, "rekan", "rekan123") {
+			t.Fatal("rekan login failed")
+		}
+		resp, err := lab.post("/admin/users/ma_user2/delete", "")
+		if err != nil {
+			t.Fatalf("POST /admin/users/ma_user2/delete: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("05_delete_MA_as_protected_SA_succeeds", func(t *testing.T) {
+		lab := env.LabA
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		lab.cookies = make(map[string]string)
+		if !loginAndRefresh(lab, "admin", "admin123") {
+			t.Fatal("admin login failed")
+		}
+		resp, err := lab.post("/admin/users/ma_user2/delete", "")
+		if err != nil {
+			t.Fatalf("POST /admin/users/ma_user2/delete: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 success, got %d", resp.StatusCode)
+		}
+		// Re-create MA user2 for subsequent tests
+		gdb.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name) VALUES (?, ?, ?)",
+			"ma_user2", bcryptHash("test123"), "MA User 2")
+		var newID int
+		gdb.QueryRow("SELECT id FROM global_users WHERE username='ma_user2'").Scan(&newID)
+		gdb.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role, is_main_account) VALUES (?, ?, 'admin', 1)",
+			newID, "lab-kom-mi")
+	})
+
+	t.Run("06_MA_view_detail_another_MA_redirects", func(t *testing.T) {
+		lab := env.LabA
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		lab.cookies = make(map[string]string)
+		if !loginAndRefresh(lab, "lab-kom-mi", "lab-kom-mi123") {
+			t.Fatal("MA login failed")
+		}
+		// Target: "ma_user2" is also MA for same lab
+		resp, err := lab.get("/admin/users/ma_user2")
+		if err != nil {
+			t.Fatalf("GET /admin/users/ma_user2: %v", err)
+		}
+		defer resp.Body.Close()
+		// MA viewing another MA should redirect because canAccessProfile returns false
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 for MA viewing another MA, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("07_batch_delete_with_MA_returns_error", func(t *testing.T) {
+		lab := env.LabA
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		lab.cookies = make(map[string]string)
+		if !loginAndRefresh(lab, "admin", "admin123") {
+			t.Fatal("admin login failed")
+		}
+		// Create a regular user with MA username in list
+		resp, err := lab.postJSON("/admin/users/batch-delete", `{"ids":["ma_user2","labA_only"]}`)
+		if err != nil {
+			t.Fatalf("POST /admin/users/batch-delete: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 500 {
+			t.Errorf("expected 500 for batch delete with MA, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("08_batch_delete_with_SA_returns_error", func(t *testing.T) {
+		lab := env.LabA
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		lab.cookies = make(map[string]string)
+		if !loginAndRefresh(lab, "admin", "admin123") {
+			t.Fatal("admin login failed")
+		}
+		resp, err := lab.postJSON("/admin/users/batch-delete", `{"ids":["admin","labA_only"]}`)
+		if err != nil {
+			t.Fatalf("POST /admin/users/batch-delete: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 500 {
+			t.Errorf("expected 500 for batch delete with SA, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("09_is_protected_session_value_after_login", func(t *testing.T) {
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		// Login as admin (protected) → should be able to create GAB
+		loginAs(env, "admin", "admin123")
+		resp := adminPost(env, "/users/create", "username=gab_ok&password=test123&full_name=GAB+OK&is_global_admin=1")
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 when protected SA creates GAB, got %d", resp.StatusCode)
+		}
+		// Verify GAB user was created
+		var gabCount int
+		gdb.QueryRow("SELECT COUNT(*) FROM global_users WHERE username='gab_ok' AND is_global_admin=1").Scan(&gabCount)
+		if gabCount == 0 {
+			t.Error("expected gab_ok user to be created")
+		}
+		// Now login as rekan (non-protected) → should NOT be able to create GAB
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		loginAs(env, "rekan", "rekan123")
+		resp2 := adminPost(env, "/users/create", "username=gab_fail2&password=test123&full_name=GAB+Fail+2&is_global_admin=1")
+		defer resp2.Body.Close()
+		if resp2.StatusCode != 403 {
+			t.Errorf("expected 403 when non-protected SA attempts to create GAB, got %d", resp2.StatusCode)
+		}
+	})
+
+	t.Run("10_self_delete_from_global_panel_redirects", func(t *testing.T) {
+		gdb.Exec("UPDATE global_users SET session_token = ''")
+		loginAs(env, "rekan", "rekan123")
+		var rekanID int
+		gdb.QueryRow("SELECT id FROM global_users WHERE username='rekan'").Scan(&rekanID)
+		if rekanID == 0 {
+			t.Fatal("rekan not found")
+		}
+		resp := adminPost(env, fmt.Sprintf("/users/%d/delete", rekanID), "")
+		defer resp.Body.Close()
+		if resp.StatusCode != 403 {
+			t.Errorf("expected 403 for self-delete, got %d", resp.StatusCode)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), "akun Anda sendiri") {
+			t.Error("body should contain self-delete error message")
 		}
 	})
 }
