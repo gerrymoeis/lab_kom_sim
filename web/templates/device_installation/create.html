@@ -12,7 +12,7 @@
                                 <option value="{{ $d.ID }}" data-asset-code="{{ $d.AssetCode }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.AssetCode }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
                                 {{ end }}
                             </select>
-                            <small class="text-muted">Hanya menampilkan perangkat instalasi yang tersedia</small>
+                            <small class="text-muted">Menampilkan perangkat instalasi yang belum terpasang</small>
                         </div>
 
                         <div class="mb-3">

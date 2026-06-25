@@ -78,6 +78,7 @@
                         <tr>
                             <th class="th-w-50">#</th>
                             <th>Asset Code</th>
+                            <th>Kondisi</th>
                             <th>Lokasi Instalasi</th>
                             <th>Tgl Mulai</th>
                             <th>Tgl Selesai</th>
@@ -92,6 +93,15 @@
                         <tr data-batch-id="{{ $inst.ID }}" data-batch-label="{{ $inst.DeviceAssetCode }} - {{ $inst.LocationInstalled }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
                             <td><code>{{ $inst.DeviceAssetCode }}</code></td>
+                            <td>
+                                {{ if eq $inst.DeviceCondition "rusak" }}
+                                <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rusak</span>
+                                {{ else if eq $inst.DeviceCondition "warning" }}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Warning</span>
+                                {{ else }}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Normal</span>
+                                {{ end }}
+                            </td>
                             <td>{{ $inst.LocationInstalled }}</td>
                             <td>{{ if $inst.InstallationStartDate }}{{ (localTime $inst.InstallationStartDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
                             <td>{{ if $inst.InstallationFinishDate }}{{ (localTime $inst.InstallationFinishDate).Format "02/01/2006" }}{{ else }}-{{ end }}</td>
@@ -125,7 +135,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="10" class="text-center text-muted">Belum ada data instalasi</td>
+                            <td colspan="11" class="text-center text-muted">Belum ada data instalasi</td>
                         </tr>
                         {{ end }}
                     </tbody>
