@@ -165,9 +165,24 @@ func (r *PCRepository) NextLabel(placement string, isMahasiswa bool) string {
 		)`).Scan(&next)
 		return fmt.Sprintf("pc-cadangan-%d", next)
 	case isMahasiswa:
-		var max int
-		r.db.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 4) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-[0-9]*'`).Scan(&max)
-		return fmt.Sprintf("pc-%d", max)
+		var next int
+		r.db.QueryRow(`WITH RECURSIVE nums(n) AS (
+			SELECT 1
+			UNION ALL
+			SELECT n+1 FROM nums WHERE n < (
+				SELECT COALESCE(MAX(CAST(SUBSTR(label, 4) AS INTEGER)), 0)
+				FROM pcs WHERE label GLOB 'pc-[0-9]*'
+			)
+		)
+		SELECT COALESCE(
+			(SELECT n FROM nums WHERE n NOT IN (
+				SELECT CAST(SUBSTR(label, 4) AS INTEGER)
+				FROM pcs WHERE label GLOB 'pc-[0-9]*'
+			) LIMIT 1),
+			(SELECT COALESCE(MAX(CAST(SUBSTR(label, 4) AS INTEGER)), 0) + 1
+			 FROM pcs WHERE label GLOB 'pc-[0-9]*')
+		)`).Scan(&next)
+		return fmt.Sprintf("pc-%d", next)
 	default:
 		return ""
 	}
@@ -195,9 +210,24 @@ func (r *PCRepository) NextLabelTx(tx *database.Tx, placement string, isMahasisw
 		)`).Scan(&next)
 		return fmt.Sprintf("pc-cadangan-%d", next)
 	case isMahasiswa:
-		var max int
-		tx.QueryRow(`SELECT COALESCE(MAX(CAST(SUBSTR(label, 4) AS INTEGER)), 0) + 1 FROM pcs WHERE label GLOB 'pc-[0-9]*'`).Scan(&max)
-		return fmt.Sprintf("pc-%d", max)
+		var next int
+		tx.QueryRow(`WITH RECURSIVE nums(n) AS (
+			SELECT 1
+			UNION ALL
+			SELECT n+1 FROM nums WHERE n < (
+				SELECT COALESCE(MAX(CAST(SUBSTR(label, 4) AS INTEGER)), 0)
+				FROM pcs WHERE label GLOB 'pc-[0-9]*'
+			)
+		)
+		SELECT COALESCE(
+			(SELECT n FROM nums WHERE n NOT IN (
+				SELECT CAST(SUBSTR(label, 4) AS INTEGER)
+				FROM pcs WHERE label GLOB 'pc-[0-9]*'
+			) LIMIT 1),
+			(SELECT COALESCE(MAX(CAST(SUBSTR(label, 4) AS INTEGER)), 0) + 1
+			 FROM pcs WHERE label GLOB 'pc-[0-9]*')
+		)`).Scan(&next)
+		return fmt.Sprintf("pc-%d", next)
 	default:
 		return ""
 	}
@@ -563,7 +593,7 @@ func (r *PCRepository) MoveRowToCadangan(row int) (map[string]string, error) {
 	return labelMap, nil
 }
 
-func (r *PCRepository) MoveToPosition(label string, row, col int) error {
+func (r *PCRepository) MoveToPosition(label string, row, col int, newLabel string) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -575,14 +605,14 @@ func (r *PCRepository) MoveToPosition(label string, row, col int) error {
 		return err
 	}
 
-	if _, err := tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, row, col, id); err != nil {
+	if _, err := tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, label=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`, row, col, newLabel, id); err != nil {
 		return err
 	}
 
 	return tx.Commit()
 }
 
-func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
+func (r *PCRepository) PlaceCadangan(label string, row, col int, newLabel string) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -594,7 +624,7 @@ func (r *PCRepository) PlaceCadangan(label string, row, col int) error {
 		return err
 	}
 
-	if _, err := tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, row, col, id); err != nil {
+	if _, err := tx.Exec(`UPDATE pcs SET "row"=?, "column"=?, label=?, placement='dipakai', updated_at=CURRENT_TIMESTAMP WHERE id=?`, row, col, newLabel, id); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
