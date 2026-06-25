@@ -23,6 +23,10 @@ func CopyFile(src, dst string) error {
 	_, err = io.Copy(d, s); return err
 }
 
+func ToTitleCase(text string) string {
+	return util.ToTitleCase(text)
+}
+
 func ToTitleCaseWithAbbr(text string) string {
 	return util.ToTitleCaseWithAbbr(text)
 }

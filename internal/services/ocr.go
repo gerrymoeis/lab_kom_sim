@@ -206,9 +206,9 @@ func (s *OCRService) parseOCRResponse(responseText string) (*OCRResult, error) {
 		result.Entries[i].StudentName = ToTitleCaseWithAbbr(result.Entries[i].StudentName)
 		if p := strings.TrimSpace(result.Entries[i].Purpose); p != "" {
 			lastPurpose = p
-			result.Entries[i].Purpose = ToTitleCaseWithAbbr(p)
+			result.Entries[i].Purpose = ToTitleCase(p)
 		} else {
-			result.Entries[i].Purpose = ToTitleCaseWithAbbr(lastPurpose)
+			result.Entries[i].Purpose = ToTitleCase(lastPurpose)
 		}
 		result.Entries[i].NIM = strings.ToUpper(strings.TrimSpace(result.Entries[i].NIM))
 		result.Entries[i].NIM = strings.ReplaceAll(result.Entries[i].NIM, " ", "")

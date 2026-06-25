@@ -112,7 +112,7 @@ func (s *DeviceService) GetNextAssetCodes(prefix string, count int) []string {
 }
 
 func (s *DeviceService) CreateDevice(in CreateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, string, error) {
-	in.Location = ToTitleCaseWithAbbr(in.Location)
+	in.Location = ToTitleCase(in.Location)
 	in.Notes = SanitizeText(in.Notes)
 	in.SerialNumber = SanitizeText(in.SerialNumber)
 	prefix, err := s.deviceTypeRepo.GetPrefix(in.DeviceTypeID)
@@ -154,7 +154,7 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 
 	var inputs []repository.BatchCreateInput
 	for i, dev := range devices {
-		dev.Location = ToTitleCaseWithAbbr(dev.Location)
+		dev.Location = ToTitleCase(dev.Location)
 		dev.Notes = SanitizeText(dev.Notes)
 		dev.SerialNumber = SanitizeText(dev.SerialNumber)
 		inputs = append(inputs, repository.BatchCreateInput{
@@ -182,7 +182,7 @@ func (s *DeviceService) BatchCreate(deviceTypeID int, devices []BatchDeviceCreat
 }
 
 func (s *DeviceService) UpdateDevice(id int, in UpdateDeviceInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	in.Location = ToTitleCaseWithAbbr(in.Location)
+	in.Location = ToTitleCase(in.Location)
 	in.Notes = SanitizeText(in.Notes)
 	in.SerialNumber = SanitizeText(in.SerialNumber)
 	old, _ := s.deviceRepo.GetByID(id)

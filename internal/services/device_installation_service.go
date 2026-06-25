@@ -69,7 +69,7 @@ func parseNullableDate(s string) *time.Time {
 }
 
 func (s *DeviceInstallationService) Create(in CreateInstallationInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
-	in.LocationInstalled = ToTitleCaseWithAbbr(in.LocationInstalled)
+	in.LocationInstalled = ToTitleCase(in.LocationInstalled)
 	in.Notes = SanitizeText(in.Notes)
 	result, err := s.repo.Create(in.DeviceID, in.LocationInstalled,
 		parseNullableDate(in.InstallationStartDate), parseNullableDate(in.InstallationFinishDate),
@@ -86,7 +86,7 @@ func (s *DeviceInstallationService) Create(in CreateInstallationInput, actorID i
 }
 
 func (s *DeviceInstallationService) Update(id int, in UpdateInstallationInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	in.LocationInstalled = ToTitleCaseWithAbbr(in.LocationInstalled)
+	in.LocationInstalled = ToTitleCase(in.LocationInstalled)
 	in.Notes = SanitizeText(in.Notes)
 
 	oldRow, _ := s.repo.GetByID(id)
