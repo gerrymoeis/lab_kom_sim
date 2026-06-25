@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+type printDeviceTypeItem struct {
+	Prefix string
+	Name   string
+}
+
+type printCategoryGroup struct {
+	Name        string
+	DeviceTypes []printDeviceTypeItem
+}
+
+type printUsageTypeGroup struct {
+	UsageType  string
+	Label      string
+	Categories []printCategoryGroup
+}
 
 type templateForm struct {
 	Name       string  `json:"name" binding:"required,max=100"`
@@ -76,6 +93,47 @@ func (h *Handler) PrintForm(c *gin.Context) {
 		}
 	}
 
+	usageTypeLabels := map[string]string{
+		"loanable":    "Dipinjamkan",
+		"consumable":  "Habis Pakai",
+		"installable": "Instalasi",
+	}
+	groupMap := make(map[string]map[string][]models.DeviceType)
+	for _, dt := range deviceTypes {
+		if groupMap[dt.UsageType] == nil {
+			groupMap[dt.UsageType] = make(map[string][]models.DeviceType)
+		}
+		groupMap[dt.UsageType][dt.CategoryName] = append(groupMap[dt.UsageType][dt.CategoryName], dt)
+	}
+	usageOrder := []string{"loanable", "consumable", "installable"}
+	var groupedTypes []printUsageTypeGroup
+	for _, ut := range usageOrder {
+		cats, ok := groupMap[ut]
+		if !ok {
+			continue
+		}
+		g := printUsageTypeGroup{
+			UsageType: ut,
+			Label:     usageTypeLabels[ut],
+		}
+		catNames := make([]string, 0, len(cats))
+		for cn := range cats {
+			catNames = append(catNames, cn)
+		}
+		sort.Strings(catNames)
+		for _, cn := range catNames {
+			c := printCategoryGroup{Name: cn}
+			for _, dt := range cats[cn] {
+				c.DeviceTypes = append(c.DeviceTypes, printDeviceTypeItem{
+					Prefix: dt.AssetCodePrefix,
+					Name:   dt.Name,
+				})
+			}
+			g.Categories = append(g.Categories, c)
+		}
+		groupedTypes = append(groupedTypes, g)
+	}
+
 	h.renderTemplate(c, http.StatusOK, "print/form.html", gin.H{
 		"title":                "Print Stiker Label",
 		"currentPage":          "print",
@@ -91,6 +149,7 @@ func (h *Handler) PrintForm(c *gin.Context) {
 		"longestPCLabel":       longestPCLabel,
 		"longestDeviceLabel":   longestDeviceLabel,
 		"longestPerDeviceType": longestPerPrefix,
+		"groupedDeviceTypes":   groupedTypes,
 	})
 }
 
