@@ -238,21 +238,13 @@ BACKUP_ENABLED=true
 BACKUP_DIR=./backups
 ```
 
-**Konfigurasi Multi-Lab (ganti DATABASE_PATH + tambah LABS_<N>_*):**
+**Konfigurasi Multi-Lab (ganti DATABASE_PATH + tambah LABS):**
 
 ```env
-GLOBAL_DB_PATH=data/global.db          # DB global (users, permissions)
-# Format LABS baru (recommended):
-LABS_1_ID=MI-1
-LABS_1_DB=data/lab_mi_1.db
-LABS_1_TITLE=Lab Kom MI 1
-LABS_1_URL=lab-kom-mi
-LABS_2_ID=VOKASI-1
-LABS_2_DB=data/lab_vokasi_1.db
-LABS_2_TITLE=Lab Kom Vokasi
-LABS_2_URL=vokasi
-# Format LABS lama (deprecated): LABS=MI-1:data/lab_mi_1.db:Lab Kom MI 1:lab-kom-mi,...
-# Saat LABS_<N>_* diisi, DATABASE_PATH diabaikan — setiap lab punya DB sendiri.
+GLOBAL_DB_PATH=data/global.db        # DB global (users, permissions)
+LABS=MI-1:data/lab_mi_1.db:Lab Kom MI 1:lab-kom-mi,VOKASI-1:data/lab_vokasi_1.db:Lab Kom Vokasi:vokasi
+# Format LABS: LAB-ID:dbPath:Title:urlPath (comma-separated)
+# Saat LABS diisi, DATABASE_PATH diabaikan — setiap lab punya DB sendiri.
 ```
 
 > **Catatan:** Perintah PowerShell di atas menghasilkan 32 byte random → Base64 (44 karakter). Setiap server harus punya `SESSION_SECRET` unik.
@@ -619,7 +611,7 @@ Atau buka [.env.example](.env.example) untuk semua opsi.
 
 ### Catatan Penting
 
-- **Multi-Lab:** Saat `LABS_<N>_*` diisi (format baru, recommended), setiap lab punya database, session (cookie `inventaris_session_{urlPath}`), upload folder (`uploads/{urlPath}/`), dan backup folder sendiri. `DATABASE_PATH` diabaikan. Format lama `LABS=` (deprecated) masih didukung.
+- **Multi-Lab:** Saat `LABS` diisi, setiap lab punya database, session (cookie `inventaris_session_{urlPath}`), upload folder (`uploads/{urlPath}/`), dan backup folder sendiri. `DATABASE_PATH` diabaikan.
 - **Global DB** (`GLOBAL_DB_PATH`): Menyimpan user global, lab_permissions, grid_layouts — wajib ada.
 - **Auto-Sync Middleware:** Setiap login, sistem otomatis membuat/update row di per-lab `users` table. Data global cukup diatur di `/admin/users`.
 - **DATABASE_URL** (PostgreSQL/Neon): Jika diisi, semua SQLite path diabaikan.
