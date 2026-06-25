@@ -273,7 +273,7 @@ func TestSoftware(t *testing.T) {
 			t.Errorf("expected 302, got %d", resp.StatusCode)
 		}
 		var swID int
-		db.QueryRow("SELECT id FROM software_catalog WHERE name='Testsw'").Scan(&swID)
+		db.QueryRow("SELECT id FROM software_catalog WHERE name='TestSW'").Scan(&swID)
 		if swID == 0 {
 			t.Error("Software not found after create")
 		}
@@ -335,7 +335,7 @@ func TestSoftware(t *testing.T) {
 		defer resp.Body.Close()
 		var swID int
 		var swSlug string
-		db.QueryRow("SELECT id, slug FROM software_catalog WHERE name='Deletemesw'").Scan(&swID, &swSlug)
+		db.QueryRow("SELECT id, slug FROM software_catalog WHERE name='DeleteMeSW'").Scan(&swID, &swSlug)
 		if swID == 0 {
 			t.Fatal("Software to delete not found")
 		}
@@ -374,7 +374,7 @@ func TestSoftware(t *testing.T) {
 
 	t.Run("edit_page_software", func(t *testing.T) {
 		var swSlug string
-		db.QueryRow("SELECT slug FROM software_catalog WHERE name='Testsw'").Scan(&swSlug)
+		db.QueryRow("SELECT slug FROM software_catalog WHERE name='TestSW'").Scan(&swSlug)
 		if swSlug == "" {
 			t.Skip("no software for edit page")
 		}
@@ -413,7 +413,7 @@ func TestSoftware(t *testing.T) {
 		}
 		resp.Body.Close()
 		var swID int
-		db.QueryRow("SELECT id FROM software_catalog WHERE name='Batchdelsw'").Scan(&swID)
+		db.QueryRow("SELECT id FROM software_catalog WHERE name='BatchDelSW'").Scan(&swID)
 		if swID == 0 {
 			t.Fatal("software for batch delete not found")
 		}
@@ -620,7 +620,7 @@ func TestSchedule(t *testing.T) {
 		}
 		resp.Body.Close()
 		var scID int
-		db.QueryRow("SELECT id FROM course_schedules WHERE course_name='Batchdelsched'").Scan(&scID)
+		db.QueryRow("SELECT id FROM course_schedules WHERE course_name='BatchDelSched'").Scan(&scID)
 		if scID == 0 {
 			t.Fatal("schedule for batch delete not found")
 		}
@@ -1850,8 +1850,8 @@ func TestDeviceType(t *testing.T) {
 		}
 		var name string
 		db.QueryRow("SELECT name FROM device_types WHERE asset_code_prefix='TESTDT'").Scan(&name)
-		if name != "Testdtupdated" {
-			t.Errorf("expected 'Testdtupdated', got %q", name)
+		if name != "TestDTUpdated" {
+			t.Errorf("expected 'TestDTUpdated', got %q", name)
 		}
 	})
 
@@ -1980,8 +1980,8 @@ func TestCategory(t *testing.T) {
 		}
 		var name string
 		db.QueryRow("SELECT name FROM categories WHERE default_prefix='TESTCAT'").Scan(&name)
-		if name != "Catupdated" {
-			t.Errorf("expected 'Catupdated', got %q", name)
+		if name != "CatUpdated" {
+			t.Errorf("expected 'CatUpdated', got %q", name)
 		}
 	})
 

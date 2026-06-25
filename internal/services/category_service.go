@@ -31,7 +31,7 @@ func (s *CategoryService) GetByPrefixSlug(slug string) (*models.Category, error)
 }
 
 func (s *CategoryService) Create(name, prefix string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
-	name = ToTitleCaseWithAbbr(name)
+	name = ToTitleCase(name)
 	prefix = ToUpperTrim(prefix)
 	result, err := s.repo.Create(name, prefix)
 	if err != nil {
@@ -46,7 +46,7 @@ func (s *CategoryService) Create(name, prefix string, actorID int, actorUsername
 }
 
 func (s *CategoryService) Update(id int, name, prefix string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
-	name = ToTitleCaseWithAbbr(name)
+	name = ToTitleCase(name)
 	prefix = ToUpperTrim(prefix)
 
 	oldCat, _ := s.repo.GetByID(id)

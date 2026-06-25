@@ -451,7 +451,7 @@ func TestFullIntegration(t *testing.T) {
 	assert(resp.StatusCode == 302, "create software: %d", resp.StatusCode)
 	labA.closeResp(resp)
 	var swID int
-	dbA.QueryRow("SELECT id FROM software_catalog WHERE name='Testsw'").Scan(&swID)
+	dbA.QueryRow("SELECT id FROM software_catalog WHERE name='TestSW'").Scan(&swID)
 	assert(swID > 0, "Software ID=%d", swID)
 
 	var swSlug string
@@ -467,7 +467,7 @@ func TestFullIntegration(t *testing.T) {
 	labA.closeResp(resp)
 	var swName string
 	dbA.QueryRow("SELECT name FROM software_catalog WHERE id=?", swID).Scan(&swName)
-	assert(swName == "Testsw2", "Software name updated: %s", swName)
+	assert(swName == "TestSW2", "Software name updated: %s", swName)
 
 	dbA.QueryRow("SELECT slug FROM software_catalog WHERE id=?", swID).Scan(&swSlug)
 	resp, _ = labA.post("/software/"+swSlug+"/delete", "")

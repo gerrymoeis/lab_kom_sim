@@ -82,7 +82,7 @@ func validateNIM(nim string) error {
 func (s *LogbookService) CreateEntry(in CreateLogbookInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int, error) {
 	in.StudentName = ToTitleCaseWithAbbr(in.StudentName)
 	in.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(in.NIM, " ", "")))
-	in.Purpose = ToTitleCaseWithAbbr(in.Purpose)
+	in.Purpose = ToTitleCase(in.Purpose)
 
 	if err := validateNIM(in.NIM); err != nil {
 		return 0, err
@@ -112,7 +112,7 @@ func (s *LogbookService) CreateEntry(in CreateLogbookInput, actorID int, actorUs
 func (s *LogbookService) UpdateEntry(id int, in UpdateLogbookInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	in.StudentName = ToTitleCaseWithAbbr(in.StudentName)
 	in.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(in.NIM, " ", "")))
-	in.Purpose = ToTitleCaseWithAbbr(in.Purpose)
+	in.Purpose = ToTitleCase(in.Purpose)
 
 	if err := validateNIM(in.NIM); err != nil {
 		return err
@@ -157,7 +157,7 @@ func (s *LogbookService) BulkSave(entries []repository.BulkEntry, sourceFile str
 	for i, e := range entries {
 		e.StudentName = ToTitleCaseWithAbbr(e.StudentName)
 		e.NIM = strings.ToUpper(strings.TrimSpace(strings.ReplaceAll(e.NIM, " ", "")))
-		e.Purpose = ToTitleCaseWithAbbr(e.Purpose)
+		e.Purpose = ToTitleCase(e.Purpose)
 
 		if err := validateNIM(e.NIM); err != nil {
 			continue
