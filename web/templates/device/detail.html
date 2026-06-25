@@ -110,7 +110,25 @@
                     </div>
 
                     <div class="d-flex flex-column gap-2">
-                        {{ if or (eq .device.Condition "rusak") (eq .device.Condition "warning") }}
+                        {{ if eq .device.UsageType "installable" }}
+                        {{ if not .installationHistory }}
+                        <a href="{{$.basePath}}/installations/create?device_id={{ .device.ID }}" class="btn btn-success">
+                            <i class="bi bi-pc-display"></i> Catat Instalasi
+                        </a>
+                        {{ else if .installationHistory.InstallationFinishDate }}
+                        <button type="button" class="btn btn-success" disabled>
+                            <i class="bi bi-check-circle"></i> Instalasi Selesai
+                        </button>
+                        {{ else if .installationHistory.InstallationStartDate }}
+                        <button type="button" class="btn btn-warning" disabled>
+                            <i class="bi bi-hourglass-split"></i> Pemasangan Sedang Berlangsung
+                        </button>
+                        {{ else }}
+                        <button type="button" class="btn btn-secondary" disabled>
+                            <i class="bi bi-info-circle"></i> Instalasi Belum Dimulai
+                        </button>
+                        {{ end }}
+                        {{ else if or (eq .device.Condition "rusak") (eq .device.Condition "warning") }}
                         {{ if eq .device.UsageType "loanable" }}
                         <button type="button" class="btn btn-secondary" disabled>
                             <i class="bi bi-x-circle"></i> Perangkat tidak bisa Dipinjamkan
@@ -118,10 +136,6 @@
                         {{ else if eq .device.UsageType "consumable" }}
                         <button type="button" class="btn btn-secondary" disabled>
                             <i class="bi bi-x-circle"></i> Perangkat tidak bisa Dipakai
-                        </button>
-                        {{ else if eq .device.UsageType "installable" }}
-                        <button type="button" class="btn btn-secondary" disabled>
-                            <i class="bi bi-x-circle"></i> Perangkat tidak bisa Dipasang
                         </button>
                         {{ end }}
                         {{ else }}
@@ -144,24 +158,6 @@
                         <a href="{{$.basePath}}/device-usages/create?device_id={{ .device.ID }}" class="btn btn-info">
                             <i class="bi bi-clipboard-data"></i> Catat Pemakaian
                         </a>
-                        {{ end }}
-                        {{ else if eq .device.UsageType "installable" }}
-                        {{ if not .installationHistory }}
-                        <a href="{{$.basePath}}/installations/create?device_id={{ .device.ID }}" class="btn btn-success">
-                            <i class="bi bi-pc-display"></i> Catat Instalasi
-                        </a>
-                        {{ else if .installationHistory.InstallationFinishDate }}
-                        <button type="button" class="btn btn-success" disabled>
-                            <i class="bi bi-check-circle"></i> Instalasi Selesai
-                        </button>
-                        {{ else if .installationHistory.InstallationStartDate }}
-                        <button type="button" class="btn btn-warning" disabled>
-                            <i class="bi bi-hourglass-split"></i> Pemasangan Sedang Berlangsung
-                        </button>
-                        {{ else }}
-                        <button type="button" class="btn btn-secondary" disabled>
-                            <i class="bi bi-info-circle"></i> Instalasi Belum Dimulai
-                        </button>
                         {{ end }}
                         {{ end }}
                         {{ end }}

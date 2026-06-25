@@ -86,7 +86,7 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 		orderDir = "ASC"
 	}
 
-	query := `SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,
+	query := `SELECT di.id, di.device_id, d.asset_code, d.condition, dt.name, c.name,
 		c.default_prefix, dt.asset_code_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
 		COALESCE(di.photo,''), COALESCE(di.notes,''), di.created_at, di.updated_at
@@ -106,7 +106,7 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 	var installations []InstallationRow
 	for rows.Next() {
 		var ir InstallationRow
-		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceTypeName, &ir.CategoryName,
+		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceCondition, &ir.DeviceTypeName, &ir.CategoryName,
 			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
 			&ir.LocationInstalled, &ir.InstallationStartDate, &ir.InstallationFinishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt); err != nil {
@@ -118,7 +118,7 @@ func (r *DeviceInstallationRepository) ListPaginated(filters InstallationFilters
 }
 
 func (r *DeviceInstallationRepository) ExportAll() ([]InstallationRow, error) {
-	rows, err := r.db.Query(`SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,
+	rows, err := r.db.Query(`SELECT di.id, di.device_id, d.asset_code, d.condition, dt.name, c.name,
 		c.default_prefix, dt.asset_code_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
 		COALESCE(di.photo,''), COALESCE(di.notes,''), di.created_at, di.updated_at
@@ -135,7 +135,7 @@ func (r *DeviceInstallationRepository) ExportAll() ([]InstallationRow, error) {
 	var installations []InstallationRow
 	for rows.Next() {
 		var ir InstallationRow
-		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceTypeName, &ir.CategoryName,
+		if err := rows.Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceCondition, &ir.DeviceTypeName, &ir.CategoryName,
 			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
 			&ir.LocationInstalled, &ir.InstallationStartDate, &ir.InstallationFinishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt); err != nil {
@@ -148,7 +148,7 @@ func (r *DeviceInstallationRepository) ExportAll() ([]InstallationRow, error) {
 
 func (r *DeviceInstallationRepository) GetByID(id int) (*InstallationRow, error) {
 	var ir InstallationRow
-	err := r.db.QueryRow(`SELECT di.id, di.device_id, d.asset_code, dt.name, c.name,
+	err := r.db.QueryRow(`SELECT di.id, di.device_id, d.asset_code, d.condition, dt.name, c.name,
 		c.default_prefix, dt.asset_code_prefix,
 		di.location_installed, di.installation_start_date, di.installation_finish_date,
 		COALESCE(di.photo,''), COALESCE(di.notes,''), di.created_at, di.updated_at
@@ -156,7 +156,7 @@ func (r *DeviceInstallationRepository) GetByID(id int) (*InstallationRow, error)
 		JOIN devices d ON d.id = di.device_id
 		JOIN device_types dt ON dt.id = d.device_type_id
 		JOIN categories c ON c.id = dt.category_id WHERE di.id = ?`, id).
-		Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceTypeName, &ir.CategoryName,
+		Scan(&ir.ID, &ir.DeviceID, &ir.DeviceAssetCode, &ir.DeviceCondition, &ir.DeviceTypeName, &ir.CategoryName,
 			&ir.CategoryPrefix, &ir.DeviceTypePrefix,
 			&ir.LocationInstalled, &ir.InstallationStartDate, &ir.InstallationFinishDate,
 			&ir.Photo, &ir.Notes, &ir.CreatedAt, &ir.UpdatedAt)
@@ -204,7 +204,6 @@ func (r *DeviceInstallationRepository) GetInstallableDevices() ([]models.Device,
 		FROM devices d
 		JOIN device_types dt ON dt.id = d.device_type_id
 		WHERE dt.usage_type = 'installable'
-		AND d.condition = 'normal'
 		AND d.id NOT IN (SELECT device_id FROM device_installations)
 		ORDER BY d.asset_code`)
 	if err != nil {
@@ -242,6 +241,7 @@ func (r *DeviceInstallationRepository) Delete(id int) error {
 type InstallationRow struct {
 	models.DeviceInstallation
 	DeviceAssetCode  string
+	DeviceCondition  string
 	DeviceTypeName   string
 	CategoryName     string
 	CategoryPrefix   string
