@@ -17,6 +17,7 @@ type Config struct {
 	Host             string
 	Port             string
 	Labs             []LabConfig
+	MultiLabMode     bool   // true if LABS= or LABS_<N>_* is used (multi-lab), false if only DATABASE_PATH (single-lab)
 	DatabaseURL      string
 	SessionSecret    string
 	CookieSecure     bool
@@ -67,17 +68,20 @@ func Load() *Config {
 	dbPath := getEnv("DATABASE_PATH", "inventaris_lab.db")
 	uploadPath := getEnv("UPLOAD_PATH", "uploads")
 	var labs []LabConfig
+	multiLabMode := false
 
 	// Try new format first (LABS_<N>_*)
 	v2Labs, found := parseLabsV2(uploadPath, dbPath)
 	if found {
 		labs = v2Labs
+		multiLabMode = true
 		log.Printf("Loaded %d lab(s) from LABS_<N>_* format", len(labs))
 	} else {
 		// Fallback: old format (LABS=...)
 		labsEnv := getEnv("LABS", "")
 		if labsEnv != "" {
 			labs = parseLabs(labsEnv, uploadPath, dbPath)
+			multiLabMode = true
 			log.Println("Warning: LABS= (old format) is deprecated. Use LABS_<N>_* format instead.")
 		} else {
 			labs = []LabConfig{defaultLab(dbPath, uploadPath)}
@@ -94,6 +98,7 @@ func Load() *Config {
 		Host:          getEnv("HOST", "0.0.0.0"),
 		Port:          getEnv("PORT", "8080"),
 		Labs:          labs,
+		MultiLabMode:  multiLabMode,
 		EnvPath:       envPath,
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
