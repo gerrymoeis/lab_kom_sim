@@ -160,6 +160,7 @@
                                                     <th>Kondisi</th>
                                                     <th>Lokasi</th>
                                                     <th>Status</th>
+                                                    <th style="max-width:120px">Catatan</th>
                                                     <th class="text-end batch-action-col" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                                                 </tr>
                                             </thead>
@@ -193,6 +194,7 @@
                                                         {{ end }}
                                                         {{ end }}
                                                     </td>
+                                                    <td style="max-width:120px"><small class="text-truncate d-inline-block" style="max-width:120px" title="{{ $d.Notes }}">{{ if $d.Notes }}{{ $d.Notes }}{{ else }}<span class="text-muted">-</span>{{ end }}</small></td>
                                                     <td class="text-nowrap text-end batch-action-col">
                                                         <span class="batch-mode-off">
                                                         <a href="{{$.basePath}}/devices/{{ $d.CategoryPrefix | lower }}/{{ $d.DeviceTypePrefix | lower }}/{{ $d.AssetCode | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
@@ -214,7 +216,7 @@
                                                 </tr>
                                                 {{ else }}
                                                 <tr>
-                                                    <td colspan="8" class="text-center text-muted py-3">Tidak ada perangkat dalam grup ini</td>
+                                                    <td colspan="9" class="text-center text-muted py-3">Tidak ada perangkat dalam grup ini</td>
                                                 </tr>
                                                 {{ end }}
                                             </tbody>
