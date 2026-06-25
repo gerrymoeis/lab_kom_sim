@@ -81,6 +81,7 @@
                             <th>Keperluan</th>
                             <th>Tgl Pemakaian</th>
                             <th>Status Stok</th>
+                            <th style="max-width:120px">Catatan</th>
                             <th class="batch-action-col text-end" style="width:1%;white-space:nowrap"><span class="batch-mode-off">Aksi</span><span class="batch-mode-on d-none">Aksi</span></th><th class="batch-toggle-col" style="width:1%"><span class="batch-mode-off"><button type="button" class="btn btn-sm btn-outline-primary batch-toggle-btn py-0" onclick="BatchSelector.toggle(this.closest('table'))"><i class="bi bi-check-square"></i> Pilih</button></span><span class="batch-mode-on d-none"><input type="checkbox" class="batch-select-all form-check-input"></span></th>
                         </tr>
                     </thead>
@@ -99,6 +100,7 @@
                                 <span class="badge bg-danger">Habis</span>
                                 {{ end }}
                             </td>
+                            <td style="max-width:120px"><small class="text-truncate d-inline-block" style="max-width:120px" title="{{ $l.Notes }}">{{ if $l.Notes }}{{ $l.Notes }}{{ else }}<span class="text-muted">-</span>{{ end }}</small></td>
                             <td class="batch-action-col text-nowrap text-end">
                                 <span class="batch-mode-off">
                                     <a href="{{$.basePath}}/device-usages/{{ $l.ID }}" class="btn btn-sm btn-outline-primary me-1" title="Detail">
@@ -120,7 +122,7 @@
                         </tr>
                         {{ else }}
                         <tr>
-                            <td colspan="8" class="text-center text-muted">Belum ada data pemakaian</td>
+                            <td colspan="9" class="text-center text-muted">Belum ada data pemakaian</td>
                         </tr>
                         {{ end }}
                     </tbody>
