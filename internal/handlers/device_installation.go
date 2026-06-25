@@ -128,7 +128,7 @@ func (h *Handler) DeviceInstallationDetail(c *gin.Context) {
 		"title": "Detail Instalasi", "currentPage": "devices",
 		"username": username, "role": role,
 		"installation": inst,
-		"assetCode":    inst.DeviceAssetCode,
+		"deviceLabel":    inst.DeviceLabel,
 	})
 }
 
@@ -149,7 +149,7 @@ func (h *Handler) DeviceInstallationEditPage(c *gin.Context) {
 		"title": "Edit Instalasi", "currentPage": "devices",
 		"username": username, "role": role, "android": h.cfg.Android,
 		"installation": inst,
-		"assetCode":    inst.DeviceAssetCode,
+		"deviceLabel":    inst.DeviceLabel,
 	})
 }
 

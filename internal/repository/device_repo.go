@@ -98,10 +98,10 @@ func (r *DeviceRepository) buildDeviceArgs(filters DeviceFilters) []any {
 }
 
 func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, limit, offset int) ([]models.Device, error) {
-	query := `SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
+	query := `SELECT d.id, d.device_type_id, d.label, COALESCE(d.serial_number,''),
 		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
 		d.created_at, d.updated_at,
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
+		c.name, c.label_prefix, dt.name, dt.label_prefix,
 		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
 		COALESCE(d.usage_type, '') AS usage_type_override,
 		COALESCE(dt.photo,''),
@@ -113,13 +113,13 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 	query += clause
 
 	sortBy := map[string]string{
-		"asset_code": "d.asset_code",
+		"label": "d.label",
 		"category":   "c.name",
 		"condition":  "d.condition",
 		"created_at": "d.created_at",
 	}[filters.SortBy]
 	if sortBy == "" {
-		sortBy = "c.name, dt.name, d.asset_code"
+		sortBy = "c.name, dt.name, d.label"
 	}
 	sortOrder := "ASC"
 	if filters.SortOrder == "DESC" {
@@ -142,7 +142,7 @@ func (r *DeviceRepository) listWithQuery(filters DeviceFilters, suffix string, l
 	for rows.Next() {
 		var d models.Device
 		var pDate sql.NullString
-		if err := rows.Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
+		if err := rows.Scan(&d.ID, &d.DeviceTypeID, &d.Label, &d.SerialNumber,
 			&d.Condition, &d.Location, &pDate, &d.Notes,
 			&d.CreatedAt, &d.UpdatedAt,
 			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
@@ -164,42 +164,42 @@ func (r *DeviceRepository) GetBySlug(slug string) (*models.Device, error) {
 	return r.getByField("slug", slug)
 }
 
-func (r *DeviceRepository) GetByAssetCodeSlug(slug string) (*models.Device, error) {
-	return scanDeviceRow(r.db, "LOWER(d.asset_code) = LOWER(?)", slug)
+func (r *DeviceRepository) GetByLabelSlug(slug string) (*models.Device, error) {
+	return scanDeviceRow(r.db, "LOWER(d.label) = LOWER(?)", slug)
 }
 
 func (r *DeviceRepository) getByField(field, value string) (*models.Device, error) {
 	return scanDeviceRow(r.db, fmt.Sprintf("d.%s = ?", field), value)
 }
 
-func (r *DeviceRepository) GetByAssetCode(code string) (*models.Device, error) {
-	return scanDeviceRow(r.db, "d.asset_code = ?", code)
+func (r *DeviceRepository) GetByLabel(code string) (*models.Device, error) {
+	return scanDeviceRow(r.db, "d.label = ?", code)
 }
 
-func (r *DeviceRepository) GetNextAssetCode(prefix string) string {
+func (r *DeviceRepository) NextLabel(prefix string) string {
 	var next int
 	r.db.QueryRow(`WITH RECURSIVE nums(n) AS (
 		SELECT 1
 		UNION ALL
 		SELECT n+1 FROM nums WHERE n < (
-			SELECT COALESCE(MAX(CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)), 0)
-			FROM devices WHERE asset_code LIKE ? || '-%'
+			SELECT COALESCE(MAX(CAST(SUBSTR(label, LENGTH(?) + 2) AS INTEGER)), 0)
+			FROM devices WHERE label LIKE ? || '-%'
 		)
 	)
 	SELECT COALESCE(
 		(SELECT n FROM nums WHERE n NOT IN (
-			SELECT CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)
-			FROM devices WHERE asset_code LIKE ? || '-%'
+			SELECT CAST(SUBSTR(label, LENGTH(?) + 2) AS INTEGER)
+			FROM devices WHERE label LIKE ? || '-%'
 		) LIMIT 1),
-		(SELECT COALESCE(MAX(CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER)), 0) + 1
-		 FROM devices WHERE asset_code LIKE ? || '-%')
+		(SELECT COALESCE(MAX(CAST(SUBSTR(label, LENGTH(?) + 2) AS INTEGER)), 0) + 1
+		 FROM devices WHERE label LIKE ? || '-%')
 	)`, prefix, prefix, prefix, prefix, prefix, prefix).Scan(&next)
-	return fmt.Sprintf("%s-%03d", prefix, next)
+	return fmt.Sprintf("%s-%d", prefix, next)
 }
 
-func (r *DeviceRepository) GetNextAssetCodes(prefix string, count int) []string {
+func (r *DeviceRepository) NextLabels(prefix string, count int) []string {
 	existing := make(map[int]bool)
-	rows, err := r.db.Query(`SELECT CAST(SUBSTR(asset_code, LENGTH(?) + 2) AS INTEGER) FROM devices WHERE asset_code LIKE ? || '-%'`, prefix, prefix)
+	rows, err := r.db.Query(`SELECT CAST(SUBSTR(label, LENGTH(?) + 2) AS INTEGER) FROM devices WHERE label LIKE ? || '-%'`, prefix, prefix)
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
@@ -209,20 +209,20 @@ func (r *DeviceRepository) GetNextAssetCodes(prefix string, count int) []string 
 		}
 	}
 
-	codes := make([]string, 0, count)
+	labels := make([]string, 0, count)
 	n := 1
-	for len(codes) < count {
+	for len(labels) < count {
 		if !existing[n] {
-			codes = append(codes, fmt.Sprintf("%s-%03d", prefix, n))
+			labels = append(labels, fmt.Sprintf("%s-%d", prefix, n))
 		}
 		n++
 	}
-	return codes
+	return labels
 }
 
 type BatchCreateInput struct {
 	DeviceTypeID int
-	AssetCode    string
+	Label        string
 	SerialNumber string
 	Condition    string
 	Location     string
@@ -230,12 +230,12 @@ type BatchCreateInput struct {
 	Notes        string
 }
 
-func (r *DeviceRepository) Create(deviceTypeID int, assetCode, serial, condition, location, pDate, notes string) (sql.Result, error) {
+func (r *DeviceRepository) Create(deviceTypeID int, label, serial, condition, location, pDate, notes string) (sql.Result, error) {
 	var pDateArg, notesArg interface{}
 	if pDate != "" { pDateArg = pDate }
 	if notes != "" { notesArg = notes }
-	return r.db.Exec(`INSERT INTO devices (device_type_id, asset_code, serial_number, condition, location, purchase_date, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`, deviceTypeID, assetCode, serial, condition, location, pDateArg, notesArg)
+	return r.db.Exec(`INSERT INTO devices (device_type_id, label, serial_number, condition, location, purchase_date, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, deviceTypeID, label, serial, condition, location, pDateArg, notesArg)
 }
 
 func (r *DeviceRepository) BatchCreate(inputs []BatchCreateInput) error {
@@ -253,8 +253,8 @@ func (r *DeviceRepository) BatchCreate(inputs []BatchCreateInput) error {
 		var pDateArg, notesArg interface{}
 		if in.PurchaseDate != "" { pDateArg = in.PurchaseDate }
 		if in.Notes != "" { notesArg = in.Notes }
-		if _, err := tx.Exec(`INSERT INTO devices (device_type_id, asset_code, serial_number, condition, location, purchase_date, notes)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`, in.DeviceTypeID, in.AssetCode, in.SerialNumber, in.Condition, in.Location, pDateArg, notesArg); err != nil {
+		if _, err := tx.Exec(`INSERT INTO devices (device_type_id, label, serial_number, condition, location, purchase_date, notes)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`, in.DeviceTypeID, in.Label, in.SerialNumber, in.Condition, in.Location, pDateArg, notesArg); err != nil {
 			return err
 		}
 	}
@@ -266,7 +266,7 @@ func (r *DeviceRepository) Update(id, deviceTypeID int, assetCode, serial, condi
 	if pDate != "" { pDateArg = pDate }
 	if notes != "" { notesArg = notes }
 	if usageType != "" { usageArg = usageType }
-	_, err := r.db.Exec(`UPDATE devices SET device_type_id=?, asset_code=?, serial_number=?,
+	_, err := r.db.Exec(`UPDATE devices SET device_type_id=?, label=?, serial_number=?,
 		condition=?, location=?, purchase_date=?, notes=?, usage_type=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
 		deviceTypeID, assetCode, serial, condition, location, pDateArg, notesArg, usageArg, id)
 	return err
@@ -364,16 +364,16 @@ type DeviceExportRow struct {
 }
 
 func (r *DeviceRepository) ExportAll() ([]DeviceExportRow, error) {
-	rows, err := r.db.Query(`SELECT d.id, d.device_type_id, d.asset_code, COALESCE(d.serial_number,''),
+	rows, err := r.db.Query(`SELECT d.id, d.device_type_id, d.label, COALESCE(d.serial_number,''),
 		d.condition, COALESCE(d.location,''), d.purchase_date, COALESCE(d.notes,''),
-		c.name, c.default_prefix, dt.name, dt.asset_code_prefix,
+		c.name, c.label_prefix, dt.name, dt.label_prefix,
 		COALESCE(d.usage_type, dt.usage_type) AS usage_type,
 		COALESCE(d.usage_type, '') AS usage_type_override,
 		COALESCE(dt.photo,'')
 		FROM devices d
 		JOIN device_types dt ON d.device_type_id = dt.id
 		JOIN categories c ON c.id = dt.category_id
-		ORDER BY d.asset_code`)
+		ORDER BY d.label`)
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +383,7 @@ func (r *DeviceRepository) ExportAll() ([]DeviceExportRow, error) {
 	for rows.Next() {
 		var d DeviceExportRow
 		var pDate sql.NullString
-		if err := rows.Scan(&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
+		if err := rows.Scan(&d.ID, &d.DeviceTypeID, &d.Label, &d.SerialNumber,
 			&d.Condition, &d.Location, &pDate, &d.Notes,
 			&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
 			&d.UsageType, &d.UsageTypeOverride, &d.DeviceTypePhoto); err != nil {

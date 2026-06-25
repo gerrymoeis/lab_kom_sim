@@ -126,7 +126,7 @@ func (h *Handler) DeviceUsageDetail(c *gin.Context) {
 		"title": "Detail Pemakaian", "currentPage": "devices",
 		"username": username, "role": role,
 		"usage":     usage,
-		"assetCode": usage.DeviceAssetCode,
+		"deviceLabel": usage.DeviceLabel,
 	})
 }
 
@@ -148,7 +148,7 @@ func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 		"username": username, "role": role,
 		"usage": usage,
 		"deviceTypeName": usage.DeviceTypeName,
-		"assetCode": usage.DeviceAssetCode,
+		"deviceLabel": usage.DeviceLabel,
 	})
 }
 

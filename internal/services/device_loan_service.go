@@ -185,7 +185,7 @@ func (s *DeviceLoanService) BatchDelete(ids []int, actorID int, actorUsername, a
 		info := map[string]any{"id": id}
 		if row, err := s.loanRepo.GetByID(id); err == nil {
 			info["borrower_name"] = row.BorrowerName
-			info["device_asset_code"] = row.DeviceAssetCode
+			info["device_label"] = row.DeviceLabel
 		}
 		if err := s.loanRepo.Delete(id); err != nil {
 			s.log.LogDelete(actorID, actorUsername, actorRole, "device_loan", 0,

@@ -58,10 +58,10 @@ func getAll[T any](db DBTX, table string, columns []string, where string, args .
 // --- Device shared query (17 columns, JOIN device_types + categories) ---
 
 var deviceFullCols = []string{
-	"d.id", "d.device_type_id", "d.asset_code", "COALESCE(d.serial_number,'')",
+	"d.id", "d.device_type_id", "d.label", "COALESCE(d.serial_number,'')",
 	"d.condition", "COALESCE(d.location,'')", "d.purchase_date", "COALESCE(d.notes,'')",
 	"d.created_at", "d.updated_at",
-	"c.name", "c.default_prefix", "dt.name", "dt.asset_code_prefix",
+	"c.name", "c.label_prefix", "dt.name", "dt.label_prefix",
 	"COALESCE(d.usage_type, dt.usage_type) AS usage_type",
 	"COALESCE(d.usage_type, '') AS usage_type_override",
 	"COALESCE(dt.photo,'')",
@@ -74,7 +74,7 @@ func scanDeviceRow(db DBTX, where string, args ...any) (*models.Device, error) {
 	var d models.Device
 	var pDate sql.NullString
 	err := db.QueryRow(query, args...).Scan(
-		&d.ID, &d.DeviceTypeID, &d.AssetCode, &d.SerialNumber,
+		&d.ID, &d.DeviceTypeID, &d.Label, &d.SerialNumber,
 		&d.Condition, &d.Location, &pDate, &d.Notes,
 		&d.CreatedAt, &d.UpdatedAt,
 		&d.CategoryName, &d.CategoryPrefix, &d.DeviceTypeName, &d.DeviceTypePrefix,
@@ -90,13 +90,13 @@ func scanDeviceRow(db DBTX, where string, args ...any) (*models.Device, error) {
 // --- DeviceType shared queries (JOIN categories) ---
 
 var deviceTypeFullCols = []string{
-	"dt.id", "dt.category_id", "c.name", "c.default_prefix", "dt.name", "dt.brand", "dt.model",
-	"dt.asset_code_prefix", "dt.usage_type", "dt.default_location", "COALESCE(dt.photo,'')",
+	"dt.id", "dt.category_id", "c.name", "c.label_prefix", "dt.name", "dt.brand", "dt.model",
+	"dt.label_prefix", "dt.usage_type", "dt.default_location", "COALESCE(dt.photo,'')",
 	"dt.created_at", "dt.updated_at",
 }
 var deviceTypeNoPrefixCols = []string{
 	"dt.id", "dt.category_id", "c.name", "dt.name", "dt.brand", "dt.model",
-	"dt.asset_code_prefix", "dt.usage_type", "dt.default_location", "COALESCE(dt.photo,'')",
+	"dt.label_prefix", "dt.usage_type", "dt.default_location", "COALESCE(dt.photo,'')",
 	"dt.created_at", "dt.updated_at",
 }
 var deviceTypeFrom = "FROM device_types dt JOIN categories c ON c.id = dt.category_id"
@@ -107,7 +107,7 @@ func scanDeviceTypeRowWithPrefix(db DBTX, where string, args ...any) (*models.De
 	var brand, model, loc, photo sql.NullString
 	err := db.QueryRow(query, args...).Scan(
 		&dt.ID, &dt.CategoryID, &dt.CategoryName, &dt.CategoryPrefix, &dt.Name, &brand, &model,
-		&dt.AssetCodePrefix, &dt.UsageType, &loc, &photo, &dt.CreatedAt, &dt.UpdatedAt)
+		&dt.LabelPrefix, &dt.UsageType, &loc, &photo, &dt.CreatedAt, &dt.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func scanDeviceTypeRowNoPrefix(db DBTX, where string, args ...any) (*models.Devi
 	var brand, model, loc, photo sql.NullString
 	err := db.QueryRow(query, args...).Scan(
 		&dt.ID, &dt.CategoryID, &dt.CategoryName, &dt.Name, &brand, &model,
-		&dt.AssetCodePrefix, &dt.UsageType, &loc, &photo, &dt.CreatedAt, &dt.UpdatedAt)
+		&dt.LabelPrefix, &dt.UsageType, &loc, &photo, &dt.CreatedAt, &dt.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ func NewCategoryRepository(db *database.DB) *CategoryRepository {
 }
 
 func (r *CategoryRepository) List() ([]models.Category, error) {
-	rows, err := r.db.Query("SELECT id, name, default_prefix, created_at FROM categories ORDER BY name")
+	rows, err := r.db.Query("SELECT id, name, label_prefix, created_at FROM categories ORDER BY name")
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func (r *CategoryRepository) List() ([]models.Category, error) {
 	var cats []models.Category
 	for rows.Next() {
 		var c models.Category
-		if err := rows.Scan(&c.ID, &c.Name, &c.DefaultPrefix, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.LabelPrefix, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		cats = append(cats, c)
@@ -33,7 +33,7 @@ func (r *CategoryRepository) List() ([]models.Category, error) {
 	return cats, nil
 }
 
-var categoryCols = []string{"id", "name", "default_prefix", "created_at"}
+var categoryCols = []string{"id", "name", "label_prefix", "created_at"}
 
 func (r *CategoryRepository) GetByID(id int) (*models.Category, error) {
 	return getOne[models.Category](r.db, "categories", categoryCols, "id = ?", id)
@@ -43,12 +43,12 @@ func (r *CategoryRepository) GetByName(name string) (*models.Category, error) {
 	return getByField[models.Category](r.db, "categories", categoryCols, "name", name)
 }
 
-func (r *CategoryRepository) GetByPrefixSlug(slug string) (*models.Category, error) {
-	return getOne[models.Category](r.db, "categories", categoryCols, "LOWER(default_prefix) = LOWER(?)", slug)
+func (r *CategoryRepository) GetByLabelSlug(slug string) (*models.Category, error) {
+	return getOne[models.Category](r.db, "categories", categoryCols, "LOWER(label_prefix) = LOWER(?)", slug)
 }
 
 func (r *CategoryRepository) ListByUsageType(usageType string) ([]models.Category, error) {
-	rows, err := r.db.Query(`SELECT DISTINCT c.id, c.name, c.default_prefix, c.created_at
+	rows, err := r.db.Query(`SELECT DISTINCT c.id, c.name, c.label_prefix, c.created_at
 		FROM categories c
 		JOIN device_types dt ON dt.category_id = c.id
 		WHERE dt.usage_type = ?
@@ -61,7 +61,7 @@ func (r *CategoryRepository) ListByUsageType(usageType string) ([]models.Categor
 	var cats []models.Category
 	for rows.Next() {
 		var c models.Category
-		if err := rows.Scan(&c.ID, &c.Name, &c.DefaultPrefix, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.LabelPrefix, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		cats = append(cats, c)
@@ -70,11 +70,11 @@ func (r *CategoryRepository) ListByUsageType(usageType string) ([]models.Categor
 }
 
 func (r *CategoryRepository) Create(name, prefix string) (sql.Result, error) {
-	return r.db.Exec("INSERT INTO categories (name, default_prefix) VALUES (?, ?)", name, prefix)
+	return r.db.Exec("INSERT INTO categories (name, label_prefix) VALUES (?, ?)", name, prefix)
 }
 
 func (r *CategoryRepository) Update(id int, name, prefix string) error {
-	_, err := r.db.Exec("UPDATE categories SET name=?, default_prefix=? WHERE id=?", name, prefix, id)
+	_, err := r.db.Exec("UPDATE categories SET name=?, label_prefix=? WHERE id=?", name, prefix, id)
 	return err
 }
 
