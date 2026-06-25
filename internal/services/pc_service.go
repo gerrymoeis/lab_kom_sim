@@ -269,7 +269,7 @@ func (s *PCService) MoveRowToCadangan(row int, actorID int, actorUsername, actor
 	return labelMap, nil
 }
 
-func (s *PCService) MovePC(label string, row, col int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+func (s *PCService) MovePC(label string, row, col int, newLabel string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	pc, _ := s.pcRepo.GetByLabel(label)
 	pcID := 0
 	oldVals := map[string]any{}
@@ -278,8 +278,8 @@ func (s *PCService) MovePC(label string, row, col int, actorID int, actorUsernam
 		pcID = pc.ID
 		oldVals["label"] = label; oldVals["row"] = pc.Row; oldVals["column"] = pc.Column
 	}
-	newVals["label"] = label; newVals["row"] = row; newVals["column"] = col
-	if err := s.pcRepo.MoveToPosition(label, row, col); err != nil {
+	newVals["label"] = newLabel; newVals["row"] = row; newVals["column"] = col
+	if err := s.pcRepo.MoveToPosition(label, row, col, newLabel); err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 			oldVals, nil, ipAddress, userAgent, err.Error())
 		return err
@@ -289,7 +289,7 @@ func (s *PCService) MovePC(label string, row, col int, actorID int, actorUsernam
 	return nil
 }
 
-func (s *PCService) PlaceCadangan(label string, row, col int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+func (s *PCService) PlaceCadangan(label string, row, col int, newLabel string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	pc, _ := s.pcRepo.GetByLabel(label)
 	pcID := 0
 	oldVals := map[string]any{}
@@ -298,8 +298,8 @@ func (s *PCService) PlaceCadangan(label string, row, col int, actorID int, actor
 		pcID = pc.ID
 		oldVals["label"] = label; oldVals["row"] = pc.Row; oldVals["column"] = pc.Column
 	}
-	newVals["label"] = label; newVals["row"] = row; newVals["column"] = col
-	if err := s.pcRepo.PlaceCadangan(label, row, col); err != nil {
+	newVals["label"] = newLabel; newVals["row"] = row; newVals["column"] = col
+	if err := s.pcRepo.PlaceCadangan(label, row, col, newLabel); err != nil {
 		s.activityLogService.LogUpdate(actorID, actorUsername, actorRole, "pc", pcID,
 			oldVals, nil, ipAddress, userAgent, err.Error())
 		return err

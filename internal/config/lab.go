@@ -84,3 +84,18 @@ func (g GridLayout) ColsAtRow(rowIndex int) int {
 	}
 	return g.ColsPerRow[rowIndex]
 }
+
+func (g GridLayout) PositionFromRowCol(row, col int) (int, bool) {
+	if row < 1 || row > len(g.ColsPerRow) {
+		return 0, false
+	}
+	if col < 1 || col > g.ColsPerRow[row-1] {
+		return 0, false
+	}
+	pos := 0
+	for i := 0; i < row-1; i++ {
+		pos += g.ColsPerRow[i]
+	}
+	pos += col
+	return pos, true
+}

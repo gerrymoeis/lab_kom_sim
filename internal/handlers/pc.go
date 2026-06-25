@@ -488,10 +488,17 @@ func (h *Handler) PCMove(c *gin.Context) {
 		return
 	}
 
+	lab := c.GetString("lab")
+	layout := h.cfg.LabLayout(lab)
+	newLabel := req.Label
+	if pos, ok := layout.PositionFromRowCol(req.Row, req.Col); ok {
+		newLabel = fmt.Sprintf("pc-%d", pos)
+	}
+
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.pcService.MovePC(req.Label, req.Row, req.Col, uid, u, r, ip, ua); err != nil {
+	if err := h.pcService.MovePC(req.Label, req.Row, req.Col, newLabel, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal memindahkan PC")
 		return
 	}
@@ -501,6 +508,7 @@ func (h *Handler) PCMove(c *gin.Context) {
 		"success": true,
 		"message": "PC berhasil dipindahkan",
 		"pcs":     pcs,
+		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
 	})
 }
 
@@ -515,10 +523,17 @@ func (h *Handler) PCPlace(c *gin.Context) {
 		return
 	}
 
+	lab := c.GetString("lab")
+	layout := h.cfg.LabLayout(lab)
+	newLabel := req.Label
+	if pos, ok := layout.PositionFromRowCol(req.Row, req.Col); ok {
+		newLabel = fmt.Sprintf("pc-%d", pos)
+	}
+
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
-	if err := h.pcService.PlaceCadangan(req.Label, req.Row, req.Col, uid, u, r, ip, ua); err != nil {
+	if err := h.pcService.PlaceCadangan(req.Label, req.Row, req.Col, newLabel, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal menempatkan PC cadangan")
 		return
 	}
@@ -528,6 +543,7 @@ func (h *Handler) PCPlace(c *gin.Context) {
 		"success": true,
 		"message": "PC cadangan berhasil ditempatkan",
 		"pcs":     pcs,
+		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
 	})
 }
 
