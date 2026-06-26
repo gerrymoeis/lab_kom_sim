@@ -1,0 +1,12 @@
+{{ template "layout/admin_base.html" . }}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST" action="/labs/{{ .lab.URLPath }}/layout">
+            {{ template "components/grid_preview.html" dict "readOnly" false "colsStr" .colsStr "rowGapsJSON" .rowGapsJSON "colsPerRow" .colsPerRow}}
+            <button class="btn btn-primary mt-3"><i class="bi bi-floppy"></i> Simpan Layout</button>
+        </form>
+    </div>
+</div>
+
+{{ template "layout/admin_footer.html" . }}
