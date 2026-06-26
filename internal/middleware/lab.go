@@ -11,6 +11,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Helper: redirect user based on session state when lab is not found
+func redirectOnNoLab(c *gin.Context) {
+	session := sessions.Default(c)
+	if session.Get("user_id") == nil {
+		c.Redirect(http.StatusFound, "/login")
+		c.Abort()
+		return
+	}
+	isSuperAdmin, _ := session.Get("is_super_admin").(bool)
+	isGlobalAdmin, _ := session.Get("is_global_admin").(bool)
+	if isSuperAdmin || isGlobalAdmin {
+		c.Redirect(http.StatusFound, "/labs")
+		c.Abort()
+		return
+	}
+	labsRaw := session.Get("labs")
+	if labsRaw != nil {
+		if labs, ok := labsRaw.([]string); ok && len(labs) > 0 {
+			c.Redirect(http.StatusFound, "/"+labs[0]+"/dashboard")
+			c.Abort()
+			return
+		}
+	}
+	c.Redirect(http.StatusFound, "/login")
+	c.Abort()
+}
+
 // GlobalDBInjector injects the global database into context
 func GlobalDBInjector(globalDB *database.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -129,7 +156,7 @@ func DBInjector(dbs map[string]*database.DB, labs map[string]config.LabConfig) g
 			lab = c.GetString("lab")
 		}
 		if _, ok := dbs[lab]; !ok {
-			c.AbortWithStatus(404)
+			redirectOnNoLab(c)
 			return
 		}
 		c.Set("db", dbs[lab])

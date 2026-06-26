@@ -135,7 +135,7 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 		}
 	}
 
-	c.Redirect(http.StatusFound, "/admin/users")
+	c.Redirect(http.StatusFound, "/labs/admin/users")
 }
 
 func (h *GlobalHandler) AdminUserEditPage(c *gin.Context) {
@@ -278,7 +278,7 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 		}
 	}
 
-	c.Redirect(http.StatusFound, "/admin/users")
+	c.Redirect(http.StatusFound, "/labs/admin/users")
 }
 
 func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
@@ -331,7 +331,7 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/admin/users")
+	c.Redirect(http.StatusFound, "/labs/admin/users")
 }
 
 func (h *GlobalHandler) AdminUserPermissionsSave(c *gin.Context) {
@@ -348,7 +348,7 @@ func (h *GlobalHandler) AdminUserPermissionsSave(c *gin.Context) {
 	}
 
 	if user.IsSuperAdmin {
-		c.Redirect(http.StatusFound, "/admin/users")
+		c.Redirect(http.StatusFound, "/labs/admin/users")
 		return
 	}
 
@@ -404,7 +404,7 @@ func (h *GlobalHandler) AdminUserPermissionsSave(c *gin.Context) {
 		}
 	}
 
-	c.Redirect(http.StatusFound, "/admin/users")
+	c.Redirect(http.StatusFound, "/labs/admin/users")
 }
 
 func (h *GlobalHandler) AdminUserPermissions(c *gin.Context) {

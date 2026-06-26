@@ -32,30 +32,30 @@ func loginAsAdmin(env *TestEnvironment) (cookies map[string]string, csrf string)
 	return env.LabA.cookies, token
 }
 
-// adminGet performs GET /admin/<path> with super admin cookies and returns response.
+// adminGet performs GET for the given path with super admin cookies and returns response.
 func adminGet(env *TestEnvironment, path string) *http.Response {
-	req, _ := http.NewRequest("GET", env.TS.URL+"/admin"+path, nil)
+	req, _ := http.NewRequest("GET", env.TS.URL+path, nil)
 	env.LabA.addCookies(req)
 	resp, err := env.Client.Do(req)
 	if err != nil {
-		env.LabA.t.Fatalf("GET /admin%s: %v", path, err)
+		env.LabA.t.Fatalf("GET %s: %v", path, err)
 	}
 	return resp
 }
 
-// adminPost performs POST /admin/<path> with CSRF token and super admin cookies.
+// adminPost performs POST for the given path with CSRF token and super admin cookies.
 func adminPost(env *TestEnvironment, path, data string) *http.Response {
 	if data == "" {
 		data = "_csrf=" + url.QueryEscape(env.LabA.csrf)
 	} else {
 		data = data + "&_csrf=" + url.QueryEscape(env.LabA.csrf)
 	}
-	req, _ := http.NewRequest("POST", env.TS.URL+"/admin"+path, strings.NewReader(data))
+	req, _ := http.NewRequest("POST", env.TS.URL+path, strings.NewReader(data))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	env.LabA.addCookies(req)
 	resp, err := env.Client.Do(req)
 	if err != nil {
-		env.LabA.t.Fatalf("POST /admin%s: %v", path, err)
+		env.LabA.t.Fatalf("POST %s: %v", path, err)
 	}
 	return resp
 }
@@ -83,13 +83,13 @@ func loginAs(env *TestEnvironment, username, password string) (cookies map[strin
 	return env.LabA.cookies, token
 }
 
-// adminPostNoCSRF performs POST /admin/<path> WITHOUT CSRF token to test CSRF rejection.
+// adminPostNoCSRF performs POST for the given path WITHOUT CSRF token to test CSRF rejection.
 func adminPostNoCSRF(env *TestEnvironment, path string) *http.Response {
-	req, _ := http.NewRequest("POST", env.TS.URL+"/admin"+path, strings.NewReader(""))
+	req, _ := http.NewRequest("POST", env.TS.URL+path, strings.NewReader(""))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := env.Client.Do(req)
 	if err != nil {
-		env.LabA.t.Fatalf("POST /admin%s (no CSRF): %v", path, err)
+		env.LabA.t.Fatalf("POST %s (no CSRF): %v", path, err)
 	}
 	// Add cookies from login for auth
 	for n, v := range env.LabA.cookies {
@@ -128,16 +128,17 @@ func TestAdminLabList(t *testing.T) {
 		}
 		resp := adminGet(env, "/labs")
 		defer resp.Body.Close()
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403 for non-super-admin, got %d", resp.StatusCode)
+		// Now redirects to /<first_lab>/dashboard instead of 403
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect for non-super-admin, got %d", resp.StatusCode)
 		}
 	})
 
 	t.Run("unauthorized_no_session", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", env.TS.URL+"/admin/labs", nil)
+		req, _ := http.NewRequest("GET", env.TS.URL+"/labs", nil)
 		resp, err := env.Client.Do(req)
 		if err != nil {
-			t.Fatalf("GET /admin/labs: %v", err)
+			t.Fatalf("GET /labs: %v", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
@@ -181,8 +182,8 @@ func TestAdminLabLayout(t *testing.T) {
 			t.Errorf("expected 302 after save, got %d", resp.StatusCode)
 		}
 		loc := resp.Header.Get("Location")
-		if loc != "/admin/labs" {
-			t.Errorf("expected redirect to /admin/labs, got %q", loc)
+		if loc != "/labs" {
+			t.Errorf("expected redirect to /labs, got %q", loc)
 		}
 	})
 
@@ -263,7 +264,7 @@ func TestAdminUserCreate(t *testing.T) {
 	loginAsAdmin(env)
 
 	t.Run("get_create_page", func(t *testing.T) {
-		resp := adminGet(env, "/users/create")
+		resp := adminGet(env, "/labs/admin/users/create")
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -288,14 +289,14 @@ func TestAdminUserCreate(t *testing.T) {
 	})
 
 	t.Run("create_user_success", func(t *testing.T) {
-		resp := adminPost(env, "/users/create", "username=newuser&password=newpass123&full_name=New+User&is_super_admin=0")
+		resp := adminPost(env, "/labs/admin/users/create", "username=newuser&password=newpass123&full_name=New+User&is_super_admin=0")
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 after create, got %d", resp.StatusCode)
 		}
 		loc := resp.Header.Get("Location")
-		if loc != "/admin/users" {
-			t.Errorf("expected redirect to /admin/users, got %q", loc)
+		if loc != "/labs/admin/users" {
+			t.Errorf("expected redirect to /labs/admin/users, got %q", loc)
 		}
 		// Verify user exists in global DB
 		var count int
@@ -306,7 +307,7 @@ func TestAdminUserCreate(t *testing.T) {
 	})
 
 	t.Run("create_user_empty_fields", func(t *testing.T) {
-		resp := adminPost(env, "/users/create", "username=&password=&full_name=&is_super_admin=0")
+		resp := adminPost(env, "/labs/admin/users/create", "username=&password=&full_name=&is_super_admin=0")
 		defer resp.Body.Close()
 		if resp.StatusCode != 400 {
 			t.Errorf("expected 400 for empty fields, got %d", resp.StatusCode)
@@ -314,7 +315,7 @@ func TestAdminUserCreate(t *testing.T) {
 	})
 
 	t.Run("create_duplicate_username", func(t *testing.T) {
-		resp := adminPost(env, "/users/create", "username=admin&password=test123&full_name=Duplicate&is_super_admin=0")
+		resp := adminPost(env, "/labs/admin/users/create", "username=admin&password=test123&full_name=Duplicate&is_super_admin=0")
 		defer resp.Body.Close()
 		if resp.StatusCode != 400 {
 			t.Errorf("expected 400 for duplicate, got %d", resp.StatusCode)
@@ -331,7 +332,7 @@ func TestAdminUserEdit(t *testing.T) {
 	loginAsAdmin(env)
 
 	t.Run("get_edit_page", func(t *testing.T) {
-		resp := adminGet(env, "/users/1/edit")
+		resp := adminGet(env, "/labs/admin/users/1/edit")
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -350,7 +351,7 @@ func TestAdminUserEdit(t *testing.T) {
 	})
 
 	t.Run("edit_user_success", func(t *testing.T) {
-		resp := adminPost(env, "/users/1/edit", "username=admin_updated&full_name=Admin+Updated&is_super_admin=1")
+		resp := adminPost(env, "/labs/admin/users/1/edit", "username=admin_updated&full_name=Admin+Updated&is_super_admin=1")
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 after edit, got %d", resp.StatusCode)
@@ -363,7 +364,7 @@ func TestAdminUserEdit(t *testing.T) {
 	})
 
 	t.Run("edit_nonexistent_user", func(t *testing.T) {
-		resp := adminPost(env, "/users/999/edit", "username=nonexistent&full_name=Nobody&is_super_admin=0")
+		resp := adminPost(env, "/labs/admin/users/999/edit", "username=nonexistent&full_name=Nobody&is_super_admin=0")
 		defer resp.Body.Close()
 		if resp.StatusCode != 400 && resp.StatusCode != 404 {
 			t.Errorf("expected 400 or 404, got %d", resp.StatusCode)
@@ -371,7 +372,7 @@ func TestAdminUserEdit(t *testing.T) {
 	})
 
 	t.Run("edit_user_change_password", func(t *testing.T) {
-		resp := adminPost(env, "/users/1/edit", "username=admin&full_name=Admin&is_super_admin=1&new_password=newpass456")
+		resp := adminPost(env, "/labs/admin/users/1/edit", "username=admin&full_name=Admin&is_super_admin=1&new_password=newpass456")
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 after password change, got %d", resp.StatusCode)
@@ -379,7 +380,7 @@ func TestAdminUserEdit(t *testing.T) {
 	})
 
 	t.Run("edit_invalid_id", func(t *testing.T) {
-		resp := adminGet(env, "/users/abc/edit")
+		resp := adminGet(env, "/labs/admin/users/abc/edit")
 		defer resp.Body.Close()
 		if resp.StatusCode != 404 {
 			t.Errorf("expected 404 for invalid id, got %d", resp.StatusCode)
@@ -397,7 +398,7 @@ func TestAdminUserDelete(t *testing.T) {
 
 	t.Run("delete_create_new_user_first", func(t *testing.T) {
 		// Create a deletable user first (not protected)
-		resp := adminPost(env, "/users/create", "username=deletable&password=test123&full_name=Deletable&is_super_admin=0")
+		resp := adminPost(env, "/labs/admin/users/create", "username=deletable&password=test123&full_name=Deletable&is_super_admin=0")
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Fatalf("expected 302, got %d", resp.StatusCode)
@@ -417,7 +418,7 @@ func TestAdminUserDelete(t *testing.T) {
 		if userID == 0 {
 			t.Fatal("deletable user not found")
 		}
-		resp := adminPost(env, "/users/"+strconv.Itoa(userID)+"/delete", "")
+		resp := adminPost(env, "/labs/admin/users/"+strconv.Itoa(userID)+"/delete", "")
 		defer resp.Body.Close()
 		// After delete, handler redirects to /admin/users
 		if resp.StatusCode != 302 && resp.StatusCode != 200 {
@@ -443,7 +444,7 @@ func TestAdminUserDelete(t *testing.T) {
 		if protID == 0 {
 			t.Fatal("could not get protected user id")
 		}
-		resp := adminPost(env, fmt.Sprintf("/users/%d/delete", protID), "")
+		resp := adminPost(env, fmt.Sprintf("/labs/admin/users/%d/delete", protID), "")
 		defer resp.Body.Close()
 		if resp.StatusCode != 403 {
 			t.Errorf("expected 403 for protected user, got %d", resp.StatusCode)
@@ -464,7 +465,7 @@ func TestAdminUserPermissions(t *testing.T) {
 	loginAsAdmin(env)
 
 	t.Run("get_permissions_page", func(t *testing.T) {
-		resp := adminGet(env, "/users/3/permissions")
+		resp := adminGet(env, "/labs/admin/users/3/permissions")
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
@@ -483,14 +484,14 @@ func TestAdminUserPermissions(t *testing.T) {
 	})
 
 	t.Run("save_permissions_success", func(t *testing.T) {
-		resp := adminPost(env, "/users/3/permissions", "labs=lab-kom-mi&roles=admin")
+		resp := adminPost(env, "/labs/admin/users/3/permissions", "labs=lab-kom-mi&roles=admin")
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 after permissions save, got %d", resp.StatusCode)
 		}
 		loc := resp.Header.Get("Location")
-		if loc != "/admin/users" {
-			t.Errorf("expected redirect to /admin/users, got %q", loc)
+		if loc != "/labs/admin/users" {
+			t.Errorf("expected redirect to /labs/admin/users, got %q", loc)
 		}
 		// Verify permission saved
 		var role string
@@ -502,7 +503,7 @@ func TestAdminUserPermissions(t *testing.T) {
 
 	t.Run("permissions_redirects_for_super_admin", func(t *testing.T) {
 		// Super admin (id=1) permissions page should redirect
-		resp := adminGet(env, "/users/1/permissions")
+		resp := adminGet(env, "/labs/admin/users/1/permissions")
 		defer resp.Body.Close()
 		// Super admin has no permission editing — check if it redirects or shows 200
 		// Based on code: AdminUserPermissions doesn't check isSuperAdmin, it just shows the page
@@ -513,7 +514,7 @@ func TestAdminUserPermissions(t *testing.T) {
 	})
 
 	t.Run("permissions_nonexistent_user", func(t *testing.T) {
-		resp := adminGet(env, "/users/999/permissions")
+		resp := adminGet(env, "/labs/admin/users/999/permissions")
 		defer resp.Body.Close()
 		if resp.StatusCode != 404 {
 			t.Errorf("expected 404, got %d", resp.StatusCode)
@@ -530,12 +531,12 @@ func TestAdminCSRF(t *testing.T) {
 	loginAsAdmin(env)
 
 	t.Run("post_without_csrf_returns_403", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", env.TS.URL+"/admin/users/create", strings.NewReader("username=csrf_test&password=test123&full_name=CSRF+Test&is_super_admin=0"))
+		req, _ := http.NewRequest("POST", env.TS.URL+"/labs/admin/users/create", strings.NewReader("username=csrf_test&password=test123&full_name=CSRF+Test&is_super_admin=0"))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		env.LabA.addCookies(req)
 		resp, err := env.Client.Do(req)
 		if err != nil {
-			t.Fatalf("POST /admin/users/create: %v", err)
+			t.Fatalf("POST /labs/admin/users/create: %v", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 403 {
@@ -544,12 +545,12 @@ func TestAdminCSRF(t *testing.T) {
 	})
 
 	t.Run("post_with_invalid_csrf_returns_403", func(t *testing.T) {
-		req, _ := http.NewRequest("POST", env.TS.URL+"/admin/users/create", strings.NewReader("_csrf=invalidtoken123&username=csrf_test2&password=test123&full_name=CSRF+Test+2&is_super_admin=0"))
+		req, _ := http.NewRequest("POST", env.TS.URL+"/labs/admin/users/create", strings.NewReader("_csrf=invalidtoken123&username=csrf_test2&password=test123&full_name=CSRF+Test+2&is_super_admin=0"))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		env.LabA.addCookies(req)
 		resp, err := env.Client.Do(req)
 		if err != nil {
-			t.Fatalf("POST /admin/users/create: %v", err)
+			t.Fatalf("POST /labs/admin/users/create: %v", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 403 {
@@ -558,10 +559,10 @@ func TestAdminCSRF(t *testing.T) {
 	})
 
 		t.Run("get_routes_without_auth_redirect", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", env.TS.URL+"/admin/labs", nil)
+		req, _ := http.NewRequest("GET", env.TS.URL+"/labs", nil)
 		resp, err := env.Client.Do(req)
 		if err != nil {
-			t.Fatalf("GET /admin/labs: %v", err)
+			t.Fatalf("GET /labs: %v", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
@@ -909,7 +910,7 @@ func TestAuthZScenarios(t *testing.T) {
 	t.Run("01_create_GAB_as_non_protected_SA_returns_403", func(t *testing.T) {
 		gdb.Exec("UPDATE global_users SET session_token = ''")
 		loginAs(env, "rekan", "rekan123")
-		resp := adminPost(env, "/users/create", "username=gab_fail&password=test123&full_name=GAB+Fail&is_global_admin=1")
+		resp := adminPost(env, "/labs/admin/users/create", "username=gab_fail&password=test123&full_name=GAB+Fail&is_global_admin=1")
 		defer resp.Body.Close()
 		if resp.StatusCode != 403 {
 			t.Errorf("expected 403 for non-protected SA creating GAB, got %d", resp.StatusCode)
@@ -919,7 +920,7 @@ func TestAuthZScenarios(t *testing.T) {
 	t.Run("02_edit_SA_as_non_protected_SA_returns_403", func(t *testing.T) {
 		gdb.Exec("UPDATE global_users SET session_token = ''")
 		loginAs(env, "rekan", "rekan123")
-		resp := adminPost(env, "/users/1/edit", "username=admin&full_name=Hacked&is_super_admin=1")
+		resp := adminPost(env, "/labs/admin/users/1/edit", "username=admin&full_name=Hacked&is_super_admin=1")
 		defer resp.Body.Close()
 		if resp.StatusCode != 403 {
 			t.Errorf("expected 403 for non-protected SA editing SA, got %d", resp.StatusCode)
@@ -929,7 +930,7 @@ func TestAuthZScenarios(t *testing.T) {
 	t.Run("03_delete_SA_from_global_panel_returns_error", func(t *testing.T) {
 		gdb.Exec("UPDATE global_users SET session_token = ''")
 		loginAs(env, "rekan", "rekan123")
-		resp := adminPost(env, "/users/1/delete", "")
+		resp := adminPost(env, "/labs/admin/users/1/delete", "")
 		defer resp.Body.Close()
 		if resp.StatusCode != 403 {
 			t.Errorf("expected 403 for non-protected SA deleting SA, got %d", resp.StatusCode)
@@ -1039,7 +1040,7 @@ func TestAuthZScenarios(t *testing.T) {
 		gdb.Exec("UPDATE global_users SET session_token = ''")
 		// Login as admin (protected) → should be able to create GAB
 		loginAs(env, "admin", "admin123")
-		resp := adminPost(env, "/users/create", "username=gab_ok&password=test123&full_name=GAB+OK&is_global_admin=1")
+		resp := adminPost(env, "/labs/admin/users/create", "username=gab_ok&password=test123&full_name=GAB+OK&is_global_admin=1")
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 when protected SA creates GAB, got %d", resp.StatusCode)
@@ -1053,7 +1054,7 @@ func TestAuthZScenarios(t *testing.T) {
 		// Now login as rekan (non-protected) → should NOT be able to create GAB
 		gdb.Exec("UPDATE global_users SET session_token = ''")
 		loginAs(env, "rekan", "rekan123")
-		resp2 := adminPost(env, "/users/create", "username=gab_fail2&password=test123&full_name=GAB+Fail+2&is_global_admin=1")
+		resp2 := adminPost(env, "/labs/admin/users/create", "username=gab_fail2&password=test123&full_name=GAB+Fail+2&is_global_admin=1")
 		defer resp2.Body.Close()
 		if resp2.StatusCode != 403 {
 			t.Errorf("expected 403 when non-protected SA attempts to create GAB, got %d", resp2.StatusCode)
@@ -1068,7 +1069,7 @@ func TestAuthZScenarios(t *testing.T) {
 		if rekanID == 0 {
 			t.Fatal("rekan not found")
 		}
-		resp := adminPost(env, fmt.Sprintf("/users/%d/delete", rekanID), "")
+		resp := adminPost(env, fmt.Sprintf("/labs/admin/users/%d/delete", rekanID), "")
 		defer resp.Body.Close()
 		if resp.StatusCode != 403 {
 			t.Errorf("expected 403 for self-delete, got %d", resp.StatusCode)
