@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type GlobalHandler struct {
@@ -45,8 +46,12 @@ func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin
 	if token := sessions.Default(c).Get("csrf_token"); token != nil {
 		data["csrf_token"] = token.(string)
 	}
-	data["lab"] = ""
-	data["basePath"] = ""
+	if _, ok := data["lab"]; !ok {
+		data["lab"] = ""
+	}
+	if _, ok := data["basePath"]; !ok {
+		data["basePath"] = ""
+	}
 	_, username, isSuperAdmin, _, _ := middleware.GetCurrentUser(c)
 	data["username"] = username
 	data["is_super_admin"] = isSuperAdmin
@@ -226,6 +231,199 @@ func (h *GlobalHandler) logAuthToLabs(userID int, username, action, role, ip, ua
 		db.Exec(`INSERT INTO activity_logs (user_id, username, user_role, action, entity_type, entity_id, description, old_values, new_values, created_at, ip_address, user_agent, status, error_message) VALUES (?, ?, ?, ?, 'auth', NULL, ?, '', '', ?, ?, ?, ?, '')`,
 			userID, username, role, action, desc, timeutil.Now(), ip, ua, status)
 	}
+}
+
+func (h *GlobalHandler) AdminProfile(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(int)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+	username, _ := session.Get("username").(string)
+
+	user, err := h.globalAuthService.GetUser(userID)
+	if err != nil {
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "User tidak ditemukan",
+		})
+		return
+	}
+
+	h.render(c, http.StatusOK, "user/profile.html", gin.H{
+		"title":       "Profile",
+		"currentPage": "profile",
+		"icon":        "bi-person-gear",
+		"basePath":    "/labs",
+		"username":    username,
+		"user":        user,
+	})
+}
+
+func (h *GlobalHandler) AdminUpdateProfile(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(int)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	username := c.PostForm("username")
+	fullName := c.PostForm("full_name")
+
+	if username == "" || fullName == "" {
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Username dan Nama Lengkap harus diisi",
+		})
+		return
+	}
+
+	exists, _ := h.globalAuthService.GetUserByUsername(username)
+	if exists != nil && exists.ID != userID {
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Username sudah digunakan",
+		})
+		return
+	}
+
+	currentUser, err := h.globalAuthService.GetUser(userID)
+	if err != nil {
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Sesi tidak valid",
+		})
+		return
+	}
+
+	if err := h.globalAuthService.UpdateUser(userID, username, fullName, currentUser.IsSuperAdmin, currentUser.IsGlobalAdmin, currentUser.IsProtected); err != nil {
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Gagal update profil",
+		})
+		return
+	}
+
+	session.Set("username", username)
+	if err := session.Save(); err != nil {
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Gagal menyimpan session",
+		})
+		return
+	}
+
+	userModel, _ := h.globalAuthService.GetUser(userID)
+	h.render(c, http.StatusOK, "user/profile.html", gin.H{
+		"title":       "Profile",
+		"currentPage": "profile",
+		"icon":        "bi-person-gear",
+		"basePath":    "/labs",
+		"username":    username,
+		"user":        userModel,
+		"success":     "Profil berhasil diupdate",
+	})
+}
+
+func (h *GlobalHandler) AdminChangePassword(c *gin.Context) {
+	session := sessions.Default(c)
+	userID, ok := session.Get("user_id").(int)
+	if !ok {
+		c.Redirect(http.StatusFound, "/login")
+		return
+	}
+
+	oldPassword := c.PostForm("old_password")
+	newPassword := c.PostForm("new_password")
+	confirmPassword := c.PostForm("confirm_password")
+
+	if oldPassword == "" || newPassword == "" {
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Password lama dan baru harus diisi",
+		})
+		return
+	}
+
+	if newPassword != confirmPassword {
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Password baru tidak cocok",
+		})
+		return
+	}
+
+	userModel, err := h.globalAuthService.GetUser(userID)
+	if err != nil {
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Sesi tidak valid",
+		})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(userModel.Password), []byte(oldPassword)); err != nil {
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Password lama salah",
+		})
+		return
+	}
+
+	if err := h.globalAuthService.UpdateUserPassword(userID, newPassword); err != nil {
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
+			"title":       "Profile",
+			"currentPage": "profile",
+			"icon":        "bi-person-gear",
+			"basePath":    "/labs",
+			"error":       "Gagal ubah password",
+		})
+		return
+	}
+
+	userModel, _ = h.globalAuthService.GetUser(userID)
+	username, _ := session.Get("username").(string)
+	h.render(c, http.StatusOK, "user/profile.html", gin.H{
+		"title":       "Profile",
+		"currentPage": "profile",
+		"icon":        "bi-person-gear",
+		"basePath":    "/labs",
+		"username":    username,
+		"user":        userModel,
+		"success":     "Password berhasil diubah",
+	})
 }
 
 func (h *GlobalHandler) LabSelector(c *gin.Context) {

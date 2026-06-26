@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,10 +17,57 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func joinInts(ints []int, sep string) string {
+	parts := make([]string, len(ints))
+	for i, v := range ints {
+		parts[i] = strconv.Itoa(v)
+	}
+	return strings.Join(parts, sep)
+}
+
 func (h *GlobalHandler) AdminLabList(c *gin.Context) {
-	h.render(c, http.StatusOK, "admin_labs.html", gin.H{
-		"title": "Manage Lab",
-		"labs":  h.cfg.Labs,
+	h.render(c, http.StatusOK, "admin/lab_list.html", gin.H{
+		"title":       "Manage Lab",
+		"currentPage": "labs",
+		"icon":        "bi-gear",
+		"labs":        h.cfg.Labs,
+	})
+}
+
+func (h *GlobalHandler) AdminLabDetail(c *gin.Context) {
+	urlPath := c.Param("urlPath")
+	lab := h.labFromPath(urlPath)
+	if lab == nil {
+		c.AbortWithStatus(404)
+		return
+	}
+
+	layoutRepo := repository.NewLayoutRepository(h.globalDB)
+	layout, err := layoutRepo.GetByLab(urlPath)
+	if err != nil || layout == nil {
+		layout = &config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}
+	}
+	if layout.RowGaps == nil {
+		layout.RowGaps = config.RowGapsFromOld(layout.ColsPerRow, layout.HasGap, layout.GapPos)
+	}
+
+	colsStr := joinInts(layout.ColsPerRow, ",")
+	totalPCs := 0
+	for _, c := range layout.ColsPerRow {
+		totalPCs += c
+	}
+
+	h.render(c, http.StatusOK, "admin/lab_detail.html", gin.H{
+		"title":       "Detail - " + lab.Title,
+		"currentPage": "labs",
+		"icon":        "bi-eye",
+		"lab":         lab,
+		"layout":      layout,
+		"colsStr":     colsStr,
+		"colsPerRow":  layout.ColsPerRow,
+		"rowGaps":     layout.RowGaps,
+		"totalPCs":    totalPCs,
+		"backURL":     "/labs",
 	})
 }
 
@@ -38,19 +86,31 @@ func (h *GlobalHandler) AdminLabLayout(c *gin.Context) {
 	}
 
 	colsStr := "8,8,8,8,8"
+	colsPerRow := []int{8, 8, 8, 8, 8}
+	rowGapsJSON := "[]"
 	if layout != nil {
 		parts := make([]string, len(layout.ColsPerRow))
 		for i, v := range layout.ColsPerRow {
 			parts[i] = strconv.Itoa(v)
 		}
 		colsStr = strings.Join(parts, ",")
+		colsPerRow = layout.ColsPerRow
+		if layout.RowGaps == nil {
+			layout.RowGaps = config.RowGapsFromOld(layout.ColsPerRow, layout.HasGap, layout.GapPos)
+		}
+		rgJSON, _ := json.Marshal(layout.RowGaps)
+		rowGapsJSON = string(rgJSON)
 	}
 
-	h.render(c, http.StatusOK, "admin_lab_layout.html", gin.H{
-		"title":    "Layout - " + lab.Title,
-		"lab":      lab,
-		"cols_str": colsStr,
-		"layout":   layout,
+	h.render(c, http.StatusOK, "admin/lab_layout.html", gin.H{
+		"title":       "Layout - " + lab.Title,
+		"currentPage": "labs",
+		"icon":        "bi-grid-3x3",
+		"lab":         lab,
+		"colsStr":     colsStr,
+		"colsPerRow":  colsPerRow,
+		"rowGapsJSON": rowGapsJSON,
+		"backURL":     "/labs/" + urlPath,
 	})
 }
 
@@ -63,8 +123,21 @@ func (h *GlobalHandler) AdminLabLayoutSave(c *gin.Context) {
 	}
 
 	colsStr := c.PostForm("cols_per_row")
-	hasGap := c.PostForm("has_gap") == "1"
-	gapPos, _ := strconv.Atoi(c.PostForm("gap_pos"))
+	rowGapsStr := c.PostForm("row_gaps_json")
+
+	errorData := func(errMsg string) gin.H {
+		return gin.H{
+			"title":       "Layout - " + lab.Title,
+			"currentPage": "labs",
+			"icon":        "bi-grid-3x3",
+			"lab":         lab,
+			"colsStr":     colsStr,
+			"colsPerRow":  nil,
+			"rowGapsJSON": rowGapsStr,
+			"backURL":     "/labs/" + urlPath,
+			"error":       errMsg,
+		}
+	}
 
 	parts := strings.Split(colsStr, ",")
 	cols := make([]int, 0, len(parts))
@@ -75,12 +148,9 @@ func (h *GlobalHandler) AdminLabLayoutSave(c *gin.Context) {
 		}
 		n, err := strconv.Atoi(p)
 		if err != nil {
-			h.render(c, http.StatusBadRequest, "admin_lab_layout.html", gin.H{
-				"title":    "Layout - " + lab.Title,
-				"lab":      lab,
-				"cols_str": colsStr,
-				"error":    fmt.Sprintf("Format cols_per_row tidak valid: %s", p),
-			})
+			h.render(c, http.StatusBadRequest, "admin/lab_layout.html", errorData(
+				fmt.Sprintf("Format cols_per_row tidak valid: %s", p),
+			))
 			return
 		}
 		cols = append(cols, n)
@@ -90,17 +160,42 @@ func (h *GlobalHandler) AdminLabLayoutSave(c *gin.Context) {
 		cols = []int{8, 8, 8, 8, 8}
 	}
 
+	var rowGaps [][]int
+	if rowGapsStr != "" {
+		if err := json.Unmarshal([]byte(rowGapsStr), &rowGaps); err != nil {
+			rowGaps = config.RowGapsFromOld(cols, false, 0)
+		}
+	} else {
+		rowGaps = config.RowGapsFromOld(cols, false, 0)
+	}
+
+	hasGap := false
+	gapPos := 0
+	for _, gaps := range rowGaps {
+		if len(gaps) > 0 {
+			hasGap = true
+			gapPos = gaps[0]
+			break
+		}
+	}
+
 	layoutRepo := repository.NewLayoutRepository(h.globalDB)
-	if err := layoutRepo.Upsert(urlPath, cols, hasGap, gapPos); err != nil {
-		h.render(c, http.StatusInternalServerError, "admin_lab_layout.html", gin.H{
-			"title": "Layout - " + lab.Title,
-			"lab":   lab,
-			"error": "Gagal menyimpan layout",
+	if err := layoutRepo.Upsert(urlPath, cols, hasGap, gapPos, rowGaps); err != nil {
+		h.render(c, http.StatusInternalServerError, "admin/lab_layout.html", gin.H{
+			"title":       "Layout - " + lab.Title,
+			"currentPage": "labs",
+			"icon":        "bi-grid-3x3",
+			"lab":         lab,
+			"colsStr":     joinInts(cols, ","),
+			"colsPerRow":  cols,
+			"rowGapsJSON": rowGapsStr,
+			"backURL":     "/labs/" + urlPath,
+			"error":       "Gagal menyimpan layout",
 		})
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/labs")
+	c.Redirect(http.StatusFound, "/labs/"+urlPath)
 }
 
 func (h *GlobalHandler) AdminLabSeeds(c *gin.Context) {
@@ -111,9 +206,12 @@ func (h *GlobalHandler) AdminLabSeeds(c *gin.Context) {
 		return
 	}
 
-	h.render(c, http.StatusOK, "admin_lab_seeds.html", gin.H{
-		"title": "Seeds - " + lab.Title,
-		"lab":   lab,
+	h.render(c, http.StatusOK, "admin/lab_seeds.html", gin.H{
+		"title":       "Seeds - " + lab.Title,
+		"currentPage": "labs",
+		"icon":        "bi-database",
+		"lab":         lab,
+		"backURL":     "/labs/" + urlPath,
 	})
 }
 
@@ -134,7 +232,7 @@ func (h *GlobalHandler) AdminLabReseed(c *gin.Context) {
 	}
 
 	if err := database.RunSeedType(db, lab.ID, urlPath, seedType); err != nil {
-		h.render(c, http.StatusInternalServerError, "admin_lab_seeds.html", gin.H{
+		h.render(c, http.StatusInternalServerError, "admin/lab_seeds.html", gin.H{
 			"title": "Seeds - " + lab.Title,
 			"lab":   lab,
 			"error": "Seed gagal: " + err.Error(),
@@ -142,9 +240,9 @@ func (h *GlobalHandler) AdminLabReseed(c *gin.Context) {
 		return
 	}
 
-	h.render(c, http.StatusOK, "admin_lab_seeds.html", gin.H{
-		"title": "Seeds - " + lab.Title,
-		"lab":   lab,
+	h.render(c, http.StatusOK, "admin/lab_seeds.html", gin.H{
+		"title":   "Seeds - " + lab.Title,
+		"lab":     lab,
 		"success": "Seed berhasil: " + seedType,
 	})
 }

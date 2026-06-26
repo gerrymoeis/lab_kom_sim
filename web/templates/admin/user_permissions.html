@@ -1,0 +1,42 @@
+{{ template "layout/admin_base.html" . }}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST" action="/labs/admin/users/{{ .user.ID }}/permissions">
+            <input type="hidden" name="_csrf" value="{{ .csrf_token }}">
+            {{ range $lab := .labs }}
+            <div class="row mb-2 align-items-center">
+                <div class="col">
+                    <div class="form-check">
+                        <input type="checkbox" name="labs" class="form-check-input"
+                            value="{{ $lab.URLPath }}" id="perm_{{ $lab.URLPath }}"
+                            {{ if index $.permissions $lab.URLPath }}checked{{ end }}>
+                        <label class="form-check-label" for="perm_{{ $lab.URLPath }}">
+                            {{ $lab.Title }}
+                        </label>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <div class="form-check">
+                        <input type="checkbox" name="is_main_account" class="form-check-input"
+                            value="{{ $lab.URLPath }}" id="main_{{ $lab.URLPath }}"
+                            {{ if index $.isMainAccount $lab.URLPath }}checked{{ end }}>
+                        <label class="form-check-label" for="main_{{ $lab.URLPath }}">
+                            <small>Akun Utama</small>
+                        </label>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <select name="roles" class="form-select form-select-sm">
+                        <option value="admin" selected>Admin Lab</option>
+                    </select>
+                </div>
+            </div>
+            {{ end }}
+
+            <button class="btn btn-primary mt-3"><i class="bi bi-floppy"></i> Simpan</button>
+        </form>
+    </div>
+</div>
+
+{{ template "layout/admin_footer.html" . }}

@@ -65,6 +65,13 @@ func RunGlobalMigrations(db *DB) error {
 		}
 	}
 
+	// Add row_gaps to grid_layouts
+	if !colExistsGlobal(db, "grid_layouts", "row_gaps") {
+		if _, err := db.Exec(`ALTER TABLE grid_layouts ADD COLUMN row_gaps TEXT DEFAULT ''`); err != nil {
+			return fmt.Errorf("failed to add row_gaps to grid_layouts: %w", err)
+		}
+	}
+
 	return nil
 }
 

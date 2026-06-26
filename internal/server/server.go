@@ -114,6 +114,11 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 		"staticURL": staticURL,
 		"add":       func(a, b int) int { return a + b },
 		"sub":       func(a, b int) int { return a - b },
+		"seq": func(n int) []int {
+			r := make([]int, n)
+			for i := 1; i <= n; i++ { r[i-1] = i }
+			return r
+		},
 		"iterate": func(count int) []int {
 			r := make([]int, count)
 			for i := 0; i < count; i++ { r[i] = i }
@@ -283,12 +288,23 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	// ========== GLOBAL ADMIN ROUTES (SA/GAB dashboard at /labs) ==========
 
+	// Profile routes — any authenticated user (not just SA/GAB)
+	labsProfileGroup := router.Group("/labs")
+	labsProfileGroup.Use(middleware.AuthRequired(), middleware.CSRF())
+	{
+		labsProfileGroup.GET("/profile", globalHandler.AdminProfile)
+		labsProfileGroup.POST("/profile", globalHandler.AdminUpdateProfile)
+		labsProfileGroup.POST("/profile/password", globalHandler.AdminChangePassword)
+	}
+
 	// Super admin only routes under /labs/
 	labsAdminGroup := router.Group("/labs")
 	labsAdminGroup.Use(middleware.AuthRequired(), middleware.CSRF(), middleware.SuperAdminRequired())
 	{
 		// SA/GAB dashboard — manages lab list
 		labsAdminGroup.GET("", globalHandler.AdminLabList)
+
+		labsAdminGroup.GET("/:urlPath", globalHandler.AdminLabDetail)
 
 		labsAdminGroup.GET("/admin/users", globalHandler.AdminUserList)
 		labsAdminGroup.GET("/admin/users/create", globalHandler.AdminUserCreatePage)
