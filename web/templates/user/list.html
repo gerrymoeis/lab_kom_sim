@@ -70,14 +70,7 @@
                         <tr data-batch-id="{{ .Username }}" data-batch-label="{{ .Username }} - {{ .FullName }}">
                             <td>{{ add $i $.startRow }}</td>
                             <td><strong>{{ if eq $.username .Username }}<a href="{{ $.basePath }}/admin/users/{{ .Username }}" class="text-decoration-none fw-bold text-primary">{{ end }}{{ .Username }}{{ if eq $.username .Username }}</a>{{ end }}</strong></td>
-                            <td>
-                                {{ .FullName }}
-                                {{ $isSuperAdmin := or .IsSuperAdmin (index $.superAdminUsernames .Username) }}
-                                {{ $isTargetMA := index $.mainAccountIDs .ID }}
-                                {{ if $isSuperAdmin }}<span class="badge bg-dark ms-1">Super Admin</span>{{ end }}
-                                {{ if and (not $isSuperAdmin) $isTargetMA }}<span class="badge bg-secondary ms-1">Akun Utama</span>{{ end }}
-                                {{ if .IsGlobalAdmin }}<span class="badge bg-info ms-1">Global Admin</span>{{ end }}
-                            </td>
+                            <td>{{ .FullName }}{{ $isSuperAdmin := or .IsSuperAdmin (index $.superAdminUsernames .Username) }}{{ $isTargetMA := index $.mainAccountIDs .ID }}</td>
                             <td>
                                 {{ if .IsSuperAdmin }}<span class="badge bg-dark">Super Admin</span>
                                 {{ else if .IsGlobalAdmin }}<span class="badge bg-info">Global Admin</span>
