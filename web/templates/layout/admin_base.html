@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link href="{{ staticURL "vendor/bootstrap/css/bootstrap.min.css" }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ staticURL "vendor/bootstrap-icons/bootstrap-icons.min.css" }}">
+    <link rel="stylesheet" href="{{ staticURL "css/style.css" }}">
+    <link rel="icon" type="image/svg+xml" href="{{ staticURL "favicon.svg" }}">
+    <meta name="csrf-token" content="{{ .csrf_token }}">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/labs">
+                <i class="bi bi-pc-display-horizontal"></i>
+                Admin Panel
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="adminNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {{ if eq .currentPage "labs" }}active{{ end }}" href="/labs">
+                            <i class="bi bi-building"></i> Labs
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ if eq .currentPage "users" }}active{{ end }}" href="/labs/admin/users">
+                            <i class="bi bi-people"></i> Users
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> {{ .username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item {{ if eq .currentPage "profile" }}active{{ end }}" href="/labs/profile">
+                                    <i class="bi bi-person-gear"></i> Profile
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="/logout">
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="bi bi-box-arrow-right"></i> Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4" style="padding-top: 70px;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="mb-0"><i class="bi {{ .icon }}"></i> {{ .title }}</h4>
+            {{ if .backURL }}
+            <a href="{{ .backURL }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </a>
+            {{ end }}
+        </div>
+
+        {{ template "layout/alert.html" . }}
+
+{{ define "layout/admin_footer.html" }}
+    </div>
+
+    <script src="{{ staticURL "vendor/bootstrap/js/bootstrap.bundle.min.js" }}"></script>
+    <script>
+    (function() {
+        var token = document.querySelector('meta[name="csrf-token"]');
+        if (token) {
+            var val = token.getAttribute('content');
+            document.querySelectorAll('form[method="POST"]').forEach(function(f) {
+                var inp = document.createElement('input');
+                inp.type = 'hidden'; inp.name = '_csrf'; inp.value = val;
+                f.appendChild(inp);
+            });
+        }
+    })();
+    </script>
+</body>
+</html>
+{{ end }}

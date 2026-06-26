@@ -19,6 +19,7 @@ func setupLayoutDB(t *testing.T) *database.DB {
 		cols_per_row TEXT NOT NULL DEFAULT '[8,8,8,8,8]',
 		has_gap INTEGER NOT NULL DEFAULT 0,
 		gap_pos INTEGER NOT NULL DEFAULT 0,
+		row_gaps TEXT DEFAULT '',
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	)`)
@@ -32,7 +33,7 @@ func TestLayoutRepoUpsert(t *testing.T) {
 	db := setupLayoutDB(t)
 	repo := NewLayoutRepository(db)
 
-	err := repo.Upsert("test-lab", []int{8, 8, 8}, true, 3)
+	err := repo.Upsert("test-lab", []int{8, 8, 8}, true, 3, [][]int{{}, {}, {3}})
 	if err != nil {
 		t.Fatalf("Upsert insert: %v", err)
 	}
@@ -47,7 +48,7 @@ func TestLayoutRepoUpsert(t *testing.T) {
 		t.Errorf("expected has_gap=1, got %d", hasGap)
 	}
 
-	err = repo.Upsert("test-lab", []int{10, 10}, false, 0)
+	err = repo.Upsert("test-lab", []int{10, 10}, false, 0, [][]int{{}, {}})
 	if err != nil {
 		t.Fatalf("Upsert update: %v", err)
 	}
@@ -61,7 +62,7 @@ func TestLayoutRepoGetByLab(t *testing.T) {
 	db := setupLayoutDB(t)
 	repo := NewLayoutRepository(db)
 
-	db.Exec("INSERT INTO grid_layouts (lab_url_path, cols_per_row, has_gap, gap_pos) VALUES ('lab-a', '[6,6,6]', 0, 0)")
+	db.Exec("INSERT INTO grid_layouts (lab_url_path, cols_per_row, has_gap, gap_pos, row_gaps) VALUES ('lab-a', '[6,6,6]', 0, 0, '[]')")
 
 	layout, err := repo.GetByLab("lab-a")
 	if err != nil {
@@ -92,8 +93,8 @@ func TestLayoutRepoList(t *testing.T) {
 		t.Errorf("expected 0 layouts, got %d", len(layouts))
 	}
 
-	repo.Upsert("lab-a", []int{8, 8}, false, 0)
-	repo.Upsert("lab-b", []int{10, 10, 10}, true, 2)
+	repo.Upsert("lab-a", []int{8, 8}, false, 0, [][]int{{}, {}})
+	repo.Upsert("lab-b", []int{10, 10, 10}, true, 2, [][]int{{}, {}, {2}})
 
 	layouts, err = repo.List()
 	if err != nil {

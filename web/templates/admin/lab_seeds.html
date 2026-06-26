@@ -1,0 +1,45 @@
+{{ template "layout/admin_base.html" . }}
+
+<div class="row">
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-pc-display" style="font-size: 2rem;"></i>
+                <h6 class="mt-2">PC</h6>
+                <form method="POST" action="/labs/{{ .lab.URLPath }}/seeds/pc">
+                    <button class="btn btn-outline-primary btn-sm w-100 mt-2">
+                        <i class="bi bi-arrow-repeat"></i> Reseed PC
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-software" style="font-size: 2rem;"></i>
+                <h6 class="mt-2">Software</h6>
+                <form method="POST" action="/labs/{{ .lab.URLPath }}/seeds/software">
+                    <button class="btn btn-outline-success btn-sm w-100 mt-2">
+                        <i class="bi bi-arrow-repeat"></i> Reseed Software
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-event" style="font-size: 2rem;"></i>
+                <h6 class="mt-2">Schedule</h6>
+                <form method="POST" action="/labs/{{ .lab.URLPath }}/seeds/schedule">
+                    <button class="btn btn-outline-info btn-sm w-100 mt-2">
+                        <i class="bi bi-arrow-repeat"></i> Reseed Schedule
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ template "layout/admin_footer.html" . }}
