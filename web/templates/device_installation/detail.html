@@ -4,7 +4,7 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{$.basePath}}/devices?tab=installations">Instalasi</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{{ .assetCode }}</li>
+            <li class="breadcrumb-item active" aria-current="page">{{ .label }}</li>
         </ol>
     </nav>
 
@@ -17,8 +17,8 @@
                 <div class="card-body">
                     <table class="table table-borderless">
                         <tr>
-                            <th class="th-w-200">Asset Code</th>
-                            <td><code>{{ .assetCode }}</code></td>
+                            <th class="th-w-200">Label</th>
+                            <td><code>{{ .label }}</code></td>
                         </tr>
                         <tr>
                             <th>Tipe Perangkat</th>
@@ -99,7 +99,7 @@
                 <a href="{{$.basePath}}/installations/{{ .installation.ID }}/edit" class="btn btn-warning">
                     <i class="bi bi-pencil"></i> Edit Instalasi
                 </a>
-                <a href="{{$.basePath}}/devices/{{ .installation.CategoryPrefix | lower }}/{{ .installation.DeviceTypePrefix | lower }}/{{ .assetCode | lower }}" class="btn btn-info">
+                <a href="{{$.basePath}}/devices/{{ .installation.CategoryPrefix | lower }}/{{ .installation.DeviceTypePrefix | lower }}/{{ .label | lower }}" class="btn btn-info">
                     <i class="bi bi-hdd-rack"></i> Lihat Perangkat
                 </a>
             </div>

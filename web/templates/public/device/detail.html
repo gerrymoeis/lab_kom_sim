@@ -4,7 +4,7 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{.basePath}}/devices/list.html">Perangkat</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{{ .device.AssetCode }}</li>
+            <li class="breadcrumb-item active" aria-current="page">{{ .device.Label }}</li>
         </ol>
     </nav>
 
@@ -16,7 +16,7 @@
                 </div>
                 <div class="card-body">
                     <table class="table table-borderless">
-                        <tr><th class="th-w-200">Asset Code</th><td><code>{{ .device.AssetCode }}</code></td></tr>
+                        <tr><th class="th-w-200">Label</th><td><code>{{ .device.Label }}</code></td></tr>
                         <tr><th>Nama Perangkat</th><td><strong>{{ .deviceTypeName }}</strong></td></tr>
                         <tr><th>Kategori</th><td><span class="badge bg-secondary">{{ .device.CategoryName }}</span></td></tr>
                         <tr><th>Tipe Penggunaan</th><td>

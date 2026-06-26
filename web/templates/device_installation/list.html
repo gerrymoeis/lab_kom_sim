@@ -28,7 +28,7 @@
                 <input type="hidden" name="tab" value="installations">
                 <div class="col-md-3">
                     <label for="search" class="form-label">Cari</label>
-                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari asset code, lokasi, tipe..." value="{{ .filters.search }}">
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari label, lokasi, tipe..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
                     <label for="status" class="form-label">Status Instalasi</label>
@@ -52,7 +52,7 @@
                     <label for="sort_by" class="form-label">Urutkan</label>
                     <select class="form-select" id="sort_by" name="sort_by">
                         <option value="" {{ if eq .filters.sort_by "" }}selected{{ end }}>Default</option>
-                        <option value="asset_code" {{ if eq .filters.sort_by "asset_code" }}selected{{ end }}>Asset Code</option>
+                        <option value="label" {{ if eq .filters.sort_by "label" }}selected{{ end }}>Label</option>
                         <option value="location" {{ if eq .filters.sort_by "location" }}selected{{ end }}>Lokasi</option>
                         <option value="start_date" {{ if eq .filters.sort_by "start_date" }}selected{{ end }}>Tgl Mulai</option>
                         <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>
@@ -77,7 +77,7 @@
                     <thead class="table-light">
                         <tr>
                             <th class="th-w-50">#</th>
-                            <th>Asset Code</th>
+                            <th>Label</th>
                             <th>Kondisi</th>
                             <th>Lokasi Instalasi</th>
                             <th>Tgl Mulai</th>
@@ -90,9 +90,9 @@
                     </thead>
                     <tbody>
                         {{ range $i, $inst := .installations }}
-                        <tr data-batch-id="{{ $inst.ID }}" data-batch-label="{{ $inst.DeviceAssetCode }} - {{ $inst.LocationInstalled }}">
+                        <tr data-batch-id="{{ $inst.ID }}" data-batch-label="{{ $inst.DeviceLabel }} - {{ $inst.LocationInstalled }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
-                            <td><code>{{ $inst.DeviceAssetCode }}</code></td>
+                            <td><code>{{ $inst.DeviceLabel }}</code></td>
                             <td>
                                 {{ if eq $inst.DeviceCondition "rusak" }}
                                 <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rusak</span>
