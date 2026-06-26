@@ -76,7 +76,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
-                            <th>Asset Code</th>
+                            <th>Label</th>
                             <th>Pengguna</th>
                             <th>Keperluan</th>
                             <th>Tgl Pemakaian</th>
@@ -87,9 +87,9 @@
                     </thead>
                     <tbody>
                         {{ range $i, $l := .usages }}
-                        <tr data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceAssetCode }} - {{ $l.UserName }}">
+                        <tr data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceLabel }} - {{ $l.UserName }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
-                            <td><code>{{ $l.DeviceAssetCode }}</code></td>
+                            <td><code>{{ $l.DeviceLabel }}</code></td>
                             <td>{{ $l.UserName }}<br><small class="text-muted">{{ $l.UserType }}</small></td>
                             <td><small>{{ if $l.Purpose }}{{ $l.Purpose }}{{ else }}<span class="text-muted">-</span>{{ end }}</small></td>
                             <td>{{ (localTime $l.UsageDate).Format "02/01/2006" }}</td>

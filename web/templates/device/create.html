@@ -25,7 +25,7 @@
                     <select class="form-select" id="categorySelect">
                         <option value="">Pilih kategori...</option>
                         {{ range $c := .categories }}
-                        <option value="{{ $c.ID }}" data-prefix="{{ $c.DefaultPrefix }}">{{ $c.Name }} ({{ $c.DefaultPrefix }})</option>
+                        <option value="{{ $c.ID }}" data-prefix="{{ $c.LabelPrefix }}">{{ $c.Name }} ({{ $c.LabelPrefix }})</option>
                         {{ end }}
                     </select>
                 </div>
@@ -36,7 +36,7 @@
                             <input type="text" class="form-control" id="newCatName" placeholder="Contoh: Mouse, CCTV">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Prefix (otomatis)</label>
+                            <label class="form-label">Label Prefix (otomatis)</label>
                             <input type="text" class="form-control" id="newCatPrefix" placeholder="Contoh: MOUSE, CCTV" readonly>
                         </div>
                     </div>
@@ -60,8 +60,8 @@
                     <select class="form-select" id="typeSelect">
                         <option value="">Pilih kategori terlebih dahulu...</option>
                         {{ range $t := .deviceTypes }}
-                        <option value="{{ $t.ID }}" data-category="{{ $t.CategoryID }}" data-prefix="{{ $t.AssetCodePrefix }}" data-usage="{{ $t.UsageType }}" data-default-location="{{ $t.DefaultLocation }}" class="d-none">
-                            {{ $t.Name }} ({{ $t.AssetCodePrefix }})
+                        <option value="{{ $t.ID }}" data-category="{{ $t.CategoryID }}" data-prefix="{{ $t.LabelPrefix }}" data-usage="{{ $t.UsageType }}" data-default-location="{{ $t.DefaultLocation }}" class="d-none">
+                            {{ $t.Name }} ({{ $t.LabelPrefix }})
                         </option>
                         {{ end }}
                     </select>
@@ -81,7 +81,7 @@
                             <input type="text" class="form-control" id="newTypeModel" placeholder="Contoh: Intuos S">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Prefix Asset Code (otomatis)</label>
+                            <label class="form-label">Label Prefix (otomatis)</label>
                             <input type="text" class="form-control" id="newTypePrefix" placeholder="Otomatis dari kategori + nama" readonly>
                         </div>
                         <div class="col-md-4">
@@ -159,7 +159,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="text-center th-w-50">#</th>
-                                    <th class="th-w-200">Asset Code (auto)</th>
+                                    <th class="th-w-200">Label (auto)</th>
                                     <th class="th-w-180">Serial Number</th>
                                     <th class="th-w-140">Kondisi</th>
                                     <th class="th-w-180">Lokasi</th>
@@ -353,18 +353,18 @@
         let codes = [];
         try {
             var bp = window.BASE_PATH || '';
-            const resp = await fetch(bp + '/api/devices/next-asset-codes?prefix=' + encodeURIComponent(prefix) + '&count=' + count);
+            const resp = await fetch(bp + '/api/devices/next-labels?prefix=' + encodeURIComponent(prefix) + '&count=' + count);
             const data = await resp.json();
-            if (data.codes) { codes = data.codes; }
+            if (data.labels) { codes = data.labels; }
         } catch(e) {}
 
         batchBody.innerHTML = '';
         for (let i = 0; i < count; i++) {
-            const code = codes[i] || (prefix + '-???' + (i + 1).toString().padStart(3, '0'));
+            const code = codes[i] || (prefix + '-' + (i + 1));
             const tr = document.createElement('tr');
             tr.innerHTML =
                 '<td class="text-center fw-bold">' + (i + 1) + '</td>' +
-                '<td><code class="asset-code">' + code + '</code></td>' +
+                '<td><code class="label">' + code + '</code></td>' +
                 '<td><input type="text" class="form-control form-control-sm sn-input" placeholder="Serial Number"></td>' +
                 '<td><select class="form-select form-select-sm condition-input"><option value="normal">Normal</option><option value="rusak">Rusak</option><option value="warning">Warning</option></select></td>' +
                 '<td><input type="text" class="form-control form-control-sm loc-input" value="' + defaultLoc + '" placeholder="Lokasi"></td>' +
@@ -446,7 +446,7 @@
             payload.new_type_name = newTypeName.value;
             payload.new_type_brand = newTypeBrand.value;
             payload.new_type_model = newTypeModel.value;
-            payload.new_type_asset_code_prefix = newTypePrefix.value;
+            payload.new_type_label_prefix = newTypePrefix.value;
             payload.new_type_usage_type = newTypeUsage.value;
             payload.new_type_default_location = newTypeLocation.value;
             payload.new_type_photo_file_ref = window.newTypePhotoFileRef || '';
