@@ -22,7 +22,7 @@ func redirectOnNoLab(c *gin.Context) {
 	isSuperAdmin, _ := session.Get("is_super_admin").(bool)
 	isGlobalAdmin, _ := session.Get("is_global_admin").(bool)
 	if isSuperAdmin || isGlobalAdmin {
-		c.Redirect(http.StatusFound, "/admin/labs")
+		c.Redirect(http.StatusFound, "/labs")
 		c.Abort()
 		return
 	}

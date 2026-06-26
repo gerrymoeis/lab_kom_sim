@@ -281,28 +281,41 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 	router.POST("/login", globalHandler.Login)
 	router.POST("/logout", globalHandler.Logout)
 
-	// Lab selector (requires auth)
-	router.GET("/labs", middleware.AuthRequired(), globalHandler.LabSelector)
+	// ========== GLOBAL ADMIN ROUTES (SA/GAB dashboard at /labs) ==========
 
-	// Super admin — system management
-	adminGroup := router.Group("/admin")
-	adminGroup.Use(middleware.AuthRequired(), middleware.CSRF(), middleware.SuperAdminRequired())
+	// Super admin only routes under /labs/
+	labsAdminGroup := router.Group("/labs")
+	labsAdminGroup.Use(middleware.AuthRequired(), middleware.CSRF(), middleware.SuperAdminRequired())
 	{
-		adminGroup.GET("/labs", globalHandler.AdminLabList)
-		adminGroup.GET("/labs/:urlPath/layout", globalHandler.AdminLabLayout)
-		adminGroup.POST("/labs/:urlPath/layout", globalHandler.AdminLabLayoutSave)
-		adminGroup.GET("/labs/:urlPath/seeds", globalHandler.AdminLabSeeds)
-		adminGroup.POST("/labs/:urlPath/seeds/:type", globalHandler.AdminLabReseed)
-		adminGroup.POST("/labs/:urlPath/delete", globalHandler.AdminLabDelete)
-		adminGroup.GET("/users", globalHandler.AdminUserList)
-		adminGroup.GET("/users/create", globalHandler.AdminUserCreatePage)
-		adminGroup.POST("/users/create", globalHandler.AdminUserCreate)
-		adminGroup.GET("/users/:id/edit", globalHandler.AdminUserEditPage)
-		adminGroup.POST("/users/:id/edit", globalHandler.AdminUserEdit)
-		adminGroup.POST("/users/:id/delete", globalHandler.AdminUserDelete)
-		adminGroup.GET("/users/:id/permissions", globalHandler.AdminUserPermissions)
-		adminGroup.POST("/users/:id/permissions", globalHandler.AdminUserPermissionsSave)
+		// SA/GAB dashboard — manages lab list
+		labsAdminGroup.GET("", globalHandler.AdminLabList)
+
+		labsAdminGroup.GET("/admin/users", globalHandler.AdminUserList)
+		labsAdminGroup.GET("/admin/users/create", globalHandler.AdminUserCreatePage)
+		labsAdminGroup.POST("/admin/users/create", globalHandler.AdminUserCreate)
+		labsAdminGroup.GET("/admin/users/:id/edit", globalHandler.AdminUserEditPage)
+		labsAdminGroup.POST("/admin/users/:id/edit", globalHandler.AdminUserEdit)
+		labsAdminGroup.POST("/admin/users/:id/delete", globalHandler.AdminUserDelete)
+		labsAdminGroup.GET("/admin/users/:id/permissions", globalHandler.AdminUserPermissions)
+		labsAdminGroup.POST("/admin/users/:id/permissions", globalHandler.AdminUserPermissionsSave)
+
+		labsAdminGroup.GET("/:urlPath/layout", globalHandler.AdminLabLayout)
+		labsAdminGroup.POST("/:urlPath/layout", globalHandler.AdminLabLayoutSave)
+		labsAdminGroup.GET("/:urlPath/seeds", globalHandler.AdminLabSeeds)
+		labsAdminGroup.POST("/:urlPath/seeds/:type", globalHandler.AdminLabReseed)
+		labsAdminGroup.POST("/:urlPath/delete", globalHandler.AdminLabDelete)
 	}
+
+	// Backward compat: redirect old global admin routes to new /labs/ structure
+	router.GET("/admin/labs", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/labs")
+	})
+	router.GET("/admin/users", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/labs/admin/users")
+	})
+	router.GET("/admin/users/create", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/labs/admin/users/create")
+	})
 
 	// Global 404 handler — redirect based on auth state instead of showing error page
 	router.NoRoute(func(c *gin.Context) {
@@ -314,7 +327,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		isSuperAdmin, _ := session.Get("is_super_admin").(bool)
 		isGlobalAdmin, _ := session.Get("is_global_admin").(bool)
 		if isSuperAdmin || isGlobalAdmin {
-			c.Redirect(http.StatusFound, "/admin/labs")
+			c.Redirect(http.StatusFound, "/labs")
 			return
 		}
 		labsRaw := session.Get("labs")

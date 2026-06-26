@@ -16,8 +16,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4><i class="bi bi-gear"></i> Admin Panel — Labs</h4>
             <div>
-                <a href="/admin/users" class="btn btn-outline-primary btn-sm"><i class="bi bi-people"></i> Users</a>
-                <a href="/labs" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Kembali</a>
+                <a href="/labs/admin/users" class="btn btn-outline-primary btn-sm"><i class="bi bi-people"></i> Users</a>
             </div>
         </div>
 
@@ -31,10 +30,10 @@
                         <h5 class="card-title">{{ $lab.Title }}</h5>
                         <p class="text-muted small">{{ $lab.URLPath }}</p>
                         <div class="d-flex gap-2">
-                            <a href="/admin/labs/{{ $lab.URLPath }}/layout" class="btn btn-outline-primary btn-sm">
+                            <a href="/labs/{{ $lab.URLPath }}/layout" class="btn btn-outline-primary btn-sm">
                                 <i class="bi bi-grid-3x3"></i> Layout
                             </a>
-                            <a href="/admin/labs/{{ $lab.URLPath }}/seeds" class="btn btn-outline-success btn-sm">
+                            <a href="/labs/{{ $lab.URLPath }}/seeds" class="btn btn-outline-success btn-sm">
                                 <i class="bi bi-database"></i> Seeds
                             </a>
                         </div>

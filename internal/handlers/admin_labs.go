@@ -100,7 +100,7 @@ func (h *GlobalHandler) AdminLabLayoutSave(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/admin/labs")
+	c.Redirect(http.StatusFound, "/labs")
 }
 
 func (h *GlobalHandler) AdminLabSeeds(c *gin.Context) {
