@@ -357,9 +357,9 @@ func TestLabSelector(t *testing.T) {
 			t.Fatalf("GET /labs failed: %v", err)
 		}
 		defer resp.Body.Close()
-		// no_perm_user has no labs — should get 403 forbidden
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403, got %d", resp.StatusCode)
+		// no_perm_user has no labs — middleware redirects to /login
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
 		}
 	})
 }
@@ -371,15 +371,16 @@ func TestSuperAdminMiddleware(t *testing.T) {
 		if !env.LabA.login("labA_only", "test123") {
 			t.Fatal("labA_only login failed")
 		}
-		req, _ := http.NewRequest("GET", env.TS.URL+"/admin/labs", nil)
+		req, _ := http.NewRequest("GET", env.TS.URL+"/labs", nil)
 		env.LabA.addCookies(req)
 		resp, err := env.Client.Do(req)
 		if err != nil {
-			t.Fatalf("GET /admin/labs failed: %v", err)
+			t.Fatalf("GET /labs failed: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403, got %d", resp.StatusCode)
+		// Now redirects to /<first_lab>/dashboard instead of 403
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
 		}
 	})
 }
@@ -415,8 +416,9 @@ func TestRoutingAuth(t *testing.T) {
 			t.Fatalf("GET /nonexistent/dashboard failed: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 404 {
-			t.Errorf("expected 404, got %d", resp.StatusCode)
+		// Now redirects based on session state instead of 404
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
 		}
 	})
 
@@ -566,13 +568,13 @@ func TestUserAccessControl(t *testing.T) {
 		io.Copy(io.Discard, loginResp.Body)
 		loginResp.Body.Close()
 
-		req, _ = http.NewRequest("GET", env.TS.URL+"/admin/users", nil)
+		req, _ = http.NewRequest("GET", env.TS.URL+"/labs/admin/users", nil)
 		for _, c := range cookies {
 			req.AddCookie(&http.Cookie{Name: c.Name, Value: c.Value})
 		}
 		resp, err := env.Client.Do(req)
 		if err != nil {
-			t.Fatalf("GET /admin/users failed: %v", err)
+			t.Fatalf("GET /labs/admin/users failed: %v", err)
 		}
 		defer resp.Body.Close()
 		body, _ = io.ReadAll(resp.Body)
@@ -677,7 +679,7 @@ func TestDefaultPasswordHints(t *testing.T) {
 		}
 
 		// Edit lab-kom-mi user's username to trigger password_is_default clear
-		editURL := fmt.Sprintf("/admin/users/%d/edit", mainAcctID)
+		editURL := fmt.Sprintf("/labs/admin/users/%d/edit", mainAcctID)
 		editData := fmt.Sprintf("username=lab-kom-mi-changed&full_name=Akun+Utama+Lab+Kom+MI+Changed&is_super_admin=0")
 		req, _ := http.NewRequest("POST", env.TS.URL+editURL, strings.NewReader(editData))
 		env.LabA.addCookies(req)

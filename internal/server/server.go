@@ -281,66 +281,63 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 	router.POST("/login", globalHandler.Login)
 	router.POST("/logout", globalHandler.Logout)
 
-	// Lab selector (requires auth)
-	router.GET("/labs", middleware.AuthRequired(), globalHandler.LabSelector)
+	// ========== GLOBAL ADMIN ROUTES (SA/GAB dashboard at /labs) ==========
 
-	// Super admin — system management
-	adminGroup := router.Group("/admin")
-	adminGroup.Use(middleware.AuthRequired(), middleware.CSRF(), middleware.SuperAdminRequired())
+	// Super admin only routes under /labs/
+	labsAdminGroup := router.Group("/labs")
+	labsAdminGroup.Use(middleware.AuthRequired(), middleware.CSRF(), middleware.SuperAdminRequired())
 	{
-		adminGroup.GET("/labs", globalHandler.AdminLabList)
-		adminGroup.GET("/labs/:urlPath/layout", globalHandler.AdminLabLayout)
-		adminGroup.POST("/labs/:urlPath/layout", globalHandler.AdminLabLayoutSave)
-		adminGroup.GET("/labs/:urlPath/seeds", globalHandler.AdminLabSeeds)
-		adminGroup.POST("/labs/:urlPath/seeds/:type", globalHandler.AdminLabReseed)
-		adminGroup.POST("/labs/:urlPath/delete", globalHandler.AdminLabDelete)
-		adminGroup.GET("/users", globalHandler.AdminUserList)
-		adminGroup.GET("/users/create", globalHandler.AdminUserCreatePage)
-		adminGroup.POST("/users/create", globalHandler.AdminUserCreate)
-		adminGroup.GET("/users/:id/edit", globalHandler.AdminUserEditPage)
-		adminGroup.POST("/users/:id/edit", globalHandler.AdminUserEdit)
-		adminGroup.POST("/users/:id/delete", globalHandler.AdminUserDelete)
-		adminGroup.GET("/users/:id/permissions", globalHandler.AdminUserPermissions)
-		adminGroup.POST("/users/:id/permissions", globalHandler.AdminUserPermissionsSave)
+		// SA/GAB dashboard — manages lab list
+		labsAdminGroup.GET("", globalHandler.AdminLabList)
+
+		labsAdminGroup.GET("/admin/users", globalHandler.AdminUserList)
+		labsAdminGroup.GET("/admin/users/create", globalHandler.AdminUserCreatePage)
+		labsAdminGroup.POST("/admin/users/create", globalHandler.AdminUserCreate)
+		labsAdminGroup.GET("/admin/users/:id/edit", globalHandler.AdminUserEditPage)
+		labsAdminGroup.POST("/admin/users/:id/edit", globalHandler.AdminUserEdit)
+		labsAdminGroup.POST("/admin/users/:id/delete", globalHandler.AdminUserDelete)
+		labsAdminGroup.GET("/admin/users/:id/permissions", globalHandler.AdminUserPermissions)
+		labsAdminGroup.POST("/admin/users/:id/permissions", globalHandler.AdminUserPermissionsSave)
+
+		labsAdminGroup.GET("/:urlPath/layout", globalHandler.AdminLabLayout)
+		labsAdminGroup.POST("/:urlPath/layout", globalHandler.AdminLabLayoutSave)
+		labsAdminGroup.GET("/:urlPath/seeds", globalHandler.AdminLabSeeds)
+		labsAdminGroup.POST("/:urlPath/seeds/:type", globalHandler.AdminLabReseed)
+		labsAdminGroup.POST("/:urlPath/delete", globalHandler.AdminLabDelete)
 	}
 
-	// Global 404 handler
+	// Backward compat: redirect old global admin routes to new /labs/ structure
+	router.GET("/admin/labs", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/labs")
+	})
+	router.GET("/admin/users", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/labs/admin/users")
+	})
+	router.GET("/admin/users/create", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/labs/admin/users/create")
+	})
+
+	// Global 404 handler — redirect based on auth state instead of showing error page
 	router.NoRoute(func(c *gin.Context) {
 		session := sessions.Default(c)
-		userID := session.Get("user_id")
-		username := ""
-		role := ""
-		basePath := ""
-		if userID != nil {
-			if u, ok := session.Get("username").(string); ok {
-				username = u
-			}
-			if r, ok := session.Get("role").(string); ok {
-				role = r
-			} else if session.Get("is_super_admin") == true {
-				role = "admin"
-			}
-			if labs, ok := session.Get("labs").([]string); ok && len(labs) > 0 {
-				// Extract lab from URL path for basePath
-				parts := strings.Split(strings.Trim(c.Request.URL.Path, "/"), "/")
-				if len(parts) > 0 && parts[0] != "" {
-					for _, l := range labs {
-						if l == parts[0] {
-							basePath = "/" + parts[0]
-							break
-						}
-					}
-				}
+		if session.Get("user_id") == nil {
+			c.Redirect(http.StatusFound, "/login")
+			return
+		}
+		isSuperAdmin, _ := session.Get("is_super_admin").(bool)
+		isGlobalAdmin, _ := session.Get("is_global_admin").(bool)
+		if isSuperAdmin || isGlobalAdmin {
+			c.Redirect(http.StatusFound, "/labs")
+			return
+		}
+		labsRaw := session.Get("labs")
+		if labsRaw != nil {
+			if labs, ok := labsRaw.([]string); ok && len(labs) > 0 {
+				c.Redirect(http.StatusFound, "/"+labs[0]+"/dashboard")
+				return
 			}
 		}
-		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"title":       "404 - Halaman Tidak Ditemukan",
-			"message":     "Halaman yang Anda cari tidak ditemukan.",
-			"currentPage": "",
-			"role":        role,
-			"username":    username,
-			"basePath":    basePath,
-		})
+		c.Redirect(http.StatusFound, "/login")
 	})
 
 	// ========== PER-LAB ROUTES ==========

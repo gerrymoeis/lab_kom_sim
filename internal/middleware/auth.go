@@ -55,11 +55,13 @@ func AuthRequired() gin.HandlerFunc {
 }
 
 // AdminRequired checks if user has admin role for current lab (or is super admin)
+// Redirects unauthorized users to lab dashboard instead of showing 403.
 func AdminRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, _, isSuperAdmin, _, ok := GetCurrentUser(c)
 		if !ok {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			c.Redirect(http.StatusFound, "/login")
+			c.Abort()
 			return
 		}
 		if isSuperAdmin {
@@ -75,10 +77,7 @@ func AdminRequired() gin.HandlerFunc {
 			`SELECT role FROM lab_permissions WHERE user_id = ? AND lab_url_path = ?`,
 			userID, lab).Scan(&role)
 		if err != nil || role != "admin" {
-			c.HTML(http.StatusForbidden, "error.html", gin.H{
-				"title": "Akses Ditolak", "currentPage": "",
-				"message": "Anda tidak memiliki akses ke halaman ini.",
-			})
+			LabRedirect(c, http.StatusFound, "/dashboard")
 			c.Abort()
 			return
 		}
@@ -88,14 +87,25 @@ func AdminRequired() gin.HandlerFunc {
 }
 
 // SuperAdminRequired checks if user is a global super admin
+// Redirects non-SA users to their appropriate dashboard instead of showing 403.
 func SuperAdminRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		_, _, isSuperAdmin, _, ok := GetCurrentUser(c)
-		if !ok || !isSuperAdmin {
-			c.HTML(http.StatusForbidden, "error.html", gin.H{
-				"title": "Akses Ditolak", "currentPage": "",
-				"message": "Hanya super admin yang dapat mengakses halaman ini.",
-			})
+		if !ok {
+			c.Redirect(http.StatusFound, "/login")
+			c.Abort()
+			return
+		}
+		if !isSuperAdmin {
+			labsRaw := sessions.Default(c).Get("labs")
+			if labsRaw != nil {
+				if labs, ok := labsRaw.([]string); ok && len(labs) > 0 {
+					c.Redirect(http.StatusFound, "/"+labs[0]+"/dashboard")
+					c.Abort()
+					return
+				}
+			}
+			c.Redirect(http.StatusFound, "/login")
 			c.Abort()
 			return
 		}
