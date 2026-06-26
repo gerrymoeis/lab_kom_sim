@@ -378,8 +378,9 @@ func TestSuperAdminMiddleware(t *testing.T) {
 			t.Fatalf("GET /admin/labs failed: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403, got %d", resp.StatusCode)
+		// Now redirects to /<first_lab>/dashboard instead of 403
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
 		}
 	})
 }
@@ -415,8 +416,9 @@ func TestRoutingAuth(t *testing.T) {
 			t.Fatalf("GET /nonexistent/dashboard failed: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 404 {
-			t.Errorf("expected 404, got %d", resp.StatusCode)
+		// Now redirects based on session state instead of 404
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
 		}
 	})
 

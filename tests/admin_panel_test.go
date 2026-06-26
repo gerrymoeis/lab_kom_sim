@@ -128,8 +128,9 @@ func TestAdminLabList(t *testing.T) {
 		}
 		resp := adminGet(env, "/labs")
 		defer resp.Body.Close()
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403 for non-super-admin, got %d", resp.StatusCode)
+		// Now redirects to /<first_lab>/dashboard instead of 403
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect for non-super-admin, got %d", resp.StatusCode)
 		}
 	})
 
