@@ -71,8 +71,9 @@ func SeedGlobalUsers(db *DB, labs []config.LabConfig) error {
 		if layout.HasGap {
 			hasGap = 1
 		}
-		db.Exec(`INSERT INTO grid_layouts (lab_url_path, cols_per_row, has_gap, gap_pos)
-			VALUES (?, ?, ?, ?)`, lab.URLPath, string(colsJSON), hasGap, layout.GapPos)
+		rowGapsJSON, _ := json.Marshal(layout.RowGaps)
+		db.Exec(`INSERT INTO grid_layouts (lab_url_path, cols_per_row, has_gap, gap_pos, row_gaps)
+			VALUES (?, ?, ?, ?, ?)`, lab.URLPath, string(colsJSON), hasGap, layout.GapPos, string(rowGapsJSON))
 	}
 
 	return nil

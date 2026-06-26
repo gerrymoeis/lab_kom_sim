@@ -24,24 +24,30 @@ func (h *GlobalHandler) AdminUserList(c *gin.Context) {
 
 	users, err := h.globalAuthService.ListUsers()
 	if err != nil {
-		h.render(c, http.StatusInternalServerError, "admin_users.html", gin.H{
-			"title": "Manage Users",
-			"error": "Gagal memuat data user",
+		h.render(c, http.StatusInternalServerError, "admin/users.html", gin.H{
+			"title":       "Manage Users",
+			"currentPage": "users",
+			"icon":        "bi-people",
+			"error":       "Gagal memuat data user",
 		})
 		return
 	}
 
-	h.render(c, http.StatusOK, "admin_users.html", gin.H{
-		"title": "Manage Users",
-		"users": users,
+	h.render(c, http.StatusOK, "admin/users.html", gin.H{
+		"title":       "Manage Users",
+		"currentPage": "users",
+		"icon":        "bi-people",
+		"users":       users,
 	})
 }
 
 func (h *GlobalHandler) AdminUserCreatePage(c *gin.Context) {
-	h.render(c, http.StatusOK, "admin_user_form.html", gin.H{
-		"title": "Buat User Baru",
-		"user":  nil,
-		"labs":  h.cfg.Labs,
+	h.render(c, http.StatusOK, "admin/user_form.html", gin.H{
+		"title":       "Buat User Baru",
+		"currentPage": "users",
+		"icon":        "bi-person-plus",
+		"user":        nil,
+		"labs":        h.cfg.Labs,
 	})
 }
 
@@ -53,38 +59,46 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 	isProtected := c.PostForm("is_protected") == "1"
 
 	if username == "" || password == "" {
-		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
-			"title": "Buat User Baru",
-			"error": "Username dan password harus diisi",
-			"labs":  h.cfg.Labs,
+		h.render(c, http.StatusBadRequest, "admin/user_form.html", gin.H{
+			"title":       "Buat User Baru",
+			"currentPage": "users",
+			"icon":        "bi-person-plus",
+			"error":       "Username dan password harus diisi",
+			"labs":        h.cfg.Labs,
 		})
 		return
 	}
 
 	if isGlobalAdmin && !h.isProtected(c) {
-		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
-			"title": "Buat User Baru",
-			"error": "Hanya Super Admin yang dapat membuat Global Admin Biasa",
-			"labs":  h.cfg.Labs,
+		h.render(c, http.StatusForbidden, "admin/user_form.html", gin.H{
+			"title":       "Buat User Baru",
+			"currentPage": "users",
+			"icon":        "bi-person-plus",
+			"error":       "Hanya Super Admin yang dapat membuat Global Admin Biasa",
+			"labs":        h.cfg.Labs,
 		})
 		return
 	}
 
 	if isProtected && !h.isProtected(c) {
-		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
-			"title": "Buat User Baru",
-			"error": "Hanya Super Admin (root) yang dapat membuat user protected",
-			"labs":  h.cfg.Labs,
+		h.render(c, http.StatusForbidden, "admin/user_form.html", gin.H{
+			"title":       "Buat User Baru",
+			"currentPage": "users",
+			"icon":        "bi-person-plus",
+			"error":       "Hanya Super Admin (root) yang dapat membuat user protected",
+			"labs":        h.cfg.Labs,
 		})
 		return
 	}
 
 	user, err := h.globalAuthService.CreateUser(username, password, fullName, false, isGlobalAdmin, isProtected)
 	if err != nil {
-		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
-			"title": "Buat User Baru",
-			"error": "Gagal membuat user: " + err.Error(),
-			"labs":  h.cfg.Labs,
+		h.render(c, http.StatusBadRequest, "admin/user_form.html", gin.H{
+			"title":       "Buat User Baru",
+			"currentPage": "users",
+			"icon":        "bi-person-plus",
+			"error":       "Gagal membuat user: " + err.Error(),
+			"labs":        h.cfg.Labs,
 		})
 		return
 	}
@@ -101,10 +115,12 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 			}{lab.URLPath, "admin"}
 		}
 		if err := h.globalAuthService.SetUserPermissions(user.ID, perms); err != nil {
-			h.render(c, http.StatusInternalServerError, "admin_user_form.html", gin.H{
-				"title": "Buat User Baru",
-				"error": "User dibuat tetapi gagal set permissions",
-				"labs":  h.cfg.Labs,
+			h.render(c, http.StatusInternalServerError, "admin/user_form.html", gin.H{
+				"title":       "Buat User Baru",
+				"currentPage": "users",
+				"icon":        "bi-person-plus",
+				"error":       "User dibuat tetapi gagal set permissions",
+				"labs":        h.cfg.Labs,
 			})
 			return
 		}
@@ -126,10 +142,12 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 			}{lab, role})
 		}
 		if err := h.globalAuthService.SetUserPermissions(user.ID, perms); err != nil {
-			h.render(c, http.StatusInternalServerError, "admin_user_form.html", gin.H{
-				"title": "Buat User Baru",
-				"error": "User dibuat tetapi gagal set permissions",
-				"labs":  h.cfg.Labs,
+			h.render(c, http.StatusInternalServerError, "admin/user_form.html", gin.H{
+				"title":       "Buat User Baru",
+				"currentPage": "users",
+				"icon":        "bi-person-plus",
+				"error":       "User dibuat tetapi gagal set permissions",
+				"labs":        h.cfg.Labs,
 			})
 			return
 		}
@@ -157,10 +175,12 @@ func (h *GlobalHandler) AdminUserEditPage(c *gin.Context) {
 		permMap[p.LabURLPath] = p.Role
 	}
 
-	h.render(c, http.StatusOK, "admin_user_form.html", gin.H{
-		"title":   "Edit User",
-		"user":    user,
-		"labs":    h.cfg.Labs,
+	h.render(c, http.StatusOK, "admin/user_form.html", gin.H{
+		"title":       "Edit User",
+		"currentPage": "users",
+		"icon":        "bi-pencil",
+		"user":        user,
+		"labs":        h.cfg.Labs,
 		"permissions": permMap,
 	})
 }
@@ -179,9 +199,11 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 	}
 
 	if targetUser.IsSuperAdmin && !h.isProtected(c) {
-		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
-			"title": "Edit User",
-			"error": "Hanya Super Admin yang dapat mengedit Super Admin",
+		h.render(c, http.StatusForbidden, "admin/user_form.html", gin.H{
+			"title":       "Edit User",
+			"currentPage": "users",
+			"icon":        "bi-pencil",
+			"error":       "Hanya Super Admin yang dapat mengedit Super Admin",
 		})
 		return
 	}
@@ -193,42 +215,52 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 	isProtected := c.PostForm("is_protected") == "1"
 
 	if isGlobalAdmin && !h.isProtected(c) {
-		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
-			"title": "Edit User",
-			"error": "Hanya Super Admin yang dapat mengubah status Global Admin Biasa",
+		h.render(c, http.StatusForbidden, "admin/user_form.html", gin.H{
+			"title":       "Edit User",
+			"currentPage": "users",
+			"icon":        "bi-pencil",
+			"error":       "Hanya Super Admin yang dapat mengubah status Global Admin Biasa",
 		})
 		return
 	}
 
 	if isProtected != targetUser.IsProtected && !h.isProtected(c) {
-		h.render(c, http.StatusForbidden, "admin_user_form.html", gin.H{
-			"title": "Edit User",
-			"error": "Hanya Super Admin (root) yang dapat mengubah status protected",
+		h.render(c, http.StatusForbidden, "admin/user_form.html", gin.H{
+			"title":       "Edit User",
+			"currentPage": "users",
+			"icon":        "bi-pencil",
+			"error":       "Hanya Super Admin (root) yang dapat mengubah status protected",
 		})
 		return
 	}
 
 	if username == "" {
-		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
-			"title": "Edit User",
-			"error": "Username harus diisi",
+		h.render(c, http.StatusBadRequest, "admin/user_form.html", gin.H{
+			"title":       "Edit User",
+			"currentPage": "users",
+			"icon":        "bi-pencil",
+			"error":       "Username harus diisi",
 		})
 		return
 	}
 
 	if err := h.globalAuthService.UpdateUser(id, username, fullName, targetUser.IsSuperAdmin, isGlobalAdmin, isProtected); err != nil {
-		h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
-			"title": "Edit User",
-			"error": "Gagal update user: " + err.Error(),
+		h.render(c, http.StatusBadRequest, "admin/user_form.html", gin.H{
+			"title":       "Edit User",
+			"currentPage": "users",
+			"icon":        "bi-pencil",
+			"error":       "Gagal update user: " + err.Error(),
 		})
 		return
 	}
 
 	if newPassword != "" {
 		if err := h.globalAuthService.UpdateUserPassword(id, newPassword); err != nil {
-			h.render(c, http.StatusBadRequest, "admin_user_form.html", gin.H{
-				"title": "Edit User",
-				"error": "Gagal update password: " + err.Error(),
+			h.render(c, http.StatusBadRequest, "admin/user_form.html", gin.H{
+				"title":       "Edit User",
+				"currentPage": "users",
+				"icon":        "bi-pencil",
+				"error":       "Gagal update password: " + err.Error(),
 			})
 			return
 		}
@@ -246,9 +278,11 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 			}{lab.URLPath, "admin"}
 		}
 		if err := h.globalAuthService.SetUserPermissions(id, perms); err != nil {
-			h.render(c, http.StatusInternalServerError, "admin_user_form.html", gin.H{
-				"title": "Edit User",
-				"error": "Gagal update permissions",
+			h.render(c, http.StatusInternalServerError, "admin/user_form.html", gin.H{
+				"title":       "Edit User",
+				"currentPage": "users",
+				"icon":        "bi-pencil",
+				"error":       "Gagal update permissions",
 			})
 			return
 		}
@@ -270,9 +304,11 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 			}{lab, role})
 		}
 		if err := h.globalAuthService.SetUserPermissions(id, perms); err != nil {
-			h.render(c, http.StatusInternalServerError, "admin_user_form.html", gin.H{
-				"title": "Edit User",
-				"error": "Gagal update permissions",
+			h.render(c, http.StatusInternalServerError, "admin/user_form.html", gin.H{
+				"title":       "Edit User",
+				"currentPage": "users",
+				"icon":        "bi-pencil",
+				"error":       "Gagal update permissions",
 			})
 			return
 		}
@@ -292,23 +328,26 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 	currentUserID, _ := session.Get("user_id").(int)
 	if currentUserID == id {
 		users, _ := h.globalAuthService.ListUsers()
-		h.render(c, http.StatusForbidden, "admin_users.html", gin.H{
-			"title": "Manage Users",
-			"error": "Tidak dapat menghapus akun Anda sendiri",
-			"users": users,
+		h.render(c, http.StatusForbidden, "admin/users.html", gin.H{
+			"title":       "Manage Users",
+			"currentPage": "users",
+			"icon":        "bi-people",
+			"error":       "Tidak dapat menghapus akun Anda sendiri",
+			"users":       users,
 		})
 		return
 	}
 
-	// Check if user is main account in any lab
 	var mainCount int
 	h.globalDB.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND is_main_account = 1`, id).Scan(&mainCount)
 	if mainCount > 0 {
 		users, _ := h.globalAuthService.ListUsers()
-		h.render(c, http.StatusForbidden, "admin_users.html", gin.H{
-			"title": "Manage Users",
-			"error": "User ini adalah akun utama lab dan tidak bisa dihapus",
-			"users": users,
+		h.render(c, http.StatusForbidden, "admin/users.html", gin.H{
+			"title":       "Manage Users",
+			"currentPage": "users",
+			"icon":        "bi-people",
+			"error":       "User ini adalah akun utama lab dan tidak bisa dihapus",
+			"users":       users,
 		})
 		return
 	}
@@ -323,10 +362,12 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 		} else if errors.Is(err, services.ErrCannotDeleteGlobalAdmin) {
 			errMsg = "Tidak dapat menghapus Global Admin Biasa"
 		}
-		h.render(c, http.StatusForbidden, "admin_users.html", gin.H{
-			"title": "Manage Users",
-			"error": errMsg,
-			"users": users,
+		h.render(c, http.StatusForbidden, "admin/users.html", gin.H{
+			"title":       "Manage Users",
+			"currentPage": "users",
+			"icon":        "bi-people",
+			"error":       errMsg,
+			"users":       users,
 		})
 		return
 	}
@@ -374,31 +415,37 @@ func (h *GlobalHandler) AdminUserPermissionsSave(c *gin.Context) {
 		}{lab, role})
 	}
 	if err := h.globalAuthService.SetUserPermissions(id, perms); err != nil {
-		h.render(c, http.StatusInternalServerError, "admin_user_permissions.html", gin.H{
-			"title": "Permissions - " + user.Username,
-			"user":  user,
-			"labs":  h.cfg.Labs,
-			"error": "Gagal menyimpan permissions",
+		h.render(c, http.StatusInternalServerError, "admin/user_permissions.html", gin.H{
+			"title":       "Permissions - " + user.Username,
+			"currentPage": "users",
+			"icon":        "bi-shield",
+			"user":        user,
+			"labs":        h.cfg.Labs,
+			"error":       "Gagal menyimpan permissions",
 		})
 		return
 	}
 
 	if _, err := h.globalDB.Exec(`UPDATE lab_permissions SET is_main_account = 0 WHERE user_id = ?`, id); err != nil {
-		h.render(c, http.StatusInternalServerError, "admin_user_permissions.html", gin.H{
-			"title": "Permissions - " + user.Username,
-			"user":  user,
-			"labs":  h.cfg.Labs,
-			"error": "Gagal menyimpan akun utama",
+		h.render(c, http.StatusInternalServerError, "admin/user_permissions.html", gin.H{
+			"title":       "Permissions - " + user.Username,
+			"currentPage": "users",
+			"icon":        "bi-shield",
+			"user":        user,
+			"labs":        h.cfg.Labs,
+			"error":       "Gagal menyimpan akun utama",
 		})
 		return
 	}
 	for lab := range mainSet {
 		if _, err := h.globalDB.Exec(`UPDATE lab_permissions SET is_main_account = 1 WHERE user_id = ? AND lab_url_path = ?`, id, lab); err != nil {
-			h.render(c, http.StatusInternalServerError, "admin_user_permissions.html", gin.H{
-				"title": "Permissions - " + user.Username,
-				"user":  user,
-				"labs":  h.cfg.Labs,
-				"error": "Gagal menyimpan akun utama",
+			h.render(c, http.StatusInternalServerError, "admin/user_permissions.html", gin.H{
+				"title":       "Permissions - " + user.Username,
+				"currentPage": "users",
+				"icon":        "bi-shield",
+				"user":        user,
+				"labs":        h.cfg.Labs,
+				"error":       "Gagal menyimpan akun utama",
 			})
 			return
 		}
@@ -430,8 +477,10 @@ func (h *GlobalHandler) AdminUserPermissions(c *gin.Context) {
 		}
 	}
 
-	h.render(c, http.StatusOK, "admin_user_permissions.html", gin.H{
+	h.render(c, http.StatusOK, "admin/user_permissions.html", gin.H{
 		"title":         "Permissions - " + user.Username,
+		"currentPage":   "users",
+		"icon":          "bi-shield",
 		"user":          user,
 		"labs":          h.cfg.Labs,
 		"permissions":   permMap,

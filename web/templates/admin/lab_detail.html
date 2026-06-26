@@ -1,0 +1,66 @@
+{{ template "layout/admin_base.html" . }}
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-header"><i class="bi bi-info-circle"></i> Detail Lab</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">ID</dt>
+                    <dd class="col-sm-8">{{ .lab.ID }}</dd>
+                    <dt class="col-sm-4">Nama</dt>
+                    <dd class="col-sm-8">{{ .lab.Title }}</dd>
+                    <dt class="col-sm-4">URL Path</dt>
+                    <dd class="col-sm-8"><code>{{ .lab.URLPath }}</code></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-header"><i class="bi bi-grid-3x3"></i> Layout Info</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Baris</dt>
+                    <dd class="col-sm-8">{{ len .layout.ColsPerRow }}</dd>
+                    <dt class="col-sm-4">Kolom/Baris</dt>
+                    <dd class="col-sm-8">{{ .colsStr }}</dd>
+                    <dt class="col-sm-4">Total PC</dt>
+                    <dd class="col-sm-8">{{ .totalPCs }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-eye"></i> Preview Grid</span>
+        <a href="/labs/{{ .lab.URLPath }}/layout" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil"></i> Edit Layout
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2 min-vh-25 p-3 bg-white border rounded">
+            {{ range $rowIdx, $cols := .colsPerRow }}
+            {{ $rowGaps := index $.rowGaps $rowIdx }}
+            <div class="d-flex gap-1 mb-2 align-items-center w-100">
+                <div class="me-2 text-muted small text-nowrap" style="width:60px;">B{{ add $rowIdx 1 }}:</div>
+                {{ range $col := seq $cols }}
+                {{ $isGap := false }}
+                {{ range $gp := $rowGaps }}
+                {{ if eq $col $gp }}{{ $isGap = true }}{{ end }}
+                {{ end }}
+                {{ if $isGap }}
+                <div class="grid-gap-preview" title="GAP / Walkway"></div>
+                {{ else }}
+                <div class="pc-cell-preview" title="Baris {{ add $rowIdx 1 }}, Kolom {{ $col }}">{{ $col }}</div>
+                {{ end }}
+                {{ end }}
+            </div>
+            {{ end }}
+        </div>
+    </div>
+</div>
+
+{{ template "layout/admin_footer.html" . }}

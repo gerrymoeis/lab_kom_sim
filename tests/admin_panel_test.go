@@ -176,20 +176,20 @@ func TestAdminLabLayout(t *testing.T) {
 	})
 
 	t.Run("save_layout_success", func(t *testing.T) {
-		resp := adminPost(env, "/labs/lab-kom-mi/layout", "cols_per_row=10,10,10,10&has_gap=1&gap_pos=4")
+		resp := adminPost(env, "/labs/lab-kom-mi/layout", "cols_per_row=10,10,10,10&row_gaps_json=[[],[],[],[4]]")
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 after save, got %d", resp.StatusCode)
 		}
 		loc := resp.Header.Get("Location")
-		if loc != "/labs" {
-			t.Errorf("expected redirect to /labs, got %q", loc)
+		if loc != "/labs/lab-kom-mi" {
+			t.Errorf("expected redirect to /labs/lab-kom-mi, got %q", loc)
 		}
 	})
 
 	t.Run("save_layout_bad_format", func(t *testing.T) {
 		token := env.LabA.csrf
-		resp := adminPost(env, "/labs/lab-kom-mi/layout", "cols_per_row=abc&has_gap=0&gap_pos=0")
+		resp := adminPost(env, "/labs/lab-kom-mi/layout", "cols_per_row=abc&row_gaps_json=[]")
 		defer resp.Body.Close()
 		env.LabA.csrf = token // restore after failed post (token unchanged)
 		if resp.StatusCode != 400 {

@@ -1,0 +1,120 @@
+{{ define "components/grid_preview.html" }}
+<div id="grid-preview-container">
+    {{ if .readOnly }}
+    <div id="grid-preview" class="d-flex flex-wrap gap-2 min-vh-25 p-3 bg-white border rounded">
+        {{ range $rowIdx, $cols := .colsPerRow }}
+        {{ $rowGaps := index $.rowGaps $rowIdx }}
+        <div class="d-flex gap-1 mb-2 align-items-center w-100">
+            <div class="me-2 text-muted small text-nowrap" style="width:60px;">B{{ add $rowIdx 1 }}:</div>
+            {{ range $col := seq $cols }}
+            {{ $isGap := false }}
+            {{ range $gp := $rowGaps }}
+            {{ if eq $col $gp }}{{ $isGap = true }}{{ end }}
+            {{ end }}
+            {{ if $isGap }}
+            <div class="grid-gap-preview" title="GAP / Walkway"></div>
+            {{ else }}
+            <div class="pc-cell-preview" title="Baris {{ add $rowIdx 1 }}, Kolom {{ $col }}">{{ $col }}</div>
+            {{ end }}
+            {{ end }}
+        </div>
+        {{ end }}
+    </div>
+    {{ else }}
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <span class="badge bg-primary">PC Desk</span>
+        <span class="badge" style="background:#fa5252;">Walkway</span>
+        <span class="text-muted small">Klik sel untuk toggle</span>
+    </div>
+    <input type="hidden" name="cols_per_row" id="cols_per_row" value="{{ .colsStr }}">
+    <input type="hidden" name="row_gaps_json" id="row_gaps_json" value="{{ .rowGapsJSON }}">
+    <div id="grid-preview" class="d-flex flex-wrap gap-2 min-vh-25 p-3 bg-white border rounded">
+    </div>
+    <script>
+    (function() {
+        var colsPerRow = (document.getElementById('cols_per_row').value || '').split(',').map(function(s) {
+            return parseInt(s.trim());
+        }).filter(function(n) { return !isNaN(n) && n > 0; });
+
+        var rowGaps = [];
+        try {
+            rowGaps = JSON.parse(document.getElementById('row_gaps_json').value || '[]');
+        } catch(e) { rowGaps = []; }
+
+        var preview = document.getElementById('grid-preview');
+        if (!preview) return;
+
+        function renderGrid() {
+            preview.innerHTML = '';
+            colsPerRow.forEach(function(cols, rowIdx) {
+                var gaps = rowGaps[rowIdx] || [];
+                var rowDiv = document.createElement('div');
+                rowDiv.className = 'd-flex gap-1 mb-2 align-items-center w-100';
+
+                var label = document.createElement('div');
+                label.className = 'me-2 text-muted small text-nowrap';
+                label.style.width = '60px';
+                label.textContent = 'B' + (rowIdx + 1) + ':';
+                rowDiv.appendChild(label);
+
+                for (var c = 1; c <= cols; c++) {
+                    if (gaps.indexOf(c) !== -1) {
+                        var gap = document.createElement('div');
+                        gap.className = 'grid-gap-preview toggle-cell';
+                        gap.dataset.row = rowIdx;
+                        gap.dataset.col = c;
+                        gap.title = 'Klik untuk jadi PC Desk';
+                        (function(r, col) {
+                            gap.addEventListener('click', function() {
+                                var arr = rowGaps[r] || [];
+                                var idx = arr.indexOf(col);
+                                if (idx !== -1) {
+                                    arr.splice(idx, 1);
+                                    if (arr.length === 0) delete rowGaps[r];
+                                }
+                                renderGrid();
+                                syncHidden();
+                            });
+                        })(rowIdx, c);
+                        rowDiv.appendChild(gap);
+                    } else {
+                        var cell = document.createElement('div');
+                        cell.className = 'pc-cell-preview toggle-cell';
+                        cell.textContent = c;
+                        cell.dataset.row = rowIdx;
+                        cell.dataset.col = c;
+                        cell.title = 'Klik jadi Walkway';
+                        (function(r, col) {
+                            cell.addEventListener('click', function() {
+                                if (!rowGaps[r]) rowGaps[r] = [];
+                                if (rowGaps[r].indexOf(col) === -1) {
+                                    rowGaps[r].push(col);
+                                    rowGaps[r].sort(function(a,b) { return a-b; });
+                                }
+                                renderGrid();
+                                syncHidden();
+                            });
+                        })(rowIdx, c);
+                        rowDiv.appendChild(cell);
+                    }
+                }
+                preview.appendChild(rowDiv);
+            });
+        }
+
+        function syncHidden() {
+            var clean = {};
+            Object.keys(rowGaps).forEach(function(k) {
+                if (rowGaps[k] && rowGaps[k].length > 0) {
+                    clean[k] = rowGaps[k];
+                }
+            });
+            document.getElementById('row_gaps_json').value = JSON.stringify(clean);
+        }
+
+        renderGrid();
+    })();
+    </script>
+    {{ end }}
+</div>
+{{ end }}

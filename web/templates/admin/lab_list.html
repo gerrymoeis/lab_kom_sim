@@ -1,0 +1,11 @@
+{{ template "layout/admin_base.html" . }}
+
+<div class="row">
+    {{ range $lab := .labs }}
+    <div class="col-md-4 mb-3">
+        {{ template "components/lab_card.html" dict "lab" $lab }}
+    </div>
+    {{ end }}
+</div>
+
+{{ template "layout/admin_footer.html" . }}
