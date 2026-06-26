@@ -8,7 +8,7 @@
         <div class="card-body">
             {{ template "layout/alert.html" . }}
 
-            <form method="POST" action="{{$.basePath}}/devices/{{ .device.AssetCode | lower }}/edit">
+            <form method="POST" action="{{$.basePath}}/devices/{{ .device.Label | lower }}/edit">
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="device_type_id" class="form-label">Tipe Perangkat *</label>
@@ -16,7 +16,7 @@
                             <option value="">Pilih tipe perangkat...</option>
                             {{ range $dt := .deviceTypes }}
                             <option value="{{ $dt.ID }}" {{ if eq $.device.DeviceTypeID $dt.ID }}selected{{ end }}>
-                                {{ $dt.CategoryName }} — {{ $dt.Name }} ({{ $dt.AssetCodePrefix }}) — {{ if eq $dt.UsageType "loanable" }}Dipinjamkan{{ else if eq $dt.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }}
+                                {{ $dt.CategoryName }} — {{ $dt.Name }} ({{ $dt.LabelPrefix }}) — {{ if eq $dt.UsageType "loanable" }}Dipinjamkan{{ else if eq $dt.UsageType "consumable" }}Habis Pakai{{ else }}Instalasi{{ end }}
                             </option>
                             {{ end }}
                         </select>
@@ -34,9 +34,9 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="asset_code" class="form-label">Asset Code *</label>
-                    <input type="text" class="form-control" id="asset_code" name="asset_code" value="{{ .device.AssetCode }}" required>
-                    <small class="form-text text-muted">Format: PREFIX-NNN (contoh: MOUSE-AXIOO-001)</small>
+                    <label for="label" class="form-label">Label *</label>
+                    <input type="text" class="form-control" id="label" name="label" value="{{ .device.Label }}" required>
+                    <small class="form-text text-muted">Format: prefix-n (contoh: mouse-axioo-1)</small>
                 </div>
 
                 <div class="mb-3">

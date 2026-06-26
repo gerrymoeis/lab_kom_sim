@@ -4,7 +4,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <h2><i class="bi bi-printer"></i> Print Stiker Label</h2>
-            <p class="text-muted">Generate PDF stiker untuk PC label atau asset code perangkat</p>
+            <p class="text-muted">Generate PDF stiker untuk PC label atau label perangkat</p>
         </div>
     </div>
 
@@ -27,7 +27,7 @@
                                 <input class="form-check-input" type="radio" name="type" id="typeDevice" value="device" {{ if eq .selectedType "device" }}checked{{ end }}
                                     onchange="updateDefaults()">
                                 <label class="form-check-label" for="typeDevice">
-                                    <i class="bi bi-hdd-rack"></i> Device Asset Code
+                                    <i class="bi bi-hdd-rack"></i> Device Label
                                 </label>
                             </div>
                         </div>

@@ -28,7 +28,7 @@
                 <input type="hidden" name="tab" value="loans">
                 <div class="col-md-3">
                     <label for="search" class="form-label">Cari</label>
-                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari asset code, peminjam..." value="{{ .filters.search }}">
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari label, peminjam..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
                     <label for="status" class="form-label">Status Peminjaman</label>
@@ -77,7 +77,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
-                            <th>Asset Code</th>
+                            <th>Label</th>
                             <th>Peminjam</th>
                             <th>Keperluan</th>
                             <th>Tgl Pinjam</th>
@@ -91,9 +91,9 @@
                     </thead>
                     <tbody>
                         {{ range $i, $l := .loans }}
-                        <tr class="{{ if eq $l.ComputedStatus "overdue" }}table-danger{{ else if eq $l.ComputedStatus "returned" }}table-light{{ end }}" data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceAssetCode }} - {{ $l.BorrowerName }}">
+                        <tr class="{{ if eq $l.ComputedStatus "overdue" }}table-danger{{ else if eq $l.ComputedStatus "returned" }}table-light{{ end }}" data-batch-id="{{ $l.ID }}" data-batch-label="{{ $l.DeviceLabel }} - {{ $l.BorrowerName }}">
                             <td class="text-muted">{{ add $i $.startRow }}</td>
-                            <td><code>{{ $l.DeviceAssetCode }}</code></td>
+                            <td><code>{{ $l.DeviceLabel }}</code></td>
                             <td><strong>{{ $l.BorrowerName }}</strong><br><small class="text-muted">{{ $l.BorrowerType }}</small></td>
                             <td><small>{{ if $l.Purpose }}{{ $l.Purpose }}{{ else }}<span class="text-muted">-</span>{{ end }}</small></td>
                             <td{{ if $l.IsReturnedLate }} class="table-danger"{{ end }}>{{ (localTime $l.LoanDate).Format "02/01/2006" }}</td>

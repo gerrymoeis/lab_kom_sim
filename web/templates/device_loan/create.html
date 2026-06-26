@@ -8,7 +8,7 @@
                             <select class="form-select" id="device_id" name="device_id" required>
                                 <option value="">Pilih perangkat...</option>
                                 {{ range $d := .devices }}
-                                <option value="{{ $d.ID }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.AssetCode }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
+                                <option value="{{ $d.ID }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.Label }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
                                 {{ end }}
                             </select>
                             <small class="text-muted">Hanya menampilkan perangkat yang tersedia untuk dipinjam</small>

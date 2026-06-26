@@ -22,7 +22,7 @@ initPublicTable({
     data: JSON.parse(document.getElementById("data-devices").textContent),
     groupBy: ["usage_type", "category_name", "device_type_name"],
     columns: [
-        { field: "asset_code", label: "Asset Code", sortable: true,
+        { field: "label", label: "Label", sortable: true,
           render: function(v) { return '<code>' + v + '</code>'; } },
         { field: "serial_number", label: "Serial Number", sortable: true },
         { field: "condition", label: "Kondisi", sortable: true, filterable: true,
@@ -33,9 +33,9 @@ initPublicTable({
           }},
         { field: "location", label: "Lokasi", sortable: true },
         { field: "detail", label: "", sortable: false,
-          render: function(v, r) { return '<a href="' + PUBLIC_BASE_PATH + '/devices/detail/' + (r.asset_code).toLowerCase() + '.html" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>'; } }
+          render: function(v, r) { return '<a href="' + PUBLIC_BASE_PATH + '/devices/detail/' + (r.label).toLowerCase() + '.html" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>'; } }
     ],
-    searchFields: ["asset_code", "device_type_name", "category_name", "serial_number", "location"],
+    searchFields: ["label", "device_type_name", "category_name", "serial_number", "location"],
     pageSize: 25
 });
 </script>
