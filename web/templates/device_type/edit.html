@@ -3,7 +3,7 @@
 <div class="container mt-4">
     {{ template "layout/card_edit.html" . }}
 
-                    <form method="POST" action="{{$.basePath}}/device-types/{{ .deviceType.AssetCodePrefix | lower }}/edit">
+                    <form method="POST" action="{{$.basePath}}/device-types/{{ .deviceType.LabelPrefix | lower }}/edit">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="name" class="form-label">Nama Tipe *</label>
@@ -30,8 +30,8 @@
                                 <input type="text" class="form-control" id="model" name="model" value="{{ .deviceType.Model }}">
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label for="asset_code_prefix" class="form-label">Prefix Asset Code</label>
-                                <input type="text" class="form-control" id="asset_code_prefix" name="asset_code_prefix" value="{{ .deviceType.AssetCodePrefix }}">
+                                <label for="label_prefix" class="form-label">Label Prefix</label>
+                                <input type="text" class="form-control" id="label_prefix" name="label_prefix" value="{{ .deviceType.LabelPrefix }}">
                             </div>
                         </div>
 
@@ -157,7 +157,7 @@ async function handlePhotoSelect(file, source) {
         var formData = new FormData();
         formData.append('image', file);
         formData.append('type', 'device_type');
-        formData.append('label', '{{ .deviceType.AssetCodePrefix }}');
+        formData.append('label', '{{ .deviceType.LabelPrefix }}');
         var response = await fetchWithCSRF('{{$.basePath}}/api/upload-image', { method: 'POST', body: formData });
         var result = await response.json();
         if (result.success) {

@@ -9,7 +9,7 @@
                             <select class="form-select" id="device_id" name="device_id" required>
                                 <option value="">Pilih perangkat...</option>
                                 {{ range $d := .devices }}
-                                <option value="{{ $d.ID }}" data-asset-code="{{ $d.AssetCode }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.AssetCode }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
+                                <option value="{{ $d.ID }}" data-label="{{ $d.Label }}" {{ if eq $d.ID $.preselectDeviceID }}selected{{ end }}>{{ $d.Label }}{{ if $d.SerialNumber }} — {{ $d.SerialNumber }}{{ end }} ({{ $d.Condition }})</option>
                                 {{ end }}
                             </select>
                             <small class="text-muted">Menampilkan perangkat instalasi yang belum terpasang</small>
@@ -222,7 +222,7 @@ async function uploadForProcessing(file) {
     var devSelect = document.getElementById('device_id');
     if (devSelect && devSelect.selectedIndex > 0) {
         var opt = devSelect.options[devSelect.selectedIndex];
-        if (opt.dataset.assetCode) { formData.append('label', opt.dataset.assetCode); }
+        if (opt.dataset.label) { formData.append('label', opt.dataset.label); }
     }
     var response = await fetchWithCSRF('{{$.basePath}}/api/upload-image', { method: 'POST', body: formData });
     return await response.json();

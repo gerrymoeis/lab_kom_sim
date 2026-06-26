@@ -31,7 +31,7 @@
                 <input type="hidden" name="tab" value="types">
                 <div class="col-md-3">
                     <label for="search" class="form-label">Cari</label>
-                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari asset code, serial number..." value="{{ .filters.search }}">
+                    <input type="text" class="form-control" id="search" name="search" placeholder="Cari label, serial number..." value="{{ .filters.search }}">
                 </div>
                 <div class="col-md-2">
                     <label for="category" class="form-label">Kategori</label>
@@ -55,7 +55,7 @@
                     <label for="sort_by" class="form-label">Urutkan</label>
                     <select class="form-select" id="sort_by" name="sort_by">
                         <option value="">Default</option>
-                        <option value="asset_code" {{ if eq .filters.sort_by "asset_code" }}selected{{ end }}>Asset Code</option>
+                        <option value="label" {{ if eq .filters.sort_by "label" }}selected{{ end }}>Label</option>
                         <option value="category" {{ if eq .filters.sort_by "category" }}selected{{ end }}>Kategori</option>
                         <option value="condition" {{ if eq .filters.sort_by "condition" }}selected{{ end }}>Kondisi</option>
                         <option value="created_at" {{ if eq .filters.sort_by "created_at" }}selected{{ end }}>Tgl Ditambah</option>
@@ -155,7 +155,7 @@
                                             <thead class="table-light">
                                                 <tr>
                                                     <th>#</th>
-                                                    <th>Asset Code</th>
+                                                    <th>Label</th>
                                                     <th>Serial Number</th>
                                                     <th>Kondisi</th>
                                                     <th>Lokasi</th>
@@ -166,9 +166,9 @@
                                             </thead>
                                             <tbody>
                                                 {{ range $idx, $d := $type.Devices }}
-                                                <tr data-batch-id="{{ $d.ID }}" data-batch-label="{{ $d.AssetCode }}">
+                                                <tr data-batch-id="{{ $d.ID }}" data-batch-label="{{ $d.Label }}">
                                                     <td class="text-muted">{{ add $idx $.startRow }}</td>
-                                                    <td><code>{{ $d.AssetCode }}</code></td>
+                                                    <td><code>{{ $d.Label }}</code></td>
                                                     <td><small>{{ if $d.SerialNumber }}{{ $d.SerialNumber }}{{ else }}-{{ end }}</small></td>
                                                     <td>
                                                         <span class="badge bg-{{ if eq $d.Condition "normal" }}success{{ else if eq $d.Condition "rusak" }}danger{{ else }}warning{{ end }}">
@@ -197,18 +197,18 @@
                                                     <td style="max-width:120px"><small class="text-truncate d-inline-block" style="max-width:120px" title="{{ $d.Notes }}">{{ if $d.Notes }}{{ $d.Notes }}{{ else }}<span class="text-muted">-</span>{{ end }}</small></td>
                                                     <td class="text-nowrap text-end batch-action-col">
                                                         <span class="batch-mode-off">
-                                                        <a href="{{$.basePath}}/devices/{{ $d.CategoryPrefix | lower }}/{{ $d.DeviceTypePrefix | lower }}/{{ $d.AssetCode | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
+                                                        <a href="{{$.basePath}}/devices/{{ $d.CategoryPrefix | lower }}/{{ $d.DeviceTypePrefix | lower }}/{{ $d.Label | lower }}" class="btn btn-sm btn-info me-1" title="Detail">
                                                             <i class="bi bi-eye"></i>
                                                         </a>
                                                         {{ if eq $.role "admin" }}
-                                                        <a href="{{$.basePath}}/devices/{{ $d.AssetCode | lower }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
+                                                        <a href="{{$.basePath}}/devices/{{ $d.Label | lower }}/edit" class="btn btn-sm btn-warning me-1" title="Edit">
                                                             <i class="bi bi-pencil"></i>
                                                         </a>
                                                         <button type="button" class="btn btn-sm btn-danger" title="Hapus"
-                                                            onclick="confirmDelete({message:'Hapus perangkat {{ $d.AssetCode }}?', formId:'del-dev-{{ $d.ID }}'})">
+                                                            onclick="confirmDelete({message:'Hapus perangkat {{ $d.Label }}?', formId:'del-dev-{{ $d.ID }}'})">
                                                             <i class="bi bi-trash"></i>
                                                         </button>
-                                                        <form id="del-dev-{{ $d.ID }}" method="POST" action="{{$.basePath}}/devices/{{ $d.AssetCode | lower }}/delete" class="d-none"></form>
+                                                        <form id="del-dev-{{ $d.ID }}" method="POST" action="{{$.basePath}}/devices/{{ $d.Label | lower }}/delete" class="d-none"></form>
                                                         {{ end }}
                                                         </span>
                                                     </td>
