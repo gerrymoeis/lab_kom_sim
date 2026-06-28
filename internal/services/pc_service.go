@@ -11,6 +11,7 @@ type CreatePCInput struct {
 	Processor, RAM, Storage             string
 	SerialNumber, OperatingSystem       string
 	PCType, BrandModel, Accessories     string
+	PcBrand, MouseBrand, KeyboardBrand  string
 	PhotoSerial, PhotoFront             string
 	Label                               string
 	IsMahasiswa                         bool
@@ -23,6 +24,7 @@ type UpdatePCInput struct {
 	Status, Placement                   string
 	SerialNumber                        string
 	PCType, BrandModel, Accessories     string
+	PcBrand, MouseBrand, KeyboardBrand  string
 	Processor, RAM, Storage             string
 	OperatingSystem, Notes              string
 	PhotoSerial, PhotoFront             string
@@ -85,6 +87,9 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 	in.PCType = SanitizeText(in.PCType)
 	in.BrandModel = SanitizeText(in.BrandModel)
 	in.Accessories = SanitizeText(in.Accessories)
+	in.PcBrand = SanitizeText(in.PcBrand)
+	in.MouseBrand = SanitizeText(in.MouseBrand)
+	in.KeyboardBrand = SanitizeText(in.KeyboardBrand)
 	in.Notes = SanitizeText(in.Notes)
 	if in.Label == "" {
 		in.Label = s.pcRepo.NextLabel(in.Placement, in.IsMahasiswa)
@@ -95,7 +100,7 @@ func (s *PCService) CreatePC(in CreatePCInput, actorID int, actorUsername, actor
 	}
 
 	result, err := s.pcRepo.Create(in.Row, in.Column, in.Status, in.Placement, in.Processor, in.RAM, in.Storage,
-		in.SerialNumber, in.OperatingSystem, in.PCType, in.BrandModel, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label,
+		in.SerialNumber, in.OperatingSystem, in.PCType, in.BrandModel, in.PcBrand, in.MouseBrand, in.KeyboardBrand, in.Accessories, in.PhotoSerial, in.PhotoFront, in.Label,
 		in.PurchaseDate, in.LastChecked, in.Notes)
 	if err != nil {
 		s.activityLogService.LogCreate(actorID, actorUsername, actorRole, "pc", 0,
@@ -131,11 +136,14 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 	in.PCType = SanitizeText(in.PCType)
 	in.BrandModel = SanitizeText(in.BrandModel)
 	in.Accessories = SanitizeText(in.Accessories)
+	in.PcBrand = SanitizeText(in.PcBrand)
+	in.MouseBrand = SanitizeText(in.MouseBrand)
+	in.KeyboardBrand = SanitizeText(in.KeyboardBrand)
 	in.Notes = SanitizeText(in.Notes)
 
 	pcData, _ := s.pcRepo.GetByLabel(label)
 
-	err := s.pcRepo.Update(label, in.Row, in.Column, in.Status, in.Placement, in.PCType, in.SerialNumber, in.BrandModel, in.Accessories,
+	err := s.pcRepo.Update(label, in.Row, in.Column, in.Status, in.Placement, in.PCType, in.SerialNumber, in.BrandModel, in.PcBrand, in.MouseBrand, in.KeyboardBrand, in.Accessories,
 		in.Processor, in.RAM, in.Storage, in.OperatingSystem, in.Notes, in.PhotoSerial, in.PhotoFront, in.Label,
 		in.PurchaseDate, in.LastChecked)
 	if err != nil {
@@ -160,6 +168,9 @@ func (s *PCService) UpdatePC(label string, in UpdatePCInput, actorID int, actorU
 		if pcData.PCType != in.PCType { oldVals["pc_type"] = pcData.PCType; newVals["pc_type"] = in.PCType }
 		if pcData.BrandModel != in.BrandModel { oldVals["brand_model"] = pcData.BrandModel; newVals["brand_model"] = in.BrandModel }
 		if pcData.Accessories != in.Accessories { oldVals["accessories"] = pcData.Accessories; newVals["accessories"] = in.Accessories }
+		if pcData.PcBrand != in.PcBrand { oldVals["pc_brand"] = pcData.PcBrand; newVals["pc_brand"] = in.PcBrand }
+		if pcData.MouseBrand != in.MouseBrand { oldVals["mouse_brand"] = pcData.MouseBrand; newVals["mouse_brand"] = in.MouseBrand }
+		if pcData.KeyboardBrand != in.KeyboardBrand { oldVals["keyboard_brand"] = pcData.KeyboardBrand; newVals["keyboard_brand"] = in.KeyboardBrand }
 		if pcData.Row != in.Row { oldVals["row"] = pcData.Row; newVals["row"] = in.Row }
 		if pcData.Column != in.Column { oldVals["column"] = pcData.Column; newVals["column"] = in.Column }
 		if pcData.Notes != in.Notes { oldVals["notes"] = pcData.Notes; newVals["notes"] = in.Notes }
