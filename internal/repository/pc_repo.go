@@ -83,7 +83,7 @@ func (r *PCRepository) buildCountArgs(filters PCFilters) []any {
 
 func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, offset int) ([]models.PC, error) {
 	query := `SELECT id, label, "row", "column", status, placement, processor, ram, storage, operating_system,
-		serial_number, brand_model, pc_type, accessories, notes, purchase_date, last_checked, photo_serial, photo_front FROM pcs WHERE 1=1`
+		serial_number, brand_model, pc_brand, mouse_brand, keyboard_brand, pc_type, accessories, notes, purchase_date, last_checked, photo_serial, photo_front FROM pcs WHERE 1=1`
 	clause, args := r.buildWhereClause(filters)
 	query += clause
 
@@ -119,9 +119,9 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 	var pcs []models.PC
 	for rows.Next() {
 		var pc models.PC
-		var processor, ram, storage, os, sn, bm, pt, acc, notes, label, pDate, lc, photoSerial, photoFront sql.NullString
+		var processor, ram, storage, os, sn, bm, pcb, mb, kb, pt, acc, notes, label, pDate, lc, photoSerial, photoFront sql.NullString
 		if err := rows.Scan(&pc.ID, &label, &pc.Row, &pc.Column, &pc.Status, &pc.Placement, &processor, &ram, &storage, &os,
-			&sn, &bm, &pt, &acc, &notes, &pDate, &lc, &photoSerial, &photoFront); err != nil {
+			&sn, &bm, &pcb, &mb, &kb, &pt, &acc, &notes, &pDate, &lc, &photoSerial, &photoFront); err != nil {
 			return nil, err
 		}
 		pc.Processor = valStr(processor)
@@ -130,6 +130,9 @@ func (r *PCRepository) listWithQuery(filters PCFilters, suffix string, limit, of
 		pc.OperatingSystem = valStr(os)
 		pc.SerialNumber = valStr(sn)
 		pc.BrandModel = valStr(bm)
+		pc.PcBrand = valStr(pcb)
+		pc.MouseBrand = valStr(mb)
+		pc.KeyboardBrand = valStr(kb)
 		pc.PCType = valStr(pt)
 		pc.Accessories = valStr(acc)
 		pc.Notes = valStr(notes)
@@ -254,14 +257,14 @@ func (r *PCRepository) GetStatusCounts() (map[string]int, error) {
 
 func (r *PCRepository) GetByLabel(label string) (*models.PC, error) {
 	var pc models.PC
-	var processor, ram, storage, os, notes, sn, bm, pt, acc, ps, pf, aid, lbl, pDate, lc sql.NullString
+	var processor, ram, storage, os, notes, sn, bm, pcb, mb, kb, pt, acc, ps, pf, aid, lbl, pDate, lc sql.NullString
 	err := r.db.QueryRow(`SELECT id, label, "row", "column", status, placement, processor, ram, storage,
 		purchase_date, notes, last_checked, asset_id, serial_number, operating_system,
-		pc_type, brand_model, accessories, photo_serial, photo_front,
+		pc_type, brand_model, pc_brand, mouse_brand, keyboard_brand, accessories, photo_serial, photo_front,
 		created_at, updated_at FROM pcs WHERE label = ?`, label).
 		Scan(&pc.ID, &lbl, &pc.Row, &pc.Column, &pc.Status, &pc.Placement, &processor, &ram, &storage,
 			&pDate, &notes, &lc, &aid, &sn, &os,
-			&pt, &bm, &acc, &ps, &pf, &pc.CreatedAt, &pc.UpdatedAt)
+			&pt, &bm, &pcb, &mb, &kb, &acc, &ps, &pf, &pc.CreatedAt, &pc.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -271,6 +274,9 @@ func (r *PCRepository) GetByLabel(label string) (*models.PC, error) {
 	pc.OperatingSystem = valStr(os)
 	pc.SerialNumber = valStr(sn)
 	pc.BrandModel = valStr(bm)
+	pc.PcBrand = valStr(pcb)
+	pc.MouseBrand = valStr(mb)
+	pc.KeyboardBrand = valStr(kb)
 	pc.PCType = valStr(pt)
 	pc.Accessories = valStr(acc)
 	pc.Notes = valStr(notes)
@@ -285,12 +291,12 @@ func (r *PCRepository) GetByLabel(label string) (*models.PC, error) {
 
 func (r *PCRepository) GetByLabelEdit(label string) (*models.PC, error) {
 	var pc models.PC
-	var processor, ram, storage, os, notes, sn, bm, pt, acc, ps, pf, lbl, pDate, lc sql.NullString
+	var processor, ram, storage, os, notes, sn, bm, pcb, mb, kb, pt, acc, ps, pf, lbl, pDate, lc sql.NullString
 	err := r.db.QueryRow(`SELECT id, label, "row", "column", status, placement, processor, ram, storage,
 		purchase_date, last_checked, operating_system, notes, pc_type, serial_number, brand_model,
-		accessories, photo_serial, photo_front, created_at, updated_at FROM pcs WHERE label = ?`, label).
+		pc_brand, mouse_brand, keyboard_brand, accessories, photo_serial, photo_front, created_at, updated_at FROM pcs WHERE label = ?`, label).
 		Scan(&pc.ID, &lbl, &pc.Row, &pc.Column, &pc.Status, &pc.Placement, &processor, &ram, &storage,
-			&pDate, &lc, &os, &notes, &pt, &sn, &bm, &acc, &ps, &pf, &pc.CreatedAt, &pc.UpdatedAt)
+			&pDate, &lc, &os, &notes, &pt, &sn, &bm, &pcb, &mb, &kb, &acc, &ps, &pf, &pc.CreatedAt, &pc.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -300,6 +306,9 @@ func (r *PCRepository) GetByLabelEdit(label string) (*models.PC, error) {
 	pc.OperatingSystem = valStr(os)
 	pc.SerialNumber = valStr(sn)
 	pc.BrandModel = valStr(bm)
+	pc.PcBrand = valStr(pcb)
+	pc.MouseBrand = valStr(mb)
+	pc.KeyboardBrand = valStr(kb)
 	pc.PCType = valStr(pt)
 	pc.Accessories = valStr(acc)
 	pc.Notes = valStr(notes)
@@ -320,9 +329,9 @@ func (r *PCRepository) GetIDByLabel(label string) (int, string, error) {
 
 func (r *PCRepository) GetDeleteInfo(label string) (*models.PC, error) {
 	var pc models.PC
-	var status, sn, pt, bm sql.NullString
-	err := r.db.QueryRow(`SELECT id, status, serial_number, pc_type, brand_model FROM pcs WHERE label = ?`, label).
-		Scan(&pc.ID, &status, &sn, &pt, &bm)
+	var status, sn, pt, bm, pcb, mb, kb sql.NullString
+	err := r.db.QueryRow(`SELECT id, status, serial_number, pc_type, brand_model, pc_brand, mouse_brand, keyboard_brand FROM pcs WHERE label = ?`, label).
+		Scan(&pc.ID, &status, &sn, &pt, &bm, &pcb, &mb, &kb)
 	if err != nil {
 		return nil, err
 	}
@@ -330,6 +339,9 @@ func (r *PCRepository) GetDeleteInfo(label string) (*models.PC, error) {
 	pc.SerialNumber = valStr(sn)
 	pc.PCType = valStr(pt)
 	pc.BrandModel = valStr(bm)
+	pc.PcBrand = valStr(pcb)
+	pc.MouseBrand = valStr(mb)
+	pc.KeyboardBrand = valStr(kb)
 	return &pc, nil
 }
 
@@ -362,16 +374,16 @@ func (r *PCRepository) GetSoftware(pcID int) (requiredSW, otherSW []models.PCSof
 	return requiredSW, otherSW, nil
 }
 
-func (r *PCRepository) Create(row, col int, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label, purchaseDate, lastChecked, notes string) (sql.Result, error) {
+func (r *PCRepository) Create(row, col int, status, placement, processor, ram, storage, sn, os, pt, bm, pcb, mb, kb, acc, photoSerial, photoFront, label, purchaseDate, lastChecked, notes string) (sql.Result, error) {
 	return r.db.Exec(`INSERT INTO pcs ("row", "column", status, placement, processor, ram, storage,
-		serial_number, operating_system, pc_type, brand_model, accessories,
+		serial_number, operating_system, pc_type, brand_model, pc_brand, mouse_brand, keyboard_brand, accessories,
 		photo_serial, photo_front, label, purchase_date, last_checked, notes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?)`,
-		row, col, status, placement, processor, ram, storage, sn, os, pt, bm, acc, photoSerial, photoFront, label, purchaseDate, lastChecked, notes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?)`,
+		row, col, status, placement, processor, ram, storage, sn, os, pt, bm, pcb, mb, kb, acc, photoSerial, photoFront, label, purchaseDate, lastChecked, notes)
 }
 
-func (r *PCRepository) Update(label string, row, col int, status, placement, pt, sn, bm, acc, processor, ram, storage, os, notes, photoSerial, photoFront, newLabel, purchaseDate, lastChecked string) error {
-	_, err := r.db.Exec(`UPDATE pcs SET "row"=?, "column"=?, status=?, placement=?, pc_type=?, serial_number=?, brand_model=?, accessories=?,
+func (r *PCRepository) Update(label string, row, col int, status, placement, pt, sn, bm, pcb, mb, kb, acc, processor, ram, storage, os, notes, photoSerial, photoFront, newLabel, purchaseDate, lastChecked string) error {
+	_, err := r.db.Exec(`UPDATE pcs SET "row"=?, "column"=?, status=?, placement=?, pc_type=?, serial_number=?, brand_model=?, pc_brand=?, mouse_brand=?, keyboard_brand=?, accessories=?,
 		processor=?, ram=?, storage=?, operating_system=?, notes=?, label=?,
 		purchase_date=COALESCE(NULLIF(?, ''), purchase_date),
 		last_checked=COALESCE(NULLIF(?, ''), last_checked),
@@ -379,7 +391,7 @@ func (r *PCRepository) Update(label string, row, col int, status, placement, pt,
 		photo_front=COALESCE(NULLIF(?, ''), photo_front),
 		updated_at=CURRENT_TIMESTAMP
 		WHERE label=?`,
-		row, col, status, placement, pt, sn, bm, acc, processor, ram, storage, os, notes, newLabel, purchaseDate, lastChecked, photoSerial, photoFront, label)
+		row, col, status, placement, pt, sn, bm, pcb, mb, kb, acc, processor, ram, storage, os, notes, newLabel, purchaseDate, lastChecked, photoSerial, photoFront, label)
 	return err
 }
 
@@ -684,6 +696,7 @@ func (r *PCRepository) GetDistinctOS() ([]string, error) {
 
 func (r *PCRepository) ExportAll() ([]models.PC, error) {
 	rows, err := r.db.Query(`SELECT label, "row", "column", status, placement, pc_type, serial_number, brand_model,
+		pc_brand, mouse_brand, keyboard_brand,
 		processor, ram, storage, operating_system, accessories, purchase_date, last_checked, notes
 		FROM pcs ORDER BY
 		CASE WHEN label GLOB 'pc-[0-9]*' THEN 1 WHEN label GLOB 'pc-cadangan-[0-9]*' THEN 3 ELSE 2 END,
@@ -698,8 +711,9 @@ func (r *PCRepository) ExportAll() ([]models.PC, error) {
 	var pcs []models.PC
 	for rows.Next() {
 		var pc models.PC
-		var label, placement, pt, sn, bm, proc, mem, stor, os, acc, pd, lc, n sql.NullString
+		var label, placement, pt, sn, bm, pcb, mb, kb, proc, mem, stor, os, acc, pd, lc, n sql.NullString
 		if err := rows.Scan(&label, &pc.Row, &pc.Column, &pc.Status, &placement, &pt, &sn, &bm,
+			&pcb, &mb, &kb,
 			&proc, &mem, &stor, &os, &acc, &pd, &lc, &n); err != nil {
 			return nil, err
 		}
@@ -708,6 +722,9 @@ func (r *PCRepository) ExportAll() ([]models.PC, error) {
 		pc.PCType = valStr(pt)
 		pc.SerialNumber = valStr(sn)
 		pc.BrandModel = valStr(bm)
+		pc.PcBrand = valStr(pcb)
+		pc.MouseBrand = valStr(mb)
+		pc.KeyboardBrand = valStr(kb)
 		pc.Processor = valStr(proc)
 		pc.RAM = valStr(mem)
 		pc.Storage = valStr(stor)

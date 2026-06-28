@@ -25,13 +25,13 @@ func New(db *database.DB) *Builder {
 
 func defaultConfigs() map[string]Config {
 	return map[string]Config{
-		"pc": {
-			Alias: "", Columns: []string{
-				"label", "serial_number", "brand_model",
-				"operating_system", "processor", "ram", "storage",
-				"pc_type", "accessories", "notes",
-			},
-		},
+"pc": {
+    Alias: "", Columns: []string{
+        "label", "serial_number", "brand_model",
+        "operating_system", "processor", "ram", "storage",
+        "pc_type", "accessories", "pc_brand", "notes",
+    },
+},
 		"device": {
 			Alias: "d", Columns: []string{
 				"d.label", "d.serial_number",
