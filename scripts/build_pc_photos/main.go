@@ -44,7 +44,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	re := regexp.MustCompile(`^(pc-.+)_(sn|full)\.(heic|jpg|jpeg)$`)
+	reStandard := regexp.MustCompile(`^pc(\d+)_(sn|full)\.(heic|jpg|jpeg)$`)
+	reSpecial := regexp.MustCompile(`^(pc-[\w-]+)_(sn|full)\.(heic|jpg|jpeg)$`)
 	var photos []photoEntry
 
 	for _, e := range entries {
@@ -52,18 +53,32 @@ func main() {
 			continue
 		}
 		name := strings.ToLower(e.Name())
-		matches := re.FindStringSubmatch(name)
-		if matches == nil {
-			fmt.Printf("  SKIP: %s (tidak cocok pola pc-{label}_sn/full.heic)\n", e.Name())
+
+		var pcLabel string
+		var photoType string
+
+		if m := reStandard.FindStringSubmatch(name); m != nil {
+			pcLabel = "pc-" + m[1]
+			if m[2] == "full" {
+				photoType = "front"
+			} else {
+				photoType = "serial"
+			}
+		} else if m := reSpecial.FindStringSubmatch(name); m != nil {
+			pcLabel = m[1]
+			if m[2] == "full" {
+				photoType = "front"
+			} else {
+				photoType = "serial"
+			}
+		} else {
+			fmt.Printf("  SKIP: %s (tidak cocok pola pc{N}_{sn|full}.heic atau pc-{label}_{sn|full}.heic)\n", e.Name())
 			continue
 		}
-		pt := "serial"
-		if matches[2] == "full" {
-			pt = "front"
-		}
+
 		photos = append(photos, photoEntry{
-			pcLabel:    matches[1],
-			photoType:  pt,
+			pcLabel:    pcLabel,
+			photoType:  photoType,
 			sourcePath: filepath.Join(*source, e.Name()),
 		})
 	}
