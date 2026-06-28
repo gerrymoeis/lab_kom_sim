@@ -16,6 +16,9 @@ type CreatePCRequest struct {
 	OperatingSystem string `form:"operating_system" binding:"required,max=100"`
 	PCType          string `form:"pc_type" binding:"omitempty,max=50"`
 	BrandModel      string `form:"brand_model" binding:"omitempty,max=100"`
+	PcBrand         string `form:"pc_brand" binding:"omitempty,max=100"`
+	MouseBrand      string `form:"mouse_brand" binding:"omitempty,max=100"`
+	KeyboardBrand   string `form:"keyboard_brand" binding:"omitempty,max=100"`
 	Accessories     string `form:"accessories" binding:"omitempty,max=200"`
 	Processor       string `form:"processor" binding:"omitempty,max=100"`
 	RAM             string `form:"ram" binding:"omitempty,max=50"`
@@ -34,6 +37,9 @@ type EditPCRequest struct {
 	OperatingSystem string   `form:"operating_system" binding:"required,max=100"`
 	PCType          string   `form:"pc_type" binding:"omitempty,max=50"`
 	BrandModel      string   `form:"brand_model" binding:"omitempty,max=100"`
+	PcBrand         string   `form:"pc_brand" binding:"omitempty,max=100"`
+	MouseBrand      string   `form:"mouse_brand" binding:"omitempty,max=100"`
+	KeyboardBrand   string   `form:"keyboard_brand" binding:"omitempty,max=100"`
 	Accessories     string   `form:"accessories" binding:"omitempty,max=200"`
 	Processor       string   `form:"processor" binding:"omitempty,max=100"`
 	RAM             string   `form:"ram" binding:"omitempty,max=50"`

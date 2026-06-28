@@ -23,6 +23,9 @@ type PC struct {
 	PCType          string     `json:"pc_type"`          // "PC All-in-one", etc
 	Label           string     `json:"label"`            // Lowercase unique slug (e.g. "pc-8", "pc-dosen")
 	BrandModel      string     `json:"brand_model"`      // Combined brand + model
+	PcBrand         string     `json:"pc_brand"`         // "Lenovo", "Dell", "Axioo"
+	MouseBrand      string     `json:"mouse_brand"`      // "Logitech", "Lenovo", "Axioo", ""
+	KeyboardBrand   string     `json:"keyboard_brand"`   // "Logitech", "Lenovo", "Axioo", ""
 	Accessories     string     `json:"accessories"`      // "Keyboard & Mouse Axioo (Wired Set)"
 	PhotoSerial     string     `json:"photo_serial"`     // Filename foto S/N + barcode
 	PhotoFront      string     `json:"photo_front"`      // Filename foto tampilan depan
