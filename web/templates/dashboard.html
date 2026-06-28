@@ -90,7 +90,7 @@
                 </div>
                 {{ end }}
 
-                {{ template "pc/grid_component.html" dict "GridRows" .grid "Clickable" true "WindowsBadge" true "WindowsText" true }}
+                {{ template "pc/grid_component.html" dict "GridRows" .grid "HasGap" .hasGap "RowGaps" .rowGaps "Clickable" true "WindowsBadge" true "WindowsText" true }}
 
                 <!-- PC Laboran (bottom left) + PC CCTV (below Laboran) -->
                 <div class="mt-4">
@@ -416,6 +416,8 @@
 <script>
 window.colsPerRow = {{ json .colsPerRow }};
 window.gapPos = {{ .gapPos }};
+window.hasGap = {{ .hasGap }};
+window.rowGaps = {{ json .rowGaps }};
 function columnsForRow(rowIdx) {
     return (window.colsPerRow && window.colsPerRow[rowIdx] !== undefined) ? window.colsPerRow[rowIdx] : 8;
 }
@@ -446,6 +448,11 @@ window.updateDashboardFromData = function(pcs) {
     for (var r = 0; r < grid.length; r++) {
         html += '<div class="pc-row mb-3">';
         for (var c = 0; c < grid[r].length; c++) {
+            var isGap = window.hasGap && window.rowGaps && window.rowGaps[r] && window.rowGaps[r].indexOf(c + 1) !== -1;
+            if (isGap) {
+                html += '<div class="grid-gap" title="GAP / Walkway"></div>';
+                continue;
+            }
             var pc = grid[r][c];
             if (pc && pc.id) {
                 var statusClass = pc.status || 'normal';
