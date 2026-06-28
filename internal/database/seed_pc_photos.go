@@ -53,16 +53,15 @@ func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
 
 	dateStr := timeutil.Now().Format("020106") // DDMMYY — same format as UploadImage
 
-	serialMap := map[int]string{}
-	frontMap := map[int]string{}
-	allNums := map[int]bool{}
+	serialMap := map[string]string{}
+	frontMap := map[string]string{}
+	allLabels := map[string]bool{}
 
-	// Rename extracted files to standardized naming: pc-{num}_{type}_{date}.jpeg
+	// Rename extracted files to standardized naming: {label}_{type}_{date}.jpeg
 	for _, e := range entries {
-		allNums[e.pcNum] = true
+		allLabels[e.label] = true
 		oldPath := filepath.Join(pcDir, e.fileName)
-		label := fmt.Sprintf("pc-%d", e.pcNum)
-		newName := fmt.Sprintf("%s_%s_%s.jpeg", label, e.dbColSuffix, dateStr)
+		newName := fmt.Sprintf("%s_%s_%s.jpeg", e.label, e.dbColSuffix, dateStr)
 		newPath := filepath.Join(pcDir, newName)
 
 		if err := os.Rename(oldPath, newPath); err != nil {
@@ -75,20 +74,19 @@ func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
 		}
 
 		if e.dbCol == "photo_serial" {
-			serialMap[e.pcNum] = newName
+			serialMap[e.label] = newName
 		} else {
-			frontMap[e.pcNum] = newName
+			frontMap[e.label] = newName
 		}
 	}
 
 	updated := 0
-	for num := range allNums {
-		serial := serialMap[num]
-		front := frontMap[num]
-		label := fmt.Sprintf("pc-%d", num)
+	for label := range allLabels {
+		serial := serialMap[label]
+		front := frontMap[label]
 		result, err := db.Exec(`UPDATE pcs SET photo_serial=COALESCE(NULLIF(?, ''), photo_serial), photo_front=COALESCE(NULLIF(?, ''), photo_front) WHERE label=?`, serial, front, label)
 		if err != nil {
-			return fmt.Errorf("seedPCPhotos: failed to update pc %d: %w", num, err)
+			return fmt.Errorf("seedPCPhotos: failed to update pc %s: %w", label, err)
 		}
 		if n, _ := result.RowsAffected(); n > 0 {
 			updated++
@@ -103,7 +101,7 @@ func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
 }
 
 type photoEntry struct {
-	pcNum       int
+	label       string // "pc-33", "pc-cadangan-1", "pc-dosen"
 	dbCol       string // "photo_serial" or "photo_front"
 	dbColSuffix string // "serial" or "front"
 	fileName    string
@@ -116,7 +114,7 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 	}
 	defer os.Remove(tmpFile)
 
-	re := regexp.MustCompile(`^(\d+)_(sn|full|serial|front)\.jpeg$`)
+	re := regexp.MustCompile(`^(.+)_(sn|full|serial|front)\.jpeg$`)
 	var entries []photoEntry
 
 	reader, err := zip.OpenReader(tmpFile)
@@ -134,7 +132,7 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 		if matches == nil {
 			continue
 		}
-		pcNum, _ := strconv.Atoi(matches[1])
+		label := matches[1]
 		dbCol := "photo_serial"
 		dbColSuffix := "serial"
 		if matches[2] == "full" || matches[2] == "front" {
@@ -161,7 +159,7 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 		dst.Close()
 
 		entries = append(entries, photoEntry{
-			pcNum:       pcNum,
+			label:       label,
 			dbCol:       dbCol,
 			dbColSuffix: dbColSuffix,
 			fileName:    base,
@@ -169,7 +167,7 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 	}
 
 	if len(entries) == 0 {
-		return nil, fmt.Errorf("no files matching pattern {N}_{sn,full,serial,front}.jpeg in zip")
+		return nil, fmt.Errorf("no files matching pattern {label}_{sn,full,serial,front}.jpeg in zip")
 	}
 
 	return entries, nil
