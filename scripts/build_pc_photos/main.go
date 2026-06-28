@@ -14,7 +14,7 @@ import (
 )
 
 type photoEntry struct {
-	pcNumber string
+	pcLabel   string // "pc-33", "pc-cadangan-1", "pc-dosen"
 	photoType string // "serial" or "front"
 	sourcePath string
 }
@@ -44,7 +44,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	re := regexp.MustCompile(`^pc(\d+)_(sn|full)\.heic$`)
+	re := regexp.MustCompile(`^(pc-.+)_(sn|full)\.(heic|jpg|jpeg)$`)
 	var photos []photoEntry
 
 	for _, e := range entries {
@@ -54,7 +54,7 @@ func main() {
 		name := strings.ToLower(e.Name())
 		matches := re.FindStringSubmatch(name)
 		if matches == nil {
-			fmt.Printf("  SKIP: %s (tidak cocok pola pc{N}_sn.heic / pc{N}_full.heic)\n", e.Name())
+			fmt.Printf("  SKIP: %s (tidak cocok pola pc-{label}_sn/full.heic)\n", e.Name())
 			continue
 		}
 		pt := "serial"
@@ -62,7 +62,7 @@ func main() {
 			pt = "front"
 		}
 		photos = append(photos, photoEntry{
-			pcNumber:   matches[1],
+			pcLabel:    matches[1],
 			photoType:  pt,
 			sourcePath: filepath.Join(*source, e.Name()),
 		})
@@ -75,7 +75,7 @@ func main() {
 
 	fmt.Printf("Ditemukan %d file foto:\n", len(photos))
 	for _, p := range photos {
-		fmt.Printf("  PC-%s → %s_%s.jpeg\n", p.pcNumber, p.pcNumber, p.photoType)
+		fmt.Printf("  %s → %s_%s.jpeg\n", p.pcLabel, p.pcLabel, p.photoType)
 	}
 
 	tmpDir, err := os.MkdirTemp("", "pc-photos-build-*")
@@ -90,7 +90,7 @@ func main() {
 	svc := services.NewImageService()
 
 	for _, p := range photos {
-		outName := fmt.Sprintf("%s_%s.jpeg", p.pcNumber, p.photoType)
+		outName := fmt.Sprintf("%s_%s.jpeg", p.pcLabel, p.photoType)
 		outPath := filepath.Join(tmpDir, outName)
 
 		fmt.Printf("\n  Memproses %s → %s ...\n", filepath.Base(p.sourcePath), outName)
