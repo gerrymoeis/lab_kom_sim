@@ -76,7 +76,7 @@ var PCLayoutManager = (function() {
       html += '<div class="d-flex gap-2 justify-content-center flex-fill">';
       for (var c = 0; c < numCols; c++) {
         if (hasGap && rowGaps[r] && rowGaps[r].indexOf(c + 1) !== -1) {
-          html += '<div class="border rounded text-center small layout-cell" style="width:80px;background:repeating-linear-gradient(45deg,#ffe0e0,#ffe0e0 4px,#fff0f0 4px,#fff0f0 8px);border:1px dashed #fa5252;" title="GAP / Walkway">&nbsp;</div>';
+          html += '<div class="layout-cell layout-gap" title="GAP / Walkway"></div>';
           continue;
         }
         var pc = (grid[r] && grid[r][c]) ? grid[r][c] : null;
