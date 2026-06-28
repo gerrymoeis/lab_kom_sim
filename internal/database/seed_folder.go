@@ -15,8 +15,11 @@ type jsonPCSpec struct {
 	Number       int      `json:"number"`
 	Label        string   `json:"label,omitempty"`
 	Placement    string   `json:"placement,omitempty"`
+	Row          int      `json:"row,omitempty"`
+	Column       int      `json:"column,omitempty"`
 	SN           string   `json:"sn,omitempty"`
 	OS           string   `json:"os,omitempty"`
+	BrandModel   string   `json:"brand_model,omitempty"`
 	RequiredSW   []string `json:"requiredSW,omitempty"`
 	OtherSW      []string `json:"otherSW,omitempty"`
 	Status       string   `json:"status,omitempty"`
@@ -245,7 +248,9 @@ func seedPCsFromJSON(db *DB, folder string, urlPath string) error {
 		}
 		pcType := defPCType
 		brandModel := defBrandModel
-		if pc.Number >= 41 && pc.Label == "" {
+		if pc.BrandModel != "" {
+			brandModel = pc.BrandModel
+		} else if pc.Number >= 41 && pc.Label == "" {
 			pcType = label
 			brandModel = ""
 		}
@@ -256,12 +261,20 @@ func seedPCsFromJSON(db *DB, folder string, urlPath string) error {
 				placement = "cadangan"
 			}
 		}
+		row := rowFor(pc.Number)
+		col := colFor(pc.Number)
+		if pc.Row > 0 {
+			row = pc.Row
+		}
+		if pc.Column > 0 {
+			col = pc.Column
+		}
 		_, execErr := tx.Exec(`INSERT INTO pcs ("row", "column", status, processor, ram, storage,
 			serial_number, operating_system, pc_type, brand_model, accessories,
 			pc_brand, mouse_brand, keyboard_brand,
 			notes, label, placement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 			CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-			rowFor(pc.Number), colFor(pc.Number),
+			row, col,
 			pcStatus, defProcessor, defRAM, defStorage,
 			pc.SN, pc.OS, pcType, brandModel, defAccessories,
 			pc.PCBrand, pc.MouseBrand, pc.KeyboardBrand,

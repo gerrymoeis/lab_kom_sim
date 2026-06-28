@@ -31,10 +31,10 @@ var DefaultGridLayouts = map[string]GridLayout{
 		RowGaps:    [][]int{{}, {}, {}, {}, {}},
 	},
 	"labkom-vokasi-1": {
-		ColsPerRow: []int{10, 8, 9, 9},
+		ColsPerRow: []int{11, 9, 11, 11},
 		HasGap:     true,
-		GapPos:     4,
-		RowGaps:    [][]int{{}, {}, {4}, {4}},
+		GapPos:     5,
+		RowGaps:    [][]int{{5}, {5}, {5}, {5}},
 	},
 	// New format (URLPath as key)
 	"lab-kom-mi": {
@@ -42,11 +42,17 @@ var DefaultGridLayouts = map[string]GridLayout{
 		HasGap:     false,
 		RowGaps:    [][]int{{}, {}, {}, {}, {}},
 	},
-	"vokasi": {
-		ColsPerRow: []int{10, 8, 9, 9},
+	"lab-kom-vokasi-1": {
+		ColsPerRow: []int{11, 9, 11, 11},
 		HasGap:     true,
-		GapPos:     4,
-		RowGaps:    [][]int{{}, {}, {4}, {4}},
+		GapPos:     5,
+		RowGaps:    [][]int{{5}, {5}, {5}, {5}},
+	},
+	"vokasi": {
+		ColsPerRow: []int{11, 9, 11, 11},
+		HasGap:     true,
+		GapPos:     5,
+		RowGaps:    [][]int{{5}, {5}, {5}, {5}},
 	},
 }
 

@@ -128,7 +128,8 @@ func (h *Handler) DeviceInstallationDetail(c *gin.Context) {
 		"title": "Detail Instalasi", "currentPage": "devices",
 		"username": username, "role": role,
 		"installation": inst,
-		"deviceLabel":    inst.DeviceLabel,
+		"label":         inst.DeviceLabel,
+		"deviceLabel":   inst.DeviceLabel,
 	})
 }
 
