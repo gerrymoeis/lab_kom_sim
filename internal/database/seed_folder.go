@@ -12,15 +12,18 @@ import (
 )
 
 type jsonPCSpec struct {
-	Number     int      `json:"number"`
-	Label      string   `json:"label,omitempty"`
-	Placement  string   `json:"placement,omitempty"`
-	SN         string   `json:"sn,omitempty"`
-	OS         string   `json:"os,omitempty"`
-	RequiredSW []string `json:"requiredSW,omitempty"`
-	OtherSW    []string `json:"otherSW,omitempty"`
-	Status     string   `json:"status,omitempty"`
-	Notes      string   `json:"notes,omitempty"`
+	Number       int      `json:"number"`
+	Label        string   `json:"label,omitempty"`
+	Placement    string   `json:"placement,omitempty"`
+	SN           string   `json:"sn,omitempty"`
+	OS           string   `json:"os,omitempty"`
+	RequiredSW   []string `json:"requiredSW,omitempty"`
+	OtherSW      []string `json:"otherSW,omitempty"`
+	Status       string   `json:"status,omitempty"`
+	Notes        string   `json:"notes,omitempty"`
+	PCBrand      string   `json:"pc_brand,omitempty"`
+	MouseBrand   string   `json:"mouse_brand,omitempty"`
+	KeyboardBrand string  `json:"keyboard_brand,omitempty"`
 }
 
 type jsonRequiredSW struct {
@@ -255,11 +258,14 @@ func seedPCsFromJSON(db *DB, folder string, urlPath string) error {
 		}
 		_, execErr := tx.Exec(`INSERT INTO pcs ("row", "column", status, processor, ram, storage,
 			serial_number, operating_system, pc_type, brand_model, accessories,
-			notes, label, placement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			pc_brand, mouse_brand, keyboard_brand,
+			notes, label, placement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
 			CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 			rowFor(pc.Number), colFor(pc.Number),
 			pcStatus, defProcessor, defRAM, defStorage,
-			pc.SN, pc.OS, pcType, brandModel, defAccessories, pc.Notes, label, placement)
+			pc.SN, pc.OS, pcType, brandModel, defAccessories,
+			pc.PCBrand, pc.MouseBrand, pc.KeyboardBrand,
+			pc.Notes, label, placement)
 		if execErr != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to seed PC-%d: %w", pc.Number, execErr)
