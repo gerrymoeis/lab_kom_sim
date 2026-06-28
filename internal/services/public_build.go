@@ -322,6 +322,8 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 		"statusCounts": statusCounts, "spareCount": spareCount,
 		"pcLecturer": pcLecturer, "pcLaboran": pcLaboran, "pcCCTV": pcCCTV,
 		"specialPCs": specialPCs,
+		"hasGap":     layout.HasGap,
+		"rowGaps":    layout.RowGaps,
 	}))
 
 	// Index (redirect to dashboard)

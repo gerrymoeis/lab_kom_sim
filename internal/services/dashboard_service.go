@@ -1,6 +1,7 @@
 package services
 
 import (
+	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
@@ -19,6 +20,8 @@ type DashboardData struct {
 	PCCCTV        models.PC
 	ColsPerRow    []int
 	GapPos        int
+	HasGap        bool
+	RowGaps       [][]int
 }
 
 type DashboardService struct {
@@ -29,7 +32,7 @@ func NewDashboardService(dashboardRepo *repository.DashboardRepository) *Dashboa
 	return &DashboardService{dashboardRepo: dashboardRepo}
 }
 
-func (s *DashboardService) GetDashboardData(colsPerRow []int, gapPos int) (*DashboardData, error) {
+func (s *DashboardService) GetDashboardData(layout config.GridLayout) (*DashboardData, error) {
 	pcs, err := s.dashboardRepo.ListPCs()
 	if err != nil {
 		return nil, err
@@ -45,7 +48,7 @@ func (s *DashboardService) GetDashboardData(colsPerRow []int, gapPos int) (*Dash
 		}
 	}
 
-	maxRow := len(colsPerRow)
+	maxRow := len(layout.ColsPerRow)
 	for _, pc := range pcs {
 		if pc.Placement == "dipakai" && isNumericLabel(pc.Label) && pc.Row > maxRow {
 			maxRow = pc.Row
@@ -53,10 +56,10 @@ func (s *DashboardService) GetDashboardData(colsPerRow []int, gapPos int) (*Dash
 	}
 
 	colsAtRow := func(rowIndex int) int {
-		if rowIndex < 0 || rowIndex >= len(colsPerRow) {
+		if rowIndex < 0 || rowIndex >= len(layout.ColsPerRow) {
 			return 8
 		}
-		return colsPerRow[rowIndex]
+		return layout.ColsPerRow[rowIndex]
 	}
 
 	grid := make([][]models.PC, maxRow)
@@ -96,7 +99,9 @@ func (s *DashboardService) GetDashboardData(colsPerRow []int, gapPos int) (*Dash
 	data.DeviceCount = deviceCount
 	data.SoftwareCount = softwareCount
 	data.SpecialPCs = specialPCs
-	data.ColsPerRow = colsPerRow
-	data.GapPos = gapPos
+	data.ColsPerRow = layout.ColsPerRow
+	data.GapPos = layout.GapPos
+	data.HasGap = layout.HasGap
+	data.RowGaps = layout.RowGaps
 	return data, nil
 }
