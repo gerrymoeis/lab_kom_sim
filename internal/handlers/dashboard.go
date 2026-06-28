@@ -13,7 +13,7 @@ func (h *Handler) Dashboard(c *gin.Context) {
 	labName := c.GetString("lab")
 	layout := h.cfg.LabLayout(labName)
 
-	data, err := h.dashboardService.GetDashboardData(layout.ColsPerRow, layout.GapPos)
+	data, err := h.dashboardService.GetDashboardData(layout)
 	if err != nil { h.errHTML(c, "Gagal mengambil data dashboard"); return }
 
 	h.renderTemplate(c, http.StatusOK, "dashboard.html", gin.H{
@@ -29,5 +29,7 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		"specialPCs": data.SpecialPCs,
 		"colsPerRow": data.ColsPerRow,
 		"gapPos":     data.GapPos,
+		"hasGap":     data.HasGap,
+		"rowGaps":    data.RowGaps,
 	})
 }
