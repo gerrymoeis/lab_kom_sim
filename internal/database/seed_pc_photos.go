@@ -10,12 +10,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"inventaris-lab-kom/internal/timeutil"
 )
 
-func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
+func seedPCPhotos(db *DB, uploadPath, urlPath, labID string) error {
 	releaseURL := os.Getenv("PC_PHOTO_RELEASE_URL")
 	githubToken := os.Getenv("GITHUB_TOKEN")
 	if releaseURL == "" || githubToken == "" {
@@ -40,7 +41,7 @@ func seedPCPhotos(db *DB, uploadPath, urlPath string) error {
 		return fmt.Errorf("seedPCPhotos: failed to create pc dir: %w", err)
 	}
 
-	entries, err := downloadAndExtractPhotos(releaseURL, githubToken, pcDir)
+	entries, err := downloadAndExtractPhotos(releaseURL, githubToken, pcDir, labID)
 	if err != nil {
 		fmt.Printf("WARN: PC photo seeding skipped: %v\n", err)
 		return nil
@@ -107,7 +108,7 @@ type photoEntry struct {
 	fileName    string
 }
 
-func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEntry, error) {
+func downloadAndExtractPhotos(releaseURL, githubToken, pcDir, labID string) ([]photoEntry, error) {
 	tmpFile, err := downloadReleaseAsset(releaseURL, githubToken)
 	if err != nil {
 		return nil, err
@@ -133,6 +134,13 @@ func downloadAndExtractPhotos(releaseURL, githubToken, pcDir string) ([]photoEnt
 			continue
 		}
 		label := matches[1]
+		if labID != "" {
+			prefix := strings.ToLower(labID) + "-"
+			if !strings.HasPrefix(label, prefix) {
+				continue
+			}
+			label = strings.TrimPrefix(label, prefix)
+		}
 		dbCol := "photo_serial"
 		dbColSuffix := "serial"
 		if matches[2] == "full" || matches[2] == "front" {
