@@ -6,6 +6,8 @@ var PCLayoutManager = (function() {
   var maxRow = 5;
   var columnsPerRow = [];
   var gapPos = 0;
+  var hasGap = false;
+  var rowGaps = [];
   var busy = false;
 
   function init() {
@@ -40,6 +42,8 @@ var PCLayoutManager = (function() {
         maxRow = data.maxRow || 5;
         columnsPerRow = data.columns || [];
         gapPos = data.gapPos || 0;
+        hasGap = data.hasGap || false;
+        rowGaps = data.rowGaps || [];
         render();
         layoutModal.show();
       })
@@ -71,6 +75,10 @@ var PCLayoutManager = (function() {
       html += '<span class="flex-shrink-0 small text-muted" style="width:48px">Baris ' + (r + 1) + '</span>';
       html += '<div class="d-flex gap-2 justify-content-center flex-fill">';
       for (var c = 0; c < numCols; c++) {
+        if (hasGap && rowGaps[r] && rowGaps[r].indexOf(c + 1) !== -1) {
+          html += '<div class="border rounded text-center small layout-cell" style="width:80px;background:repeating-linear-gradient(45deg,#ffe0e0,#ffe0e0 4px,#fff0f0 4px,#fff0f0 8px);border:1px dashed #fa5252;" title="GAP / Walkway">&nbsp;</div>';
+          continue;
+        }
         var pc = (grid[r] && grid[r][c]) ? grid[r][c] : null;
         var selected = selectedSlot && selectedSlot.row === r && selectedSlot.col === c;
         var label = pc && pc.label ? pc.label : '-';

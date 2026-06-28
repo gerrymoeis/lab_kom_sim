@@ -41,25 +41,7 @@
         </a>
     </div>
     <div class="card-body">
-        <div class="d-flex flex-wrap gap-2 min-vh-25 p-3 bg-white border rounded">
-            {{ range $rowIdx, $cols := .colsPerRow }}
-            {{ $rowGaps := index $.rowGaps $rowIdx }}
-            <div class="d-flex gap-1 mb-2 align-items-center w-100">
-                <div class="me-2 text-muted small text-nowrap" style="width:60px;">B{{ add $rowIdx 1 }}:</div>
-                {{ range $col := seq $cols }}
-                {{ $isGap := false }}
-                {{ range $gp := $rowGaps }}
-                {{ if eq $col $gp }}{{ $isGap = true }}{{ end }}
-                {{ end }}
-                {{ if $isGap }}
-                <div class="grid-gap-preview" title="GAP / Walkway"></div>
-                {{ else }}
-                <div class="pc-cell-preview" title="Baris {{ add $rowIdx 1 }}, Kolom {{ $col }}">{{ $col }}</div>
-                {{ end }}
-                {{ end }}
-            </div>
-            {{ end }}
-        </div>
+        {{ template "components/grid_preview.html" dict "readOnly" true "colsPerRow" .colsPerRow "rowGaps" .rowGaps }}
     </div>
 </div>
 
