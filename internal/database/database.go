@@ -80,7 +80,7 @@ func RunMigrations(db *DB, isPostgres bool, labID, urlPath, uploadPath string, u
 	if err := RunSeedFolder(db, labID, urlPath, useDefaultFallback); err != nil {
 		return err
 	}
-	if err := seedPCPhotos(db, uploadPath, urlPath); err != nil {
+	if err := seedPCPhotos(db, uploadPath, urlPath, labID); err != nil {
 		return err
 	}
 	return nil

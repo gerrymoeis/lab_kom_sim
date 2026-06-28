@@ -23,6 +23,7 @@ func main() {
 	source := flag.String("source", "", "Folder berisi file .heic (contoh: pc1_sn.heic, pc1_full.heic)")
 	output := flag.String("output", "photos.zip", "Path output file .zip")
 	maxDim := flag.Int("max-dimension", 1280, "Resize maksimal dimensi (px)")
+	prefix := flag.String("prefix", "", "Prefix untuk nama file di ZIP (contoh: mi-1)")
 	keepTemp := flag.Bool("keep-temp", false, "Jangan hapus folder temp setelah selesai")
 	flag.Parse()
 
@@ -89,8 +90,12 @@ func main() {
 	}
 
 	fmt.Printf("Ditemukan %d file foto:\n", len(photos))
+	pre := ""
+	if *prefix != "" {
+		pre = *prefix + "-"
+	}
 	for _, p := range photos {
-		fmt.Printf("  %s → %s_%s.jpeg\n", p.pcLabel, p.pcLabel, p.photoType)
+		fmt.Printf("  %s → %s%s_%s.jpeg\n", p.pcLabel, pre, p.pcLabel, p.photoType)
 	}
 
 	tmpDir, err := os.MkdirTemp("", "pc-photos-build-*")
@@ -105,7 +110,10 @@ func main() {
 	svc := services.NewImageService()
 
 	for _, p := range photos {
-		outName := fmt.Sprintf("%s_%s.jpeg", p.pcLabel, p.photoType)
+		outName := p.pcLabel + "_" + p.photoType + ".jpeg"
+		if *prefix != "" {
+			outName = *prefix + "-" + outName
+		}
 		outPath := filepath.Join(tmpDir, outName)
 
 		fmt.Printf("\n  Memproses %s → %s ...\n", filepath.Base(p.sourcePath), outName)
