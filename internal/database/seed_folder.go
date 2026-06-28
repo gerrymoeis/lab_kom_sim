@@ -13,6 +13,8 @@ import (
 
 type jsonPCSpec struct {
 	Number     int      `json:"number"`
+	Label      string   `json:"label,omitempty"`
+	Placement  string   `json:"placement,omitempty"`
 	SN         string   `json:"sn,omitempty"`
 	OS         string   `json:"os,omitempty"`
 	RequiredSW []string `json:"requiredSW,omitempty"`
@@ -231,19 +233,25 @@ func seedPCsFromJSON(db *DB, folder string, urlPath string) error {
 			pcStatus = defStatus
 		}
 
-		label := labelFor(pc.Number)
+		label := pc.Label
+		if label == "" {
+			label = labelFor(pc.Number)
+		}
 		if !missing[label] {
 			continue
 		}
 		pcType := defPCType
 		brandModel := defBrandModel
-		if pc.Number >= 41 {
+		if pc.Number >= 41 && pc.Label == "" {
 			pcType = label
 			brandModel = ""
 		}
-		placement := defPlacement
-		if pcStatus == "broken" && pc.SN == "" {
-			placement = "cadangan"
+		placement := pc.Placement
+		if placement == "" {
+			placement = defPlacement
+			if pcStatus == "broken" && pc.SN == "" {
+				placement = "cadangan"
+			}
 		}
 		_, execErr := tx.Exec(`INSERT INTO pcs ("row", "column", status, processor, ram, storage,
 			serial_number, operating_system, pc_type, brand_model, accessories,
