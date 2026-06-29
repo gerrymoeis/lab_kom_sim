@@ -626,16 +626,6 @@ func runMigrations(db *DB, isPostgres bool) error {
 		}
 	}
 
-	if err := normalizeExistingData(db); err != nil {
-		return fmt.Errorf("failed to normalize existing data: %w", err)
-	}
-
-	if !isPostgres {
-		if _, err := db.Exec("ANALYZE"); err != nil {
-			return fmt.Errorf("failed to run ANALYZE: %w", err)
-		}
-	}
-
 	return nil
 }
 
