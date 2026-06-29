@@ -76,9 +76,17 @@ func RunMigrations(db *DB, isPostgres bool, labID, urlPath, uploadPath string, u
 	if err := runMigrations(db, isPostgres); err != nil {
 		return err
 	}
-	// RunSeedFolder first to create PCs, then seedPCPhotos can match photos to existing PCs
+	// RunSeedFolder first to create PCs, then normalize data, then seedPCPhotos can match photos
 	if err := RunSeedFolder(db, labID, urlPath, useDefaultFallback, uploadPath); err != nil {
 		return err
+	}
+	if err := normalizeExistingData(db); err != nil {
+		return fmt.Errorf("failed to normalize existing data: %w", err)
+	}
+	if !isPostgres {
+		if _, err := db.Exec("ANALYZE"); err != nil {
+			return fmt.Errorf("failed to run ANALYZE: %w", err)
+		}
 	}
 	if err := seedPCPhotos(db, uploadPath, urlPath, labID); err != nil {
 		return err
