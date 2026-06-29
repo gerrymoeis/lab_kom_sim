@@ -38,7 +38,11 @@ func (h *GlobalHandler) AdminLabDetail(c *gin.Context) {
 	urlPath := c.Param("urlPath")
 	lab := h.labFromPath(urlPath)
 	if lab == nil {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "Lab Tidak Ditemukan",
+			"message": "Lab '" + urlPath + "' tidak ditemukan.",
+		})
+		c.Abort()
 		return
 	}
 
@@ -75,7 +79,11 @@ func (h *GlobalHandler) AdminLabLayout(c *gin.Context) {
 	urlPath := c.Param("urlPath")
 	lab := h.labFromPath(urlPath)
 	if lab == nil {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "Lab Tidak Ditemukan",
+			"message": "Lab '" + urlPath + "' tidak ditemukan.",
+		})
+		c.Abort()
 		return
 	}
 
@@ -118,7 +126,11 @@ func (h *GlobalHandler) AdminLabLayoutSave(c *gin.Context) {
 	urlPath := c.Param("urlPath")
 	lab := h.labFromPath(urlPath)
 	if lab == nil {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "Lab Tidak Ditemukan",
+			"message": "Lab '" + urlPath + "' tidak ditemukan.",
+		})
+		c.Abort()
 		return
 	}
 
@@ -202,7 +214,11 @@ func (h *GlobalHandler) AdminLabSeeds(c *gin.Context) {
 	urlPath := c.Param("urlPath")
 	lab := h.labFromPath(urlPath)
 	if lab == nil {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "Lab Tidak Ditemukan",
+			"message": "Lab '" + urlPath + "' tidak ditemukan.",
+		})
+		c.Abort()
 		return
 	}
 
@@ -221,13 +237,21 @@ func (h *GlobalHandler) AdminLabReseed(c *gin.Context) {
 
 	lab := h.labFromPath(urlPath)
 	if lab == nil {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "Lab Tidak Ditemukan",
+			"message": "Lab '" + urlPath + "' tidak ditemukan.",
+		})
+		c.Abort()
 		return
 	}
 
 	db, ok := h.labsDB[urlPath]
 	if !ok {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "Lab Tidak Ditemukan",
+			"message": "Database lab '" + urlPath + "' tidak tersedia.",
+		})
+		c.Abort()
 		return
 	}
 
@@ -251,7 +275,11 @@ func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
 	urlPath := c.Param("urlPath")
 	lab := h.labFromPath(urlPath)
 	if lab == nil {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "Lab Tidak Ditemukan",
+			"message": "Lab '" + urlPath + "' tidak ditemukan.",
+		})
+		c.Abort()
 		return
 	}
 
