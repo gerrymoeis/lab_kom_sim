@@ -12,7 +12,7 @@
                             <i class="bi bi-pencil"></i> Edit
                         </a>
                         {{ end }}
-                        {{ $canDelete := and (not .user.IsProtected) (ne $.username .user.Username) (not .user.IsSuperAdmin) }}
+                        {{ $canDelete := and (not .user.IsProtected) (ne $.username .user.Username) (not .user.IsSuperAdmin) (or $.is_protected (not .user.IsGlobalAdmin)) }}
                         {{ if and $canDelete (or $.is_protected (and (not $.targetIsMainAccount) (or $.isSuperAdmin $.is_main_account $.is_global_admin))) }}
                         <button type="button" class="btn btn-sm btn-danger" title="Hapus"{{ if $.targetIsMainAccount }}
                             onclick="confirmDelete({message:'Hapus akun utama {{ .user.Username }}?', requirePrefix:true, prefix:'{{ .user.Username }}', type:'akun utama', formId:'del-user-{{ .user.Username }}'})"{{ else }}
@@ -36,9 +36,17 @@
                         <tr>
                             <th>Role</th>
                             <td>
+                                {{ if $.isGlobalArea }}
+                                {{ if .user.IsSuperAdmin }}<span class="badge bg-dark">Super Admin</span>
+                                {{ else if .user.IsGlobalAdmin }}<span class="badge bg-info">Global Admin</span>
+                                {{ else if $.targetIsMainAccount }}<span class="badge bg-secondary">Akun Utama</span>
+                                {{ else }}<span class="badge bg-danger">Admin</span>
+                                {{ end }}
+                                {{ else }}
                                 <span class="badge bg-{{ if eq .user.Role "admin" }}danger{{ else }}info{{ end }}">
                                     {{ .user.Role }}
                                 </span>
+                                {{ end }}
                             </td>
                         </tr>
                     </table>

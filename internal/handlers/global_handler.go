@@ -55,6 +55,7 @@ func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin
 	_, username, isSuperAdmin, _, _ := middleware.GetCurrentUser(c)
 	data["username"] = username
 	data["is_super_admin"] = isSuperAdmin
+	data["isSuperAdmin"] = isSuperAdmin
 	data["is_protected"] = h.isProtected(c)
 	data["is_global_admin"] = h.isGlobalAdmin(c)
 	data["is_main_account"] = false

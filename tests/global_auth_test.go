@@ -671,15 +671,8 @@ func TestDefaultPasswordHints(t *testing.T) {
 			t.Fatal("admin login failed")
 		}
 
-		// Find lab-kom-mi user ID
-		var mainAcctID int
-		env.GlobalDB.QueryRow("SELECT id FROM global_users WHERE username='lab-kom-mi'").Scan(&mainAcctID)
-		if mainAcctID == 0 {
-			t.Fatal("lab-kom-mi user not found in global DB")
-		}
-
 		// Edit lab-kom-mi user's username to trigger password_is_default clear
-		editURL := fmt.Sprintf("/labs/admin/users/%d/edit", mainAcctID)
+		editURL := "/labs/admin/users/lab-kom-mi/edit"
 		editData := fmt.Sprintf("username=lab-kom-mi-changed&full_name=Akun+Utama+Lab+Kom+MI+Changed&is_super_admin=0")
 		req, _ := http.NewRequest("POST", env.TS.URL+editURL, strings.NewReader(editData))
 		env.LabA.addCookies(req)

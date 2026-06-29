@@ -86,17 +86,17 @@ func AdminRequired() gin.HandlerFunc {
 	}
 }
 
-// SuperAdminRequired checks if user is a global super admin
-// Redirects non-SA users to their appropriate dashboard instead of showing 403.
+// SuperAdminRequired checks if user is a global super admin or global admin biasa
+// Redirects non-SA/non-GAB users to their appropriate dashboard instead of showing 403.
 func SuperAdminRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_, _, isSuperAdmin, _, ok := GetCurrentUser(c)
+		_, _, isSuperAdmin, isGlobalAdmin, ok := GetCurrentUser(c)
 		if !ok {
 			c.Redirect(http.StatusFound, "/login")
 			c.Abort()
 			return
 		}
-		if !isSuperAdmin {
+		if !isSuperAdmin && !isGlobalAdmin {
 			labsRaw := sessions.Default(c).Get("labs")
 			if labsRaw != nil {
 				if labs, ok := labsRaw.([]string); ok && len(labs) > 0 {
@@ -109,7 +109,8 @@ func SuperAdminRequired() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		c.Set("is_super_admin", true)
+		c.Set("is_super_admin", isSuperAdmin)
+		c.Set("is_global_admin", isGlobalAdmin)
 		c.Next()
 	}
 }
