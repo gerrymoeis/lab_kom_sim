@@ -3,7 +3,9 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
+	"html/template"
 
 	"inventaris-lab-kom/internal/middleware"
 	"inventaris-lab-kom/internal/services"
@@ -22,22 +24,51 @@ func (h *GlobalHandler) AdminUserList(c *gin.Context) {
 		return
 	}
 
-	users, err := h.globalAuthService.ListUsers()
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+	pageSize := h.cfg.DefaultPageSize
+	search := c.Query("search")
+	sortBy := c.Query("sort_by")
+	sortOrder := c.Query("sort_order")
+
+	values, _ := url.ParseQuery(c.Request.URL.RawQuery)
+	delete(values, "page")
+	values.Del("success")
+	values.Del("error")
+	values.Del("toast")
+	var query interface{} = ""
+	if len(values) > 0 {
+		query = template.URL("&" + values.Encode())
+	}
+
+	users, total, err := h.globalAuthService.ListUsersPaginated(search, sortBy, sortOrder, page, pageSize)
 	if err != nil {
 		h.render(c, http.StatusInternalServerError, "admin/users.html", gin.H{
 			"title":       "Manage Users",
 			"currentPage": "users",
 			"icon":        "bi-people",
 			"error":       "Gagal memuat data user",
+			"filters":     map[string]string{},
 		})
 		return
 	}
+
+	totalPages := (total + pageSize - 1) / pageSize
+	startRow := (page-1)*pageSize + 1
 
 	h.render(c, http.StatusOK, "admin/users.html", gin.H{
 		"title":       "Manage Users",
 		"currentPage": "users",
 		"icon":        "bi-people",
 		"users":       users,
+		"page":        page,
+		"startRow":    startRow,
+		"totalPages":  totalPages,
+		"totalItems":  total,
+		"query":       query,
+		"filters":     map[string]string{"search": search, "sort_by": sortBy, "sort_order": sortOrder},
 	})
 }
 
@@ -334,6 +365,7 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 			"icon":        "bi-people",
 			"error":       "Tidak dapat menghapus akun Anda sendiri",
 			"users":       users,
+			"filters":     map[string]string{},
 		})
 		return
 	}
@@ -348,6 +380,7 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 			"icon":        "bi-people",
 			"error":       "User ini adalah akun utama lab dan tidak bisa dihapus",
 			"users":       users,
+			"filters":     map[string]string{},
 		})
 		return
 	}
@@ -368,6 +401,7 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 			"icon":        "bi-people",
 			"error":       errMsg,
 			"users":       users,
+			"filters":     map[string]string{},
 		})
 		return
 	}
