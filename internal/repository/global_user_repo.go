@@ -103,6 +103,62 @@ func (r *GlobalUserRepository) List() ([]models.GlobalUser, error) {
 	return getAll[models.GlobalUser](r.db, "global_users", globalUserCols, "1=1 ORDER BY created_at DESC")
 }
 
+func (r *GlobalUserRepository) ListPaginated(searchTerm, sortBy, sortOrder string, page, pageSize int) ([]models.GlobalUser, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+
+	baseFrom := `FROM global_users gu`
+	baseWhere := ` WHERE 1=1`
+	var args []any
+
+	if searchTerm != "" {
+		baseWhere += ` AND (gu.username LIKE ? OR gu.full_name LIKE ?)`
+		s := "%" + searchTerm + "%"
+		args = append(args, s, s)
+	}
+
+	var total int
+	countQ := `SELECT COUNT(*) ` + baseFrom + baseWhere
+	if err := r.db.QueryRow(countQ, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	validSort := map[string]bool{"username": true, "full_name": true, "created_at": true}
+	if !validSort[sortBy] {
+		sortBy = "created_at"
+	}
+	if sortOrder != "ASC" {
+		sortOrder = "DESC"
+	}
+
+	sortCol := "gu." + sortBy
+
+	q := fmt.Sprintf(`SELECT gu.id, gu.username, gu.full_name, gu.is_super_admin, gu.is_global_admin, gu.is_protected, gu.created_at %s%s ORDER BY %s %s LIMIT ? OFFSET ?`, baseFrom, baseWhere, sortCol, sortOrder)
+	queryArgs := append(args, pageSize, offset)
+
+	rows, err := r.db.Query(q, queryArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var users []models.GlobalUser
+	for rows.Next() {
+		var u models.GlobalUser
+		if err := rows.Scan(&u.ID, &u.Username, &u.FullName,
+			&u.IsSuperAdmin, &u.IsGlobalAdmin, &u.IsProtected, &u.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		users = append(users, u)
+	}
+	return users, total, nil
+}
+
 // --- Lab Permissions ---
 
 func (r *GlobalUserRepository) GetPermissions(userID int) ([]models.LabPermission, error) {
