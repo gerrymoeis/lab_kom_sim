@@ -8,11 +8,88 @@ import (
 	"html/template"
 
 	"inventaris-lab-kom/internal/middleware"
+	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
+
+func (h *GlobalHandler) isSelf(c *gin.Context, target *models.GlobalUser) bool {
+	session := sessions.Default(c)
+	currentID, _ := session.Get("user_id").(int)
+	return currentID == target.ID
+}
+
+func (h *GlobalHandler) canViewUser(c *gin.Context, target *models.GlobalUser) bool {
+	if target.IsSuperAdmin || target.IsProtected {
+		_, username, _, _, _ := middleware.GetCurrentUser(c)
+		return username == target.Username
+	}
+	return true
+}
+
+func (h *GlobalHandler) canEditUser(c *gin.Context, target *models.GlobalUser) bool {
+	if h.isProtected(c) {
+		return true
+	}
+	if target.IsProtected {
+		return false
+	}
+	if target.IsSuperAdmin {
+		return false
+	}
+	if target.IsGlobalAdmin {
+		return false
+	}
+	var mainCount int
+	h.globalDB.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND is_main_account = 1`, target.ID).Scan(&mainCount)
+	if mainCount > 0 {
+		return false
+	}
+	if h.isGlobalAdmin(c) {
+		return true
+	}
+	_, _, isSuperAdmin, _, _ := middleware.GetCurrentUser(c)
+	return isSuperAdmin
+}
+
+func (h *GlobalHandler) canDeleteUser(c *gin.Context, target *models.GlobalUser) bool {
+	return h.canEditUser(c, target) && !h.isSelf(c, target)
+}
+
+func (h *GlobalHandler) AdminUserDetail(c *gin.Context) {
+	targetUsername := c.Param("username")
+
+	user, err := h.globalAuthService.GetUserByUsername(targetUsername)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/labs/admin/users")
+		return
+	}
+
+	if !h.canViewUser(c, user) {
+		users, _ := h.globalAuthService.ListUsers()
+		h.render(c, http.StatusForbidden, "admin/users.html", gin.H{
+			"title":       "Manage Users",
+			"currentPage": "users",
+			"icon":        "bi-people",
+			"error":       "Tidak dapat mengakses profil user ini",
+			"users":       users,
+			"filters":     map[string]string{},
+		})
+		return
+	}
+
+	var mainCount int
+	h.globalDB.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND is_main_account = 1`, user.ID).Scan(&mainCount)
+
+	h.render(c, http.StatusOK, "user/detail.html", gin.H{
+		"title":               "Detail User - " + user.Username,
+		"currentPage":         "users",
+		"user":                user,
+		"targetIsMainAccount": mainCount > 0,
+	})
+}
 
 func (h *GlobalHandler) AdminUserList(c *gin.Context) {
 	_, _, _, _, ok := middleware.GetCurrentUser(c)
@@ -188,13 +265,9 @@ func (h *GlobalHandler) AdminUserCreate(c *gin.Context) {
 }
 
 func (h *GlobalHandler) AdminUserEditPage(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.AbortWithStatus(404)
-		return
-	}
+	targetUsername := c.Param("username")
 
-	user, err := h.globalAuthService.GetUser(id)
+	user, err := h.globalAuthService.GetUserByUsername(targetUsername)
 	if err != nil {
 		c.AbortWithStatus(404)
 		return
@@ -217,17 +290,14 @@ func (h *GlobalHandler) AdminUserEditPage(c *gin.Context) {
 }
 
 func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.AbortWithStatus(404)
-		return
-	}
+	targetUsername := c.Param("username")
 
-	targetUser, err := h.globalAuthService.GetUser(id)
+	targetUser, err := h.globalAuthService.GetUserByUsername(targetUsername)
 	if err != nil {
 		c.AbortWithStatus(404)
 		return
 	}
+	id := targetUser.ID
 
 	if targetUser.IsSuperAdmin && !h.isProtected(c) {
 		h.render(c, http.StatusForbidden, "admin/user_form.html", gin.H{
@@ -349,11 +419,14 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 }
 
 func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	targetUsername := c.Param("username")
+
+	targetUser, err := h.globalAuthService.GetUserByUsername(targetUsername)
 	if err != nil {
 		c.AbortWithStatus(404)
 		return
 	}
+	id := targetUser.ID
 
 	session := sessions.Default(c)
 	currentUserID, _ := session.Get("user_id").(int)
@@ -409,115 +482,4 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/labs/admin/users")
 }
 
-func (h *GlobalHandler) AdminUserPermissionsSave(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.AbortWithStatus(404)
-		return
-	}
 
-	user, err := h.globalAuthService.GetUser(id)
-	if err != nil {
-		c.AbortWithStatus(404)
-		return
-	}
-
-	if user.IsSuperAdmin {
-		c.Redirect(http.StatusFound, "/labs/admin/users")
-		return
-	}
-
-	labs := c.PostFormArray("labs")
-	roles := c.PostFormArray("roles")
-	mainAccounts := c.PostFormArray("is_main_account")
-	mainSet := make(map[string]bool, len(mainAccounts))
-	for _, lab := range mainAccounts {
-		mainSet[lab] = true
-	}
-	perms := make([]struct {
-		LabURLPath string
-		Role       string
-	}, 0, len(labs))
-	for i, lab := range labs {
-		role := "admin"
-		if i < len(roles) && roles[i] != "" {
-			role = roles[i]
-		}
-		perms = append(perms, struct {
-			LabURLPath string
-			Role       string
-		}{lab, role})
-	}
-	if err := h.globalAuthService.SetUserPermissions(id, perms); err != nil {
-		h.render(c, http.StatusInternalServerError, "admin/user_permissions.html", gin.H{
-			"title":       "Permissions - " + user.Username,
-			"currentPage": "users",
-			"icon":        "bi-shield",
-			"user":        user,
-			"labs":        h.cfg.Labs,
-			"error":       "Gagal menyimpan permissions",
-		})
-		return
-	}
-
-	if _, err := h.globalDB.Exec(`UPDATE lab_permissions SET is_main_account = 0 WHERE user_id = ?`, id); err != nil {
-		h.render(c, http.StatusInternalServerError, "admin/user_permissions.html", gin.H{
-			"title":       "Permissions - " + user.Username,
-			"currentPage": "users",
-			"icon":        "bi-shield",
-			"user":        user,
-			"labs":        h.cfg.Labs,
-			"error":       "Gagal menyimpan akun utama",
-		})
-		return
-	}
-	for lab := range mainSet {
-		if _, err := h.globalDB.Exec(`UPDATE lab_permissions SET is_main_account = 1 WHERE user_id = ? AND lab_url_path = ?`, id, lab); err != nil {
-			h.render(c, http.StatusInternalServerError, "admin/user_permissions.html", gin.H{
-				"title":       "Permissions - " + user.Username,
-				"currentPage": "users",
-				"icon":        "bi-shield",
-				"user":        user,
-				"labs":        h.cfg.Labs,
-				"error":       "Gagal menyimpan akun utama",
-			})
-			return
-		}
-	}
-
-	c.Redirect(http.StatusFound, "/labs/admin/users")
-}
-
-func (h *GlobalHandler) AdminUserPermissions(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.AbortWithStatus(404)
-		return
-	}
-
-	user, err := h.globalAuthService.GetUser(id)
-	if err != nil {
-		c.AbortWithStatus(404)
-		return
-	}
-
-	perms, _ := h.globalAuthService.GetPermissions(user.ID)
-	permMap := make(map[string]string)
-	mainMap := make(map[string]bool)
-	for _, p := range perms {
-		permMap[p.LabURLPath] = p.Role
-		if p.IsMainAccount {
-			mainMap[p.LabURLPath] = true
-		}
-	}
-
-	h.render(c, http.StatusOK, "admin/user_permissions.html", gin.H{
-		"title":         "Permissions - " + user.Username,
-		"currentPage":   "users",
-		"icon":          "bi-shield",
-		"user":          user,
-		"labs":          h.cfg.Labs,
-		"permissions":   permMap,
-		"isMainAccount": mainMap,
-	})
-}
