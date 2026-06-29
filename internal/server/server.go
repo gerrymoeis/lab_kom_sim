@@ -77,7 +77,13 @@ func getPCPlacementInfo(placement string) PlacementInfo {
 	return pcPlacementMap["dipakai"]
 }
 
-func loadNavItems(currentPage, role string) []NavItem {
+func loadNavItems(role string, isGlobalAdmin bool) []NavItem {
+	if isGlobalAdmin {
+		return []NavItem{
+			{"labs", "bi-building", "Labs", ""},
+			{"users", "bi-people", "Users", "/admin/users"},
+		}
+	}
 	items := []NavItem{
 		{"dashboard", "bi-grid-3x3-gap", "Dashboard", "/dashboard"},
 		{"pc", "bi-pc-display", "PC", "/pc"},
@@ -125,7 +131,7 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 			return r
 		},
 		"lower":           func(s string) string { return strings.ToLower(s) },
-		"navItems":        func(currentPage, role string) []NavItem { return loadNavItems(currentPage, role) },
+		"navItems":        func(currentPage, role string) []NavItem { return loadNavItems(role, false) },
 		"allCategories":   func() []Category { return loadCategories() },
 		"pcStatusInfo":    func(status string) PCStatusInfo { return getPCStatusInfo(status) },
 		"pcPlacementInfo": func(placement string) PlacementInfo { return getPCPlacementInfo(placement) },

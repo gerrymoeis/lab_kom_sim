@@ -186,13 +186,43 @@ func (h *Handler) errJSON(c *gin.Context, status int, msg string) {
 	c.JSON(status, gin.H{"error": msg})
 }
 
+type navItem struct {
+	Page, Icon, Label, URL string
+}
+
+func loadNavItems(role string, isGlobalAdmin bool) []navItem {
+	if isGlobalAdmin {
+		return []navItem{
+			{"labs", "bi-building", "Labs", ""},
+			{"users", "bi-people", "Users", "/admin/users"},
+		}
+	}
+	items := []navItem{
+		{"dashboard", "bi-grid-3x3-gap", "Dashboard", "/dashboard"},
+		{"pc", "bi-pc-display", "PC", "/pc"},
+		{"devices", "bi-hdd-rack", "Perangkat", "/devices"},
+		{"software", "bi-app-indicator", "Software", "/software"},
+		{"schedules", "bi-calendar-event", "Jadwal", "/schedules"},
+		{"logbook", "bi-journal-text", "Logbook", "/logbook"},
+		{"print", "bi-printer", "Print Stiker", "/print"},
+	}
+	if role == "admin" {
+		items = append(items,
+			navItem{"users", "bi-people", "Users", "/admin/users"},
+			navItem{"activity_logs", "bi-clock-history", "Activity Logs", "/admin/activity-logs"},
+		)
+	}
+	return items
+}
+
 func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data gin.H) {
 	if token := sessions.Default(c).Get("csrf_token"); token != nil {
 		data["csrf_token"] = token.(string)
 	}
 	lab := c.GetString("lab")
 	data["lab"] = lab
-	data["basePath"] = h.labURL(c, "")
+	basePath := h.labURL(c, "")
+	data["basePath"] = basePath
 	data["is_super_admin"] = c.GetBool("is_super_admin")
 	data["is_protected"] = h.isProtected(c)
 	data["is_main_account"] = h.isMainAccount(c)
@@ -200,12 +230,22 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	_, username, role, _ := h.user(c)
 	data["username"] = username
 	data["role"] = role
+	var labTitle string
 	for _, l := range h.cfg.Labs {
 		if l.URLPath == lab {
-			data["labTitle"] = l.Title
+			labTitle = l.Title
 			break
 		}
 	}
+	if labTitle == "" {
+		labTitle = "Inventaris Lab Kom"
+	}
+	data["labTitle"] = labTitle
+	data["navItems"] = loadNavItems(role, false)
+	data["navBrand"] = labTitle
+	data["navBrandURL"] = basePath + "/dashboard"
+	data["profileURL"] = basePath + "/profile"
+	data["logoutURL"] = basePath + "/logout"
 	c.HTML(status, tmpl, data)
 }
 

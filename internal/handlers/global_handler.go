@@ -58,6 +58,12 @@ func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin
 	data["is_protected"] = h.isProtected(c)
 	data["is_global_admin"] = h.isGlobalAdmin(c)
 	data["is_main_account"] = false
+	data["navItems"] = loadNavItems("", true)
+	data["navBrand"] = "Admin Panel"
+	data["navBrandURL"] = "/labs"
+	data["profileURL"] = "/labs/profile"
+	data["logoutURL"] = "/logout"
+	data["isGlobalArea"] = true
 	c.HTML(status, tmpl, data)
 }
 
