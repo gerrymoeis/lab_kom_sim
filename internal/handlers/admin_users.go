@@ -63,7 +63,7 @@ func (h *GlobalHandler) AdminUserDetail(c *gin.Context) {
 
 	user, err := h.globalAuthService.GetUserByUsername(targetUsername)
 	if err != nil {
-		c.Redirect(http.StatusFound, "/labs/admin/users")
+		c.Redirect(http.StatusFound, "/labs/admin/users?error="+url.QueryEscape("User tidak ditemukan"))
 		return
 	}
 
@@ -288,7 +288,10 @@ func (h *GlobalHandler) AdminUserEditPage(c *gin.Context) {
 
 	user, err := h.globalAuthService.GetUserByUsername(targetUsername)
 	if err != nil {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "User Tidak Ditemukan",
+			"message": "User dengan username " + targetUsername + " tidak ditemukan",
+		})
 		return
 	}
 
@@ -312,7 +315,10 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 
 	targetUser, err := h.globalAuthService.GetUserByUsername(targetUsername)
 	if err != nil {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "User Tidak Ditemukan",
+			"message": "User dengan username " + targetUsername + " tidak ditemukan",
+		})
 		return
 	}
 	id := targetUser.ID
@@ -449,7 +455,10 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 
 	targetUser, err := h.globalAuthService.GetUserByUsername(targetUsername)
 	if err != nil {
-		c.AbortWithStatus(404)
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "User Tidak Ditemukan",
+			"message": "User dengan username " + targetUsername + " tidak ditemukan",
+		})
 		return
 	}
 	id := targetUser.ID
