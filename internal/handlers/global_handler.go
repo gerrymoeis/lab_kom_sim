@@ -65,6 +65,19 @@ func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin
 	data["profileURL"] = "/labs/profile"
 	data["logoutURL"] = "/logout"
 	data["isGlobalArea"] = true
+
+	// Inject flash messages from session (FlashReader middleware)
+	if msg, exists := c.Get("_flash_error"); exists {
+		if _, ok := data["error"]; !ok {
+			data["error"] = msg.(string)
+		}
+	}
+	if msg, exists := c.Get("_flash_success"); exists {
+		if _, ok := data["success"]; !ok {
+			data["success"] = msg.(string)
+		}
+	}
+
 	c.HTML(status, tmpl, data)
 }
 
