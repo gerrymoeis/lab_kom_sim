@@ -1,11 +1,9 @@
 package tests
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -282,7 +280,7 @@ func TestAdminUserCreate(t *testing.T) {
 		if !strings.Contains(html, `name="full_name"`) {
 			t.Error("create page should have full_name input")
 		}
-		if !strings.Contains(html, `name="new_password"`) {
+		if !strings.Contains(html, `name="password"`) {
 			t.Error("create page should have password input")
 		}
 		if !strings.Contains(html, `name="_csrf"`) {
@@ -334,15 +332,15 @@ func TestAdminUserEdit(t *testing.T) {
 	loginAsAdmin(env)
 
 	t.Run("get_edit_page", func(t *testing.T) {
-		resp := adminGet(env, "/labs/admin/users/1/edit")
+		resp := adminGet(env, "/labs/admin/users/admin/edit")
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			t.Errorf("expected 200, got %d", resp.StatusCode)
 		}
 		body, _ := io.ReadAll(resp.Body)
 		html := string(body)
-		if !strings.Contains(html, `/admin/users/1/edit`) {
-			t.Error("edit page form action should point to /admin/users/1/edit")
+		if !strings.Contains(html, `/admin/users/admin/edit`) {
+			t.Error("edit page form action should point to /admin/users/admin/edit")
 		}
 		if !strings.Contains(html, `value="admin"`) {
 			t.Error("edit page should pre-populate username")
@@ -353,7 +351,7 @@ func TestAdminUserEdit(t *testing.T) {
 	})
 
 	t.Run("edit_user_success", func(t *testing.T) {
-		resp := adminPost(env, "/labs/admin/users/1/edit", "username=admin_updated&full_name=Admin+Updated&is_super_admin=1")
+		resp := adminPost(env, "/labs/admin/users/admin/edit", "username=admin_updated&full_name=Admin+Updated&is_super_admin=1")
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 after edit, got %d", resp.StatusCode)
@@ -366,15 +364,16 @@ func TestAdminUserEdit(t *testing.T) {
 	})
 
 	t.Run("edit_nonexistent_user", func(t *testing.T) {
-		resp := adminPost(env, "/labs/admin/users/999/edit", "username=nonexistent&full_name=Nobody&is_super_admin=0")
+		resp := adminPost(env, "/labs/admin/users/nonexistent/edit", "username=nonexistent&full_name=Nobody&is_super_admin=0")
 		defer resp.Body.Close()
-		if resp.StatusCode != 400 && resp.StatusCode != 404 {
-			t.Errorf("expected 400 or 404, got %d", resp.StatusCode)
+		if resp.StatusCode != 404 {
+			t.Errorf("expected 404, got %d", resp.StatusCode)
 		}
 	})
 
 	t.Run("edit_user_change_password", func(t *testing.T) {
-		resp := adminPost(env, "/labs/admin/users/1/edit", "username=admin&full_name=Admin&is_super_admin=1&new_password=newpass456")
+		// After previous rename, user is now "admin_updated"
+		resp := adminPost(env, "/labs/admin/users/admin_updated/edit", "username=admin&full_name=Admin&is_super_admin=1&new_password=newpass456")
 		defer resp.Body.Close()
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 after password change, got %d", resp.StatusCode)
@@ -414,20 +413,14 @@ func TestAdminUserDelete(t *testing.T) {
 		if !env.LabA.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
-		// Get the deletable user's ID
-		var userID int
-		env.GlobalDB.QueryRow("SELECT id FROM global_users WHERE username='deletable'").Scan(&userID)
-		if userID == 0 {
-			t.Fatal("deletable user not found")
-		}
-		resp := adminPost(env, "/labs/admin/users/"+strconv.Itoa(userID)+"/delete", "")
+		resp := adminPost(env, "/labs/admin/users/deletable/delete", "")
 		defer resp.Body.Close()
 		// After delete, handler redirects to /admin/users
 		if resp.StatusCode != 302 && resp.StatusCode != 200 {
 			t.Errorf("expected 302 or 200, got %d", resp.StatusCode)
 		}
 		var count int
-		env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE id=?", userID).Scan(&count)
+		env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username='deletable'").Scan(&count)
 		if count != 0 {
 			t.Errorf("expected user to be deleted, count=%d", count)
 		}
@@ -441,19 +434,14 @@ func TestAdminUserDelete(t *testing.T) {
 		// Create a non-SA user marked as protected
 		hash, _ := bcrypt.GenerateFromPassword([]byte("test123"), bcrypt.DefaultCost)
 		env.GlobalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin, is_protected) VALUES (?, ?, ?, 0, 1)", "protected_user", string(hash), "Protected User")
-		var protID int
-		env.GlobalDB.QueryRow("SELECT id FROM global_users WHERE username='protected_user'").Scan(&protID)
-		if protID == 0 {
-			t.Fatal("could not get protected user id")
-		}
-		resp := adminPost(env, fmt.Sprintf("/labs/admin/users/%d/delete", protID), "")
+		resp := adminPost(env, "/labs/admin/users/protected_user/delete", "")
 		defer resp.Body.Close()
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403 for protected user, got %d", resp.StatusCode)
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 for protected user delete, got %d", resp.StatusCode)
 		}
-		body, _ := io.ReadAll(resp.Body)
-		if !strings.Contains(string(body), "tidak bisa dihapus") {
-			t.Error("body should contain protected user error message")
+		loc := resp.Header.Get("Location")
+		if !strings.Contains(loc, "tidak+bisa+dihapus") {
+			t.Errorf("redirect should contain error message, got %q", loc)
 		}
 	})
 }
@@ -463,65 +451,7 @@ func TestAdminUserDelete(t *testing.T) {
 // ============================================
 
 func TestAdminUserPermissions(t *testing.T) {
-	env := setupTestEnvironment(t)
-	loginAsAdmin(env)
-
-	t.Run("get_permissions_page", func(t *testing.T) {
-		resp := adminGet(env, "/labs/admin/users/3/permissions")
-		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			t.Errorf("expected 200, got %d", resp.StatusCode)
-		}
-		body, _ := io.ReadAll(resp.Body)
-		html := string(body)
-		if !strings.Contains(html, `name="labs"`) {
-			t.Error("permissions page should have lab checkboxes")
-		}
-		if !strings.Contains(html, `name="roles"`) {
-			t.Error("permissions page should have role selects")
-		}
-		if !strings.Contains(html, "lab-kom-mi") && !strings.Contains(html, "Lab Kom MI") {
-			t.Error("permissions page should show lab names")
-		}
-	})
-
-	t.Run("save_permissions_success", func(t *testing.T) {
-		resp := adminPost(env, "/labs/admin/users/3/permissions", "labs=lab-kom-mi&roles=admin")
-		defer resp.Body.Close()
-		if resp.StatusCode != 302 {
-			t.Errorf("expected 302 after permissions save, got %d", resp.StatusCode)
-		}
-		loc := resp.Header.Get("Location")
-		if loc != "/labs/admin/users" {
-			t.Errorf("expected redirect to /labs/admin/users, got %q", loc)
-		}
-		// Verify permission saved
-		var role string
-		env.GlobalDB.QueryRow("SELECT role FROM lab_permissions WHERE user_id=3 AND lab_url_path='lab-kom-mi'").Scan(&role)
-		if role != "admin" {
-			t.Errorf("expected role 'admin', got %q", role)
-		}
-	})
-
-	t.Run("permissions_redirects_for_super_admin", func(t *testing.T) {
-		// Super admin (id=1) permissions page should redirect
-		resp := adminGet(env, "/labs/admin/users/1/permissions")
-		defer resp.Body.Close()
-		// Super admin has no permission editing — check if it redirects or shows 200
-		// Based on code: AdminUserPermissions doesn't check isSuperAdmin, it just shows the page
-		// but POST to AdminUserPermissionsSave redirects if isSuperAdmin
-		if resp.StatusCode != 200 {
-			t.Errorf("expected 200, got %d", resp.StatusCode)
-		}
-	})
-
-	t.Run("permissions_nonexistent_user", func(t *testing.T) {
-		resp := adminGet(env, "/labs/admin/users/999/permissions")
-		defer resp.Body.Close()
-		if resp.StatusCode != 404 {
-			t.Errorf("expected 404, got %d", resp.StatusCode)
-		}
-	})
+	t.Skip("Permissions routes removed in Fase 3 — functionality merged into user edit form")
 }
 
 // ============================================
@@ -922,7 +852,7 @@ func TestAuthZScenarios(t *testing.T) {
 	t.Run("02_edit_SA_as_non_protected_SA_returns_403", func(t *testing.T) {
 		gdb.Exec("UPDATE global_users SET session_token = ''")
 		loginAs(env, "rekan", "rekan123")
-		resp := adminPost(env, "/labs/admin/users/1/edit", "username=admin&full_name=Hacked&is_super_admin=1")
+		resp := adminPost(env, "/labs/admin/users/admin/edit", "username=admin&full_name=Hacked&is_super_admin=1")
 		defer resp.Body.Close()
 		if resp.StatusCode != 403 {
 			t.Errorf("expected 403 for non-protected SA editing SA, got %d", resp.StatusCode)
@@ -932,14 +862,14 @@ func TestAuthZScenarios(t *testing.T) {
 	t.Run("03_delete_SA_from_global_panel_returns_error", func(t *testing.T) {
 		gdb.Exec("UPDATE global_users SET session_token = ''")
 		loginAs(env, "rekan", "rekan123")
-		resp := adminPost(env, "/labs/admin/users/1/delete", "")
+		resp := adminPost(env, "/labs/admin/users/admin/delete", "")
 		defer resp.Body.Close()
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403 for non-protected SA deleting SA, got %d", resp.StatusCode)
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
 		}
-		body, _ := io.ReadAll(resp.Body)
-		if !strings.Contains(string(body), "tidak bisa dihapus") && !strings.Contains(string(body), "protected") {
-			t.Error("body should contain protected/super admin error message")
+		loc := resp.Header.Get("Location")
+		if !strings.Contains(loc, "tidak+bisa+dihapus") && !strings.Contains(loc, "super+admin") {
+			t.Errorf("redirect should contain error message, got %q", loc)
 		}
 	})
 
@@ -1066,19 +996,14 @@ func TestAuthZScenarios(t *testing.T) {
 	t.Run("10_self_delete_from_global_panel_redirects", func(t *testing.T) {
 		gdb.Exec("UPDATE global_users SET session_token = ''")
 		loginAs(env, "rekan", "rekan123")
-		var rekanID int
-		gdb.QueryRow("SELECT id FROM global_users WHERE username='rekan'").Scan(&rekanID)
-		if rekanID == 0 {
-			t.Fatal("rekan not found")
-		}
-		resp := adminPost(env, fmt.Sprintf("/labs/admin/users/%d/delete", rekanID), "")
+		resp := adminPost(env, "/labs/admin/users/rekan/delete", "")
 		defer resp.Body.Close()
-		if resp.StatusCode != 403 {
-			t.Errorf("expected 403 for self-delete, got %d", resp.StatusCode)
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
 		}
-		body, _ := io.ReadAll(resp.Body)
-		if !strings.Contains(string(body), "akun Anda sendiri") {
-			t.Error("body should contain self-delete error message")
+		loc := resp.Header.Get("Location")
+		if !strings.Contains(loc, "akun+Anda+sendiri") {
+			t.Errorf("redirect should contain self-delete error, got %q", loc)
 		}
 	})
 }

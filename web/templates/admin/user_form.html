@@ -4,7 +4,7 @@
     <div class="card-body">
         <form method="POST"
             {{ if .user }}
-                action="/labs/admin/users/{{ .user.ID }}/edit"
+                action="/labs/admin/users/{{ .user.Username }}/edit"
             {{ else }}
                 action="/labs/admin/users/create"
             {{ end }}>
