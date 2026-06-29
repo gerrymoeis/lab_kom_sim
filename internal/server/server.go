@@ -322,9 +322,8 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 		labsAdminGroup.GET("/:urlPath/layout", globalHandler.AdminLabLayout)
 		labsAdminGroup.POST("/:urlPath/layout", globalHandler.AdminLabLayoutSave)
-		// DISABLED TEMPORARILY — seed management feature for future Fase 5
-		// labsAdminGroup.GET("/:urlPath/seeds", globalHandler.AdminLabSeeds)
-		// labsAdminGroup.POST("/:urlPath/seeds/:type", globalHandler.AdminLabReseed)
+		labsAdminGroup.GET("/:urlPath/seeds", globalHandler.AdminLabSeeds)
+		labsAdminGroup.POST("/:urlPath/seeds/:type", globalHandler.AdminLabReseed)
 		labsAdminGroup.POST("/:urlPath/delete", globalHandler.AdminLabDelete)
 	}
 
