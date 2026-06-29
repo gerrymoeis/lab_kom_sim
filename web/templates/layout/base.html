@@ -11,9 +11,10 @@
     <meta name="csrf-token" content="{{ .csrf_token }}">
     <script>window.BASE_PATH = {{ .basePath | json }};</script>
 </head>
-<body>
+<body{{ if .isGlobalArea }} class="bg-light"{{ end }}>
     {{ template "layout/navbar.html" . }}
-    <div class="container-fluid my-4">
+    <div class="container-fluid{{ if .isGlobalArea }} py-4{{ else }} my-4{{ end }}"
+         {{ if .isGlobalArea }}style="padding-top:70px;"{{ end }}>
 
 {{ define "layout/footer.html" }}
     </div>
