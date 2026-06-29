@@ -19,6 +19,8 @@ func redirectOnNoLab(c *gin.Context) {
 		c.Abort()
 		return
 	}
+	session.AddFlash("Lab tidak ditemukan", "error")
+	session.Save()
 	isSuperAdmin, _ := session.Get("is_super_admin").(bool)
 	isGlobalAdmin, _ := session.Get("is_global_admin").(bool)
 	if isSuperAdmin || isGlobalAdmin {
@@ -112,8 +114,10 @@ func LabPermissionRequired() gin.HandlerFunc {
 			return
 		}
 
+		session := sessions.Default(c)
+
 		// Check session cache first
-		labsVal := sessions.Default(c).Get("labs")
+		labsVal := session.Get("labs")
 		if labsVal != nil {
 			if labs, ok := labsVal.([]string); ok {
 				for _, l := range labs {
@@ -133,6 +137,8 @@ func LabPermissionRequired() gin.HandlerFunc {
 			userID, lab).Scan(&exists)
 		if exists == 0 {
 			// Redirect to first allowed lab instead of 403
+			session.AddFlash("Anda tidak memiliki akses ke halaman ini", "error")
+			session.Save()
 			if labsVal != nil {
 				if labs, ok := labsVal.([]string); ok && len(labs) > 0 {
 					c.Redirect(http.StatusFound, "/"+labs[0]+"/dashboard")
