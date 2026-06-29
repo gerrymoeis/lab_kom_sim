@@ -41,7 +41,7 @@
   {"number":38,"sn":"0A23170003635500280","status":"broken","notes":"PC Black Screen, tidak bisa load ke Windows, dan saat dimatikan lewat tombol di kanan monitor, PC malah loop nyala lagi"},
   {"number":39,"sn":"0A23470005309041415","os":"Windows 10 Pro 22H2","requiredSW":["Visual Studio Code","Android Studio","Blender","Cisco Packet Tracer","Composer","PHP + Xampp","Figma","Git","Node.js","Python","Unity","Wireshark"],"otherSW":["7zip","Counter strike condition 0","Discord","Docker Desktop","Google Chrome","Internet Download Manager (IDM)","Riot Client","Roblox","SPSS","Stremio","Valorant","Windsurf","Winrar"],"status":"broken","notes":"Layar retak dalam, retaknya hampir setengah layar"},
   {"number":40,"sn":"0A23190003722018185","status":"broken","notes":"PC Black Screen, tidak bisa load ke Windows, kalau yg ini tidak looping nyala lagi saat ditekan tombol power di kanan monitornya. Juga bagian laci keyboard susah dibuka (sepertinya agak stuck)"},
-  {"number":41,"notes":"-"},
-  {"number":42,"notes":"-"},
-  {"number":43,"notes":"-"}
+  {"number":41,"sn":"0A23470005309071814","os":"Windows 11 Pro 25H2","requiredSW":["Visual Studio Code","PHP + Xampp"],"otherSW":["Google Chrome","OBS Studio"],"notes":"SN Monitor: 0A234700053009021716"},
+  {"number":42,"status":"normal","notes":"-"},
+  {"number":43,"status":"normal","notes":"-"}
 ]
