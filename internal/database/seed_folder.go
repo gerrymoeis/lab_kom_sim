@@ -43,7 +43,12 @@ type jsonSchedule struct {
 	Lecturer   string `json:"lecturer"`
 }
 
-func RunSeedFolder(db *DB, labID string, urlPath string, useDefaultFallback bool) error {
+func RunSeedFolder(db *DB, labID string, urlPath string, useDefaultFallback bool, uploadPath string) error {
+	markerPath := filepath.Join(uploadPath, urlPath, ".seed_done")
+	if _, err := os.Stat(markerPath); err == nil {
+		return nil
+	}
+
 	folder := resolveSeedFolder(labID, useDefaultFallback)
 	if folder == "" {
 		return nil
@@ -56,6 +61,13 @@ func RunSeedFolder(db *DB, labID string, urlPath string, useDefaultFallback bool
 	}
 	if err := seedSchedulesFromJSON(db, folder); err != nil {
 		return fmt.Errorf("seed schedules for %s: %w", labID, err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(markerPath), 0755); err != nil {
+		return fmt.Errorf("failed to create seed marker dir: %w", err)
+	}
+	if err := os.WriteFile(markerPath, []byte("done"), 0644); err != nil {
+		return fmt.Errorf("failed to write seed marker: %w", err)
 	}
 	return nil
 }

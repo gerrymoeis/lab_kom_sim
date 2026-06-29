@@ -77,7 +77,7 @@ func RunMigrations(db *DB, isPostgres bool, labID, urlPath, uploadPath string, u
 		return err
 	}
 	// RunSeedFolder first to create PCs, then seedPCPhotos can match photos to existing PCs
-	if err := RunSeedFolder(db, labID, urlPath, useDefaultFallback); err != nil {
+	if err := RunSeedFolder(db, labID, urlPath, useDefaultFallback, uploadPath); err != nil {
 		return err
 	}
 	if err := seedPCPhotos(db, uploadPath, urlPath, labID); err != nil {

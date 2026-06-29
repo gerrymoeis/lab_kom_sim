@@ -197,10 +197,9 @@ func TestAdminLabLayout(t *testing.T) {
 }
 
 // ============================================
-// 3. AdminLabSeeds — DISABLED TEMPORARILY (seeds management for future Fase 5)
+// 3. AdminLabSeeds — seed management (admin reseed PC/Software/Schedule)
 // ============================================
 
-/*
 func TestAdminLabSeeds(t *testing.T) {
 	env := setupTestEnvironment(t)
 	loginAsAdmin(env)
@@ -253,7 +252,6 @@ func TestAdminLabSeeds(t *testing.T) {
 		}
 	})
 }
-*/
 
 // ============================================
 // 4. AdminUserCreate — GET + POST + validation
