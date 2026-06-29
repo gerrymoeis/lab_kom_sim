@@ -950,6 +950,11 @@ func setupTestEnvironment(t *testing.T) *TestEnvironment {
 	os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
 	os.RemoveAll(filepath.Join(projectRoot, "uploads", "logbook"))
 
+	// Cleanup seed markers from previous test runs
+	for _, labURL := range []string{"lab-kom-mi", "vokasi"} {
+		os.RemoveAll(filepath.Join(projectRoot, "uploads", labURL))
+	}
+
 	labAURL := "lab-kom-mi"
 	labAID := "MI-1"
 	labBURL := "vokasi"
