@@ -95,6 +95,10 @@ func (s *GlobalAuthService) ListUsers() ([]models.GlobalUser, error) {
 	return s.userRepo.List()
 }
 
+func (s *GlobalAuthService) ListUsersPaginated(search, sortBy, sortOrder string, page, pageSize int) ([]models.GlobalUser, int, error) {
+	return s.userRepo.ListPaginated(search, sortBy, sortOrder, page, pageSize)
+}
+
 func (s *GlobalAuthService) GetUser(id int) (*models.GlobalUser, error) {
 	return s.userRepo.GetByID(id)
 }
