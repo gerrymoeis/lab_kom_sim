@@ -246,6 +246,19 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	data["navBrandURL"] = basePath + "/dashboard"
 	data["profileURL"] = basePath + "/profile"
 	data["logoutURL"] = basePath + "/logout"
+
+	// Inject flash messages from session (FlashReader middleware)
+	if msg, exists := c.Get("_flash_error"); exists {
+		if _, ok := data["error"]; !ok {
+			data["error"] = msg.(string)
+		}
+	}
+	if msg, exists := c.Get("_flash_success"); exists {
+		if _, ok := data["success"]; !ok {
+			data["success"] = msg.(string)
+		}
+	}
+
 	c.HTML(status, tmpl, data)
 }
 

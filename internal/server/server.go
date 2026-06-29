@@ -267,6 +267,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 	// --- Root-level middleware (applies to ALL routes) ---
 	router.Use(middleware.GlobalDBInjector(globalDB))
 	router.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
+	router.Use(middleware.FlashReader())
 
 	router.GET("/healthz", func(c *gin.Context) {
 		c.String(200, "ok")
@@ -345,6 +346,8 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 			c.Redirect(http.StatusFound, "/login")
 			return
 		}
+		session.AddFlash("Halaman yang Anda cari tidak ditemukan", "error")
+		session.Save()
 		isSuperAdmin, _ := session.Get("is_super_admin").(bool)
 		isGlobalAdmin, _ := session.Get("is_global_admin").(bool)
 		if isSuperAdmin || isGlobalAdmin {
