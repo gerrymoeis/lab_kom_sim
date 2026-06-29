@@ -103,7 +103,7 @@ func LabPermissionRequired() gin.HandlerFunc {
 
 		lab := c.GetString("lab")
 		if lab == "" {
-			c.AbortWithStatus(404)
+			redirectOnNoLab(c)
 			return
 		}
 
