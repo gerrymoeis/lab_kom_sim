@@ -77,6 +77,9 @@ func AdminRequired() gin.HandlerFunc {
 			`SELECT role FROM lab_permissions WHERE user_id = ? AND lab_url_path = ?`,
 			userID, lab).Scan(&role)
 		if err != nil || role != "admin" {
+			session := sessions.Default(c)
+			session.AddFlash("Anda tidak memiliki akses sebagai admin", "error")
+			session.Save()
 			LabRedirect(c, http.StatusFound, "/dashboard")
 			c.Abort()
 			return
@@ -97,7 +100,10 @@ func SuperAdminRequired() gin.HandlerFunc {
 			return
 		}
 		if !isSuperAdmin && !isGlobalAdmin {
-			labsRaw := sessions.Default(c).Get("labs")
+			session := sessions.Default(c)
+			session.AddFlash("Halaman ini hanya untuk Super Admin", "error")
+			session.Save()
+			labsRaw := session.Get("labs")
 			if labsRaw != nil {
 				if labs, ok := labsRaw.([]string); ok && len(labs) > 0 {
 					c.Redirect(http.StatusFound, "/"+labs[0]+"/dashboard")
