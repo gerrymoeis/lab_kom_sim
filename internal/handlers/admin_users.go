@@ -298,10 +298,9 @@ func (h *GlobalHandler) AdminUserEditPage(c *gin.Context) {
 		permMap[p.LabURLPath] = p.Role
 	}
 
-	h.render(c, http.StatusOK, "admin/user_form.html", gin.H{
+	h.render(c, http.StatusOK, "user/edit.html", gin.H{
 		"title":       "Edit User",
 		"currentPage": "users",
-		"icon":        "bi-pencil",
 		"user":        user,
 		"labs":        h.cfg.Labs,
 		"permissions": permMap,
@@ -319,10 +318,11 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 	id := targetUser.ID
 
 	if targetUser.IsSuperAdmin && !h.isProtected(c) {
-		h.render(c, http.StatusForbidden, "admin/user_form.html", gin.H{
+		h.render(c, http.StatusForbidden, "user/edit.html", gin.H{
 			"title":       "Edit User",
 			"currentPage": "users",
-			"icon":        "bi-pencil",
+			"user":        targetUser,
+			"labs":        h.cfg.Labs,
 			"error":       "Hanya Super Admin yang dapat mengedit Super Admin",
 		})
 		return
@@ -335,40 +335,44 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 	isProtected := c.PostForm("is_protected") == "1"
 
 	if isGlobalAdmin && !h.isProtected(c) {
-		h.render(c, http.StatusForbidden, "admin/user_form.html", gin.H{
+		h.render(c, http.StatusForbidden, "user/edit.html", gin.H{
 			"title":       "Edit User",
 			"currentPage": "users",
-			"icon":        "bi-pencil",
+			"user":        targetUser,
+			"labs":        h.cfg.Labs,
 			"error":       "Hanya Super Admin yang dapat mengubah status Global Admin",
 		})
 		return
 	}
 
 	if isProtected != targetUser.IsProtected && !h.isProtected(c) {
-		h.render(c, http.StatusForbidden, "admin/user_form.html", gin.H{
+		h.render(c, http.StatusForbidden, "user/edit.html", gin.H{
 			"title":       "Edit User",
 			"currentPage": "users",
-			"icon":        "bi-pencil",
+			"user":        targetUser,
+			"labs":        h.cfg.Labs,
 			"error":       "Hanya Super Admin (root) yang dapat mengubah status protected",
 		})
 		return
 	}
 
 	if username == "" {
-		h.render(c, http.StatusBadRequest, "admin/user_form.html", gin.H{
+		h.render(c, http.StatusBadRequest, "user/edit.html", gin.H{
 			"title":       "Edit User",
 			"currentPage": "users",
-			"icon":        "bi-pencil",
+			"user":        targetUser,
+			"labs":        h.cfg.Labs,
 			"error":       "Username harus diisi",
 		})
 		return
 	}
 
 	if err := h.globalAuthService.UpdateUser(id, username, fullName, targetUser.IsSuperAdmin, isGlobalAdmin, isProtected); err != nil {
-		h.render(c, http.StatusBadRequest, "admin/user_form.html", gin.H{
+		h.render(c, http.StatusBadRequest, "user/edit.html", gin.H{
 			"title":       "Edit User",
 			"currentPage": "users",
-			"icon":        "bi-pencil",
+			"user":        targetUser,
+			"labs":        h.cfg.Labs,
 			"error":       "Gagal update user: " + err.Error(),
 		})
 		return
@@ -376,10 +380,11 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 
 	if newPassword != "" {
 		if err := h.globalAuthService.UpdateUserPassword(id, newPassword); err != nil {
-			h.render(c, http.StatusBadRequest, "admin/user_form.html", gin.H{
+			h.render(c, http.StatusBadRequest, "user/edit.html", gin.H{
 				"title":       "Edit User",
 				"currentPage": "users",
-				"icon":        "bi-pencil",
+				"user":        targetUser,
+				"labs":        h.cfg.Labs,
 				"error":       "Gagal update password: " + err.Error(),
 			})
 			return
@@ -398,10 +403,11 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 			}{lab.URLPath, "admin"}
 		}
 		if err := h.globalAuthService.SetUserPermissions(id, perms); err != nil {
-			h.render(c, http.StatusInternalServerError, "admin/user_form.html", gin.H{
+			h.render(c, http.StatusInternalServerError, "user/edit.html", gin.H{
 				"title":       "Edit User",
 				"currentPage": "users",
-				"icon":        "bi-pencil",
+				"user":        targetUser,
+				"labs":        h.cfg.Labs,
 				"error":       "Gagal update permissions",
 			})
 			return
@@ -424,10 +430,11 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 			}{lab, role})
 		}
 		if err := h.globalAuthService.SetUserPermissions(id, perms); err != nil {
-			h.render(c, http.StatusInternalServerError, "admin/user_form.html", gin.H{
+			h.render(c, http.StatusInternalServerError, "user/edit.html", gin.H{
 				"title":       "Edit User",
 				"currentPage": "users",
-				"icon":        "bi-pencil",
+				"user":        targetUser,
+				"labs":        h.cfg.Labs,
 				"error":       "Gagal update permissions",
 			})
 			return
