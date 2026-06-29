@@ -250,7 +250,7 @@ func (h *GlobalHandler) AdminProfile(c *gin.Context) {
 
 	user, err := h.globalAuthService.GetUser(userID)
 	if err != nil {
-		h.render(c, http.StatusInternalServerError, "admin/profile.html", gin.H{
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -260,7 +260,7 @@ func (h *GlobalHandler) AdminProfile(c *gin.Context) {
 		return
 	}
 
-	h.render(c, http.StatusOK, "admin/profile.html", gin.H{
+	h.render(c, http.StatusOK, "user/profile.html", gin.H{
 		"title":       "Profile",
 		"currentPage": "profile",
 		"icon":        "bi-person-gear",
@@ -282,7 +282,7 @@ func (h *GlobalHandler) AdminUpdateProfile(c *gin.Context) {
 	fullName := c.PostForm("full_name")
 
 	if username == "" || fullName == "" {
-		h.render(c, http.StatusBadRequest, "admin/profile.html", gin.H{
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -294,7 +294,7 @@ func (h *GlobalHandler) AdminUpdateProfile(c *gin.Context) {
 
 	exists, _ := h.globalAuthService.GetUserByUsername(username)
 	if exists != nil && exists.ID != userID {
-		h.render(c, http.StatusBadRequest, "admin/profile.html", gin.H{
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -306,7 +306,7 @@ func (h *GlobalHandler) AdminUpdateProfile(c *gin.Context) {
 
 	currentUser, err := h.globalAuthService.GetUser(userID)
 	if err != nil {
-		h.render(c, http.StatusInternalServerError, "admin/profile.html", gin.H{
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -317,7 +317,7 @@ func (h *GlobalHandler) AdminUpdateProfile(c *gin.Context) {
 	}
 
 	if err := h.globalAuthService.UpdateUser(userID, username, fullName, currentUser.IsSuperAdmin, currentUser.IsGlobalAdmin, currentUser.IsProtected); err != nil {
-		h.render(c, http.StatusBadRequest, "admin/profile.html", gin.H{
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -329,7 +329,7 @@ func (h *GlobalHandler) AdminUpdateProfile(c *gin.Context) {
 
 	session.Set("username", username)
 	if err := session.Save(); err != nil {
-		h.render(c, http.StatusInternalServerError, "admin/profile.html", gin.H{
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -340,7 +340,7 @@ func (h *GlobalHandler) AdminUpdateProfile(c *gin.Context) {
 	}
 
 	userModel, _ := h.globalAuthService.GetUser(userID)
-	h.render(c, http.StatusOK, "admin/profile.html", gin.H{
+	h.render(c, http.StatusOK, "user/profile.html", gin.H{
 		"title":       "Profile",
 		"currentPage": "profile",
 		"icon":        "bi-person-gear",
@@ -364,7 +364,7 @@ func (h *GlobalHandler) AdminChangePassword(c *gin.Context) {
 	confirmPassword := c.PostForm("confirm_password")
 
 	if oldPassword == "" || newPassword == "" {
-		h.render(c, http.StatusBadRequest, "admin/profile.html", gin.H{
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -375,7 +375,7 @@ func (h *GlobalHandler) AdminChangePassword(c *gin.Context) {
 	}
 
 	if newPassword != confirmPassword {
-		h.render(c, http.StatusBadRequest, "admin/profile.html", gin.H{
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -387,7 +387,7 @@ func (h *GlobalHandler) AdminChangePassword(c *gin.Context) {
 
 	userModel, err := h.globalAuthService.GetUser(userID)
 	if err != nil {
-		h.render(c, http.StatusInternalServerError, "admin/profile.html", gin.H{
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -398,7 +398,7 @@ func (h *GlobalHandler) AdminChangePassword(c *gin.Context) {
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(userModel.Password), []byte(oldPassword)); err != nil {
-		h.render(c, http.StatusBadRequest, "admin/profile.html", gin.H{
+		h.render(c, http.StatusBadRequest, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -409,7 +409,7 @@ func (h *GlobalHandler) AdminChangePassword(c *gin.Context) {
 	}
 
 	if err := h.globalAuthService.UpdateUserPassword(userID, newPassword); err != nil {
-		h.render(c, http.StatusInternalServerError, "admin/profile.html", gin.H{
+		h.render(c, http.StatusInternalServerError, "user/profile.html", gin.H{
 			"title":       "Profile",
 			"currentPage": "profile",
 			"icon":        "bi-person-gear",
@@ -421,7 +421,7 @@ func (h *GlobalHandler) AdminChangePassword(c *gin.Context) {
 
 	userModel, _ = h.globalAuthService.GetUser(userID)
 	username, _ := session.Get("username").(string)
-	h.render(c, http.StatusOK, "admin/profile.html", gin.H{
+	h.render(c, http.StatusOK, "user/profile.html", gin.H{
 		"title":       "Profile",
 		"currentPage": "profile",
 		"icon":        "bi-person-gear",
