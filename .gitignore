@@ -71,3 +71,7 @@ local_logbook_*
 
 simlabmi
 simlabmi*
+
+# Build linux release private package
+scripts/build_linux_release/
+.env.config
