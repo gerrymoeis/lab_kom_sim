@@ -110,3 +110,37 @@ jobs:
           else
             echo "· No changes for ${DEPLOY_BRANCH}"
           fi
+
+      - name: Build binary & create release (linux)
+        if: matrix.platform == 'linux'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          echo "=== Build Linux binary ==="
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o app-simlab ./cmd/server/
+
+          echo "=== Prepare archive ==="
+          mkdir -p app-simlab-linux/web/static app-simlab-linux/uploads
+          cp app-simlab app-simlab-linux/
+          cp .env.example app-simlab-linux/
+          cp -r web/templates app-simlab-linux/web/
+          cp -r web/static/css app-simlab-linux/web/static/
+          cp -r web/static/js app-simlab-linux/web/static/
+          cp web/static/favicon.svg app-simlab-linux/web/static/ 2>/dev/null || true
+          [ -d web/static/vendor ] && cp -r web/static/vendor app-simlab-linux/web/static/
+          touch app-simlab-linux/uploads/.gitkeep
+
+          echo "=== Compress archive ==="
+          tar czf app-simlab-linux.tar.gz app-simlab-linux/
+
+          echo "=== Create GitHub Release ==="
+          TAG="deploy-linux-$(date -u +%Y%m%d-%H%M%S)"
+          gh release create "${TAG}" \
+            app-simlab-linux.tar.gz \
+            --title "Build deploy_linux — $(date -u '+%Y-%m-%d %H:%M:%S UTC')" \
+            --notes "Auto-build from \`deploy_linux\` commit ${{ github.sha }}"
+
+          echo "✅ Release created: ${TAG}"
