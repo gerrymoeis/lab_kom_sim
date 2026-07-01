@@ -100,7 +100,9 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	}
 	f.Close()
 	mimeType := http.DetectContentType(buf)
-	if !strings.HasPrefix(mimeType, "image/") {
+	isImage := strings.HasPrefix(mimeType, "image/")
+	// HEIC/HEIF is not detected by Go's built-in MIME sniffer; validate via extension
+	if !isImage && ext != ".heic" && ext != ".heif" {
 		c.JSON(http.StatusBadRequest, UploadResponse{
 			Success: false,
 			Message: "File harus berupa gambar",
