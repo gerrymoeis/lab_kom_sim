@@ -230,31 +230,6 @@ func isNumericLabel(label string) bool {
 	return true
 }
 
-func buildSoftwareGrid(pcList []repository.PCInstallStatus) [][]repository.PCInstallStatus {
-	maxRow, maxCol := 0, 0
-	for _, p := range pcList {
-		if p.Row > maxRow {
-			maxRow = p.Row
-		}
-		if p.Column > maxCol {
-			maxCol = p.Column
-		}
-	}
-	if maxRow < 1 || maxCol < 1 {
-		return nil
-	}
-	grid := make([][]repository.PCInstallStatus, maxRow)
-	for i := range grid {
-		grid[i] = make([]repository.PCInstallStatus, maxCol)
-	}
-	for _, p := range pcList {
-		if p.Row >= 1 && p.Row <= maxRow && p.Column >= 1 && p.Column <= maxCol {
-			grid[p.Row-1][p.Column-1] = p
-		}
-	}
-	return grid
-}
-
 func renderToFile(tmpl *template.Template, name string, data interface{}, path string) error {
 	os.MkdirAll(filepath.Dir(path), 0755)
 	f, err := os.Create(path)
@@ -406,7 +381,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 				installedCount++
 			}
 		}
-		swGrid := buildSoftwareGrid(pcList)
+		swGrid := BuildSoftwareGrid(pcList, layout)
 		re("software/detail.html", filepath.Join(outDir, "software", "detail", sw.Slug+".html"), mergeData(commonData, map[string]interface{}{
 			"title":          "Detail Software - " + sw.Name,
 			"currentPage":    "software",
@@ -414,6 +389,8 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 			"pcGrid":         swGrid,
 			"installedCount": installedCount,
 			"totalPCs":       len(pcList),
+			"hasGap":         layout.HasGap,
+			"rowGaps":        layout.RowGaps,
 		}))
 	}
 

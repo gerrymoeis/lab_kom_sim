@@ -49,6 +49,15 @@
                             {{ range $rowIdx, $row := .pcGrid }}
                             <div class="pc-row mb-3">
                                 {{ range $colIdx, $pc := $row }}
+                                {{ $isGap := false }}
+                                {{ if $.hasGap }}
+                                {{ range $gp := (index $.rowGaps $rowIdx) }}
+                                {{ if eq (add $colIdx 1) $gp }}{{ $isGap = true }}{{ end }}
+                                {{ end }}
+                                {{ end }}
+                                {{ if $isGap }}
+                                <div class="grid-gap" title="GAP / Walkway"></div>
+                                {{ else }}
                                 <div class="pc-card-wrapper pc-card-wrapper-sm">
                                     {{ if gt $pc.PCID 0 }}
                                      <div class="pc-card status-{{ $pc.Status }}{{ if not $pc.Installed }} border-secondary{{ end }}" style="cursor:default;">
@@ -67,6 +76,7 @@
                                     </div>
                                     {{ end }}
                                 </div>
+                                {{ end }}
                                 {{ end }}
                             </div>
                             {{ end }}
