@@ -275,6 +275,17 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	if err != nil {
 		return fmt.Errorf("load templates: %w", err)
 	}
+	// Load shared grid_component.html from regular templates to avoid duplication
+	gridComponentPath := filepath.Join(filepath.Dir(cfg.TemplateDir), "pc", "grid_component.html")
+	if _, err := os.Stat(gridComponentPath); err == nil {
+		gridContent, err := os.ReadFile(gridComponentPath)
+		if err == nil {
+			_, err = tmpl.New("pc/grid_component.html").Parse(string(gridContent))
+			if err != nil {
+				return fmt.Errorf("parse grid_component.html: %w", err)
+			}
+		}
+	}
 
 	outDir := filepath.Join(cfg.OutDir, labName)
 	os.RemoveAll(outDir)
@@ -303,7 +314,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	grid, extraPCs, pcLecturer, pcLaboran, pcCCTV, specialPCs, statusCounts, spareCount := buildDashboardGrid(pcs, layout.ColsPerRow)
 	re("dashboard.html", filepath.Join(outDir, "dashboard.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Dashboard", "currentPage": "dashboard",
-		"pcGrid": grid, "pcs": pcs, "extraPCs": extraPCs,
+		"grid": grid, "pcs": pcs, "extraPCs": extraPCs,
 		"statusCounts": statusCounts, "spareCount": spareCount,
 		"pcLecturer": pcLecturer, "pcLaboran": pcLaboran, "pcCCTV": pcCCTV,
 		"specialPCs": specialPCs,
