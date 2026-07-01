@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -58,31 +57,6 @@ func (h *Handler) GetSoftwareCatalogJSON(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
-func buildSoftwareGrid(pcList []repository.PCInstallStatus) [][]repository.PCInstallStatus {
-	maxRow, maxCol := 0, 0
-	for _, p := range pcList {
-		if p.Row > maxRow {
-			maxRow = p.Row
-		}
-		if p.Column > maxCol {
-			maxCol = p.Column
-		}
-	}
-	if maxRow < 1 || maxCol < 1 {
-		return nil
-	}
-	grid := make([][]repository.PCInstallStatus, maxRow)
-	for i := range grid {
-		grid[i] = make([]repository.PCInstallStatus, maxCol)
-	}
-	for _, p := range pcList {
-		if p.Row >= 1 && p.Row <= maxRow && p.Column >= 1 && p.Column <= maxCol {
-			grid[p.Row-1][p.Column-1] = p
-		}
-	}
-	return grid
-}
-
 func (h *Handler) SoftwareDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
@@ -102,12 +76,17 @@ func (h *Handler) SoftwareDetail(c *gin.Context) {
 		if p.Installed { installedCount++ }
 	}
 
+	labName := c.GetString("lab")
+	layout := h.cfg.LabLayout(labName)
+
 	h.renderTemplate(c, http.StatusOK, "software/detail.html", gin.H{
 		"title": "Detail Software - " + sw.Name, "currentPage": "software",
 		"username": username, "role": role,
-		"software": sw, "pcGrid": buildSoftwareGrid(pcList),
+		"software": sw, "pcGrid": services.BuildSoftwareGrid(pcList, layout),
 		"installedCount": installedCount,
 		"totalPCs": len(pcList),
+		"hasGap":  layout.HasGap,
+		"rowGaps": layout.RowGaps,
 	})
 }
 
@@ -131,12 +110,17 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 		if p.Installed { installedCount++ }
 	}
 
+	labName := c.GetString("lab")
+	layout := h.cfg.LabLayout(labName)
+
 	h.renderTemplate(c, http.StatusOK, "software/edit.html", gin.H{
 		"title": "Edit Software - " + sw.Name, "currentPage": "software",
 		"username": username, "role": role,
-		"software": sw, "pcGrid": buildSoftwareGrid(pcList),
+		"software": sw, "pcGrid": services.BuildSoftwareGrid(pcList, layout),
 		"installedCount": installedCount,
 		"totalPCs": len(pcList),
+		"hasGap":  layout.HasGap,
+		"rowGaps": layout.RowGaps,
 	})
 }
 
