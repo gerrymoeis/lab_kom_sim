@@ -4,10 +4,8 @@
     <div class="pc-row mb-3">
         {{ range $colIdx, $pc := $row }}
         {{ $isGap := false }}
-        {{ if $.HasGap }}
         {{ range $gp := (index $.RowGaps $rowIdx) }}
         {{ if eq (add $colIdx 1) $gp }}{{ $isGap = true }}{{ end }}
-        {{ end }}
         {{ end }}
         {{ if $isGap }}
         <div class="grid-gap" title="GAP / Walkway"></div>

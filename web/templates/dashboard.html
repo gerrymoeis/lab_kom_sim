@@ -92,7 +92,7 @@
                 </div>
                 {{ end }}
 
-                {{ template "pc/grid_component.html" dict "GridRows" .grid "HasGap" .hasGap "RowGaps" .rowGaps "Clickable" true "WindowsBadge" true "WindowsText" true }}
+                {{ template "pc/grid_component.html" dict "GridRows" .grid "RowGaps" .rowGaps "Clickable" true "WindowsBadge" true "WindowsText" true }}
 
                 <!-- PC Laboran (bottom left) + PC CCTV (below Laboran) -->
                 <div class="mt-4">
@@ -417,11 +417,18 @@
 
 <script>
 window.colsPerRow = {{ json .colsPerRow }};
-window.gapPos = {{ .gapPos }};
-window.hasGap = {{ .hasGap }};
 window.rowGaps = {{ json .rowGaps }};
 function columnsForRow(rowIdx) {
     return (window.colsPerRow && window.colsPerRow[rowIdx] !== undefined) ? window.colsPerRow[rowIdx] : 8;
+}
+
+function pcStatusInfo(status) {
+    var map = {
+        'normal':  { icon: 'bi-check-circle-fill', color: 'text-success', visLabel: 'Normal' },
+        'warning': { icon: 'bi-exclamation-triangle-fill', color: 'text-warning', visLabel: 'Warning' },
+        'broken':  { icon: 'bi-x-circle-fill', color: 'text-danger', visLabel: 'Rusak' }
+    };
+    return map[status] || map['normal'];
 }
 
 window.updateDashboardFromData = function(pcs) {
@@ -450,7 +457,7 @@ window.updateDashboardFromData = function(pcs) {
     for (var r = 0; r < grid.length; r++) {
         html += '<div class="pc-row mb-3">';
         for (var c = 0; c < grid[r].length; c++) {
-            var isGap = window.hasGap && window.rowGaps && window.rowGaps[r] && window.rowGaps[r].indexOf(c + 1) !== -1;
+            var isGap = window.rowGaps && window.rowGaps[r] && window.rowGaps[r].indexOf(c + 1) !== -1;
             if (isGap) {
                 html += '<div class="grid-gap" title="GAP / Walkway"></div>';
                 continue;
@@ -458,9 +465,10 @@ window.updateDashboardFromData = function(pcs) {
             var pc = grid[r][c];
             if (pc && pc.id) {
                 var statusClass = pc.status || 'normal';
-                html += '<div class="pc-card-wrapper"><div class="pc-card status-' + statusClass + ' pc-card-clickable" role="button" tabindex="0" aria-label="PC ' + pc.label + ', Status ' + statusClass + '" data-pc-id="' + pc.id + '" data-pc-label="' + pc.label + '" data-pc-row="' + pc.row + '" data-pc-column="' + pc.column + '" data-pc-status="' + statusClass + '" data-pc-processor="' + (pc.processor || '') + '" data-pc-ram="' + (pc.ram || '') + '" data-pc-storage="' + (pc.storage || '') + '" data-pc-os="' + (pc.operating_system || '') + '" data-pc-notes="' + (pc.notes || '') + '" style="cursor:pointer"><div class="pc-number">' + pc.label + '</div><div class="pc-icon"><i class="bi bi-pc-display"></i></div><div class="pc-status-badge"><i class="bi ' + (statusClass === 'warning' ? 'bi-exclamation-triangle text-white' : statusClass === 'broken' ? 'bi-x-circle text-white' : 'bi-check-circle text-white') + '"></i><span class="visually-hidden">Status ' + (statusClass === 'warning' ? 'Warning' : statusClass === 'broken' ? 'Rusak' : 'Normal') + '</span></div><div class="pc-windows-badge" id="win-badge-' + pc.label + '"><span class="visually-hidden">Windows Version</span></div></div><div class="pc-windows-text" id="win-text-' + pc.label + '"></div></div>';
+                var info = pcStatusInfo(statusClass);
+                html += '<div class="pc-card-wrapper"><div class="pc-card status-' + statusClass + ' pc-card-clickable" role="button" tabindex="0" aria-label="PC ' + pc.label + ', Status ' + info.visLabel + ', Baris ' + pc.row + ', Kolom ' + pc.column + '" data-pc-id="' + pc.id + '" data-pc-label="' + pc.label + '" data-pc-row="' + pc.row + '" data-pc-column="' + pc.column + '" data-pc-status="' + statusClass + '" data-pc-processor="' + (pc.processor || '') + '" data-pc-ram="' + (pc.ram || '') + '" data-pc-storage="' + (pc.storage || '') + '" data-pc-os="' + (pc.operating_system || '') + '" data-pc-notes="' + (pc.notes || '') + '" style="cursor:pointer"><div class="pc-number">' + pc.label + '</div><div class="pc-icon"><i class="bi bi-pc-display" aria-hidden="true"></i></div><div class="pc-status-badge"><i class="bi ' + info.icon + ' ' + info.color + '" aria-hidden="true"></i><span class="visually-hidden">Status ' + info.visLabel + '</span></div><div class="pc-windows-badge" id="win-badge-' + pc.label + '"><span class="visually-hidden">Windows Version</span></div></div><div class="pc-windows-text" id="win-text-' + pc.label + '"></div></div>';
             } else {
-                html += '<div class="pc-card-wrapper"><div class="pc-card pc-empty"><div class="pc-number">-</div><div class="pc-icon text-muted"><i class="bi bi-dash"></i></div></div></div>';
+                html += '<div class="pc-card-wrapper"><div class="pc-card pc-card-empty"><div class="pc-number">-</div></div></div>';
             }
         }
         html += '</div>';
