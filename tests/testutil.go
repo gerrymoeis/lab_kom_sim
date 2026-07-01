@@ -234,6 +234,7 @@ func createTestConfig(overrides ...TestConfigOverrides) *config.Config {
 		SessionSecret:    "test-secret-12345",
 		UploadPath:       uploadPath,
 		DefaultPageSize:  25,
+		Android:          cfg.Android,
 		GeminiAPIKey:     geminiKey,
 		OpenRouterAPIKey: openRouterKey,
 	}
