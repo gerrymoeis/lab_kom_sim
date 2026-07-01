@@ -365,10 +365,16 @@ func (s *PCService) SyncSoftware(label string, requiredIDs []string, otherNames,
 }
 
 func (s *PCService) BatchDeletePC(labels []string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	tx, err := s.pcRepo.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	items := make([]map[string]string, 0, len(labels))
 	for _, label := range labels {
 		info := map[string]string{"label": label}
-		if err := s.pcRepo.DeleteByLabel(label); err != nil {
+		if err := s.pcRepo.DeleteByLabelTx(tx, label); err != nil {
 			s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", 0,
 				map[string]any{"action": "batch_delete", "count": len(labels), "items": items},
 				ipAddress, userAgent, err.Error())
@@ -376,6 +382,14 @@ func (s *PCService) BatchDeletePC(labels []string, actorID int, actorUsername, a
 		}
 		items = append(items, info)
 	}
+
+	if err := tx.Commit(); err != nil {
+		s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", 0,
+			map[string]any{"action": "batch_delete", "count": len(labels), "items": items},
+			ipAddress, userAgent, err.Error())
+		return err
+	}
+
 	s.activityLogService.LogDelete(actorID, actorUsername, actorRole, "pc", 0,
 		map[string]any{"action": "batch_delete", "count": len(labels), "items": items},
 		ipAddress, userAgent)

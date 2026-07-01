@@ -241,10 +241,25 @@ func (h *Handler) PCDelete(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
+	// Get PC data before delete to know photo filenames
+	pc, _ := h.pcService.GetByLabel(label)
+
 	if err := h.pcService.DeletePC(label, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/pc", "Gagal menghapus PC. Mungkin PC sedang dipinjam.")
 		return
 	}
+
+	// Cascade delete photo files from disk
+	if pc != nil {
+		lab := c.GetString("lab")
+		pcDir := filepath.Join(h.cfg.UploadPath, lab, "pc")
+		for _, photo := range []string{pc.PhotoSerial, pc.PhotoFront} {
+			if photo != "" {
+				os.Remove(filepath.Join(pcDir, photo))
+			}
+		}
+	}
+
 	h.redirectWithSuccess(c, "/pc", "PC berhasil dihapus", "delete")
 }
 
@@ -394,6 +409,11 @@ func (h *Handler) PCSwap(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
+		return
+	}
+
+	if req.A == req.B {
+		h.errJSON(c, http.StatusBadRequest, "Tidak dapat menukar PC yang sama")
 		return
 	}
 
