@@ -1,0 +1,48 @@
+{{ template "layout/admin_base.html" . }}
+
+<form method="POST" action="/labs/create">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="id" class="form-label">ID Lab *</label>
+                    <input type="text" class="form-control" id="id" name="id"
+                        value="{{ .id }}" placeholder="contoh: MI-2" required>
+                    <small class="text-muted">Digunakan untuk lookup folder seeds/</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="title" class="form-label">Nama Lab *</label>
+                    <input type="text" class="form-control" id="title" name="title"
+                        value="{{ .labTitle }}" placeholder="contoh: Lab Kom MI 2" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="url" class="form-label">URL Path *</label>
+                    <input type="text" class="form-control" id="url" name="url"
+                        value="{{ .url }}" placeholder="contoh: lab-kom-mi" required>
+                    <small class="text-muted">Slug untuk routing. Hanya huruf kecil, angka, dan tanda hubung.</small>
+                </div>
+                <div class="col-md-3">
+                    <label for="rows" class="form-label">Jumlah Baris *</label>
+                    <input type="number" class="form-control" id="rows" name="rows"
+                        value="{{ .rows }}" min="1" required>
+                </div>
+                <div class="col-md-9">
+                    <label for="cols" class="form-label">Kolom per Baris *</label>
+                    <input type="text" class="form-control" id="cols" name="cols"
+                        value="{{ .cols }}" placeholder="contoh: 8,8,8,8,8" required>
+                    <small class="text-muted">Pisahkan dengan koma. Jumlah harus sama dengan jumlah baris.</small>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer d-flex gap-2 justify-content-end">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Buat Lab
+            </button>
+            <a href="/labs" class="btn btn-secondary">
+                <i class="bi bi-x-circle"></i> Batal
+            </a>
+        </div>
+    </div>
+</form>
+
+{{ template "layout/admin_footer.html" . }}

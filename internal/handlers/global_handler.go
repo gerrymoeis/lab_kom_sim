@@ -17,19 +17,28 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// LabHandlerRegistrar allows hot-registering a per-lab handler at runtime
+type LabHandlerRegistrar interface {
+	Register(lab string, h *Handler)
+}
+
 type GlobalHandler struct {
 	cfg               *config.Config
 	globalDB          *database.DB
 	globalAuthService *services.GlobalAuthService
 	labsDB            map[string]*database.DB
+	registrar         LabHandlerRegistrar
+	notifier          *services.MultiNotifier
 }
 
-func NewGlobalHandler(cfg *config.Config, globalDB *database.DB, gas *services.GlobalAuthService, labsDB map[string]*database.DB) *GlobalHandler {
+func NewGlobalHandler(cfg *config.Config, globalDB *database.DB, gas *services.GlobalAuthService, labsDB map[string]*database.DB, registrar LabHandlerRegistrar, notifier *services.MultiNotifier) *GlobalHandler {
 	return &GlobalHandler{
 		cfg:               cfg,
 		globalDB:          globalDB,
 		globalAuthService: gas,
 		labsDB:            labsDB,
+		registrar:         registrar,
+		notifier:          notifier,
 	}
 }
 
