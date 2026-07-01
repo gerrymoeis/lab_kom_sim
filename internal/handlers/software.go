@@ -85,7 +85,6 @@ func (h *Handler) SoftwareDetail(c *gin.Context) {
 		"software": sw, "pcGrid": services.BuildSoftwareGrid(pcList, layout),
 		"installedCount": installedCount,
 		"totalPCs": len(pcList),
-		"hasGap":  layout.HasGap,
 		"rowGaps": layout.RowGaps,
 	})
 }
@@ -119,7 +118,6 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 		"software": sw, "pcGrid": services.BuildSoftwareGrid(pcList, layout),
 		"installedCount": installedCount,
 		"totalPCs": len(pcList),
-		"hasGap":  layout.HasGap,
 		"rowGaps": layout.RowGaps,
 	})
 }

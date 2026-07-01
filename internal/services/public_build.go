@@ -307,7 +307,6 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 		"statusCounts": statusCounts, "spareCount": spareCount,
 		"pcLecturer": pcLecturer, "pcLaboran": pcLaboran, "pcCCTV": pcCCTV,
 		"specialPCs": specialPCs,
-		"hasGap":     layout.HasGap,
 		"rowGaps":    layout.RowGaps,
 	}))
 
@@ -389,7 +388,6 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 			"pcGrid":         swGrid,
 			"installedCount": installedCount,
 			"totalPCs":       len(pcList),
-			"hasGap":         layout.HasGap,
 			"rowGaps":        layout.RowGaps,
 		}))
 	}
