@@ -243,13 +243,14 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	globalUserRepo := repository.NewGlobalUserRepository(globalDB)
 	globalAuthService := services.NewGlobalAuthService(globalUserRepo)
-	globalHandler := handlers.NewGlobalHandler(cfg, globalDB, globalAuthService, dbs)
-
 	handlersMap := make(map[string]*handlers.Handler, len(dbs))
 	for labName, db := range dbs {
 		handlersMap[labName] = handlers.NewHandler(db, cfg, notifier, globalAuthService, globalDB, labName)
 	}
 	adapter := NewHandlerAdapter(handlersMap)
+
+	multiNotifier, _ := notifier.(*services.MultiNotifier)
+	globalHandler := handlers.NewGlobalHandler(cfg, globalDB, globalAuthService, dbs, adapter, multiNotifier)
 
 	writeFlushMiddleware := func() gin.HandlerFunc {
 		return func(c *gin.Context) {
@@ -310,6 +311,10 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 	{
 		// SA/GAB dashboard — manages lab list
 		labsAdminGroup.GET("", globalHandler.AdminLabList)
+
+		// Create lab (must be before /:urlPath to avoid wildcard match)
+		labsAdminGroup.GET("/create", globalHandler.AdminLabCreatePage)
+		labsAdminGroup.POST("/create", globalHandler.AdminLabCreate)
 
 		labsAdminGroup.GET("/:urlPath", globalHandler.AdminLabDetail)
 

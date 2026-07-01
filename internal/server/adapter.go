@@ -14,6 +14,10 @@ func NewHandlerAdapter(h map[string]*handlers.Handler) *HandlerAdapter {
 	return &HandlerAdapter{handlers: h}
 }
 
+func (a *HandlerAdapter) Register(lab string, h *handlers.Handler) {
+	a.handlers[lab] = h
+}
+
 func (a *HandlerAdapter) Handle(fn func(*handlers.Handler, *gin.Context)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		lab := c.GetString("lab")
