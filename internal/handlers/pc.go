@@ -383,8 +383,6 @@ func (h *Handler) PCGetLayout(c *gin.Context) {
 		"special":  special,
 		"maxRow":   maxRow,
 		"columns":  columns,
-		"gapPos":   layout.GapPos,
-		"hasGap":   layout.HasGap,
 		"rowGaps":  layout.RowGaps,
 	})
 }

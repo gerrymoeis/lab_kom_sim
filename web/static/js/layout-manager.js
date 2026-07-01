@@ -5,8 +5,6 @@ var PCLayoutManager = (function() {
   var special = [];
   var maxRow = 5;
   var columnsPerRow = [];
-  var gapPos = 0;
-  var hasGap = false;
   var rowGaps = [];
   var busy = false;
 
@@ -41,8 +39,6 @@ var PCLayoutManager = (function() {
         special = data.special || [];
         maxRow = data.maxRow || 5;
         columnsPerRow = data.columns || [];
-        gapPos = data.gapPos || 0;
-        hasGap = data.hasGap || false;
         rowGaps = data.rowGaps || [];
         render();
         layoutModal.show();
@@ -75,7 +71,7 @@ var PCLayoutManager = (function() {
       html += '<span class="flex-shrink-0 small text-muted" style="width:48px">Baris ' + (r + 1) + '</span>';
       html += '<div class="d-flex gap-2 justify-content-center flex-fill">';
       for (var c = 0; c < numCols; c++) {
-        if (hasGap && rowGaps[r] && rowGaps[r].indexOf(c + 1) !== -1) {
+        if (rowGaps[r] && rowGaps[r].indexOf(c + 1) !== -1) {
           html += '<div class="layout-cell layout-gap" title="GAP / Walkway"></div>';
           continue;
         }
