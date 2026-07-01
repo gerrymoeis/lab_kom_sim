@@ -459,8 +459,21 @@ func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
 		return
 	}
 
-	// Hapus semua lab_permissions untuk lab ini
+	// Comment out di .env TERLEBIH DAHULU (sebelum irreversible ops)
+	// Jika gagal, abort dengan zero side effect
+	if lab.EnvIndex > 0 {
+		if err := config.CommentOutLabEnv(h.cfg.EnvPath, lab.EnvIndex); err != nil {
+			session := sessions.Default(c)
+			session.AddFlash("Gagal menghapus lab: tidak dapat menulis .env ("+err.Error()+")", "error")
+			session.Save()
+			c.Redirect(http.StatusFound, "/labs")
+			return
+		}
+	}
+
+	// Hapus global DB records
 	h.globalDB.Exec("DELETE FROM lab_permissions WHERE lab_url_path = ?", urlPath)
+	h.globalDB.Exec("DELETE FROM grid_layouts WHERE lab_url_path = ?", urlPath)
 
 	// Tutup koneksi DB lab
 	if db, ok := h.labsDB[urlPath]; ok {
@@ -479,23 +492,6 @@ func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
 		}
 	}
 	h.cfg.Labs = newLabs
-
-	// Comment out di .env jika menggunakan format baru (EnvIndex > 0)
-	if lab.EnvIndex > 0 {
-		if err := config.CommentOutLabEnv(h.cfg.EnvPath, lab.EnvIndex); err != nil {
-			// Rollback: restore lab ke config
-			h.cfg.Labs = append(h.cfg.Labs, *lab)
-			h.labsDB[urlPath] = nil
-			session := sessions.Default(c)
-			session.AddFlash("Gagal menghapus lab: tidak dapat menulis .env ("+err.Error()+")", "error")
-			session.Save()
-			c.Redirect(http.StatusFound, "/labs")
-			return
-		}
-	}
-
-	// Hapus grid_layouts
-	h.globalDB.Exec("DELETE FROM grid_layouts WHERE lab_url_path = ?", urlPath)
 
 	// Set flash success via session
 	session := sessions.Default(c)

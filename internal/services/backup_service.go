@@ -25,6 +25,12 @@ type CUDNotifier interface {
 	NotifyChange()
 }
 
+// DummyNotifier implements CUDNotifier with a no-op — used in tests
+// when backup/public-build notification is not needed.
+type DummyNotifier struct{}
+
+func (DummyNotifier) NotifyChange() {}
+
 type BackupService struct {
 	db         *database.DB
 	cfg        config.BackupConfig
