@@ -117,7 +117,7 @@ func main() {
 
 	if cfg.Environment == "production" { gin.SetMode(gin.ReleaseMode) }
 
-	router, cleanup, _ := server.SetupRouter(dbs, globalDB, cfg, notifier)
+	router, cleanup, _, _ := server.SetupRouter(dbs, globalDB, cfg, notifier)
 	defer cleanup()
 
 	for _, lab := range cfg.Labs {

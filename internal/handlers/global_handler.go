@@ -26,7 +26,7 @@ type GlobalHandler struct {
 	cfg               *config.Config
 	globalDB          *database.DB
 	globalAuthService *services.GlobalAuthService
-	labsDB            map[string]*database.DB
+	LabsDB            map[string]*database.DB
 	registrar         LabHandlerRegistrar
 	notifier          *services.MultiNotifier
 }
@@ -36,7 +36,7 @@ func NewGlobalHandler(cfg *config.Config, globalDB *database.DB, gas *services.G
 		cfg:               cfg,
 		globalDB:          globalDB,
 		globalAuthService: gas,
-		labsDB:            labsDB,
+		LabsDB:            labsDB,
 		registrar:         registrar,
 		notifier:          notifier,
 	}
@@ -251,7 +251,7 @@ func (h *GlobalHandler) Logout(c *gin.Context) {
 
 func (h *GlobalHandler) logAuthToLabs(userID int, username, action, role, ip, ua string, labPaths []string) {
 	for _, labPath := range labPaths {
-		db, ok := h.labsDB[labPath]
+		db, ok := h.LabsDB[labPath]
 		if !ok {
 			continue
 		}

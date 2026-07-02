@@ -12,6 +12,7 @@ import (
 
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
+	"inventaris-lab-kom/internal/handlers"
 	"inventaris-lab-kom/internal/server"
 	"inventaris-lab-kom/internal/services"
 
@@ -211,6 +212,7 @@ type TestEnvironment struct {
 	GlobalDB, DB_A, DB_B *database.DB
 	Config       *config.Config
 	FlushLogs    func()
+	GlobalHandler *handlers.GlobalHandler
 }
 
 func createTestConfig(overrides ...TestConfigOverrides) *config.Config {
@@ -257,7 +259,10 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 
 	godotenv.Load()
 
-	tmpDir := t.TempDir()
+	tmpDir, err := os.MkdirTemp("", "simlabkom-test-*")
+	if err != nil {
+		t.Fatalf("MkdirTemp: %v", err)
+	}
 	dbPathA := filepath.Join(tmpDir, "testing_a.db")
 	dbPathB := filepath.Join(tmpDir, "testing_b.db")
 	globalDBPath := filepath.Join(tmpDir, "testing_global.db")
@@ -332,12 +337,23 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labBOnlyID, labBURL)
 	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labADosenID, labAURL)
 	dbs := map[string]*database.DB{labAURL: dbA, labBURL: dbB}
-	router, cleanup, flushLogs := server.SetupRouter(dbs, globalDB, cfg, services.DummyNotifier{})
+	router, cleanup, flushLogs, globalHandler := server.SetupRouter(dbs, globalDB, cfg, services.DummyNotifier{})
 	t.Cleanup(func() {
 		cleanup()
-		dbA.Close()
-		dbB.Close()
+		// Close dynamically-added lab DBs
+		for urlPath, db := range globalHandler.LabsDB {
+			if _, exists := dbs[urlPath]; !exists {
+				db.Close()
+			}
+		}
+		if _, exists := globalHandler.LabsDB[labAURL]; exists {
+			dbA.Close()
+		}
+		if _, exists := globalHandler.LabsDB[labBURL]; exists {
+			dbB.Close()
+		}
 		globalDB.Close()
+		_ = os.RemoveAll(tmpDir)
 		os.RemoveAll(filepath.Join(projectRoot, "uploads", "temp"))
 		os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
 		os.RemoveAll(filepath.Join(projectRoot, "uploads", "logbook"))
@@ -365,5 +381,6 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 		TS: ts, Client: client,
 		GlobalDB: globalDB, DB_A: dbA, DB_B: dbB,
 		Config: cfg, FlushLogs: flushLogs,
+		GlobalHandler: globalHandler,
 	}
 }
