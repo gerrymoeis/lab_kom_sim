@@ -1,13 +1,8 @@
 package tests
 
 import (
-	"encoding/json"
-	"image"
-	"image/color"
-	"image/jpeg"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -19,79 +14,6 @@ import (
 	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/services"
 )
-
-// ============================================
-// Helpers
-// ============================================
-
-func createTempJPEG(t *testing.T) string {
-	t.Helper()
-	img := image.NewNRGBA(image.Rect(0, 0, 1, 1))
-	img.Set(0, 0, color.RGBA{255, 255, 255, 255})
-	dir := t.TempDir()
-	path := filepath.Join(dir, "test.jpg")
-	f, err := os.Create(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-	if err := jpeg.Encode(f, img, &jpeg.Options{Quality: 90}); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
-
-func geminiResp(ocrText string) string {
-	b, _ := json.Marshal(map[string]any{
-		"candidates": []any{map[string]any{
-			"content": map[string]any{
-				"parts": []any{map[string]any{"text": ocrText}},
-			},
-		}},
-	})
-	return string(b)
-}
-
-func openRouterResp(ocrText string) string {
-	b, _ := json.Marshal(map[string]any{
-		"choices": []any{map[string]any{
-			"message": map[string]any{"content": ocrText},
-		}},
-	})
-	return string(b)
-}
-
-func mockGemini(t *testing.T, respBody string, statusCode int, counter *atomic.Int32) *httptest.Server {
-	t.Helper()
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if counter != nil {
-			counter.Add(1)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		w.Write([]byte(respBody))
-	}))
-}
-
-func mockOpenRouter(t *testing.T, respBody string, statusCode int) *httptest.Server {
-	t.Helper()
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		w.Write([]byte(respBody))
-	}))
-}
-
-func validOCRJSON() string {
-	return `{"entries":[{"date":"2026-06-23","student_name":"Budi Santoso","nim":"24091397001","time_in":"08:00","time_out":"10:00","purpose":"Praktikum"}]}`
-}
-
-func validOCRMultiJSON() string {
-	return `{"entries":[
-		{"date":"2026-06-23","student_name":"Budi Santoso","nim":"24091397001","time_in":"08:00","time_out":"10:00","purpose":"Praktikum"},
-		{"date":"2026-06-24","student_name":"Siti Aminah","nim":"24091397002","time_in":"09:00","time_out":"11:00","purpose":"Praktikum Web"}
-	]}`
-}
 
 // ============================================
 // 2B.1 - 2B.8: OCRService unit tests

@@ -122,10 +122,14 @@ func TestChangePassword(t *testing.T) {
 			t.Error("password hash should have changed after successful password change")
 		}
 
-		// Change back to test123 so subsequent subtests still work
-		if !lab.refreshCSRF() {
-			t.Fatal("failed to refresh CSRF")
+		// Password change clears session_token → re-login with new password
+		lab.cookies = make(map[string]string)
+		lab.csrf = ""
+		if !loginAndRefresh(lab, "labA_only", "newpass456") {
+			t.Fatal("re-login after password change failed")
 		}
+
+		// Restore password so subsequent subtests still work
 		resp2, err := lab.post("/profile/password",
 			"old_password=newpass456&new_password=test123&confirm_password=test123")
 		if err != nil {
@@ -134,6 +138,13 @@ func TestChangePassword(t *testing.T) {
 		defer resp2.Body.Close()
 		if resp2.StatusCode != 302 {
 			t.Errorf("expected 302 restore, got %d", resp2.StatusCode)
+		}
+
+		// Restore also clears session_token → re-login with original password
+		lab.cookies = make(map[string]string)
+		lab.csrf = ""
+		if !loginAndRefresh(lab, "labA_only", "test123") {
+			t.Fatal("re-login after password restore failed")
 		}
 	})
 

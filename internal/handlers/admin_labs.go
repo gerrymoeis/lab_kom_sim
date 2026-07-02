@@ -247,7 +247,7 @@ func (h *GlobalHandler) AdminLabReseed(c *gin.Context) {
 		return
 	}
 
-	db, ok := h.labsDB[urlPath]
+	db, ok := h.LabsDB[urlPath]
 	if !ok {
 		h.render(c, http.StatusNotFound, "error.html", gin.H{
 			"title":   "Lab Tidak Ditemukan",
@@ -416,7 +416,7 @@ func (h *GlobalHandler) AdminLabCreate(c *gin.Context) {
 	// --- Register handler + DB ---
 	newHandler := NewHandler(db, h.cfg, h.notifier, h.globalAuthService, h.globalDB, urlPath)
 	h.registrar.Register(urlPath, newHandler)
-	h.labsDB[urlPath] = db
+	h.LabsDB[urlPath] = db
 
 	// --- Start backup + public build services ---
 	labBackupCfg := h.cfg.Backup
@@ -476,9 +476,9 @@ func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
 	h.globalDB.Exec("DELETE FROM grid_layouts WHERE lab_url_path = ?", urlPath)
 
 	// Tutup koneksi DB lab
-	if db, ok := h.labsDB[urlPath]; ok {
+	if db, ok := h.LabsDB[urlPath]; ok {
 		db.Close()
-		delete(h.labsDB, urlPath)
+		delete(h.LabsDB, urlPath)
 	}
 
 	// Rename file DB + WAL/SHM ke .deleted (soft-delete, reversible)
