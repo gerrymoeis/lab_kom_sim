@@ -376,6 +376,25 @@ func TestAdminUserEdit(t *testing.T) {
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 after password change, got %d", resp.StatusCode)
 		}
+		// Password change clears session_token in DB → invalidates session
+		// Environment reset untuk subtest berikutnya
+		env.LabA.cookies = make(map[string]string)
+		env.LabA.csrf = ""
+		env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = 'admin'")
+		if !env.LabA.login("admin", "newpass456") {
+			t.Fatal("re-login after password change failed")
+		}
+		resp, err := env.LabA.getURL(env.TS.URL + "/labs")
+		if err != nil {
+			t.Fatalf("GET /labs after re-login: %v", err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		token := env.LabA.extractCSRFToken(string(body))
+		if token == "" {
+			t.Fatal("could not extract CSRF token after re-login")
+		}
+		env.LabA.csrf = token
 	})
 
 	t.Run("edit_invalid_id", func(t *testing.T) {
