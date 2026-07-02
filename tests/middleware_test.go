@@ -220,3 +220,67 @@ func extractCookieValue(header string) string {
 	}
 	return header
 }
+
+// ============================================
+// G.4: redirectOnNoLab — redirect behavior for nonexistent labs
+// ============================================
+
+func TestRedirectOnNoLab(t *testing.T) {
+	env := setupTestEnvironment(t)
+
+	t.Run("unauthenticated_redirects_to_login", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", env.TS.URL+"/nonexistent/dashboard", nil)
+		resp, err := env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		loc := resp.Header.Get("Location")
+		if loc != "/login" {
+			t.Errorf("expected redirect to /login, got %q", loc)
+		}
+	})
+
+	t.Run("super_admin_redirects_to_labs_list", func(t *testing.T) {
+		if !env.LabA.login("admin", "admin123") {
+			t.Fatal("super admin login failed")
+		}
+		req, _ := http.NewRequest("GET", env.TS.URL+"/nonexistent/dashboard", nil)
+		env.LabA.addCookies(req)
+		resp, err := env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		loc := resp.Header.Get("Location")
+		if loc != "/labs" {
+			t.Errorf("expected redirect to /labs, got %q", loc)
+		}
+	})
+
+	t.Run("lab_admin_redirects_to_first_lab_dashboard", func(t *testing.T) {
+		if !env.LabA.login("labA_only", "test123") {
+			t.Fatal("lab admin login failed")
+		}
+		req, _ := http.NewRequest("GET", env.TS.URL+"/nonexistent/dashboard", nil)
+		env.LabA.addCookies(req)
+		resp, err := env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		loc := resp.Header.Get("Location")
+		if loc != "/lab-kom-mi/dashboard" {
+			t.Errorf("expected redirect to /lab-kom-mi/dashboard, got %q", loc)
+		}
+	})
+}
