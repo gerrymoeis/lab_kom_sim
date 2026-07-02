@@ -209,7 +209,7 @@ func sourceMapBlocker() gin.HandlerFunc {
 	}
 }
 
-func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config.Config, notifier services.CUDNotifier) (*gin.Engine, func(), func()) {
+func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config.Config, notifier services.CUDNotifier) (*gin.Engine, func(), func(), *handlers.GlobalHandler) {
 	router := gin.New()
 	router.MaxMultipartMemory = 6 << 20
 	router.Use(sourceMapBlocker())
@@ -249,7 +249,10 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 	}
 	adapter := NewHandlerAdapter(handlersMap)
 
-	multiNotifier, _ := notifier.(*services.MultiNotifier)
+	multiNotifier, ok := notifier.(*services.MultiNotifier)
+	if !ok {
+		multiNotifier = services.NewMultiNotifier()
+	}
 	globalHandler := handlers.NewGlobalHandler(cfg, globalDB, globalAuthService, dbs, adapter, multiNotifier)
 
 	writeFlushMiddleware := func() gin.HandlerFunc {
@@ -545,5 +548,5 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 			h.FlushActivityLogs()
 		}
 	}
-	return router, closeAll, flushAll
+	return router, closeAll, flushAll, globalHandler
 }
