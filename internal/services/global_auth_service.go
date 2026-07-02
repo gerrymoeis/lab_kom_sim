@@ -157,6 +157,9 @@ func (s *GlobalAuthService) UpdateUserPassword(id int, password string) error {
 	if err := s.userRepo.UpdatePassword(id, string(hash)); err != nil {
 		return err
 	}
+	if err := s.userRepo.ClearSessionToken(id); err != nil {
+		return err
+	}
 	return s.userRepo.ClearDefaultPasswordFlag(id)
 }
 
