@@ -461,4 +461,40 @@ func TestPCGridOperations(t *testing.T) {
 			t.Errorf("expected 400 for empty ids, got %d", code)
 		}
 	})
+
+	// ============================================
+	// 2D.11: Batch delete partial rollback — valid + invalid label → 500 + rollback
+	// ============================================
+	t.Run("2D.11_batch_delete_rollback", func(t *testing.T) {
+		pc20Before := getPC(t, lab, "pc-20")
+		if pc20Before == nil {
+			t.Skip("pc-20 not available")
+		}
+
+		code, _ := postGridOp(t, lab, "/pc/batch-delete", `{"ids":["pc-20","pc-NONEXISTENT"]}`)
+		if code != 500 {
+			t.Errorf("expected 500 for partial rollback, got %d", code)
+		}
+
+		// pc-20 should still exist (transaction rolled back)
+		requirePCExists(t, lab, "pc-20", pc20Before["row"].(int), pc20Before["column"].(int), "dipakai")
+	})
+
+	// ============================================
+	// 2D.12: Swap A == B — same label → 400
+	// ============================================
+	t.Run("2D.12_swap_same_label", func(t *testing.T) {
+		pc1Before := getPC(t, lab, "pc-1")
+		if pc1Before == nil {
+			t.Skip("pc-1 not available")
+		}
+
+		code, _ := postGridOp(t, lab, "/api/pc/swap", `{"a":"pc-1","b":"pc-1"}`)
+		if code != 400 {
+			t.Errorf("expected 400 for same label swap, got %d", code)
+		}
+
+		// pc-1 should be unchanged
+		requirePCExists(t, lab, "pc-1", pc1Before["row"].(int), pc1Before["column"].(int), "dipakai")
+	})
 }

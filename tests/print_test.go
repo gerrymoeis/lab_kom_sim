@@ -438,4 +438,72 @@ func TestPrintSticker(t *testing.T) {
 			})
 		}
 	})
+
+	// ============================================
+	// 2C.8: Natural sorting — pc_labels in non-natural order
+	// ============================================
+	t.Run("2C.8_natural_sorting", func(t *testing.T) {
+		// Insert test PCs at row=99 with labels that sort naturally as 9,10,11
+		testLabels := []string{"pc-sort-9", "pc-sort-10", "pc-sort-11"}
+		for i, label := range testLabels {
+			_, err := db.Exec(`INSERT INTO pcs (label, row, column, placement, status, serial_number, operating_system, pc_type, brand_model) VALUES (?, 99, ?, 'dipakai', 'normal', ?, 'Win11', 'PC', 'Dell')`,
+				label, i+1, "SN-"+label)
+			if err != nil {
+				t.Fatalf("insert pc %s: %v", label, err)
+			}
+		}
+		t.Cleanup(func() {
+			db.Exec("DELETE FROM pc_software WHERE pc_id IN (SELECT id FROM pcs WHERE row >= 99)")
+			db.Exec("DELETE FROM pcs WHERE row >= 99")
+		})
+
+		// Request labels in non-natural order: pc-sort-10, pc-sort-9, pc-sort-11
+		url := generatePrintURL(env.TS.URL, lab.prefix, map[string]string{
+			"type":      "pc",
+			"paper_size": "A4",
+			"pc_labels": "pc-sort-10,pc-sort-9,pc-sort-11",
+		})
+
+		req, _ := http.NewRequest("GET", url, nil)
+		lab.addCookies(req)
+		resp, err := lab.client.Do(req)
+		if err != nil {
+			t.Fatalf("GET /print/generate: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+
+		pdfBytes := getBodyBytes(resp)
+		if !bytes.HasPrefix(pdfBytes, []byte("%PDF-")) {
+			t.Fatal("expected PDF header")
+		}
+
+		// Extract decompressed content for order check
+		content := extractPDFContent(pdfBytes)
+		contentStr := string(content)
+
+		idx9 := strings.Index(contentStr, "(PC-SORT-9)")
+		idx10 := strings.Index(contentStr, "(PC-SORT-10)")
+		idx11 := strings.Index(contentStr, "(PC-SORT-11)")
+
+		if idx9 < 0 {
+			t.Error("PC-SORT-9 not found in PDF content")
+		}
+		if idx10 < 0 {
+			t.Error("PC-SORT-10 not found in PDF content")
+		}
+		if idx11 < 0 {
+			t.Error("PC-SORT-11 not found in PDF content")
+		}
+
+		if idx9 >= 0 && idx10 >= 0 && idx9 > idx10 {
+			t.Error("PC-SORT-9 should appear before PC-SORT-10 (natural sorting)")
+		}
+		if idx10 >= 0 && idx11 >= 0 && idx10 > idx11 {
+			t.Error("PC-SORT-10 should appear before PC-SORT-11 (natural sorting)")
+		}
+	})
 }
