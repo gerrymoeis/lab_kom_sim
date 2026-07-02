@@ -1,6 +1,7 @@
 ﻿package services
 
 import (
+	"fmt"
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
@@ -365,6 +366,16 @@ func (s *PCService) SyncSoftware(label string, requiredIDs []string, otherNames,
 }
 
 func (s *PCService) BatchDeletePC(labels []string, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	for _, label := range labels {
+		count, err := s.pcRepo.CountByLabel(label)
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("PC %s tidak ditemukan", label)
+		}
+	}
+
 	tx, err := s.pcRepo.Begin()
 	if err != nil {
 		return err

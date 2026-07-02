@@ -414,6 +414,12 @@ func (r *PCRepository) Begin() (*database.Tx, error) {
 	return r.db.Begin()
 }
 
+func (r *PCRepository) CountByLabel(label string) (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM pcs WHERE label = ?", label).Scan(&count)
+	return count, err
+}
+
 func (r *PCRepository) DeleteByLabelTx(tx *database.Tx, label string) error {
 	_, err := tx.Exec("DELETE FROM pcs WHERE label = ?", label)
 	return err

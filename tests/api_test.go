@@ -582,3 +582,60 @@ func TestAPINextLabel(t *testing.T) {
 		}
 	})
 }
+
+// ============================================
+// TestSoftwareCatalogJSON — GET /software/catalog.json
+// ============================================
+
+func TestSoftwareCatalogJSON(t *testing.T) {
+	env := setupTestEnvironment(t)
+	lab := env.LabA
+
+	if !loginAndRefresh(lab, "labA_only", "test123") {
+		t.Fatal("login failed")
+	}
+
+	t.Run("returns_other_catalog", func(t *testing.T) {
+		resp, err := lab.get("/software/catalog.json")
+		if err != nil {
+			t.Fatalf("GET /software/catalog.json: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+
+		var items []map[string]any
+		if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
+			t.Fatalf("decode response: %v", err)
+		}
+
+		// Should return at least one "other" software item
+		if len(items) == 0 {
+			t.Error("expected at least one software item in catalog")
+		}
+		for _, item := range items {
+			cat, _ := item["category"].(string)
+			if cat != "other" {
+				t.Errorf("expected category 'other', got %q", cat)
+			}
+			name, _ := item["name"].(string)
+			if name == "" {
+				t.Error("software item has empty name")
+			}
+		}
+	})
+
+	t.Run("requires_auth", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", env.TS.URL+lab.prefix+"/software/catalog.json", nil)
+		resp, err := env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("GET /software/catalog.json no auth: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 for unauthenticated, got %d", resp.StatusCode)
+		}
+	})
+}
