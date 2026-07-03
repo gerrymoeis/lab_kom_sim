@@ -3,6 +3,7 @@ package tests
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -604,4 +605,36 @@ func TestBulkSave(t *testing.T) {
 		}
 		_ = dups
 	})
+}
+
+// ============================================
+// HEIC OCR test with mock server
+// ============================================
+
+func TestOCR_HEIC_Mock(t *testing.T) {
+	wd, _ := os.Getwd()
+	projectRoot := findProjectRoot(wd)
+
+	mock := mockGemini(t, geminiResp(validOCRJSON()), 200, nil)
+	defer mock.Close()
+
+	s := services.NewOCRService("test-key", "",
+		services.WithGeminiBaseURL(mock.URL))
+
+	result, err := s.ExtractLogbookFromImage(filepath.Join(projectRoot, "tests", "resources", "local_logbook_1.heic"))
+	if err != nil {
+		t.Fatalf("ExtractLogbookFromImage HEIC: %v", err)
+	}
+	if !result.Success {
+		t.Fatalf("result.Success = false, error: %s", result.Error)
+	}
+	if len(result.Entries) == 0 {
+		t.Fatal("expected at least 1 entry from HEIC OCR")
+	}
+	if result.Entries[0].StudentName != "Budi Santoso" {
+		t.Errorf("expected 'Budi Santoso', got '%s'", result.Entries[0].StudentName)
+	}
+	if result.Entries[0].NIM != "24091397001" {
+		t.Errorf("expected '24091397001', got '%s'", result.Entries[0].NIM)
+	}
 }
