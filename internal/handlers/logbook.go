@@ -333,9 +333,6 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		return
 	}
 
-	_, _, _, ok := h.user(c)
-	if !ok { return }
-
 	var req LogbookSaveRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
@@ -395,7 +392,8 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	verifiedIdx := make(map[int]bool, len(req.Verified))

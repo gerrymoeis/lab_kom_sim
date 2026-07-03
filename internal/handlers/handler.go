@@ -123,7 +123,11 @@ func (h *Handler) requireAdmin(c *gin.Context) bool {
 	if !ok {
 		return false
 	}
-	return role == "admin"
+	if role != "admin" {
+		h.errHTML(c, "Hanya admin yang dapat melakukan operasi ini")
+		return false
+	}
+	return true
 }
 
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {
