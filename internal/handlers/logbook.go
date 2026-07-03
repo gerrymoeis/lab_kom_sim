@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -194,9 +195,10 @@ func (h *Handler) LogbookUploadPage(c *gin.Context) {
 }
 
 func (h *Handler) LogbookUpload(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	userID, username, role, ok := h.user(c)
 	if !ok { return }
-	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat mengupload"); return }
 	ip, ua := getRequestContext(c)
 
 	var path, fn string
@@ -288,8 +290,14 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 	h.activityLogService.LogUpload(userID, username, role, "logbook", 0, fn, "image", ip, ua)
 
 	var modelEntries []models.LogbookEntry
-	for _, e := range result.Entries {
-		parsed, _ := services.ParseDate(e.Date)
+	entryErrors := make([]string, len(result.Entries))
+	for i, e := range result.Entries {
+		parsed, err := services.ParseDate(e.Date)
+		if err != nil {
+			log.Printf("[WARN] LogbookUpload: invalid date entry %d: %q — using fallback", i, e.Date)
+			parsed = time.Now()
+			entryErrors[i] = "Tanggal tidak valid: " + e.Date
+		}
 		modelEntries = append(modelEntries, models.LogbookEntry{
 			Date: parsed, StudentName: e.StudentName,
 			NIM: e.NIM, TimeIn: e.TimeIn, TimeOut: e.TimeOut, Purpose: e.Purpose,
@@ -315,13 +323,18 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		"entries": result.Entries, "total": len(result.Entries),
 		"source_file": fn, "success": "Gambar berhasil diproses",
 		"dupInfo": dupInfo, "uploaded_at": time.Now(),
+		"entryErrors": entryErrors,
 	})
 }
 
 func (h *Handler) LogbookSave(c *gin.Context) {
-	_, _, role, ok := h.user(c)
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
+	_, _, _, ok := h.user(c)
 	if !ok { return }
-	if role != "admin" { h.errJSON(c, http.StatusForbidden, "Hanya admin"); return }
 
 	var req LogbookSaveRequest
 	if err := c.ShouldBind(&req); err != nil {
@@ -329,12 +342,40 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 		return
 	}
 
+	type rowError struct {
+		Row   int    `json:"row"`
+		Field string `json:"field"`
+		Value string `json:"value"`
+		Error string `json:"error"`
+	}
+
 	bulk := make([]repository.BulkEntry, 0, len(req.Date))
+	var failed int
+	var failedDetails []rowError
 	for i := 0; i < len(req.Date) && i < len(req.StudentName); i++ {
 		dv, err1 := services.ParseDate(req.Date[i])
 		tiv, err2 := time.Parse("15:04", req.TimeIn[i])
 		tov, err3 := time.Parse("15:04", req.TimeOut[i])
-		if err1 != nil || err2 != nil || err3 != nil { continue }
+
+		if err1 != nil || err2 != nil || err3 != nil {
+			failed++
+			if err1 != nil {
+				failedDetails = append(failedDetails, rowError{
+					Row: i + 1, Field: "date", Value: req.Date[i], Error: err1.Error(),
+				})
+			}
+			if err2 != nil {
+				failedDetails = append(failedDetails, rowError{
+					Row: i + 1, Field: "time_in", Value: req.TimeIn[i], Error: err2.Error(),
+				})
+			}
+			if err3 != nil {
+				failedDetails = append(failedDetails, rowError{
+					Row: i + 1, Field: "time_out", Value: req.TimeOut[i], Error: err3.Error(),
+				})
+			}
+			continue
+		}
 
 		p := ""
 		if i < len(req.Purpose) { p = req.Purpose[i] }
@@ -344,6 +385,14 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 			TimeIn: tiv.Format("15:04"), TimeOut: tov.Format("15:04"),
 			Purpose: p,
 		})
+	}
+
+	if len(bulk) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false, "failed": failed, "failed_details": failedDetails,
+			"message": fmt.Sprintf("Semua data (%d) gagal diproses. Periksa format tanggal dan jam.", failed),
+		})
+		return
 	}
 
 	uid, u, r, _ := h.user(c)
@@ -369,15 +418,17 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	if dups > 0 {
 		message = fmt.Sprintf("Berhasil menyimpan %d data. %d data dilewati karena sudah ada di database.", saved, dups)
 	}
+	if failed > 0 {
+		message += fmt.Sprintf(" %d data gagal diproses.", failed)
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"success": true, "saved": saved, "duplicates": dups, "message": message,
+		"success": true, "saved": saved, "duplicates": dups, "failed": failed,
+		"failed_details": failedDetails, "message": message,
 	})
 }
 
 func (h *Handler) LogbookExport(c *gin.Context) {
-	_, _, role, ok := h.user(c)
-	if !ok { return }
-	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data"); return }
+	if !h.requireAdmin(c) { return }
 
 	search := c.Query("search")
 	date := c.Query("date")
@@ -419,9 +470,7 @@ func (h *Handler) LogbookExport(c *gin.Context) {
 }
 
 func (h *Handler) LogbookExportPreview(c *gin.Context) {
-	_, _, role, ok := h.user(c)
-	if !ok { return }
-	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data"); return }
+	if !h.requireAdmin(c) { return }
 
 	filterDate := c.Query("date")
 	search := c.Query("search")
@@ -473,6 +522,8 @@ func (h *Handler) LogbookCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) LogbookCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	_, username, role, _ := h.user(c)
 
 	var req CreateLogbookRequest
@@ -527,6 +578,8 @@ func (h *Handler) LogbookEditPage(c *gin.Context) {
 }
 
 func (h *Handler) LogbookEdit(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	id, _ := strconv.Atoi(c.Param("id"))
 	_, username, role, _ := h.user(c)
 
@@ -567,6 +620,8 @@ func (h *Handler) LogbookEdit(c *gin.Context) {
 }
 
 func (h *Handler) LogbookDelete(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	// Called via form POST (redirect) or AJAX
 	id, _ := strconv.Atoi(c.Param("id"))
 	uid, u, r, _ := h.user(c)
@@ -589,6 +644,11 @@ func (h *Handler) LogbookDelete(c *gin.Context) {
 }
 
 func (h *Handler) LogbookBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -601,7 +661,8 @@ func (h *Handler) LogbookBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.logbookService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())

@@ -79,12 +79,13 @@ func (h *Handler) DeviceInstallationCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	var req CreateInstallationRequest
 	if err := c.ShouldBind(&req); err != nil {
-		_, username, role, _ := h.user(c)
 		h.renderTemplate(c, http.StatusBadRequest, "device_installation/create.html", gin.H{
 			"title": "Tambah Instalasi", "currentPage": "devices",
-			"username": username, "role": role, "android": h.cfg.Android, "error": "Lengkapi data yang diperlukan",
+			"android": h.cfg.Android, "error": "Lengkapi data yang diperlukan",
 		})
 		return
 	}
@@ -92,7 +93,8 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 	photo := processPhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations")
 
 	deviceID, _ := strconv.Atoi(req.DeviceID)
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	_, err := h.deviceInstallationService.Create(services.CreateInstallationInput{
@@ -106,7 +108,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 	if err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "device_installation/create.html", gin.H{
 			"title": "Tambah Instalasi", "currentPage": "devices",
-			"username": u, "role": r, "error": "Gagal menyimpan instalasi",
+			"error": "Gagal menyimpan instalasi",
 		})
 		return
 	}
@@ -158,6 +160,9 @@ func (h *Handler) DeviceInstallationEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+
+	if !h.requireAdmin(c) { return }
+
 	var req EditInstallationRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Data tidak valid")
@@ -174,7 +179,8 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		}
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceInstallationService.Update(id, services.UpdateInstallationInput{
@@ -192,7 +198,11 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 
 func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	uid, u, r, _ := h.user(c)
+
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	// Get installation data before delete to know photo filename
@@ -213,6 +223,11 @@ func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
 }
 
 func (h *Handler) DeviceInstallationBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -225,7 +240,8 @@ func (h *Handler) DeviceInstallationBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.deviceInstallationService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())

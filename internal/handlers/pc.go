@@ -94,12 +94,13 @@ func (h *Handler) PCCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) PCCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	var req CreatePCRequest
 	if err := c.ShouldBind(&req); err != nil {
-		_, username, role, _ := h.user(c)
 		h.renderTemplate(c, http.StatusBadRequest, "pc/create.html", gin.H{
 			"title": "Tambah PC Baru", "error": "Lengkapi data yang diperlukan",
-			"currentPage": "pc", "username": username, "role": role,
+			"currentPage": "pc",
 		})
 		return
 	}
@@ -110,7 +111,8 @@ func (h *Handler) PCCreate(c *gin.Context) {
 		label = h.pcService.NextLabel(req.Placement, req.IsMahasiswa == "true")
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	lab := c.GetString("lab")
 	uploadPath := h.cfg.UploadPath
@@ -138,7 +140,7 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	if err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "pc/create.html", gin.H{
 			"title": "Tambah PC Baru", "error": "Gagal menyimpan. Mungkin label PC sudah digunakan.",
-			"currentPage": "pc", "username": u, "role": r,
+			"currentPage": "pc",
 		})
 		return
 	}
@@ -192,13 +194,16 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 func (h *Handler) PCEdit(c *gin.Context) {
 	label := c.Param("label")
 
+	if !h.requireAdmin(c) { return }
+
 	var req EditPCRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Data tidak valid")
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	lab := c.GetString("lab")
 	uploadPath := h.cfg.UploadPath
@@ -238,7 +243,11 @@ func (h *Handler) PCEdit(c *gin.Context) {
 
 func (h *Handler) PCDelete(c *gin.Context) {
 	label := c.Param("label")
-	uid, u, r, _ := h.user(c)
+
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	// Get PC data before delete to know photo filenames
@@ -276,6 +285,12 @@ func (h *Handler) PCStatusAPI(c *gin.Context) {
 
 func (h *Handler) UpdatePCStatusAPI(c *gin.Context) {
 	label := c.Param("label")
+
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	pc, err := h.pcService.GetByLabel(label)
 	if err != nil {
 		h.errJSON(c, http.StatusNotFound, "PC tidak ditemukan")
@@ -288,7 +303,8 @@ func (h *Handler) UpdatePCStatusAPI(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, "Data tidak valid")
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.pcService.UpdateStatus(pc.ID, req.Status, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, "Gagal mengupdate status")
@@ -298,9 +314,7 @@ func (h *Handler) UpdatePCStatusAPI(c *gin.Context) {
 }
 
 func (h *Handler) PCExport(c *gin.Context) {
-	_, _, role, ok := h.user(c)
-	if !ok { return }
-	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data"); return }
+	if !h.requireAdmin(c) { return }
 
 	pcs, err := h.pcService.ExportAll()
 	if err != nil {
@@ -403,6 +417,11 @@ func (h *Handler) PCGetLayout(c *gin.Context) {
 }
 
 func (h *Handler) PCSwap(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		A string `json:"a" binding:"required"`
 		B string `json:"b" binding:"required"`
@@ -417,7 +436,8 @@ func (h *Handler) PCSwap(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.pcService.SwapPCs(req.A, req.B, uid, u, r, ip, ua); err != nil {
@@ -438,6 +458,11 @@ func (h *Handler) PCSwap(c *gin.Context) {
 }
 
 func (h *Handler) PCReplace(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		Target string `json:"target" binding:"required"`
 		Spare  string `json:"spare" binding:"required"`
@@ -447,7 +472,8 @@ func (h *Handler) PCReplace(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.pcService.ReplacePC(req.Target, req.Spare, uid, u, r, ip, ua); err != nil {
@@ -468,6 +494,11 @@ func (h *Handler) PCReplace(c *gin.Context) {
 }
 
 func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		Row int `json:"row" binding:"required"`
 	}
@@ -476,7 +507,8 @@ func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	labelMap, err := h.pcService.MoveRowToCadangan(req.Row, uid, u, r, ip, ua)
@@ -500,6 +532,11 @@ func (h *Handler) PCMoveRowToCadangan(c *gin.Context) {
 }
 
 func (h *Handler) PCMove(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		Label string `json:"label" binding:"required"`
 		Row   int    `json:"row" binding:"required"`
@@ -517,7 +554,8 @@ func (h *Handler) PCMove(c *gin.Context) {
 		newLabel = fmt.Sprintf("pc-%d", pos)
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.pcService.MovePC(req.Label, req.Row, req.Col, newLabel, uid, u, r, ip, ua); err != nil {
@@ -535,6 +573,11 @@ func (h *Handler) PCMove(c *gin.Context) {
 }
 
 func (h *Handler) PCPlace(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		Label string `json:"label" binding:"required"`
 		Row   int    `json:"row" binding:"required"`
@@ -552,7 +595,8 @@ func (h *Handler) PCPlace(c *gin.Context) {
 		newLabel = fmt.Sprintf("pc-%d", pos)
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.pcService.PlaceCadangan(req.Label, req.Row, req.Col, newLabel, uid, u, r, ip, ua); err != nil {
@@ -570,6 +614,11 @@ func (h *Handler) PCPlace(c *gin.Context) {
 }
 
 func (h *Handler) PCMoveToCadangan(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		Label string `json:"label" binding:"required"`
 	}
@@ -578,7 +627,8 @@ func (h *Handler) PCMoveToCadangan(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	newLabel, err := h.pcService.MoveToCadangan(req.Label, uid, u, r, ip, ua)
@@ -687,6 +737,11 @@ func processPhotoRefs(uploadPath, lab, serialRef, frontRef string) (serial, fron
 }
 
 func (h *Handler) PCBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -694,7 +749,8 @@ func (h *Handler) PCBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, "Tidak ada item yang dipilih")
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.pcService.BatchDeletePC(req.IDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())

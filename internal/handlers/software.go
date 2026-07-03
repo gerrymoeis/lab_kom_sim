@@ -92,7 +92,7 @@ func (h *Handler) SoftwareDetail(c *gin.Context) {
 func (h *Handler) SoftwareEditPage(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
-	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat mengedit software"); return }
+	if !h.requireAdmin(c) { return }
 
 	slug := c.Param("slug")
 	sw, err := h.softwareService.GetBySlug(slug)
@@ -123,6 +123,8 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 }
 
 func (h *Handler) SoftwareEdit(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	slug := c.Param("slug")
 	sw, err := h.softwareService.GetBySlug(slug)
 	if err != nil {
@@ -148,7 +150,8 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 		req.Category = sw.Category
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.softwareService.Update(sw.ID, req.Name, req.Category, req.Description, req.PCIDs, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/software/"+slug+"/edit", err.Error())
@@ -159,6 +162,8 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 }
 
 func (h *Handler) SoftwareDelete(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	slug := c.Param("slug")
 	sw, err := h.softwareService.GetBySlug(slug)
 	if err != nil {
@@ -166,7 +171,8 @@ func (h *Handler) SoftwareDelete(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.softwareService.Delete(sw.ID, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/software", err.Error())
@@ -176,13 +182,16 @@ func (h *Handler) SoftwareDelete(c *gin.Context) {
 }
 
 func (h *Handler) SoftwareCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	var req CreateSoftwareRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.redirectWithError(c, "/software", "Nama software harus diisi")
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	err := h.softwareService.Create(services.SoftwareCreateInput{
 		Name: req.Name, Category: req.Category, Description: req.Description,
@@ -199,9 +208,7 @@ func (h *Handler) SoftwareCreate(c *gin.Context) {
 }
 
 func (h *Handler) SoftwareExport(c *gin.Context) {
-	_, _, role, ok := h.user(c)
-	if !ok { return }
-	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export data software"); return }
+	if !h.requireAdmin(c) { return }
 
 	stats, err := h.softwareService.Export()
 	if err != nil {
@@ -240,6 +247,11 @@ func (h *Handler) SoftwareExport(c *gin.Context) {
 }
 
 func (h *Handler) SoftwareBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -252,7 +264,8 @@ func (h *Handler) SoftwareBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.softwareService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())

@@ -321,18 +321,18 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 		})
 		return
 	}
-	id := targetUser.ID
 
-	if targetUser.IsSuperAdmin && !h.isProtected(c) {
+	if !h.canEditUser(c, targetUser) {
 		h.render(c, http.StatusForbidden, "user/edit.html", gin.H{
 			"title":       "Edit User",
 			"currentPage": "users",
 			"user":        targetUser,
 			"labs":        h.cfg.Labs,
-			"error":       "Hanya Super Admin yang dapat mengedit Super Admin",
+			"error":       "Anda tidak memiliki izin untuk mengedit user ini",
 		})
 		return
 	}
+	id := targetUser.ID
 
 	username := c.PostForm("username")
 	fullName := c.PostForm("full_name")
@@ -461,21 +461,12 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 		})
 		return
 	}
+
+	if !h.canDeleteUser(c, targetUser) {
+		c.Redirect(http.StatusFound, "/labs/admin/users?error="+url.QueryEscape("Anda tidak memiliki izin untuk menghapus user ini"))
+		return
+	}
 	id := targetUser.ID
-
-	session := sessions.Default(c)
-	currentUserID, _ := session.Get("user_id").(int)
-	if currentUserID == id {
-		c.Redirect(http.StatusFound, "/labs/admin/users?error="+url.QueryEscape("Tidak dapat menghapus akun Anda sendiri"))
-		return
-	}
-
-	var mainCount int
-	h.globalDB.QueryRow(`SELECT COUNT(*) FROM lab_permissions WHERE user_id = ? AND is_main_account = 1`, id).Scan(&mainCount)
-	if mainCount > 0 {
-		c.Redirect(http.StatusFound, "/labs/admin/users?error="+url.QueryEscape("User ini adalah akun utama lab dan tidak bisa dihapus"))
-		return
-	}
 
 	if err := h.globalAuthService.DeleteUser(id); err != nil {
 		errMsg := "Gagal menghapus user"
