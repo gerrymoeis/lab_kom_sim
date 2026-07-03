@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1560,7 +1562,7 @@ func TestLogbook(t *testing.T) {
 	env := setupTestEnvironment(t)
 	lab := env.LabA
 	db := env.DB_A
-	cfg := env.Config
+	_ = env.Config
 	if !loginAndRefresh(lab, "labA_only", "test123") {
 		t.Fatal("login failed")
 	}
@@ -1669,10 +1671,7 @@ func TestLogbook(t *testing.T) {
 		}
 	})
 
-	t.Run("fail_upload_no_api_key", func(t *testing.T) {
-		if cfg.GeminiAPIKey != "" || cfg.OpenRouterAPIKey != "" {
-			t.Skip("API key present, skipping no-api-key test")
-		}
+	t.Run("upload_page_loads", func(t *testing.T) {
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
@@ -1792,6 +1791,88 @@ func TestLogbook(t *testing.T) {
 		}
 		if sr.Saved != 1 {
 			t.Errorf("expected 1 saved, got %d", sr.Saved)
+		}
+	})
+}
+
+// ============================================
+// TestLogbookUpload — OCR upload, mock API, error handling
+// ============================================
+
+func TestLogbookUpload(t *testing.T) {
+	t.Run("ocr_upload_no_api_key_error", func(t *testing.T) {
+		// Force empty API keys despite any .env file
+		origGemini, geminiOk := os.LookupEnv("GEMINI_API_KEY")
+		origOR, orOk := os.LookupEnv("OPENROUTER_API_KEY")
+		os.Setenv("GEMINI_API_KEY", "")
+		os.Setenv("OPENROUTER_API_KEY", "")
+		t.Cleanup(func() {
+			if geminiOk { os.Setenv("GEMINI_API_KEY", origGemini) } else { os.Unsetenv("GEMINI_API_KEY") }
+			if orOk { os.Setenv("OPENROUTER_API_KEY", origOR) } else { os.Unsetenv("OPENROUTER_API_KEY") }
+		})
+
+		env := setupTestEnvironment(t, TestConfigOverrides{
+			GeminiKey:     "",
+			OpenRouterKey: "",
+		})
+		lab := env.LabA
+		if !loginAndRefresh(lab, "labA_only", "test123") {
+			t.Fatal("login failed")
+		}
+		tempDir := filepath.Join("uploads", "lab-kom-mi", "temp")
+		os.MkdirAll(tempDir, 0755)
+		src, _ := os.ReadFile(filepath.Join("tests", "resources", "logbook.jpeg"))
+		os.WriteFile(filepath.Join(tempDir, "test_upload.jpg"), src, 0644)
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/logbook/upload", "file_ref=test_upload.jpg")
+		if err != nil {
+			t.Fatalf("POST /logbook/upload: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 500 {
+			t.Errorf("expected 500 for missing API key, got %d", resp.StatusCode)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), "API key tidak dikonfigurasi") {
+			t.Errorf("expected 'API key tidak dikonfigurasi' in body, got: %s", string(body))
+		}
+	})
+
+	t.Run("ocr_upload_with_mock_api", func(t *testing.T) {
+		mock := mockGemini(t, geminiResp(validOCRJSON()), 200, nil)
+		defer mock.Close()
+		env := setupTestEnvironment(t, TestConfigOverrides{
+			GeminiKey:      "mock-key",
+			GeminiBaseURL:  mock.URL,
+			OpenRouterKey:  "",
+		})
+		lab := env.LabA
+		if !loginAndRefresh(lab, "labA_only", "test123") {
+			t.Fatal("login failed")
+		}
+		tempDir := filepath.Join("uploads", "lab-kom-mi", "temp")
+		os.MkdirAll(tempDir, 0755)
+		src, _ := os.ReadFile(filepath.Join("tests", "resources", "logbook.jpeg"))
+		os.WriteFile(filepath.Join(tempDir, "test_mock.jpg"), src, 0644)
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/logbook/upload", "file_ref=test_mock.jpg")
+		if err != nil {
+			t.Fatalf("POST /logbook/upload: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		if !strings.Contains(string(body), "Budi Santoso") {
+			t.Errorf("expected 'Budi Santoso' in preview body, got: %s", string(body))
+		}
+		if !strings.Contains(string(body), "24091397001") {
+			t.Errorf("expected NIM in preview body, got: %s", string(body))
 		}
 	})
 }

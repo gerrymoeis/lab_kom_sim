@@ -22,10 +22,12 @@ import (
 
 // TestConfigOverrides allows customising config for specific test scenarios.
 type TestConfigOverrides struct {
-	Android       bool
-	GeminiKey     string
-	OpenRouterKey string
-	UploadPath    string
+	Android          bool
+	GeminiKey        string
+	OpenRouterKey    string
+	UploadPath       string
+	GeminiBaseURL    string
+	OpenRouterBaseURL string
 }
 
 func findProjectRoot(wd string) string {
@@ -232,13 +234,23 @@ func createTestConfig(overrides ...TestConfigOverrides) *config.Config {
 	if openRouterKey == "" {
 		openRouterKey = os.Getenv("OPENROUTER_API_KEY")
 	}
+	geminiBaseURL := cfg.GeminiBaseURL
+	if geminiBaseURL == "" {
+		geminiBaseURL = os.Getenv("GEMINI_BASE_URL")
+	}
+	openRouterBaseURL := cfg.OpenRouterBaseURL
+	if openRouterBaseURL == "" {
+		openRouterBaseURL = os.Getenv("OPENROUTER_BASE_URL")
+	}
 	return &config.Config{
-		SessionSecret:    "test-secret-12345",
-		UploadPath:       uploadPath,
-		DefaultPageSize:  25,
-		Android:          cfg.Android,
-		GeminiAPIKey:     geminiKey,
-		OpenRouterAPIKey: openRouterKey,
+		SessionSecret:     "test-secret-12345",
+		UploadPath:        uploadPath,
+		DefaultPageSize:   25,
+		Android:           cfg.Android,
+		GeminiAPIKey:      geminiKey,
+		GeminiBaseURL:     geminiBaseURL,
+		OpenRouterAPIKey:  openRouterKey,
+		OpenRouterBaseURL: openRouterBaseURL,
 	}
 }
 

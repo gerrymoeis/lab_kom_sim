@@ -271,7 +271,14 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		defer os.Remove(path)
 	}
 
-	ocr := services.NewOCRService(h.cfg.GeminiAPIKey, h.cfg.OpenRouterAPIKey)
+	var ocrOpts []services.OCROption
+	if h.cfg.GeminiBaseURL != "" {
+		ocrOpts = append(ocrOpts, services.WithGeminiBaseURL(h.cfg.GeminiBaseURL))
+	}
+	if h.cfg.OpenRouterBaseURL != "" {
+		ocrOpts = append(ocrOpts, services.WithOpenRouterBaseURL(h.cfg.OpenRouterBaseURL))
+	}
+	ocr := services.NewOCRService(h.cfg.GeminiAPIKey, h.cfg.OpenRouterAPIKey, ocrOpts...)
 	result, err := ocr.ExtractLogbookFromImage(path)
 	if err != nil {
 		h.errHTML(c, "Gagal memproses gambar: "+err.Error())
