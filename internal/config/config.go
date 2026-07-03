@@ -26,7 +26,9 @@ type Config struct {
 	GlobalDBPath     string
 	EnvPath          string
 	GeminiAPIKey     string
+	GeminiBaseURL    string
 	OpenRouterAPIKey string
+	OpenRouterBaseURL string
 	Android          bool
 	WriteMode        string
 	Timezone         string
@@ -113,8 +115,10 @@ func Load() *Config {
 		CookieSecure:  getEnv("COOKIE_SECURE", "false") == "true",
 		UploadPath:    uploadPath,
 		GlobalDBPath:  getEnv("GLOBAL_DB_PATH", "data/global.db"),
-		GeminiAPIKey:     getEnv("GEMINI_API_KEY", ""),
-		OpenRouterAPIKey: getEnv("OPENROUTER_API_KEY", ""),
+		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
+		GeminiBaseURL:      getEnv("GEMINI_BASE_URL", ""),
+		OpenRouterAPIKey:   getEnv("OPENROUTER_API_KEY", ""),
+		OpenRouterBaseURL:  getEnv("OPENROUTER_BASE_URL", ""),
 		Android:          getEnv("ANDROID", "false") == "true",
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
 		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
