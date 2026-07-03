@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -240,8 +241,16 @@ func parseLabsV2(uploadPath, fallbackDBPath string) ([]LabConfig, bool) {
 		return nil, false
 	}
 
+	// Sort by EnvIndex for deterministic output order
+	indices := make([]int, 0, len(labMap))
+	for n := range labMap {
+		indices = append(indices, n)
+	}
+	sort.Ints(indices)
+
 	labs := make([]LabConfig, 0, len(labMap))
-	for _, def := range labMap {
+	for _, n := range indices {
+		def := labMap[n]
 		if def.ID == "" || def.DBPath == "" {
 			log.Printf("Warning: LABS_%d missing ID or DB, skipping", def.Index)
 			continue
