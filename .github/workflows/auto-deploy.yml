@@ -54,7 +54,13 @@ jobs:
           echo "=== 2. Merge refactoring (theirs for conflicts) ==="
           git merge origin/refactoring -X theirs --no-commit 2>&1 || true
 
-          echo "=== 3. Resolve modify/delete conflict ==="
+          echo "=== 3. Resolve modify/delete conflicts ==="
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              git checkout HEAD -- "$file" 2>/dev/null
+              git add "$file" 2>/dev/null
+            fi
+          done < <(git ls-files -u -- | awk '$3=="2" {print $4}' | sort -u)
           git rm --ignore-unmatch --force scripts/deploy-local.sh 2>/dev/null || true
           if [ -n "$(git ls-files -u)" ]; then
             echo "Fatal: unresolved merge conflicts:"
@@ -65,32 +71,33 @@ jobs:
           echo "=== 4. Restore deploy-specific files ==="
           git checkout "${OLD_HEAD}" -- README.md go.mod go.sum
           git checkout "${OLD_HEAD}" -- scripts/
+          git checkout "${OLD_HEAD}" -- .github/workflows/auto-deploy.yml
           git rm --ignore-unmatch scripts/deploy-local.sh 2>/dev/null || true
 
           echo "=== 5. Force .env.example dari refactoring ==="
           git checkout origin/refactoring -- .env.example
 
-           echo "=== 6. Cleanup platform-irrelevant scripts ==="
-           if [ "${PLATFORM}" = "linux" ]; then
-             git rm --ignore-unmatch \
-               scripts/build-windows.ps1 \
-               scripts/deploy-windows.ps1 \
-               scripts/download-vendor.ps1 \
-               scripts/setup_firewall.ps1 \
-               scripts/build_termux.sh
-           elif [ "${PLATFORM}" = "windows" ]; then
-             git rm --ignore-unmatch \
-               scripts/build_termux.sh \
-               scripts/simlab.service \
-               scripts/inventaris-lab.service \
-               scripts/setup-firewall-linux.sh
-           elif [ "${PLATFORM}" = "android" ]; then
-             git rm --ignore-unmatch \
-               scripts/setup_firewall.ps1 \
-               scripts/simlab.service \
-               scripts/inventaris-lab.service \
-               scripts/setup-firewall-linux.sh
-           fi
+          echo "=== 6. Cleanup platform-irrelevant scripts ==="
+          if [ "${PLATFORM}" = "linux" ]; then
+            git rm --ignore-unmatch \
+              scripts/build-windows.ps1 \
+              scripts/deploy-windows.ps1 \
+              scripts/download-vendor.ps1 \
+              scripts/setup_firewall.ps1 \
+              scripts/build_termux.sh
+          elif [ "${PLATFORM}" = "windows" ]; then
+            git rm --ignore-unmatch \
+              scripts/build_termux.sh \
+              scripts/simlab.service \
+              scripts/inventaris-lab.service \
+              scripts/setup-firewall-linux.sh
+          elif [ "${PLATFORM}" = "android" ]; then
+            git rm --ignore-unmatch \
+              scripts/setup_firewall.ps1 \
+              scripts/simlab.service \
+              scripts/inventaris-lab.service \
+              scripts/setup-firewall-linux.sh
+          fi
 
           echo "=== 7. Resolve dependencies ==="
           go mod tidy
