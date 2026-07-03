@@ -18,7 +18,7 @@ import (
 
 func seedPCPhotos(db *DB, uploadPath, urlPath, labID string) error {
 	releaseURL := os.Getenv("PC_PHOTO_RELEASE_URL")
-	githubToken := os.Getenv("GITHUB_TOKEN")
+	githubToken := os.Getenv("PC_PHOTO_TOKEN")
 	if releaseURL == "" || githubToken == "" {
 		return nil
 	}
@@ -206,7 +206,7 @@ func downloadReleaseAsset(releaseURL, token string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GitHub API returned %d (check PC_PHOTO_RELEASE_URL and GITHUB_TOKEN)", resp.StatusCode)
+		return "", fmt.Errorf("GitHub API returned %d (check PC_PHOTO_RELEASE_URL and PC_PHOTO_TOKEN)", resp.StatusCode)
 	}
 
 	var release struct {
