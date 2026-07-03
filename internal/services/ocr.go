@@ -16,22 +16,49 @@ import (
 
 // OCRService handles OCR operations using AI vision APIs
 type OCRService struct {
-	geminiKey     string
-	openRouterKey string
-	client        *http.Client
+	geminiKey         string
+	openRouterKey     string
+	geminiBaseURL     string
+	openRouterBaseURL string
+	client            *http.Client
+}
+
+// OCROption functional option for OCRService constructor
+type OCROption func(*OCRService)
+
+// WithHTTPClient sets a custom HTTP client (for testing with mock servers)
+func WithHTTPClient(client *http.Client) OCROption {
+	return func(s *OCRService) { s.client = client }
+}
+
+// WithGeminiBaseURL overrides the default Gemini API base URL (for testing)
+func WithGeminiBaseURL(url string) OCROption {
+	return func(s *OCRService) { s.geminiBaseURL = url }
+}
+
+// WithOpenRouterBaseURL overrides the default OpenRouter API base URL (for testing)
+func WithOpenRouterBaseURL(url string) OCROption {
+	return func(s *OCRService) { s.openRouterBaseURL = url }
 }
 
 // NewOCRService creates a new OCR service
-// geminiKey: Google Gemini API key (used as fallback)
-// openRouterKey: OpenRouter API key (used as primary via openrouter/free)
-func NewOCRService(geminiKey, openRouterKey string) *OCRService {
-	return &OCRService{
-		geminiKey:     geminiKey,
-		openRouterKey: openRouterKey,
+// geminiKey: Google Gemini API key
+// openRouterKey: OpenRouter API key
+// opts: optional functional options (WithHTTPClient, WithGeminiBaseURL, WithOpenRouterBaseURL)
+func NewOCRService(geminiKey, openRouterKey string, opts ...OCROption) *OCRService {
+	s := &OCRService{
+		geminiKey:         geminiKey,
+		openRouterKey:     openRouterKey,
+		geminiBaseURL:     "https://generativelanguage.googleapis.com",
+		openRouterBaseURL: "https://openrouter.ai",
 		client: &http.Client{
 			Timeout: 60 * time.Second,
 		},
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // LogbookEntry represents extracted logbook data
@@ -231,7 +258,7 @@ func (s *OCRService) callGemini(base64Image, mimeType string) (string, error) {
 		}}},
 	}
 	jsonData, _ := json.Marshal(reqBody)
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=%s", s.geminiKey)
+	url := fmt.Sprintf("%s/v1beta/models/gemini-3.1-flash-lite:generateContent?key=%s", s.geminiBaseURL, s.geminiKey)
 	body, err := s.doAPIRequest("POST", url, jsonData, nil)
 	if err != nil {
 		return "", err
@@ -271,7 +298,7 @@ func (s *OCRService) callOpenRouter(base64Image, mimeType string) (string, error
 		}},
 	}
 	jsonData, _ := json.Marshal(reqBody)
-	body, err := s.doAPIRequest("POST", "https://openrouter.ai/api/v1/chat/completions", jsonData, map[string]string{"Authorization": "Bearer " + s.openRouterKey})
+	body, err := s.doAPIRequest("POST", s.openRouterBaseURL+"/api/v1/chat/completions", jsonData, map[string]string{"Authorization": "Bearer " + s.openRouterKey})
 	if err != nil {
 		return "", err
 	}

@@ -745,3 +745,244 @@ func TestCSRFMiddleware(t *testing.T) {
 		}
 	})
 }
+
+// ============================================
+// Fase C: Global Admin Profile Testing
+// ============================================
+
+func TestGlobalAdminProfile(t *testing.T) {
+	env := setupTestEnvironment(t)
+	tsURL := env.TS.URL
+
+	if !env.LabA.login("admin", "admin123") {
+		t.Fatal("admin login failed")
+	}
+
+	// ============================================
+	// C.1: AdminProfile page — GET /labs/profile → 200 + form fields
+	// ============================================
+	t.Run("C.1_admin_profile_page", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", tsURL+"/labs/profile", nil)
+		env.LabA.addCookies(req)
+		resp, err := env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("GET /labs/profile failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		html := string(body)
+		if !strings.Contains(html, "csrf-token") {
+			t.Error("profile page should contain CSRF token")
+		}
+		if !strings.Contains(html, `name="username"`) {
+			t.Error("profile page should have username field")
+		}
+		if !strings.Contains(html, `name="full_name"`) {
+			t.Error("profile page should have full_name field")
+		}
+		if !strings.Contains(html, `name="old_password"`) {
+			t.Error("profile page should have old_password field")
+		}
+		if !strings.Contains(html, `name="new_password"`) {
+			t.Error("profile page should have new_password field")
+		}
+		if !strings.Contains(html, `name="confirm_password"`) {
+			t.Error("profile page should have confirm_password field")
+		}
+	})
+
+	// ============================================
+	// C.2: AdminUpdateProfile — POST /labs/profile → 200 + DB change
+	// ============================================
+	t.Run("C.2_admin_update_profile", func(t *testing.T) {
+		// GET profile page first to extract CSRF token
+		req, _ := http.NewRequest("GET", tsURL+"/labs/profile", nil)
+		env.LabA.addCookies(req)
+		resp, err := env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("GET /labs/profile failed: %v", err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		html := string(body)
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+
+		csrf := env.LabA.extractCSRFToken(html)
+		if csrf == "" {
+			t.Fatal("CSRF token not found")
+		}
+
+		// Update full_name
+		formData := url.Values{
+			"_csrf":     {csrf},
+			"username":  {"admin"},
+			"full_name": {"Administrator Updated"},
+		}.Encode()
+
+		req, _ = http.NewRequest("POST", tsURL+"/labs/profile", strings.NewReader(formData))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		env.LabA.addCookies(req)
+		resp, err = env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("POST /labs/profile failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+
+		body, _ = io.ReadAll(resp.Body)
+		html = string(body)
+		if !strings.Contains(html, "berhasil diupdate") {
+			t.Errorf("expected success message, got: %s", string(body))
+		}
+
+		// Verify DB updated via globalDB
+		var fullName string
+		env.GlobalDB.QueryRow("SELECT full_name FROM global_users WHERE username='admin'").Scan(&fullName)
+		if fullName != "Administrator Updated" {
+			t.Errorf("expected full_name 'Administrator Updated', got %s", fullName)
+		}
+	})
+
+	// ============================================
+	// C.3: AdminChangePassword — POST /labs/profile/password → 200 + new pw works
+	// ============================================
+	t.Run("C.3_admin_change_password", func(t *testing.T) {
+		// GET profile page to extract CSRF token
+		req, _ := http.NewRequest("GET", tsURL+"/labs/profile", nil)
+		env.LabA.addCookies(req)
+		resp, err := env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("GET /labs/profile failed: %v", err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		html := string(body)
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+
+		csrf := env.LabA.extractCSRFToken(html)
+		if csrf == "" {
+			t.Fatal("CSRF token not found")
+		}
+
+		// Change password from admin123 to newpassword456
+		formData := url.Values{
+			"_csrf":            {csrf},
+			"old_password":     {"admin123"},
+			"new_password":     {"newpassword456"},
+			"confirm_password": {"newpassword456"},
+		}.Encode()
+
+		req, _ = http.NewRequest("POST", tsURL+"/labs/profile/password", strings.NewReader(formData))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		env.LabA.addCookies(req)
+		resp, err = env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("POST /labs/profile/password failed: %v", err)
+		}
+		defer resp.Body.Close()
+
+		body, _ = io.ReadAll(resp.Body)
+		html = string(body)
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected 200, got %d. Body: %s", resp.StatusCode, string(body))
+		}
+
+		if !strings.Contains(html, "berhasil diubah") {
+			t.Errorf("expected success message, got: %s", string(body))
+		}
+
+		// Verify old password fails using a fresh client (no cookies)
+		freshClient := &http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }}
+		verifyLogin := func(user, pass string) bool {
+			// GET login page for CSRF
+			req, _ := http.NewRequest("GET", tsURL+"/login", nil)
+			resp, err := freshClient.Do(req)
+			if err != nil {
+				return false
+			}
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			html := string(body)
+			token := env.LabA.extractCSRFToken(html)
+			if token == "" {
+				return false
+			}
+			formData := "_csrf=" + url.QueryEscape(token) + "&username=" + url.QueryEscape(user) + "&password=" + url.QueryEscape(pass)
+			req, _ = http.NewRequest("POST", tsURL+"/login", strings.NewReader(formData))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			resp, err = freshClient.Do(req)
+			if err != nil {
+				return false
+			}
+			defer resp.Body.Close()
+			return resp.StatusCode == 302
+		}
+
+		if verifyLogin("admin", "admin123") {
+			t.Error("old password should not work after change")
+		}
+
+		if !verifyLogin("admin", "newpassword456") {
+			t.Fatal("new password should work after change")
+		}
+
+		// Clear session_token in DB that verifyLogin created, so re-login won't hit ErrAlreadyLoggedIn
+		env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = 'admin'")
+
+		// Re-login with new password (session was invalidated by session_token clear)
+		if !loginAndRefresh(env.LabA, "admin", "newpassword456") {
+			t.Fatal("re-login with new password failed")
+		}
+
+		// Restore original password for other tests
+		req, _ = http.NewRequest("GET", tsURL+"/labs/profile", nil)
+		env.LabA.addCookies(req)
+		resp, err = env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("GET /labs/profile failed: %v", err)
+		}
+		body, _ = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		html = string(body)
+		csrf = env.LabA.extractCSRFToken(html)
+		if csrf == "" {
+			t.Fatal("CSRF token not found for restore")
+		}
+
+		formData = url.Values{
+			"_csrf":            {csrf},
+			"old_password":     {"newpassword456"},
+			"new_password":     {"admin123"},
+			"confirm_password": {"admin123"},
+		}.Encode()
+
+		req, _ = http.NewRequest("POST", tsURL+"/labs/profile/password", strings.NewReader(formData))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		env.LabA.addCookies(req)
+		resp, err = env.Client.Do(req)
+		if err != nil {
+			t.Fatalf("POST /labs/profile/password restore failed: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Fatalf("expected 200 for restore, got %d", resp.StatusCode)
+		}
+
+		// Verify original password works again with fresh client
+		if !verifyLogin("admin", "admin123") {
+			t.Fatal("original password should work after restore")
+		}
+	})
+}

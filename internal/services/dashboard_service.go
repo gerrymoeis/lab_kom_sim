@@ -19,8 +19,6 @@ type DashboardData struct {
 	PCLaboran     models.PC
 	PCCCTV        models.PC
 	ColsPerRow    []int
-	GapPos        int
-	HasGap        bool
 	RowGaps       [][]int
 }
 
@@ -100,8 +98,6 @@ func (s *DashboardService) GetDashboardData(layout config.GridLayout) (*Dashboar
 	data.SoftwareCount = softwareCount
 	data.SpecialPCs = specialPCs
 	data.ColsPerRow = layout.ColsPerRow
-	data.GapPos = layout.GapPos
-	data.HasGap = layout.HasGap
 	data.RowGaps = layout.RowGaps
 	return data, nil
 }

@@ -28,8 +28,6 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		"pcCCTV": data.PCCCTV,
 		"specialPCs": data.SpecialPCs,
 		"colsPerRow": data.ColsPerRow,
-		"gapPos":     data.GapPos,
-		"hasGap":     data.HasGap,
 		"rowGaps":    data.RowGaps,
 	})
 }

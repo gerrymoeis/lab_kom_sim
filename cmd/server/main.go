@@ -101,8 +101,9 @@ func main() {
 		db := dbs[lab.URLPath]
 
 		labBackupCfg := cfg.Backup
-		labBackupDir := filepath.Join("backups", lab.URLPath)
-		labBackupCfg.Dir = []string{labBackupDir}
+		for i, dir := range labBackupCfg.Dir {
+			labBackupCfg.Dir[i] = filepath.Join(dir, lab.URLPath)
+		}
 
 		backupSvc := services.NewBackupService(db, labBackupCfg)
 		backupSvcs = append(backupSvcs, backupSvc)
@@ -116,7 +117,7 @@ func main() {
 
 	if cfg.Environment == "production" { gin.SetMode(gin.ReleaseMode) }
 
-	router, cleanup, _ := server.SetupRouter(dbs, globalDB, cfg, notifier)
+	router, cleanup, _, _ := server.SetupRouter(dbs, globalDB, cfg, notifier)
 	defer cleanup()
 
 	for _, lab := range cfg.Labs {

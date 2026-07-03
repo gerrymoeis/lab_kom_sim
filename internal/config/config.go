@@ -59,10 +59,17 @@ type PublicBuildConfig struct {
 
 // Load loads configuration from environment variables with defaults
 func Load() *Config {
-	// Load .env file if exists
+	// Load .env file if exists (so ENV_PATH can be defined inside it)
 	envPath := ".env"
 	if err := godotenv.Load(envPath); err != nil {
 		log.Println("Warning: .env file not found, using environment variables or defaults")
+	}
+
+	// EnvPath is configurable via ENV_PATH env var (set in /opt/simlab/.env on production via systemd)
+	// Fallback to ".env" and resolve to absolute path for reliability
+	envPath = getEnv("ENV_PATH", ".env")
+	if absEnvPath, err := filepath.Abs(envPath); err == nil {
+		envPath = absEnvPath
 	}
 
 	dbPath := getEnv("DATABASE_PATH", "inventaris_lab.db")
@@ -296,6 +303,61 @@ func CommentOutLabEnv(envPath string, n int) error {
 	}
 
 	return os.WriteFile(envPath, []byte(strings.Join(lines, "\n")), 0644)
+}
+
+// AppendLabEnv appends 4 LABS_<N+1>_* lines to the .env file
+// Scans all lines (including commented) to find the highest N
+// Returns the new N index assigned to this lab
+func AppendLabEnv(envPath string, lab LabConfig) (int, error) {
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return 0, fmt.Errorf("gagal baca %s: %w", envPath, err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+
+	// Find highest N from ALL lines (active + commented)
+	maxN := 0
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		trimmed = strings.TrimPrefix(trimmed, "#")
+		if !strings.HasPrefix(trimmed, "LABS_") {
+			continue
+		}
+		// Extract N from "LABS_<N>_SUFFIX=..."
+		rest := strings.TrimPrefix(trimmed, "LABS_")
+		underscoreIdx := strings.Index(rest, "_")
+		if underscoreIdx < 0 {
+			continue
+		}
+		n, err := strconv.Atoi(rest[:underscoreIdx])
+		if err != nil || n <= 0 {
+			continue
+		}
+		if n > maxN {
+			maxN = n
+		}
+	}
+	newN := maxN + 1
+
+	// Ensure file ends with newline
+	lastLine := ""
+	if len(lines) > 0 {
+		lastLine = lines[len(lines)-1]
+	}
+	if lastLine != "" {
+		lines = append(lines, "")
+	}
+
+	newLines := []string{
+		fmt.Sprintf("LABS_%d_ID=%s", newN, lab.ID),
+		fmt.Sprintf("LABS_%d_DB=%s", newN, lab.DBPath),
+		fmt.Sprintf("LABS_%d_TITLE=%s", newN, lab.Title),
+		fmt.Sprintf("LABS_%d_URL=%s", newN, lab.URLPath),
+	}
+	lines = append(lines, newLines...)
+
+	return newN, os.WriteFile(envPath, []byte(strings.Join(lines, "\n")+"\n"), 0644)
 }
 
 func defaultLab(dbPath, uploadPath string) LabConfig {

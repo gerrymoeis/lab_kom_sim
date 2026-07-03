@@ -410,6 +410,21 @@ func (r *PCRepository) DeleteByLabel(label string) error {
 	return err
 }
 
+func (r *PCRepository) Begin() (*database.Tx, error) {
+	return r.db.Begin()
+}
+
+func (r *PCRepository) CountByLabel(label string) (int, error) {
+	var count int
+	err := r.db.QueryRow("SELECT COUNT(*) FROM pcs WHERE label = ?", label).Scan(&count)
+	return count, err
+}
+
+func (r *PCRepository) DeleteByLabelTx(tx *database.Tx, label string) error {
+	_, err := tx.Exec("DELETE FROM pcs WHERE label = ?", label)
+	return err
+}
+
 func (r *PCRepository) GetAllStatus() ([]models.PC, error) {
 	rows, err := r.db.Query(`SELECT id, label, status FROM pcs ORDER BY
 		CASE WHEN label GLOB 'pc-[0-9]*' THEN 1 WHEN label GLOB 'pc-cadangan-[0-9]*' THEN 3 ELSE 2 END,

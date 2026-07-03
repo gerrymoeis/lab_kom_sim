@@ -134,6 +134,10 @@ func NewMultiNotifier(n ...CUDNotifier) *MultiNotifier {
 	return &MultiNotifier{notifiers: n}
 }
 
+func (m *MultiNotifier) Add(n CUDNotifier) {
+	m.notifiers = append(m.notifiers, n)
+}
+
 func (m *MultiNotifier) NotifyChange() {
 	for _, n := range m.notifiers {
 		n.NotifyChange()

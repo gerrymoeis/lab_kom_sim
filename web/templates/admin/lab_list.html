@@ -1,5 +1,12 @@
 {{ template "layout/admin_base.html" . }}
 
+<div class="d-flex justify-content-end mb-3">
+    <a href="/labs/create" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Tambah Lab
+    </a>
+</div>
+
+{{ if .labs }}
 <div class="row">
     {{ range $lab := .labs }}
     <div class="col-md-4 mb-3">
@@ -7,5 +14,11 @@
     </div>
     {{ end }}
 </div>
+{{ else }}
+<div class="text-center py-5">
+    <i class="bi bi-building-slash" style="font-size: 3rem;"></i>
+    <p class="text-muted mt-3">Belum ada lab. Silakan tambah lab baru.</p>
+</div>
+{{ end }}
 
 {{ template "layout/admin_footer.html" . }}

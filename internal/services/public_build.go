@@ -230,31 +230,6 @@ func isNumericLabel(label string) bool {
 	return true
 }
 
-func buildSoftwareGrid(pcList []repository.PCInstallStatus) [][]repository.PCInstallStatus {
-	maxRow, maxCol := 0, 0
-	for _, p := range pcList {
-		if p.Row > maxRow {
-			maxRow = p.Row
-		}
-		if p.Column > maxCol {
-			maxCol = p.Column
-		}
-	}
-	if maxRow < 1 || maxCol < 1 {
-		return nil
-	}
-	grid := make([][]repository.PCInstallStatus, maxRow)
-	for i := range grid {
-		grid[i] = make([]repository.PCInstallStatus, maxCol)
-	}
-	for _, p := range pcList {
-		if p.Row >= 1 && p.Row <= maxRow && p.Column >= 1 && p.Column <= maxCol {
-			grid[p.Row-1][p.Column-1] = p
-		}
-	}
-	return grid
-}
-
 func renderToFile(tmpl *template.Template, name string, data interface{}, path string) error {
 	os.MkdirAll(filepath.Dir(path), 0755)
 	f, err := os.Create(path)
@@ -300,6 +275,17 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	if err != nil {
 		return fmt.Errorf("load templates: %w", err)
 	}
+	// Load shared grid_component.html from regular templates to avoid duplication
+	gridComponentPath := filepath.Join(filepath.Dir(cfg.TemplateDir), "pc", "grid_component.html")
+	if _, err := os.Stat(gridComponentPath); err == nil {
+		gridContent, err := os.ReadFile(gridComponentPath)
+		if err == nil {
+			_, err = tmpl.New("pc/grid_component.html").Parse(string(gridContent))
+			if err != nil {
+				return fmt.Errorf("parse grid_component.html: %w", err)
+			}
+		}
+	}
 
 	outDir := filepath.Join(cfg.OutDir, labName)
 	os.RemoveAll(outDir)
@@ -328,11 +314,10 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	grid, extraPCs, pcLecturer, pcLaboran, pcCCTV, specialPCs, statusCounts, spareCount := buildDashboardGrid(pcs, layout.ColsPerRow)
 	re("dashboard.html", filepath.Join(outDir, "dashboard.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Dashboard", "currentPage": "dashboard",
-		"pcGrid": grid, "pcs": pcs, "extraPCs": extraPCs,
+		"grid": grid, "pcs": pcs, "extraPCs": extraPCs,
 		"statusCounts": statusCounts, "spareCount": spareCount,
 		"pcLecturer": pcLecturer, "pcLaboran": pcLaboran, "pcCCTV": pcCCTV,
 		"specialPCs": specialPCs,
-		"hasGap":     layout.HasGap,
 		"rowGaps":    layout.RowGaps,
 	}))
 
@@ -406,7 +391,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 				installedCount++
 			}
 		}
-		swGrid := buildSoftwareGrid(pcList)
+		swGrid := BuildSoftwareGrid(pcList, layout)
 		re("software/detail.html", filepath.Join(outDir, "software", "detail", sw.Slug+".html"), mergeData(commonData, map[string]interface{}{
 			"title":          "Detail Software - " + sw.Name,
 			"currentPage":    "software",
@@ -414,6 +399,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 			"pcGrid":         swGrid,
 			"installedCount": installedCount,
 			"totalPCs":       len(pcList),
+			"rowGaps":        layout.RowGaps,
 		}))
 	}
 

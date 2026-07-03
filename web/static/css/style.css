@@ -60,10 +60,10 @@
 .software-page-container { max-width: 900px; }
 
 .pc-grid { display: flex; flex-direction: column; gap: clamp(10px, 2.5vw, 20px); }
-.pc-row { display: flex; gap: clamp(8px, 2vw, 20px); flex-wrap: wrap; justify-content: center; }
-.pc-card-wrapper { container-type: inline-size; display: flex; flex-direction: column; align-items: center; gap: 6px; width: clamp(84px, 8vw, 120px); flex: 0 1 auto; }
-.pc-card-wrapper-sm { width: clamp(65px, 7vw, 85px); flex: 0 1 auto; }
-.pc-card-wrapper-special { width: clamp(116px, 8vw, 140px); flex: 0 1 auto; }
+.pc-row { display: flex; gap: clamp(8px, 2vw, 20px); flex-wrap: nowrap; justify-content: center; }
+.pc-card-wrapper { container-type: inline-size; display: flex; flex-direction: column; align-items: center; gap: 6px; width: clamp(84px, 8vw, 120px); flex: 0 0 auto; }
+.pc-card-wrapper-sm { width: clamp(65px, 7vw, 85px); flex: 0 0 auto; }
+.pc-card-wrapper-special { width: clamp(116px, 8vw, 140px); flex: 0 0 auto; }
 .pc-card.pc-card-special { background: linear-gradient(135deg, #f0e6ff, #f8f4ff); border-width: 3px; }
 .pc-card {
     width: 100%; aspect-ratio: 1 / 1;
@@ -164,7 +164,7 @@ table.table-hover tbody tr.group-header-course:hover { background-color: #f0f1f3
 .layout-grid-scroll { overflow-x: auto; }
 
 .layout-cell {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     min-width: 48px;
     max-width: 80px;
     width: 80px;
@@ -214,7 +214,7 @@ body { padding-top: 56px; }
     width: clamp(84px, 8vw, 120px);
     min-height: 90px;
     visibility: hidden;
-    flex: 0 1 auto;
+    flex: 0 0 auto;
 }
 .layout-gap {
     visibility: hidden;

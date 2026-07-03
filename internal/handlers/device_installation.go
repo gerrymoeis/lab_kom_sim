@@ -4,6 +4,8 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"inventaris-lab-kom/internal/repository"
@@ -193,10 +195,20 @@ func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
 	uid, u, r, _ := h.user(c)
 	ip, ua := getRequestContext(c)
 
+	// Get installation data before delete to know photo filename
+	inst, _ := h.deviceInstallationService.GetByID(id)
+
 	if err := h.deviceInstallationService.Delete(id, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/devices?tab=installations", "Gagal menghapus instalasi")
 		return
 	}
+
+	// Cascade delete photo from disk
+	if inst != nil && inst.Photo != "" {
+		lab := c.GetString("lab")
+		os.Remove(filepath.Join(h.cfg.UploadPath, lab, "device_installations", inst.Photo))
+	}
+
 	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil dihapus", "delete")
 }
 

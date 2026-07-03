@@ -593,6 +593,13 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=types", err.Error())
 		return
 	}
+
+	// Cascade delete photo from disk
+	if dt.Photo != "" {
+		lab := c.GetString("lab")
+		os.Remove(filepath.Join(h.cfg.UploadPath, lab, "device_types", dt.Photo))
+	}
+
 	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil dihapus", "delete")
 }
 
