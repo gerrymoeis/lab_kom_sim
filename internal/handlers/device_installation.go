@@ -169,14 +169,16 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		return
 	}
 
-	photo := processPhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations")
+	// Verify installation exists before updating
+	inst, err := h.deviceInstallationService.GetByID(id)
+	if err != nil {
+		h.errHTML(c, "Instalasi tidak ditemukan")
+		return
+	}
 
-	// If no new photo uploaded, keep existing
+	photo := processPhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations")
 	if photo == "" {
-		inst, err := h.deviceInstallationService.GetByID(id)
-		if err == nil {
-			photo = inst.Photo
-		}
+		photo = inst.Photo
 	}
 
 	uid, u, r, ok := h.user(c)
