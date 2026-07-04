@@ -7,7 +7,7 @@ import (
 )
 
 func TestAuthZ_SuperAdminAccessAllLabs(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	loginAs(env, "admin", "admin123")
 
@@ -25,7 +25,7 @@ func TestAuthZ_SuperAdminAccessAllLabs(t *testing.T) {
 }
 
 func TestAuthZ_LabAdminDeniedFromOtherLab(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	// Use env.LabA.login directly (not loginAs from admin_panel_test.go)
 	env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = 'labA_only'")
@@ -46,7 +46,7 @@ func TestAuthZ_LabAdminDeniedFromOtherLab(t *testing.T) {
 }
 
 func TestAuthZ_NoPermissionUserDenied(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = 'no_perm_user'")
 	if !env.LabA.login("no_perm_user", "test123") {
@@ -66,7 +66,7 @@ func TestAuthZ_NoPermissionUserDenied(t *testing.T) {
 }
 
 func TestAuthZ_UnauthenticatedRedirectToLogin(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	resp, err := env.LabA.client.Get(env.LabA.ts.URL + env.LabA.prefix + "/dashboard")
 	if err != nil {

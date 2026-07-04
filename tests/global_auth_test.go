@@ -7,10 +7,12 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestLandingPage(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("redirects_to_login_when_not_logged_in", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", env.TS.URL+"/", nil)
@@ -53,7 +55,7 @@ func TestLandingPage(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	tsURL := env.TS.URL
 
 	t.Run("show_login_page_when_not_logged_in", func(t *testing.T) {
@@ -110,7 +112,7 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("success_as_other_super_admin", func(t *testing.T) {
-		// Use rekan (different super admin) — session_token is clean
+		// Use rekan (different super admin) â€” session_token is clean
 		lab := env.LabA
 		if !lab.login("rekan", "rekan123") {
 			t.Fatal("rekan login failed")
@@ -175,7 +177,7 @@ func TestLogin(t *testing.T) {
 }
 
 func TestLogout(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("success", func(t *testing.T) {
 		if !env.LabA.login("admin", "admin123") {
@@ -224,7 +226,7 @@ func TestLogout(t *testing.T) {
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 
-		// Access /labs with stale cookies — should redirect to /login
+		// Access /labs with stale cookies â€” should redirect to /login
 		req, _ = http.NewRequest("GET", env.TS.URL+"/labs", nil)
 		env.LabA.addCookies(req)
 		resp, err = env.Client.Do(req)
@@ -244,7 +246,7 @@ func TestLogout(t *testing.T) {
 }
 
 func TestLabSelector(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("success_as_super_admin_all_labs", func(t *testing.T) {
 		if !env.LabA.login("admin", "admin123") {
@@ -336,7 +338,7 @@ func TestLabSelector(t *testing.T) {
 		loginResp.Body.Close()
 
 		// Handle 200 (rendered login page again) vs 302 (redirect)
-		// no_perm_user uses POST /login without lab context — login may succeed (302)
+		// no_perm_user uses POST /login without lab context â€” login may succeed (302)
 		// but we can't easily follow redirect without cookies. Check status instead.
 		if loginResp.StatusCode == 200 {
 			// Login failed (rendered login page)
@@ -357,7 +359,7 @@ func TestLabSelector(t *testing.T) {
 			t.Fatalf("GET /labs failed: %v", err)
 		}
 		defer resp.Body.Close()
-		// no_perm_user has no labs — middleware redirects to /login
+		// no_perm_user has no labs â€” middleware redirects to /login
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
 		}
@@ -365,7 +367,7 @@ func TestLabSelector(t *testing.T) {
 }
 
 func TestSuperAdminMiddleware(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("fail_non_super_admin_access_admin_routes", func(t *testing.T) {
 		if !env.LabA.login("labA_only", "test123") {
@@ -390,7 +392,7 @@ func TestSuperAdminMiddleware(t *testing.T) {
 // ============================================
 
 func TestRoutingAuth(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("lab_dashboard_redirects_to_login_when_no_session", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", env.TS.URL+"/lab-kom-mi/dashboard", nil)
@@ -443,7 +445,7 @@ func TestRoutingAuth(t *testing.T) {
 // ============================================
 
 func TestLabSelectorContent(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("super_admin_sees_all_labs", func(t *testing.T) {
 		if !env.LabA.login("admin", "admin123") {
@@ -496,11 +498,11 @@ func TestLabSelectorContent(t *testing.T) {
 // ============================================
 
 func TestUserAccessControl(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 
 	t.Run("create_user_rejected_for_regular_admin", func(t *testing.T) {
-		// labA_only is a regular admin (not main account) — cannot create users
+		// labA_only is a regular admin (not main account) â€” cannot create users
 		if !loginAndRefresh(lab, "labA_only", "test123") {
 			t.Fatal("labA_only login failed")
 		}
@@ -534,7 +536,7 @@ func TestUserAccessControl(t *testing.T) {
 			t.Fatalf("POST /admin/users/labA_dosen/delete failed: %v", err)
 		}
 		defer resp.Body.Close()
-		// Should redirect with error — 302 with error query param
+		// Should redirect with error â€” 302 with error query param
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 (redirect with error), got %d", resp.StatusCode)
 		}
@@ -608,8 +610,15 @@ func extractCSRF(html string) string {
 // ============================================
 
 func TestDefaultPasswordHints(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
+
+	// Restore shared state changes when all subtests finish
+	t.Cleanup(func() {
+		adminHash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.MinCost)
+		env.GlobalDB.Exec("UPDATE global_users SET password = ? WHERE username = 'admin'", string(adminHash))
+		env.GlobalDB.Exec("UPDATE global_users SET username = 'lab-kom-mi', is_super_admin = 1 WHERE username = 'lab-kom-mi-changed'")
+	})
 
 	t.Run("hint_hides_after_password_change", func(t *testing.T) {
 		// Step 1: Check login page shows admin default hint
@@ -650,7 +659,7 @@ func TestDefaultPasswordHints(t *testing.T) {
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 
-		// Step 3: Check login page — admin hint should be gone
+		// Step 3: Check login page â€” admin hint should be gone
 		req, _ = http.NewRequest("GET", env.TS.URL+"/login", nil)
 		resp, err = env.Client.Do(req)
 		if err != nil {
@@ -695,7 +704,7 @@ func TestDefaultPasswordHints(t *testing.T) {
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 
-		// Check login page — lab-kom-mi hint should be gone
+		// Check login page â€” lab-kom-mi hint should be gone
 		req, _ = http.NewRequest("GET", env.TS.URL+"/login", nil)
 		resp, err = env.Client.Do(req)
 		if err != nil {
@@ -711,7 +720,7 @@ func TestDefaultPasswordHints(t *testing.T) {
 }
 
 func TestCSRFMiddleware(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("fail_missing_csrf_on_post", func(t *testing.T) {
 		if !env.LabA.login("admin", "admin123") {
@@ -751,7 +760,7 @@ func TestCSRFMiddleware(t *testing.T) {
 // ============================================
 
 func TestGlobalAdminProfile(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	tsURL := env.TS.URL
 
 	if !env.LabA.login("admin", "admin123") {
@@ -759,7 +768,7 @@ func TestGlobalAdminProfile(t *testing.T) {
 	}
 
 	// ============================================
-	// C.1: AdminProfile page — GET /labs/profile → 200 + form fields
+	// C.1: AdminProfile page â€” GET /labs/profile â†’ 200 + form fields
 	// ============================================
 	t.Run("C.1_admin_profile_page", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", tsURL+"/labs/profile", nil)
@@ -797,7 +806,7 @@ func TestGlobalAdminProfile(t *testing.T) {
 	})
 
 	// ============================================
-	// C.2: AdminUpdateProfile — POST /labs/profile → 200 + DB change
+	// C.2: AdminUpdateProfile â€” POST /labs/profile â†’ 200 + DB change
 	// ============================================
 	t.Run("C.2_admin_update_profile", func(t *testing.T) {
 		// GET profile page first to extract CSRF token
@@ -854,7 +863,7 @@ func TestGlobalAdminProfile(t *testing.T) {
 	})
 
 	// ============================================
-	// C.3: AdminChangePassword — POST /labs/profile/password → 200 + new pw works
+	// C.3: AdminChangePassword â€” POST /labs/profile/password â†’ 200 + new pw works
 	// ============================================
 	t.Run("C.3_admin_change_password", func(t *testing.T) {
 		// GET profile page to extract CSRF token

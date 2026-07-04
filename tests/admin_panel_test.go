@@ -97,11 +97,11 @@ func adminPostNoCSRF(env *TestEnvironment, path string) *http.Response {
 }
 
 // ============================================
-// 1. AdminLabList — Success + Forbidden
+// 1. AdminLabList â€” Success + Forbidden
 // ============================================
 
 func TestAdminLabList(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("success_as_super_admin", func(t *testing.T) {
 		loginAsAdmin(env)
@@ -146,11 +146,11 @@ func TestAdminLabList(t *testing.T) {
 }
 
 // ============================================
-// 2. AdminLabLayout — GET + POST layout
+// 2. AdminLabLayout â€” GET + POST layout
 // ============================================
 
 func TestAdminLabLayout(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("get_layout_page", func(t *testing.T) {
 		loginAsAdmin(env)
@@ -197,11 +197,11 @@ func TestAdminLabLayout(t *testing.T) {
 }
 
 // ============================================
-// 3. AdminLabSeeds — seed management (admin reseed PC/Software/Schedule)
+// 3. AdminLabSeeds â€” seed management (admin reseed PC/Software/Schedule)
 // ============================================
 
 func TestAdminLabSeeds(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	loginAsAdmin(env)
 
 	t.Run("get_seeds_page", func(t *testing.T) {
@@ -254,11 +254,11 @@ func TestAdminLabSeeds(t *testing.T) {
 }
 
 // ============================================
-// 4. AdminUserCreate — GET + POST + validation
+// 4. AdminUserCreate â€” GET + POST + validation
 // ============================================
 
 func TestAdminUserCreate(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	loginAsAdmin(env)
 
 	t.Run("get_create_page", func(t *testing.T) {
@@ -322,11 +322,11 @@ func TestAdminUserCreate(t *testing.T) {
 }
 
 // ============================================
-// 5. AdminUserEdit — GET + POST edit
+// 5. AdminUserEdit â€” GET + POST edit
 // ============================================
 
 func TestAdminUserEdit(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	loginAsAdmin(env)
 
 	t.Run("get_edit_page", func(t *testing.T) {
@@ -395,6 +395,10 @@ func TestAdminUserEdit(t *testing.T) {
 			t.Fatal("could not extract CSRF token after re-login")
 		}
 		env.LabA.csrf = token
+
+		// Restore admin password directly in DB so subsequent test functions can still login as admin/admin123
+		restoreHash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.MinCost)
+		env.GlobalDB.Exec("UPDATE global_users SET password = ? WHERE username = 'admin'", string(restoreHash))
 	})
 
 	t.Run("edit_invalid_id", func(t *testing.T) {
@@ -407,11 +411,11 @@ func TestAdminUserEdit(t *testing.T) {
 }
 
 // ============================================
-// 6. AdminUserDelete — success + protected
+// 6. AdminUserDelete â€” success + protected
 // ============================================
 
 func TestAdminUserDelete(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	loginAsAdmin(env)
 
 	t.Run("delete_create_new_user_first", func(t *testing.T) {
@@ -464,11 +468,11 @@ func TestAdminUserDelete(t *testing.T) {
 }
 
 // ============================================
-// 7. AdminCSRFProtection — missing + invalid
+// 7. AdminCSRFProtection â€” missing + invalid
 // ============================================
 
 func TestAdminCSRF(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	loginAsAdmin(env)
 
 	t.Run("post_without_csrf_returns_403", func(t *testing.T) {
@@ -517,11 +521,11 @@ func TestAdminCSRF(t *testing.T) {
 }
 
 // ============================================
-// 9. PerLabUserDetail — GET user detail page (per-lab admin)
+// 9. PerLabUserDetail â€” GET user detail page (per-lab admin)
 // ============================================
 
 func TestPerLabUserDetail(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "labA_only", "test123") {
 		t.Fatal("login failed")
@@ -551,11 +555,11 @@ func TestPerLabUserDetail(t *testing.T) {
 }
 
 // ============================================
-// 10. PerLabUserBatchDelete — POST batch delete (per-lab admin)
+// 10. PerLabUserBatchDelete â€” POST batch delete (per-lab admin)
 // ============================================
 
 func TestPerLabUserBatchDelete(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "labA_only", "test123") {
 		t.Fatal("login failed")
@@ -584,10 +588,10 @@ func TestPerLabUserBatchDelete(t *testing.T) {
 }
 
 func TestPerLabUserBatchDeleteSuccess(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	gdb := env.GlobalDB
-	// Login as super admin (admin) — only super admins or main accounts can batch-delete
+	// Login as super admin (admin) â€” only super admins or main accounts can batch-delete
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
 	}
@@ -625,11 +629,11 @@ func TestPerLabUserBatchDeleteSuccess(t *testing.T) {
 }
 
 // ============================================
-// 11. PerLabUserList — GET user list (per-lab admin)
+// 11. PerLabUserList â€” GET user list (per-lab admin)
 // ============================================
 
 func TestPerLabUserList(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "labA_only", "test123") {
 		t.Fatal("login failed")
@@ -659,11 +663,11 @@ func TestPerLabUserList(t *testing.T) {
 }
 
 // ============================================
-// 12. PerLabUserCreate — POST user create (per-lab admin)
+// 12. PerLabUserCreate â€” POST user create (per-lab admin)
 // ============================================
 
 func TestPerLabUserCreate(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	gdb := env.GlobalDB
 	if !loginAndRefresh(lab, "admin", "admin123") {
@@ -713,11 +717,11 @@ func TestPerLabUserCreate(t *testing.T) {
 }
 
 // ============================================
-// 13. PerLabUserEdit — POST user edit (per-lab admin)
+// 13. PerLabUserEdit â€” POST user edit (per-lab admin)
 // ============================================
 
 func TestPerLabUserEdit(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	gdb := env.GlobalDB
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -761,14 +765,14 @@ func TestPerLabUserEdit(t *testing.T) {
 }
 
 // ============================================
-// 14. PerLabUserDelete — POST user delete (per-lab admin)
+// 14. PerLabUserDelete â€” POST user delete (per-lab admin)
 // ============================================
 
 func TestPerLabUserDelete(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	gdb := env.GlobalDB
-	// Login as super admin (admin) — only super admins can delete per-lab users
+	// Login as super admin (admin) â€” only super admins can delete per-lab users
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
 	}
@@ -820,11 +824,11 @@ func TestPerLabUserDelete(t *testing.T) {
 }
 
 // ============================================
-// 15. AuthZ Hierarchy — 10 test scenarios
+// 15. AuthZ Hierarchy â€” 10 test scenarios
 // ============================================
 
 func TestAuthZScenarios(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	gdb := env.GlobalDB
 
 	bcryptHash := func(pw string) string {
@@ -979,7 +983,7 @@ func TestAuthZScenarios(t *testing.T) {
 
 	t.Run("09_is_protected_session_value_after_login", func(t *testing.T) {
 		gdb.Exec("UPDATE global_users SET session_token = ''")
-		// Login as admin (protected) → should be able to create GAB
+		// Login as admin (protected) â†’ should be able to create GAB
 		loginAs(env, "admin", "admin123")
 		resp := adminPost(env, "/labs/admin/users/create", "username=gab_ok&password=test123&full_name=GAB+OK&is_global_admin=1")
 		defer resp.Body.Close()
@@ -992,7 +996,7 @@ func TestAuthZScenarios(t *testing.T) {
 		if gabCount == 0 {
 			t.Error("expected gab_ok user to be created")
 		}
-		// Now login as rekan (non-protected) → should NOT be able to create GAB
+		// Now login as rekan (non-protected) â†’ should NOT be able to create GAB
 		gdb.Exec("UPDATE global_users SET session_token = ''")
 		loginAs(env, "rekan", "rekan123")
 		resp2 := adminPost(env, "/labs/admin/users/create", "username=gab_fail2&password=test123&full_name=GAB+Fail+2&is_global_admin=1")

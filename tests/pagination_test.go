@@ -5,7 +5,7 @@ import (
 )
 
 func TestPaginationPC(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -91,7 +91,7 @@ func TestPaginationPC(t *testing.T) {
 }
 
 func TestPaginationSoftware(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -132,7 +132,7 @@ func TestPaginationSoftware(t *testing.T) {
 }
 
 func TestPaginationSchedule(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -173,7 +173,7 @@ func TestPaginationSchedule(t *testing.T) {
 }
 
 func TestPaginationDevice(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -236,7 +236,7 @@ func TestPaginationDevice(t *testing.T) {
 }
 
 func TestPaginationLogbook(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -266,7 +266,7 @@ func TestPaginationLogbook(t *testing.T) {
 }
 
 func TestPaginationActivityLog(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -307,7 +307,7 @@ func TestPaginationActivityLog(t *testing.T) {
 }
 
 func TestPaginationUser(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -348,7 +348,7 @@ func TestPaginationUser(t *testing.T) {
 }
 
 func TestPaginationInvalidParams(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -425,7 +425,7 @@ func TestPaginationInvalidParams(t *testing.T) {
 
 func TestPaginationLabBEmpty(t *testing.T) {
 	// Verify empty Lab B list pages also handle pagination gracefully
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabB
 	if !loginAndRefresh(lab, "labB_only", "test123") {
 		t.Fatal("login failed")

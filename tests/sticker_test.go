@@ -9,7 +9,7 @@ import (
 )
 
 func TestAPIStickerTemplates(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 
 	if !loginAndRefresh(lab, "labA_only", "test123") {

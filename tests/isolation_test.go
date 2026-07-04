@@ -6,11 +6,11 @@ import (
 )
 
 // ============================================
-// TestCrossLabIsolation — verifies lab-to-lab 403 + data isolation
+// TestCrossLabIsolation â€” verifies lab-to-lab 403 + data isolation
 // ============================================
 
 func TestCrossLabIsolation(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	labA := env.LabA
 	labB := env.LabB
 	dbA := env.DB_A
@@ -21,7 +21,7 @@ func TestCrossLabIsolation(t *testing.T) {
 		if !loginAndRefresh(labA, "labA_only", "test123") {
 			t.Fatal("login failed")
 		}
-		// Lab A-only user accessing Lab B — now redirects to own lab
+		// Lab A-only user accessing Lab B â€” now redirects to own lab
 		resp, err := labA.getURL(tsURL + labB.prefix + "/dashboard")
 		if err != nil {
 			t.Fatalf("GET Lab B dashboard: %v", err)
@@ -45,7 +45,7 @@ func TestCrossLabIsolation(t *testing.T) {
 		if !loginAndRefresh(labB, "labB_only", "test123") {
 			t.Fatal("login failed")
 		}
-		// Lab B-only user accessing Lab A — now redirects to own lab
+		// Lab B-only user accessing Lab A â€” now redirects to own lab
 		resp, err := labB.getURL(tsURL + labA.prefix + "/dashboard")
 		if err != nil {
 			t.Fatalf("GET Lab A dashboard from Lab B: %v", err)
@@ -105,7 +105,7 @@ func TestCrossLabIsolation(t *testing.T) {
 	t.Run("data_isolation_after_create", func(t *testing.T) {
 		// Verify that data created on Lab B is NOT visible in Lab A
 		if !labB.refreshCSRF() {
-			// Not logged in yet — clear cookies and do fresh login
+			// Not logged in yet â€” clear cookies and do fresh login
 			labB.cookies = make(map[string]string)
 			if !loginAndRefresh(labB, "labB_only", "test123") {
 				t.Fatal("login failed")
@@ -130,11 +130,11 @@ func TestCrossLabIsolation(t *testing.T) {
 }
 
 // ============================================
-// TestAutoSync — verifies global user permissions-based access
+// TestAutoSync â€” verifies global user permissions-based access
 // ============================================
 
 func TestAutoSync(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	labA := env.LabA
 	labB := env.LabB
 	tsURL := env.TS.URL

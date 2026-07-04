@@ -7,7 +7,7 @@ import (
 )
 
 func TestDashboardContent(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 
