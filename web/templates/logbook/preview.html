@@ -105,10 +105,17 @@
                                             <tr data-index="{{ $i }}" data-dup-group="{{ with $info }}{{ .GroupID }}{{ end }}" data-dup-type="{{ with $info }}{{ .Type }}{{ end }}"
                                                 class="{{ if $info }}{{ if eq $info.Type "intra-batch" }}table-warning{{ else }}table-danger{{ end }}{{ end }}">
                                                 <td class="text-center">{{ add $i 1 }}</td>
-                                                <td>
-                                                    <input type="date" class="form-control form-control-sm" name="date[]"
-                                                        value="{{ $entry.Date }}" required>
-                                                </td>
+												<td>
+													<div class="d-flex align-items-center gap-1">
+														<input type="date" class="form-control form-control-sm" name="date[]"
+															value="{{ $entry.Date }}" required>
+														{{ if index $.entryErrors $i }}
+														<span class="badge bg-warning text-dark" title="{{ index $.entryErrors $i }}">
+															<i class="bi bi-exclamation-triangle-fill"></i>
+														</span>
+														{{ end }}
+													</div>
+												</td>
                                                 <td>
                                                     <input type="text" class="form-control form-control-sm" name="student_name[]"
                                                         value="{{ $entry.StudentName }}" required>

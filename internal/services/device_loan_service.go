@@ -1,11 +1,15 @@
 ﻿package services
 
 import (
+	"database/sql"
+	"errors"
 	"time"
 
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 )
+
+var ErrDeviceAlreadyLoaned = errors.New("device sedang dipinjam")
 
 type CreateLoanInput struct {
 	DeviceID     int
@@ -57,11 +61,21 @@ func (s *DeviceLoanService) ExportAll() ([]repository.DeviceLoanRow, error) {
 }
 
 func (s *DeviceLoanService) CreateLoan(in CreateLoanInput, actorID int, actorUsername, actorRole, ipAddress, userAgent string) (int64, error) {
+	existing, err := s.loanRepo.GetActiveLoanByDevice(in.DeviceID)
+	if err == nil && existing != nil {
+		s.log.LogCreate(actorID, actorUsername, actorRole, "device_loan", 0,
+			map[string]any{"borrower": in.BorrowerName, "device_id": in.DeviceID},
+			ipAddress, userAgent, ErrDeviceAlreadyLoaned.Error())
+		return 0, ErrDeviceAlreadyLoaned
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return 0, err
+	}
+
 	loanDate := MustParseDate(in.LoanDate)
 	returnDate := MustParseDate(in.ReturnDate)
 	in.BorrowerName = ToTitleCaseWithAbbr(in.BorrowerName)
 	in.Purpose = SanitizeText(in.Purpose)
-
 	loanID, err := s.loanRepo.Create(in.DeviceID, in.BorrowerName, in.BorrowerType, loanDate, returnDate, in.Purpose)
 	if err != nil {
 		s.log.LogCreate(actorID, actorUsername, actorRole, "device_loan", 0,

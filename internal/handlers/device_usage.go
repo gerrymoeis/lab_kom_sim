@@ -77,18 +77,20 @@ func (h *Handler) DeviceUsageCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceUsageCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	var req CreateDeviceUsageRequest
 	if err := c.ShouldBind(&req); err != nil {
-		_, username, role, _ := h.user(c)
 		h.renderTemplate(c, http.StatusBadRequest, "device_usage/create.html", gin.H{
 			"title": "Tambah Pemakaian", "currentPage": "devices",
-			"username": username, "role": role, "error": "Data tidak lengkap",
+			"error": "Data tidak lengkap",
 		})
 		return
 	}
 
 	deviceID, _ := strconv.Atoi(req.DeviceID)
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	_, err := h.deviceUsageService.CreateUsage(services.CreateUsageInput{
@@ -102,7 +104,7 @@ func (h *Handler) DeviceUsageCreate(c *gin.Context) {
 	if err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "device_usage/create.html", gin.H{
 			"title": "Tambah Pemakaian", "currentPage": "devices",
-			"username": u, "role": r, "error": "Gagal menyimpan pemakaian",
+			"error": "Gagal menyimpan pemakaian",
 		})
 		return
 	}
@@ -154,13 +156,17 @@ func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+
+	if !h.requireAdmin(c) { return }
+
 	var req EditDeviceUsageRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Data tidak valid")
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceUsageService.UpdateUsage(id, services.UpdateUsageInput{
@@ -179,7 +185,11 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 
 func (h *Handler) DeviceUsageDelete(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	uid, u, r, _ := h.user(c)
+
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceUsageService.DeleteUsage(id, uid, u, r, ip, ua); err != nil {
@@ -190,6 +200,11 @@ func (h *Handler) DeviceUsageDelete(c *gin.Context) {
 }
 
 func (h *Handler) DeviceUsageBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -202,7 +217,8 @@ func (h *Handler) DeviceUsageBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.deviceUsageService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())

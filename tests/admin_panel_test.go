@@ -885,7 +885,7 @@ func TestAuthZScenarios(t *testing.T) {
 			t.Errorf("expected 302 redirect, got %d", resp.StatusCode)
 		}
 		loc := resp.Header.Get("Location")
-		if !strings.Contains(loc, "tidak+bisa+dihapus") && !strings.Contains(loc, "super+admin") {
+		if !strings.Contains(loc, "tidak+memiliki+izin") {
 			t.Errorf("redirect should contain error message, got %q", loc)
 		}
 	})
