@@ -159,6 +159,11 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 
 	if !h.requireAdmin(c) { return }
 
+	if _, err := h.deviceUsageService.GetByID(id); err != nil {
+		h.errHTML(c, "Pemakaian tidak ditemukan")
+		return
+	}
+
 	var req EditDeviceUsageRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Data tidak valid")

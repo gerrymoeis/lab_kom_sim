@@ -29,14 +29,15 @@ type TestCase struct {
 }
 
 type PackageResult struct {
-	Name        string
-	Total       int
-	Passed      []TestCase
-	Failed      []TestCase
-	Skipped     []TestCase
-	Action      string
-	Elapsed     time.Duration
-	currentTest string
+	Name         string
+	Total        int
+	Passed       []TestCase
+	Failed       []TestCase
+	Skipped      []TestCase
+	Action       string
+	Elapsed      time.Duration
+	currentTest  string
+	OutputBuffer map[string][]string
 }
 
 type TestRunSummary struct {
@@ -124,7 +125,7 @@ func processEvent(summary *TestRunSummary, event TestEvent) {
 
 	pkg, ok := summary.Packages[pkgName]
 	if !ok {
-		pkg = &PackageResult{Name: pkgName}
+		pkg = &PackageResult{Name: pkgName, OutputBuffer: make(map[string][]string)}
 		summary.Packages[pkgName] = pkg
 	}
 
@@ -151,53 +152,40 @@ func processEvent(summary *TestRunSummary, event TestEvent) {
 		pkg.currentTest = event.Test
 		pkg.Total++
 	case "pass":
-		pkg.Passed = append(pkg.Passed, TestCase{
+		tc := TestCase{
 			Name:    event.Test,
 			Package: pkgName,
 			Elapsed: durationFromSeconds(event.Elapsed),
-		})
+		}
+		if buf, ok := pkg.OutputBuffer[event.Test]; ok {
+			tc.Outputs = buf
+			delete(pkg.OutputBuffer, event.Test)
+		}
+		pkg.Passed = append(pkg.Passed, tc)
 	case "fail":
-		pkg.Failed = append(pkg.Failed, TestCase{
+		tc := TestCase{
 			Name:    event.Test,
 			Package: pkgName,
 			Elapsed: durationFromSeconds(event.Elapsed),
-		})
+		}
+		if buf, ok := pkg.OutputBuffer[event.Test]; ok {
+			tc.Outputs = buf
+			delete(pkg.OutputBuffer, event.Test)
+		}
+		pkg.Failed = append(pkg.Failed, tc)
 	case "skip":
-		pkg.Skipped = append(pkg.Skipped, TestCase{
+		tc := TestCase{
 			Name:    event.Test,
 			Package: pkgName,
 			Elapsed: durationFromSeconds(event.Elapsed),
-		})
+		}
+		if buf, ok := pkg.OutputBuffer[event.Test]; ok {
+			tc.Outputs = buf
+			delete(pkg.OutputBuffer, event.Test)
+		}
+		pkg.Skipped = append(pkg.Skipped, tc)
 	case "output":
-		addTestOutput(pkg, event)
-	}
-}
-
-func addTestOutput(pkg *PackageResult, event TestEvent) {
-	testName := event.Test
-	output := event.Output
-
-	if testName == "" {
-		return
-	}
-
-	for i := range pkg.Passed {
-		if pkg.Passed[i].Name == testName {
-			pkg.Passed[i].Outputs = append(pkg.Passed[i].Outputs, output)
-			return
-		}
-	}
-	for i := range pkg.Failed {
-		if pkg.Failed[i].Name == testName {
-			pkg.Failed[i].Outputs = append(pkg.Failed[i].Outputs, output)
-			return
-		}
-	}
-	for i := range pkg.Skipped {
-		if pkg.Skipped[i].Name == testName {
-			pkg.Skipped[i].Outputs = append(pkg.Skipped[i].Outputs, output)
-			return
-		}
+		pkg.OutputBuffer[event.Test] = append(pkg.OutputBuffer[event.Test], event.Output)
 	}
 }
 
@@ -211,6 +199,7 @@ func printSummary(summary *TestRunSummary, exitCode int) {
 	failed := 0
 	skipped := 0
 	var allFailed []TestCase
+	var allSkipped []TestCase
 	totalElapsed := summary.EndTime.Sub(summary.StartTime)
 
 	for _, pkg := range summary.Packages {
@@ -219,6 +208,7 @@ func printSummary(summary *TestRunSummary, exitCode int) {
 		failed += len(pkg.Failed)
 		skipped += len(pkg.Skipped)
 		allFailed = append(allFailed, pkg.Failed...)
+		allSkipped = append(allSkipped, pkg.Skipped...)
 	}
 
 	resultText := "PASS"
@@ -258,6 +248,27 @@ func printSummary(summary *TestRunSummary, exitCode int) {
 		}
 	}
 
+	if len(allSkipped) > 0 {
+		fmt.Println()
+		fmt.Println(strings.Repeat("\u2500", 60))
+		fmt.Println("  SKIPPED TESTS")
+		fmt.Println(strings.Repeat("\u2500", 60))
+		for i, tc := range allSkipped {
+			fileRef := extractFileRef(tc.Outputs)
+			fmt.Printf("  %d) %s\n", i+1, tc.Name)
+			if fileRef != "" {
+				fmt.Printf("     File    : %s\n", fileRef)
+			}
+			if len(tc.Outputs) > 0 {
+				msg := extractSkipMessage(tc.Outputs)
+				if msg != "" {
+					fmt.Printf("     Message : %s\n", msg)
+				}
+			}
+			fmt.Println()
+		}
+	}
+
 	fmt.Println(strings.Repeat("=", 60))
 	fmt.Printf("  RESULT: %s (exit code %d)\n", resultText, exitCode)
 	fmt.Println(strings.Repeat("=", 60))
@@ -278,6 +289,25 @@ func extractFileRef(outputs []string) string {
 				}
 				return ref
 			}
+		}
+	}
+	return ""
+}
+
+func extractSkipMessage(outputs []string) string {
+	for _, line := range outputs {
+		trimmed := strings.TrimSpace(line)
+		if idx := fileLineRe.FindStringIndex(trimmed); idx != nil {
+			after := strings.TrimSpace(trimmed[idx[1]:])
+			if after != "" {
+				return after
+			}
+		}
+	}
+	for _, line := range outputs {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && !strings.HasPrefix(trimmed, "=== RUN") && !strings.HasPrefix(trimmed, "--- SKIP") {
+			return trimmed
 		}
 	}
 	return ""

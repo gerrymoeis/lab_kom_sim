@@ -1223,6 +1223,22 @@ func TestDeviceUsage(t *testing.T) {
 		}
 	})
 
+	t.Run("edit_page_usage", func(t *testing.T) {
+		var usageID int
+		db.QueryRow("SELECT id FROM device_usages ORDER BY id DESC LIMIT 1").Scan(&usageID)
+		if usageID == 0 {
+			t.Fatal("no usage found for edit page test")
+		}
+		resp, err := lab.get("/device-usages/" + fmt.Sprint(usageID) + "/edit")
+		if err != nil {
+			t.Fatalf("GET /device-usages/%d/edit: %v", usageID, err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+	})
+
 	t.Run("delete_usage", func(t *testing.T) {
 		var usageID int
 		db.QueryRow("SELECT id FROM device_usages ORDER BY id DESC LIMIT 1").Scan(&usageID)
@@ -1281,19 +1297,25 @@ func TestDeviceUsage(t *testing.T) {
 		}
 	})
 
-	t.Run("edit_page_usage", func(t *testing.T) {
-		var usageID int
-		db.QueryRow("SELECT id FROM device_usages ORDER BY id LIMIT 1").Scan(&usageID)
-		if usageID == 0 {
-			t.Skip("no usage for edit page")
-		}
-		resp, err := lab.get("/device-usages/" + fmt.Sprint(usageID) + "/edit")
+	t.Run("fail_edit_page_not_found", func(t *testing.T) {
+		resp, err := lab.get("/device-usages/99999/edit")
 		if err != nil {
-			t.Fatalf("GET /device-usages/%d/edit: %v", usageID, err)
+			t.Fatalf("GET /device-usages/99999/edit: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			t.Errorf("expected 200, got %d", resp.StatusCode)
+		if resp.StatusCode != 500 && resp.StatusCode != 404 {
+			t.Errorf("expected 500 or 404, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("fail_edit_not_found", func(t *testing.T) {
+		resp, err := lab.post("/device-usages/99999/edit", "user_name=Test&user_type=dosen&usage_date=2026-06-01&is_available=yes&purpose=test")
+		if err != nil {
+			t.Fatalf("POST /device-usages/99999/edit: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 500 && resp.StatusCode != 404 {
+			t.Errorf("expected 500 or 404, got %d", resp.StatusCode)
 		}
 	})
 
@@ -1426,6 +1448,22 @@ func TestInstallation(t *testing.T) {
 		}
 	})
 
+	t.Run("edit_page_installation", func(t *testing.T) {
+		var installID int
+		db.QueryRow("SELECT id FROM device_installations ORDER BY id DESC LIMIT 1").Scan(&installID)
+		if installID == 0 {
+			t.Fatal("no installation found for edit page test")
+		}
+		resp, err := lab.get("/installations/" + fmt.Sprint(installID) + "/edit")
+		if err != nil {
+			t.Fatalf("GET /installations/%d/edit: %v", installID, err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200, got %d", resp.StatusCode)
+		}
+	})
+
 	t.Run("delete_installation", func(t *testing.T) {
 		var installID int
 		db.QueryRow("SELECT id FROM device_installations ORDER BY id DESC LIMIT 1").Scan(&installID)
@@ -1492,19 +1530,25 @@ func TestInstallation(t *testing.T) {
 		}
 	})
 
-	t.Run("edit_page_installation", func(t *testing.T) {
-		var installID int
-		db.QueryRow("SELECT id FROM device_installations ORDER BY id LIMIT 1").Scan(&installID)
-		if installID == 0 {
-			t.Skip("no installation for edit page")
-		}
-		resp, err := lab.get("/installations/" + fmt.Sprint(installID) + "/edit")
+	t.Run("fail_edit_page_not_found", func(t *testing.T) {
+		resp, err := lab.get("/installations/99999/edit")
 		if err != nil {
-			t.Fatalf("GET /installations/%d/edit: %v", installID, err)
+			t.Fatalf("GET /installations/99999/edit: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			t.Errorf("expected 200, got %d", resp.StatusCode)
+		if resp.StatusCode != 500 && resp.StatusCode != 404 {
+			t.Errorf("expected 500 or 404, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("fail_edit_not_found", func(t *testing.T) {
+		resp, err := lab.post("/installations/99999/edit", "location_installed=Test&installation_start_date=2026-06-01&notes=test")
+		if err != nil {
+			t.Fatalf("POST /installations/99999/edit: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 500 && resp.StatusCode != 404 {
+			t.Errorf("expected 500 or 404, got %d", resp.StatusCode)
 		}
 	})
 
