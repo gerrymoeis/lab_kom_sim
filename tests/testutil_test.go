@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,149 @@ import (
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var (
+	sharedEnv     *TestEnvironment
+	sharedCleanup func()
+	sharedTmpDir  string
+)
+
+func TestMain(m *testing.M) {
+	wd, _ := os.Getwd()
+	projectRoot := findProjectRoot(wd)
+	if err := os.Chdir(projectRoot); err != nil {
+		panic("Chdir to project root " + projectRoot + ": " + err.Error())
+	}
+	godotenv.Load()
+	if _, err := os.Stat(filepath.Join(projectRoot, ".env.reference")); err == nil {
+		godotenv.Load(filepath.Join(projectRoot, ".env.reference"))
+	}
+
+	code := func() int {
+		env, _, tmpDir, err := createSharedEnvironment()
+		if err != nil {
+			panic("createSharedEnvironment: " + err.Error())
+		}
+		sharedEnv = env
+		sharedTmpDir = tmpDir
+		return m.Run()
+	}()
+	if sharedEnv != nil {
+		sharedCleanup()
+		sharedEnv.DB_A.Close()
+		sharedEnv.DB_B.Close()
+		sharedEnv.GlobalDB.Close()
+		if sharedTmpDir != "" {
+			os.RemoveAll(sharedTmpDir)
+		}
+	}
+	os.Exit(code)
+}
+
+func createSharedEnvironment() (*TestEnvironment, string, string, error) {
+	tmpDir, err := os.MkdirTemp("", "simlabkom-test-shared-*")
+	if err != nil {
+		return nil, "", "", fmt.Errorf("MkdirTemp: %w", err)
+	}
+	uploadPath := filepath.Join(tmpDir, "uploads")
+	dbPathA := filepath.Join(tmpDir, "testing_a.db")
+	dbPathB := filepath.Join(tmpDir, "testing_b.db")
+	globalDBPath := filepath.Join(tmpDir, "testing_global.db")
+
+	labAURL := "lab-kom-mi"
+	labAID := "MI-1"
+	labBURL := "vokasi"
+	labBID := "VOKASI-1"
+
+	cfg := createTestConfig()
+	cfg.UploadPath = uploadPath
+	cfg.Labs = []config.LabConfig{
+		{ID: labAID, Title: "Lab Kom MI", URLPath: labAURL, DBPath: dbPathA, UploadDir: filepath.Join(uploadPath, labAURL), Layout: config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}},
+		{ID: labBID, Title: "Vokasi", URLPath: labBURL, DBPath: dbPathB, UploadDir: filepath.Join(uploadPath, labBURL), Layout: config.GridLayout{ColsPerRow: []int{10, 8, 9, 9}, HasGap: true, GapPos: 4}},
+	}
+
+	dbA, err := database.InitDB(dbPathA, "")
+	if err != nil {
+		return nil, "", tmpDir, fmt.Errorf("InitDB lab A: %w", err)
+	}
+	if err := database.RunMigrations(dbA, false, labAID, labAURL, uploadPath, false); err != nil {
+		return nil, "", tmpDir, fmt.Errorf("Migrate lab A: %w", err)
+	}
+	if err := database.SeedDefaultUser(dbA); err != nil {
+		return nil, "", tmpDir, fmt.Errorf("Seed user lab A: %w", err)
+	}
+	dbA.Exec("UPDATE users SET session_token = NULL")
+
+	dbB, err := database.InitDB(dbPathB, "")
+	if err != nil {
+		return nil, "", tmpDir, fmt.Errorf("InitDB lab B: %w", err)
+	}
+	if err := database.RunMigrations(dbB, false, labBID, labBURL, uploadPath, false); err != nil {
+		return nil, "", tmpDir, fmt.Errorf("Migrate lab B: %w", err)
+	}
+	if err := database.SeedDefaultUser(dbB); err != nil {
+		return nil, "", tmpDir, fmt.Errorf("Seed user lab B: %w", err)
+	}
+	dbB.Exec("UPDATE users SET session_token = NULL")
+
+	globalDB, err := database.InitDB(globalDBPath, "")
+	if err != nil {
+		return nil, "", tmpDir, fmt.Errorf("InitDB global: %w", err)
+	}
+	if err := database.SetupGlobalDB(globalDB, cfg.Labs); err != nil {
+		return nil, "", tmpDir, fmt.Errorf("Setup global DB: %w", err)
+	}
+	globalDB.Exec("UPDATE global_users SET session_token = ''")
+
+	bcryptHash := func(pw string) string {
+		h, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.MinCost)
+		return string(h)
+	}
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 1)", "admin", bcryptHash("admin123"), "Administrator")
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 1)", "rekan", bcryptHash("rekan123"), "Rekan Administrator")
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_only", bcryptHash("test123"), "Lab A Only")
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labB_only", bcryptHash("test123"), "Lab B Only")
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "no_perm_user", bcryptHash("test123"), "No Permission")
+	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_dosen", bcryptHash("test123"), "Lab A Dosen")
+	var labAOnlyID, labBOnlyID, labADosenID int
+	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_only'").Scan(&labAOnlyID)
+	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labB_only'").Scan(&labBOnlyID)
+	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_dosen'").Scan(&labADosenID)
+	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labAOnlyID, labAURL)
+	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labBOnlyID, labBURL)
+	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labADosenID, labAURL)
+	dbs := map[string]*database.DB{labAURL: dbA, labBURL: dbB}
+	router, cleanup, flushLogs, globalHandler := server.SetupRouter(dbs, globalDB, cfg, services.DummyNotifier{})
+	sharedCleanup = cleanup
+
+	ts := httptest.NewServer(router)
+
+	noRedirect := func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }
+	client := &http.Client{CheckRedirect: noRedirect}
+
+	env := &TestEnvironment{
+		LabA: &testLab{
+			url: labAURL, id: labAID, prefix: "/" + labAURL,
+			db: dbA, cfg: cfg.Labs[0], cookies: make(map[string]string),
+			ts: ts, t: nil, client: &http.Client{CheckRedirect: noRedirect},
+		},
+		LabB: &testLab{
+			url: labBURL, id: labBID, prefix: "/" + labBURL,
+			db: dbB, cfg: cfg.Labs[1], cookies: make(map[string]string),
+			ts: ts, t: nil, client: &http.Client{CheckRedirect: noRedirect},
+		},
+		TS:            ts,
+		Client:        client,
+		GlobalDB:      globalDB,
+		DB_A:          dbA,
+		DB_B:          dbB,
+		Config:        cfg,
+		FlushLogs:     flushLogs,
+		GlobalHandler: globalHandler,
+	}
+
+	return env, uploadPath, tmpDir, nil
+}
 
 // TestConfigOverrides allows customising config for specific test scenarios.
 type TestConfigOverrides struct {
@@ -254,6 +398,44 @@ func createTestConfig(overrides ...TestConfigOverrides) *config.Config {
 	}
 }
 
+func clearSessions() {
+	sharedEnv.GlobalDB.Exec("UPDATE global_users SET session_token = ''")
+	for _, db := range sharedEnv.GlobalHandler.LabsDB {
+		db.Exec("UPDATE users SET session_token = NULL")
+	}
+}
+
+func wrapSharedEnv(t *testing.T) *TestEnvironment {
+	t.Helper()
+	clearSessions()
+	noRedirect := func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }
+	client := &http.Client{CheckRedirect: noRedirect}
+	labA := &testLab{
+		url: sharedEnv.LabA.url, id: sharedEnv.LabA.id, prefix: sharedEnv.LabA.prefix,
+		db: sharedEnv.DB_A, cfg: sharedEnv.Config.Labs[0],
+		cookies: make(map[string]string),
+		ts: sharedEnv.TS, t: t, client: client,
+	}
+	labB := &testLab{
+		url: sharedEnv.LabB.url, id: sharedEnv.LabB.id, prefix: sharedEnv.LabB.prefix,
+		db: sharedEnv.DB_B, cfg: sharedEnv.Config.Labs[1],
+		cookies: make(map[string]string),
+		ts: sharedEnv.TS, t: t, client: client,
+	}
+	return &TestEnvironment{
+		LabA:          labA,
+		LabB:          labB,
+		TS:            sharedEnv.TS,
+		Client:        client,
+		GlobalDB:      sharedEnv.GlobalDB,
+		DB_A:          sharedEnv.DB_A,
+		DB_B:          sharedEnv.DB_B,
+		Config:        sharedEnv.Config,
+		FlushLogs:     sharedEnv.FlushLogs,
+		GlobalHandler: sharedEnv.GlobalHandler,
+	}
+}
+
 func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestEnvironment {
 	t.Helper()
 
@@ -261,15 +443,6 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 	if len(overrides) > 0 {
 		cfgOverride = overrides[0]
 	}
-
-	wd, _ := os.Getwd()
-	projectRoot := findProjectRoot(wd)
-	if err := os.Chdir(projectRoot); err != nil {
-		t.Fatalf("Chdir to project root %s: %v", projectRoot, err)
-	}
-	t.Cleanup(func() { os.Chdir(wd) })
-
-	godotenv.Load()
 
 	tmpDir, err := os.MkdirTemp("", "simlabkom-test-*")
 	if err != nil {
@@ -279,20 +452,15 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 	dbPathB := filepath.Join(tmpDir, "testing_b.db")
 	globalDBPath := filepath.Join(tmpDir, "testing_global.db")
 
-	os.RemoveAll(filepath.Join(projectRoot, "uploads", "temp"))
-	os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
-	os.RemoveAll(filepath.Join(projectRoot, "uploads", "logbook"))
-
-	for _, labURL := range []string{"lab-kom-mi", "vokasi"} {
-		os.RemoveAll(filepath.Join(projectRoot, "uploads", labURL))
-	}
-
 	labAURL := "lab-kom-mi"
 	labAID := "MI-1"
 	labBURL := "vokasi"
 	labBID := "VOKASI-1"
 
 	cfg := createTestConfig(cfgOverride)
+	if cfgOverride.UploadPath == "" {
+		cfg.UploadPath = filepath.Join(tmpDir, "uploads")
+	}
 	cfg.Labs = []config.LabConfig{
 		{ID: labAID, Title: "Lab Kom MI", URLPath: labAURL, DBPath: dbPathA, UploadDir: filepath.Join(cfg.UploadPath, labAURL), Layout: config.GridLayout{ColsPerRow: []int{8, 8, 8, 8, 8}}},
 		{ID: labBID, Title: "Vokasi", URLPath: labBURL, DBPath: dbPathB, UploadDir: filepath.Join(cfg.UploadPath, labBURL), Layout: config.GridLayout{ColsPerRow: []int{10, 8, 9, 9}, HasGap: true, GapPos: 4}},
@@ -332,7 +500,7 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 	globalDB.Exec("UPDATE global_users SET session_token = ''")
 
 	bcryptHash := func(pw string) string {
-		h, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)
+		h, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.MinCost)
 		return string(h)
 	}
 	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 1)", "admin", bcryptHash("admin123"), "Administrator")
@@ -366,9 +534,6 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 		}
 		globalDB.Close()
 		_ = os.RemoveAll(tmpDir)
-		os.RemoveAll(filepath.Join(projectRoot, "uploads", "temp"))
-		os.RemoveAll(filepath.Join(projectRoot, "uploads", "pc"))
-		os.RemoveAll(filepath.Join(projectRoot, "uploads", "logbook"))
 	})
 
 	ts := httptest.NewServer(router)

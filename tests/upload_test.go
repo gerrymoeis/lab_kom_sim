@@ -93,7 +93,7 @@ func isJPEGMagic(buf []byte) bool {
 // ============================================
 
 func TestUploadImageVariations(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	tsURL := env.TS.URL
 
@@ -101,10 +101,9 @@ func TestUploadImageVariations(t *testing.T) {
 		t.Fatal("login failed")
 	}
 
-	wd, _ := os.Getwd()
-	projectRoot := findProjectRoot(wd)
+	uploadDir := lab.cfg.UploadDir
 
-	// 2A.1: HEIC upload → JPEG conversion + file verification
+	// 2A.1: HEIC upload â†’ JPEG conversion + file verification
 	t.Run("heic_to_jpeg_conversion", func(t *testing.T) {
 		heicData, err := os.ReadFile(filepath.Join("tests", "resources", "pc1_sn.heic"))
 		if err != nil {
@@ -132,7 +131,7 @@ func TestUploadImageVariations(t *testing.T) {
 		if !strings.HasSuffix(fileRef, ".jpeg") && !strings.HasSuffix(fileRef, ".jpg") {
 			t.Errorf("expected .jpeg file_ref, got %s", fileRef)
 		}
-		finalPath := filepath.Join(projectRoot, "uploads", lab.url, "temp", fileRef)
+		finalPath := filepath.Join(uploadDir, "temp", fileRef)
 		if _, err := os.Stat(finalPath); os.IsNotExist(err) {
 			t.Errorf("final JPEG not found on disk: %s", finalPath)
 		}
@@ -205,7 +204,7 @@ func TestUploadImageVariations(t *testing.T) {
 		}
 	})
 
-	// 2A.3: Temp folder — file created in correct path, original cleaned up after compress
+	// 2A.3: Temp folder â€” file created in correct path, original cleaned up after compress
 	t.Run("temp_folder_correctness", func(t *testing.T) {
 		heicData, err := os.ReadFile(filepath.Join("tests", "resources", "pc1_sn.heic"))
 		if err != nil {
@@ -223,7 +222,7 @@ func TestUploadImageVariations(t *testing.T) {
 			t.Fatalf("decode response: %v", err)
 		}
 		fileRef, _ := result["file_ref"].(string)
-		tempDir := filepath.Join(projectRoot, "uploads", lab.url, "temp")
+		tempDir := filepath.Join(uploadDir, "temp")
 		finalPath := filepath.Join(tempDir, fileRef)
 		if _, err := os.Stat(finalPath); os.IsNotExist(err) {
 			t.Errorf("file not in temp dir: %s", finalPath)
@@ -265,7 +264,7 @@ func TestUploadImageVariations(t *testing.T) {
 		}
 	})
 
-	// 2A.7: Invalid MIME type — magic bytes mismatch
+	// 2A.7: Invalid MIME type â€” magic bytes mismatch
 	t.Run("invalid_mime_type", func(t *testing.T) {
 		textData := []byte("not an image file content")
 		resp, err := uploadMultipart(lab, tsURL, textData, "test.jpg", "serial")
@@ -305,7 +304,7 @@ func TestUploadImageVariations(t *testing.T) {
 // ============================================
 
 func TestUploadAndroidFlag(t *testing.T) {
-	// 2A.4: ANDROID=true — HEIC rejected, JPG accepted directly
+	// 2A.4: ANDROID=true â€” HEIC rejected, JPG accepted directly
 	t.Run("android_true_heic_rejected_jpg_direct", func(t *testing.T) {
 		env := setupTestEnvironment(t, TestConfigOverrides{Android: true})
 		lab := env.LabA
@@ -315,8 +314,7 @@ func TestUploadAndroidFlag(t *testing.T) {
 			t.Fatal("login failed")
 		}
 
-		wd, _ := os.Getwd()
-		projectRoot := findProjectRoot(wd)
+		uploadDir := lab.cfg.UploadDir
 
 		// HEIC should be rejected (extension not allowed)
 		heicData, err := os.ReadFile(filepath.Join("tests", "resources", "pc1_sn.heic"))
@@ -365,7 +363,7 @@ func TestUploadAndroidFlag(t *testing.T) {
 		}
 
 		// Verify file is on disk
-		finalPath := filepath.Join(projectRoot, "uploads", lab.url, "temp", fileRef)
+		finalPath := filepath.Join(uploadDir, "temp", fileRef)
 		savedData, err := os.ReadFile(finalPath)
 		if err != nil {
 			t.Fatalf("read saved file: %v", err)
@@ -375,7 +373,7 @@ func TestUploadAndroidFlag(t *testing.T) {
 		}
 
 		// Verify no original_ prefix file exists (file saved directly, not via compress)
-		tempDir := filepath.Join(projectRoot, "uploads", lab.url, "temp")
+		tempDir := filepath.Join(uploadDir, "temp")
 		entries, err := os.ReadDir(tempDir)
 		if err != nil {
 			t.Fatalf("read temp dir: %v", err)
@@ -387,11 +385,11 @@ func TestUploadAndroidFlag(t *testing.T) {
 		}
 	})
 
-	// 2A.5: ANDROID=false (default) — HEIC accepted, compressed, original deleted
+	// 2A.5: ANDROID=false (default) â€” HEIC accepted, compressed, original deleted
 	// This is already tested by TestUploadImageVariations/heic_to_jpeg_conversion
 	// but we add an explicit verification of original deletion here.
 	t.Run("android_false_heic_compressed_original_cleanup", func(t *testing.T) {
-		env := setupTestEnvironment(t)
+		env := wrapSharedEnv(t)
 		lab := env.LabA
 		tsURL := env.TS.URL
 
@@ -399,8 +397,7 @@ func TestUploadAndroidFlag(t *testing.T) {
 			t.Fatal("login failed")
 		}
 
-		wd, _ := os.Getwd()
-		projectRoot := findProjectRoot(wd)
+		uploadDir := lab.cfg.UploadDir
 
 		heicData, err := os.ReadFile(filepath.Join("tests", "resources", "pc1_sn.heic"))
 		if err != nil {
@@ -426,13 +423,13 @@ func TestUploadAndroidFlag(t *testing.T) {
 		}
 
 		// Verify final JPEG exists
-		finalPath := filepath.Join(projectRoot, "uploads", lab.url, "temp", fileRef)
+		finalPath := filepath.Join(uploadDir, "temp", fileRef)
 		if _, err := os.Stat(finalPath); os.IsNotExist(err) {
 			t.Errorf("final JPEG not found: %s", finalPath)
 		}
 
 		// Verify original HEIC is deleted
-		tempDir := filepath.Join(projectRoot, "uploads", lab.url, "temp")
+		tempDir := filepath.Join(uploadDir, "temp")
 		entries, err := os.ReadDir(tempDir)
 		if err != nil {
 			t.Fatalf("read temp dir: %v", err)
@@ -446,11 +443,11 @@ func TestUploadAndroidFlag(t *testing.T) {
 }
 
 // ============================================
-// 2A.8: PC delete cascade — foto files removed from disk
+// 2A.8: PC delete cascade â€” foto files removed from disk
 // ============================================
 
 func TestUploadCascadeDelete(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	tsURL := env.TS.URL
 
@@ -458,11 +455,10 @@ func TestUploadCascadeDelete(t *testing.T) {
 		t.Fatal("login failed")
 	}
 
-	wd, _ := os.Getwd()
-	projectRoot := findProjectRoot(wd)
+	labUploadDir := lab.cfg.UploadDir
 	pcLabel := fmt.Sprintf("cascade-%d", time.Now().UnixMilli())
 
-	// Step 1: Upload a photo — pass the PC label so file is named {label}_serial_{date}.jpeg.
+	// Step 1: Upload a photo â€” pass the PC label so file is named {label}_serial_{date}.jpeg.
 	// This lets movePCPhotos() in the create handler find and move it automatically.
 	heicData, err := os.ReadFile(filepath.Join("tests", "resources", "pc1_sn.heic"))
 	if err != nil {
@@ -504,7 +500,7 @@ func TestUploadCascadeDelete(t *testing.T) {
 	}
 	t.Logf("Uploaded file_ref=%s", fileRef)
 
-	// Step 2: Create a PC — the label matches the uploaded file prefix,
+	// Step 2: Create a PC â€” the label matches the uploaded file prefix,
 	// so movePCPhotos will automatically find and copy it from temp/ to pc/.
 	if !lab.refreshCSRF() {
 		t.Fatal("refresh CSRF failed before PC create")
@@ -534,7 +530,7 @@ func TestUploadCascadeDelete(t *testing.T) {
 	t.Logf("PC created: label=%q, photo_serial=%q", labelInDB, photoSerialInDB)
 
 	// Step 4: Verify photo moved from temp/ to pc/ directory
-	pcDir := filepath.Join(projectRoot, "uploads", lab.url, "pc")
+	pcDir := filepath.Join(labUploadDir, "pc")
 	pcFiles, err := os.ReadDir(pcDir)
 	if err != nil {
 		t.Fatalf("read pc dir: %v", err)
@@ -549,7 +545,7 @@ func TestUploadCascadeDelete(t *testing.T) {
 	}
 	if !foundInPC {
 		if photoSerialInDB != "" {
-			// Photo was recorded in DB but file not in pc/ — check alternative names
+			// Photo was recorded in DB but file not in pc/ â€” check alternative names
 			for _, entry := range pcFiles {
 				t.Logf("  pc/ file: %s", entry.Name())
 			}
@@ -558,12 +554,12 @@ func TestUploadCascadeDelete(t *testing.T) {
 	}
 
 	// Temp file should have been removed after copy
-	tempPath := filepath.Join(projectRoot, "uploads", lab.url, "temp", fileRef)
+	tempPath := filepath.Join(labUploadDir, "temp", fileRef)
 	if _, err := os.Stat(tempPath); err == nil {
 		t.Log("photo still in temp/ after PC create")
 	}
 
-	// Step 4: Delete the PC — route is /{lab}/pc/{label}/delete
+	// Step 4: Delete the PC â€” route is /{lab}/pc/{label}/delete
 	if !lab.refreshCSRF() {
 		t.Fatal("refresh CSRF failed before delete")
 	}

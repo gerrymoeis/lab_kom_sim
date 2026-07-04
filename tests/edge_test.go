@@ -11,7 +11,7 @@ import (
 )
 
 func TestEdgeCases(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	tsURL := env.TS.URL
 
@@ -20,7 +20,7 @@ func TestEdgeCases(t *testing.T) {
 	}
 
 	// ============================================
-	// 3.1: SQL Injection — parameterized queries prevent injection
+	// 3.1: SQL Injection â€” parameterized queries prevent injection
 	// ============================================
 	t.Run("3.1_sql_injection", func(t *testing.T) {
 		// SQL injection payload in serial_number (text field)
@@ -43,7 +43,7 @@ func TestEdgeCases(t *testing.T) {
 			if err != nil {
 				t.Fatalf("POST /pc/create with payload %q: %v", payload, err)
 			}
-			// Should not 500 — either success (302) or validation fail (200/400)
+			// Should not 500 â€” either success (302) or validation fail (200/400)
 			if resp.StatusCode == 500 {
 				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
@@ -68,7 +68,7 @@ func TestEdgeCases(t *testing.T) {
 	})
 
 	// ============================================
-	// 3.2: XSS — input harus di-escape di template
+	// 3.2: XSS â€” input harus di-escape di template
 	// ============================================
 	t.Run("3.2_xss", func(t *testing.T) {
 		xssPayload := "<script>alert('xss')</script>"
@@ -98,7 +98,7 @@ func TestEdgeCases(t *testing.T) {
 		resp.Body.Close()
 		bodyStr := string(body)
 
-		// Go's html/template auto-escapes <script> → &lt;script&gt;
+		// Go's html/template auto-escapes <script> â†’ &lt;script&gt;
 		if strings.Contains(bodyStr, xssPayload) && !strings.Contains(bodyStr, "&lt;script&gt;") {
 			t.Error("XSS payload found unescaped in HTML response")
 		}
@@ -127,7 +127,7 @@ func TestEdgeCases(t *testing.T) {
 	})
 
 	// ============================================
-	// 3.3: Concurrent requests — 10 goroutine POST simultan
+	// 3.3: Concurrent requests â€” 10 goroutine POST simultan
 	// ============================================
 	t.Run("3.3_concurrent_requests", func(t *testing.T) {
 		endpoint := lab.prefix + "/api/pc/layout"
@@ -168,7 +168,7 @@ func TestEdgeCases(t *testing.T) {
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
-		emojiNotes := "🔬 Lab PC testing emoji: 🖥️✅⚠️🚫"
+		emojiNotes := "ðŸ”¬ Lab PC testing emoji: ðŸ–¥ï¸âœ…âš ï¸ðŸš«"
 		formData := fmt.Sprintf("row=99&column=90&status=normal&placement=dipakai&is_mahasiswa=true"+
 			"&serial_number=SN-EMOJI-TEST&operating_system=Win11&pc_type=PC"+
 			"&brand_model=Dell&accessories=KB&processor=i5&ram=8GB&storage=256GB"+
@@ -227,7 +227,7 @@ func TestEdgeCases(t *testing.T) {
 	})
 
 	// ============================================
-	// 3.5: Session expiration — session di-clear → redirect
+	// 3.5: Session expiration â€” session di-clear â†’ redirect
 	// ============================================
 	t.Run("3.5_session_expiration", func(t *testing.T) {
 		// Clear session token in global_users to simulate expiration
@@ -239,7 +239,7 @@ func TestEdgeCases(t *testing.T) {
 			t.Fatalf("GET /dashboard after session clear: %v", err)
 		}
 		defer resp.Body.Close()
-		// Session expired → should redirect to login
+		// Session expired â†’ should redirect to login
 		if resp.StatusCode != 302 {
 			t.Errorf("expected 302 redirect to login after session expiration, got %d", resp.StatusCode)
 		}
@@ -250,7 +250,7 @@ func TestEdgeCases(t *testing.T) {
 	})
 
 	// ============================================
-	// 3.6: -race test — verifikasi data race di test suite
+	// 3.6: -race test â€” verifikasi data race di test suite
 	// ============================================
 	t.Run("3.6_race_test", func(t *testing.T) {
 		// This subtest runs `go test -race` for a minimal subset

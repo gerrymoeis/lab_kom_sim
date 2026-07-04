@@ -91,7 +91,7 @@ func moveToCadangan(t *testing.T, lab *testLab, label string) string {
 }
 
 func TestPCGridOperations(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 
@@ -100,32 +100,33 @@ func TestPCGridOperations(t *testing.T) {
 	}
 
 	// ============================================
-	// 2D.1: PC Move — verifikasi row/col/label di DB
+	// 2D.1: PC Move â€” verifikasi row/col/label di DB
 	// ============================================
 	t.Run("2D.1_pc_move", func(t *testing.T) {
 		// Free target position (1,8) by moving pc-8 to cadangan
 		moveToCadangan(t, lab, "pc-8")
 
-		// Move pc-3 to (1,8) → should become pc-8
-		code, res := postGridOp(t, lab, "/api/pc/move", `{"label":"pc-3","row":1,"col":8}`)
+		// Move pc-4 to (1,8) → should become pc-8
+		code, res := postGridOp(t, lab, "/api/pc/move", `{"label":"pc-4","row":1,"col":8}`)
 		if code != 200 {
-			t.Fatalf("expected 200, got %d", code)
+			errMsg, _ := res["error"].(string)
+			t.Fatalf("expected 200, got %d: %s", code, errMsg)
 		}
 		success, _ := res["success"].(bool)
 		if !success {
 			t.Fatal("move success=false")
 		}
 
-		// pc-3 should now be pc-8 with row=1, col=8
+		// pc-4 should now be pc-8 with row=1, col=8
 		requirePCExists(t, lab, "pc-8", 1, 8, "dipakai")
-		// pc-3 should no longer exist
-		if getPC(t, lab, "pc-3") != nil {
-			t.Error("pc-3 should no longer exist after move")
+		// pc-4 should no longer exist
+		if getPC(t, lab, "pc-4") != nil {
+			t.Error("pc-4 should no longer exist after move")
 		}
 	})
 
 	// ============================================
-	// 2D.2: PC Swap — verifikasi label di posisi tertukar
+	// 2D.2: PC Swap â€” verifikasi label di posisi tertukar
 	// ============================================
 	t.Run("2D.2_pc_swap", func(t *testing.T) {
 		// SwapLabels swaps labels AND positions simultaneously.
@@ -167,7 +168,7 @@ func TestPCGridOperations(t *testing.T) {
 	})
 
 	// ============================================
-	// 2D.3: PC Replace — verifikasi spare→dipakai, old→cadangan, software di-seed
+	// 2D.3: PC Replace â€” verifikasi spareâ†’dipakai, oldâ†’cadangan, software di-seed
 	// ============================================
 	t.Run("2D.3_pc_replace", func(t *testing.T) {
 		// Move pc-7 to cadangan to get a spare
@@ -211,13 +212,13 @@ func TestPCGridOperations(t *testing.T) {
 	})
 
 	// ============================================
-	// 2D.4: PC Place — verifikasi cadangan→dipakai, label sesuai (row,col)
+	// 2D.4: PC Place â€” verifikasi cadanganâ†’dipakai, label sesuai (row,col)
 	// ============================================
 	t.Run("2D.4_pc_place", func(t *testing.T) {
 		// Free target position (2,1) by moving pc-9 to cadangan
 		cadanganLabel := moveToCadangan(t, lab, "pc-9")
 
-		// Place cadangan at (2,1) → pc-9
+		// Place cadangan at (2,1) â†’ pc-9
 		code, res := postGridOp(t, lab, "/api/pc/place",
 			fmt.Sprintf(`{"label":"%s","row":2,"col":1}`, cadanganLabel))
 		if code != 200 {
@@ -239,7 +240,7 @@ func TestPCGridOperations(t *testing.T) {
 	})
 
 	// ============================================
-	// 2D.5: MoveToCadangan — verifikasi label jadi pc-cadangan-<N>
+	// 2D.5: MoveToCadangan â€” verifikasi label jadi pc-cadangan-<N>
 	// ============================================
 	t.Run("2D.5_move_to_cadangan", func(t *testing.T) {
 		cadanganLabel := moveToCadangan(t, lab, "pc-12")
@@ -254,7 +255,7 @@ func TestPCGridOperations(t *testing.T) {
 	})
 
 	// ============================================
-	// 2D.6: MoveRowToCadangan — semua PC di row jadi cadangan
+	// 2D.6: MoveRowToCadangan â€” semua PC di row jadi cadangan
 	// ============================================
 	t.Run("2D.6_move_row_to_cadangan", func(t *testing.T) {
 		// Create a fresh PC in row 4
@@ -305,13 +306,13 @@ func TestPCGridOperations(t *testing.T) {
 		// Free a position by moving pc-13 to cadangan
 		moveToCadangan(t, lab, "pc-13")
 
-		// Move pc-14 to (2,6) → becomes pc-14 stays same label since its position is (2,6)
-		// Actually (2,6) = position 14 → pc-14. It's already pc-14 at (2,6).
+		// Move pc-14 to (2,6) â†’ becomes pc-14 stays same label since its position is (2,6)
+		// Actually (2,6) = position 14 â†’ pc-14. It's already pc-14 at (2,6).
 		// Let me use a different position: move pc-14 to (2,2) which is free now (pc-13 was at (2,5)? No...
-		// Let me check: pc-13 was at row 2, col 5 → position 13
-		// pc-14 is at row 2, col 6 → position 14
+		// Let me check: pc-13 was at row 2, col 5 â†’ position 13
+		// pc-14 is at row 2, col 6 â†’ position 14
 		// I moved pc-13 to cadangan, freeing (2,5).
-		// Move pc-14 to (2,5) → becomes pc-13 (position 13)
+		// Move pc-14 to (2,5) â†’ becomes pc-13 (position 13)
 		swBefore := countSoftware(t, lab, "pc-14")
 
 		code, _ := postGridOp(t, lab, "/api/pc/move", `{"label":"pc-14","row":2,"col":5}`)
@@ -359,7 +360,7 @@ func TestPCGridOperations(t *testing.T) {
 			t.Skip("pc-21 not found")
 		}
 
-		// Move pc-21 to cadangan → get spare
+		// Move pc-21 to cadangan â†’ get spare
 		cadanganLabel := moveToCadangan(t, lab, "pc-21")
 
 		targetSWBefore := countSoftware(t, lab, "pc-1")
@@ -374,8 +375,8 @@ func TestPCGridOperations(t *testing.T) {
 
 		// After replace: spare (cadangan) takes pc-1's label & position
 		// pc-1 entity becomes cadangan with cadanganLabel
-		targetSWAfter := countSoftware(t, lab, "pc-1")   // former spare → had spare's software
-		cadanganSWAfter := countSoftware(t, lab, cadanganLabel) // former pc-1 → has pc-1's software
+		targetSWAfter := countSoftware(t, lab, "pc-1")   // former spare â†’ had spare's software
+		cadanganSWAfter := countSoftware(t, lab, cadanganLabel) // former pc-1 â†’ has pc-1's software
 
 		if targetSWAfter < cadanganSWBefore {
 			t.Errorf("pc-1 software after replace: expected >=%d (former spare), got %d",
@@ -405,7 +406,7 @@ func TestPCGridOperations(t *testing.T) {
 	})
 
 	// ============================================
-	// 2D.9: Label collision — move ke slot terisi → error
+	// 2D.9: Label collision â€” move ke slot terisi â†’ error
 	// ============================================
 	t.Run("2D.9_label_collision", func(t *testing.T) {
 		pc18 := getPC(t, lab, "pc-18")
@@ -429,7 +430,7 @@ func TestPCGridOperations(t *testing.T) {
 	})
 
 	// ============================================
-	// 2D.10: Batch delete — success + empty IDs
+	// 2D.10: Batch delete â€” success + empty IDs
 	// ============================================
 	t.Run("2D.10_batch_delete", func(t *testing.T) {
 		code, res := postGridOp(t, lab, "/pc/batch-delete", `{"ids":["pc-18","pc-19"]}`)
@@ -455,7 +456,7 @@ func TestPCGridOperations(t *testing.T) {
 			t.Errorf("expected 0 pc_software for deleted PCs, got %d", swCount)
 		}
 
-		// Test empty IDs → 400
+		// Test empty IDs â†’ 400
 		code, _ = postGridOp(t, lab, "/pc/batch-delete", `{"ids":[]}`)
 		if code != 400 {
 			t.Errorf("expected 400 for empty ids, got %d", code)
@@ -463,7 +464,7 @@ func TestPCGridOperations(t *testing.T) {
 	})
 
 	// ============================================
-	// 2D.11: Batch delete partial rollback — valid + invalid label → 500 + rollback
+	// 2D.11: Batch delete partial rollback â€” valid + invalid label â†’ 500 + rollback
 	// ============================================
 	t.Run("2D.11_batch_delete_rollback", func(t *testing.T) {
 		pc20Before := getPC(t, lab, "pc-20")
@@ -481,7 +482,7 @@ func TestPCGridOperations(t *testing.T) {
 	})
 
 	// ============================================
-	// 2D.12: Swap A == B — same label → 400
+	// 2D.12: Swap A == B â€” same label â†’ 400
 	// ============================================
 	t.Run("2D.12_swap_same_label", func(t *testing.T) {
 		pc1Before := getPC(t, lab, "pc-1")

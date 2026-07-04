@@ -94,7 +94,7 @@ func mapWith(base map[string]string, k, v string) map[string]string {
 // ============================================
 
 func TestPrintSticker(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 
@@ -103,7 +103,7 @@ func TestPrintSticker(t *testing.T) {
 	}
 
 	// ============================================
-	// 2C.1: PC label PDF — konten mengandung label yang diminta
+	// 2C.1: PC label PDF â€” konten mengandung label yang diminta
 	// ============================================
 	t.Run("2C.1_pc_label_pdf", func(t *testing.T) {
 		url := generatePrintURL(env.TS.URL, lab.prefix, map[string]string{
@@ -140,7 +140,7 @@ func TestPrintSticker(t *testing.T) {
 	})
 
 	// ============================================
-	// 2C.2: Device label PDF — perlu seed device type & devices first
+	// 2C.2: Device label PDF â€” perlu seed device type & devices first
 	// ============================================
 	t.Run("2C.2_device_label_pdf", func(t *testing.T) {
 		_, err := db.Exec("INSERT OR IGNORE INTO categories (name, label_prefix) VALUES (?, ?)", "Test Category", "TESTCT")
@@ -207,7 +207,7 @@ func TestPrintSticker(t *testing.T) {
 	})
 
 	// ============================================
-	// 2C.3: Paper sizes A4, F4, A3 — semua menghasilkan PDF valid
+	// 2C.3: Paper sizes A4, F4, A3 â€” semua menghasilkan PDF valid
 	// ============================================
 	t.Run("2C.3_paper_sizes", func(t *testing.T) {
 		sizes := []string{"A4", "F4", "A3"}
@@ -254,7 +254,7 @@ func TestPrintSticker(t *testing.T) {
 	})
 
 	// ============================================
-	// 2C.4: Multiple sheets (num_sheets=3) — output 3x lipat
+	// 2C.4: Multiple sheets (num_sheets=3) â€” output 3x lipat
 	// ============================================
 	t.Run("2C.4_multiple_sheets", func(t *testing.T) {
 		params := map[string]string{
@@ -294,7 +294,7 @@ func TestPrintSticker(t *testing.T) {
 			t.Fatal("expected at least 1 page for num_sheets=1")
 		}
 		if pages3 != pages1*3 {
-			t.Errorf("expected %d pages for num_sheets=3 (3×%d), got %d", pages1*3, pages1, pages3)
+			t.Errorf("expected %d pages for num_sheets=3 (3Ã—%d), got %d", pages1*3, pages1, pages3)
 		}
 		if len(pdf3) <= len(pdf1) {
 			t.Errorf("expected num_sheets=3 PDF to be larger than num_sheets=1")
@@ -302,7 +302,7 @@ func TestPrintSticker(t *testing.T) {
 	})
 
 	// ============================================
-	// 2C.5: Empty data — error "tidak ada data untuk di-print"
+	// 2C.5: Empty data â€” error "tidak ada data untuk di-print"
 	// ============================================
 	t.Run("2C.5_empty_data", func(t *testing.T) {
 		url := generatePrintURL(env.TS.URL, lab.prefix, map[string]string{
@@ -329,7 +329,7 @@ func TestPrintSticker(t *testing.T) {
 	})
 
 	// ============================================
-	// 2C.6: Sticker oversized — error "stiker terlalu besar"
+	// 2C.6: Sticker oversized â€” error "stiker terlalu besar"
 	// ============================================
 	t.Run("2C.6_sticker_oversized", func(t *testing.T) {
 		url := generatePrintURL(env.TS.URL, lab.prefix, map[string]string{
@@ -358,7 +358,7 @@ func TestPrintSticker(t *testing.T) {
 	})
 
 	// ============================================
-	// 2C.7: Invalid params — font 0.2cm (below min), padding 6cm (above max)
+	// 2C.7: Invalid params â€” font 0.2cm (below min), padding 6cm (above max)
 	// Note: errHTML returns 500
 	// ============================================
 	t.Run("2C.7_invalid_params", func(t *testing.T) {
@@ -440,7 +440,7 @@ func TestPrintSticker(t *testing.T) {
 	})
 
 	// ============================================
-	// 2C.8: Natural sorting — pc_labels in non-natural order
+	// 2C.8: Natural sorting â€” pc_labels in non-natural order
 	// ============================================
 	t.Run("2C.8_natural_sorting", func(t *testing.T) {
 		// Insert test PCs at row=99 with labels that sort naturally as 9,10,11

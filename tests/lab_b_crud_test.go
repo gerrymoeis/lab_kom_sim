@@ -12,7 +12,7 @@ func itoa(n int) string {
 }
 
 func TestLabB_EmptyState(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabB
 
 	if !loginAndRefresh(lab, "labB_only", "test123") {
@@ -54,7 +54,7 @@ func TestLabB_EmptyState(t *testing.T) {
 }
 
 func TestLabB_PC_CreateFromScratch(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabB
 	db := env.DB_B
 
@@ -152,7 +152,7 @@ func TestLabB_PC_CreateFromScratch(t *testing.T) {
 }
 
 func TestLabB_Software_CreateFromScratch(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabB
 	db := env.DB_B
 
@@ -227,7 +227,7 @@ func TestLabB_Software_CreateFromScratch(t *testing.T) {
 }
 
 func TestLabB_Schedule_CreateFromScratch(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabB
 	db := env.DB_B
 
@@ -304,7 +304,7 @@ func TestLabB_Schedule_CreateFromScratch(t *testing.T) {
 }
 
 func TestLabB_Device_CreateFromScratch(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabB
 	db := env.DB_B
 

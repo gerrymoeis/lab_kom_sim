@@ -13,11 +13,11 @@ import (
 )
 
 // ============================================
-// TestAPIUpload — image upload, delete temp, cleanup + fail
+// TestAPIUpload â€” image upload, delete temp, cleanup + fail
 // ============================================
 
 func TestAPIUpload(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	tsURL := env.TS.URL
 
@@ -173,11 +173,11 @@ func TestAPIUpload(t *testing.T) {
 }
 
 // ============================================
-// TestAPIPCOperations — status, update, layout, move, swap, place + fail
+// TestAPIPCOperations â€” status, update, layout, move, swap, place + fail
 // ============================================
 
 func TestAPIPCOperations(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -361,8 +361,8 @@ func TestAPIPCOperations(t *testing.T) {
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
-		// pc-7 moved to cadangan → position (1,7) free, label "pc-7" reusable
-		// Move pc-3 to (1,7) → label becomes "pc-7"
+		// pc-7 moved to cadangan â†’ position (1,7) free, label "pc-7" reusable
+		// Move pc-3 to (1,7) â†’ label becomes "pc-7"
 		body := `{"label":"pc-3","row":1,"col":7}`
 		resp, err := lab.postJSON("/api/pc/move", body)
 		if err != nil {
@@ -437,11 +437,11 @@ func TestAPIPCOperations(t *testing.T) {
 }
 
 // ============================================
-// TestAPIPCMoveRow — PCMoveRowToCadangan + fail
+// TestAPIPCMoveRow â€” PCMoveRowToCadangan + fail
 // ============================================
 
 func TestAPIPCMoveRow(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "labA_only", "test123") {
 		t.Fatal("login failed")
@@ -501,11 +501,11 @@ func TestAPIPCMoveRow(t *testing.T) {
 }
 
 // ============================================
-// TestAPINextLabel — NextLabel + NextLabels
+// TestAPINextLabel â€” NextLabel + NextLabels
 // ============================================
 
 func TestAPINextLabel(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "labA_only", "test123") {
 		t.Fatal("login failed")
@@ -584,11 +584,11 @@ func TestAPINextLabel(t *testing.T) {
 }
 
 // ============================================
-// TestSoftwareCatalogJSON — GET /software/catalog.json
+// TestSoftwareCatalogJSON â€” GET /software/catalog.json
 // ============================================
 
 func TestSoftwareCatalogJSON(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 
 	if !loginAndRefresh(lab, "labA_only", "test123") {

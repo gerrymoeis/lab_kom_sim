@@ -65,7 +65,9 @@ func Load() *Config {
 	// Load .env file if exists (so ENV_PATH can be defined inside it)
 	envPath := ".env"
 	if err := godotenv.Load(envPath); err != nil {
-		log.Println("Warning: .env file not found, using environment variables or defaults")
+		if os.Getenv("CI") == "" {
+			log.Println("Warning: .env file not found, using environment variables or defaults")
+		}
 	}
 
 	// EnvPath is configurable via ENV_PATH env var (set in /opt/simlab/.env on production via systemd)
