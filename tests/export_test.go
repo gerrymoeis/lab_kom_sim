@@ -30,7 +30,7 @@ func checkExport(t *testing.T, lab *testLab, path, prefix string) {
 }
 
 func TestExportPC(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -39,7 +39,7 @@ func TestExportPC(t *testing.T) {
 }
 
 func TestExportSoftware(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -48,7 +48,7 @@ func TestExportSoftware(t *testing.T) {
 }
 
 func TestExportDevice(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -57,7 +57,7 @@ func TestExportDevice(t *testing.T) {
 }
 
 func TestExportLogbook(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")
@@ -67,7 +67,7 @@ func TestExportLogbook(t *testing.T) {
 }
 
 func TestExportActivityLog(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	if !loginAndRefresh(lab, "admin", "admin123") {
 		t.Fatal("login failed")

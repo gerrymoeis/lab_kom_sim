@@ -222,11 +222,11 @@ func extractCookieValue(header string) string {
 }
 
 // ============================================
-// G.4: redirectOnNoLab — redirect behavior for nonexistent labs
+// G.4: redirectOnNoLab â€” redirect behavior for nonexistent labs
 // ============================================
 
 func TestRedirectOnNoLab(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("unauthenticated_redirects_to_login", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", env.TS.URL+"/nonexistent/dashboard", nil)

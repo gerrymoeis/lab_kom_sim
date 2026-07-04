@@ -12,7 +12,7 @@ import (
 // ============================================
 
 func TestAdminUserList(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	// Login once as super admin for all admin subtests
 	if !env.LabA.login("admin", "admin123") {

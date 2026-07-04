@@ -24,7 +24,7 @@ func TestOCRService(t *testing.T) {
 	imgPath := createTempJPEG(t)
 
 	// ============================================
-	// 2B.1: OCR success — fake API return valid JSON entries
+	// 2B.1: OCR success â€” fake API return valid JSON entries
 	// ============================================
 	t.Run("2B.1_success", func(t *testing.T) {
 		ts := mockGemini(t, geminiResp(validOCRJSON()), 200, nil)
@@ -52,7 +52,7 @@ func TestOCRService(t *testing.T) {
 	})
 
 	// ============================================
-	// 2B.2: OCR fallback — Gemini gagal → OpenRouter sukses
+	// 2B.2: OCR fallback â€” Gemini gagal â†’ OpenRouter sukses
 	// ============================================
 	t.Run("2B.2_fallback", func(t *testing.T) {
 		geminiTS := mockGemini(t, `{"error":"bad request"}`, 400, nil)
@@ -81,7 +81,7 @@ func TestOCRService(t *testing.T) {
 	})
 
 	// ============================================
-	// 2B.3: OCR retry — API error 429/500 → retry 3x → success
+	// 2B.3: OCR retry â€” API error 429/500 â†’ retry 3x â†’ success
 	// ============================================
 	t.Run("2B.3_retry_success", func(t *testing.T) {
 		var callCount atomic.Int32
@@ -114,7 +114,7 @@ func TestOCRService(t *testing.T) {
 	})
 
 	// ============================================
-	// 2B.4: OCR retry exhausted — all retries fail → error
+	// 2B.4: OCR retry exhausted â€” all retries fail â†’ error
 	// ============================================
 	t.Run("2B.4_retry_exhausted", func(t *testing.T) {
 		var callCount atomic.Int32
@@ -138,7 +138,7 @@ func TestOCRService(t *testing.T) {
 	})
 
 	// ============================================
-	// 2B.5: OCR timeout — 60s timeout → error
+	// 2B.5: OCR timeout â€” 60s timeout â†’ error
 	// ============================================
 	t.Run("2B.5_timeout", func(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -160,7 +160,7 @@ func TestOCRService(t *testing.T) {
 	})
 
 	// ============================================
-	// 2B.6: No API key — error "tidak dikonfigurasi"
+	// 2B.6: No API key â€” error "tidak dikonfigurasi"
 	// ============================================
 	t.Run("2B.6_no_api_key", func(t *testing.T) {
 		s := services.NewOCRService("", "")
@@ -174,7 +174,7 @@ func TestOCRService(t *testing.T) {
 	})
 
 	// ============================================
-	// 2B.7: OCR parsing — markdown code fence, raw JSON, empty entries
+	// 2B.7: OCR parsing â€” markdown code fence, raw JSON, empty entries
 	// ============================================
 	t.Run("2B.7_parsing", func(t *testing.T) {
 		t.Run("markdown_code_fence", func(t *testing.T) {
@@ -253,7 +253,7 @@ func TestOCRService(t *testing.T) {
 	})
 
 	// ============================================
-	// 2B.8: OCR post-processing — normalisasi waktu, nama, NIM, forward-fill purpose
+	// 2B.8: OCR post-processing â€” normalisasi waktu, nama, NIM, forward-fill purpose
 	// ============================================
 	t.Run("2B.8_postprocessing", func(t *testing.T) {
 		postJSON := `{"entries":[
@@ -378,7 +378,7 @@ func setupLogbookTest(t *testing.T) (*services.LogbookService, *database.DB, fun
 }
 
 // ============================================
-// 2B.9: Duplicate detection — Jaro-Winkler intra-batch + cross-DB
+// 2B.9: Duplicate detection â€” Jaro-Winkler intra-batch + cross-DB
 // ============================================
 
 func TestDuplicateDetection(t *testing.T) {
@@ -471,7 +471,7 @@ func TestDuplicateDetection(t *testing.T) {
 }
 
 // ============================================
-// 2B.10: BulkSave — validasi NIM 11 digit, duplicate skip, transaction rollback
+// 2B.10: BulkSave â€” validasi NIM 11 digit, duplicate skip, transaction rollback
 // ============================================
 
 func TestBulkSave(t *testing.T) {
