@@ -462,7 +462,12 @@ func (h *GlobalHandler) AdminUserDelete(c *gin.Context) {
 		return
 	}
 
-	if !h.canDeleteUser(c, targetUser) {
+	if h.isSelf(c, targetUser) {
+		c.Redirect(http.StatusFound, "/labs/admin/users?error="+url.QueryEscape("Tidak dapat menghapus akun Anda sendiri"))
+		return
+	}
+
+	if !h.canEditUser(c, targetUser) {
 		c.Redirect(http.StatusFound, "/labs/admin/users?error="+url.QueryEscape("Anda tidak memiliki izin untuk menghapus user ini"))
 		return
 	}

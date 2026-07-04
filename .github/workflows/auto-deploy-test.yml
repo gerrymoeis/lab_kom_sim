@@ -59,7 +59,7 @@ jobs:
           rm -rf "$SAVEDIR"
 
           echo "=== 5. Run tests ==="
-          go test ./... -count=1
+          go run ./scripts/testsum/ -count=1
 
           echo "=== 6. Verify build ==="
           go build ./...

@@ -16,11 +16,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Run tests
+      - name: Run tests with summary
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: go test ./... -count=1
+        run: go run ./scripts/testsum/ -count=1
 
   sync:
     needs: [test]
