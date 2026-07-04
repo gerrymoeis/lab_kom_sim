@@ -69,6 +69,8 @@ func (h *Handler) ScheduleCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) ScheduleCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	var req CreateScheduleRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.renderTemplate(c, http.StatusBadRequest, "schedule/create.html", gin.H{
@@ -77,7 +79,8 @@ func (h *Handler) ScheduleCreate(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	err := h.scheduleService.Create(services.ScheduleCreateInput{
 		CourseName: req.CourseName, Lecturer: req.Lecturer, Day: req.Day,
@@ -112,13 +115,17 @@ func (h *Handler) ScheduleEditPage(c *gin.Context) {
 
 func (h *Handler) ScheduleEdit(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+
+	if !h.requireAdmin(c) { return }
+
 	var req EditScheduleRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Semua field wajib diisi")
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	err := h.scheduleService.Update(id, services.ScheduleUpdateInput{
 		CourseName: req.CourseName, Lecturer: req.Lecturer, Day: req.Day,
@@ -134,7 +141,10 @@ func (h *Handler) ScheduleEdit(c *gin.Context) {
 func (h *Handler) ScheduleDelete(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	uid, u, r, _ := h.user(c)
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.scheduleService.Delete(id, uid, u, r, ip, ua); err != nil {
 		h.redirectWithError(c, "/schedules", "Gagal menghapus jadwal")
@@ -144,6 +154,11 @@ func (h *Handler) ScheduleDelete(c *gin.Context) {
 }
 
 func (h *Handler) ScheduleBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -156,7 +171,8 @@ func (h *Handler) ScheduleBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.scheduleService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())

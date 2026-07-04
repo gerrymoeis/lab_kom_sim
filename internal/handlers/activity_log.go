@@ -87,9 +87,7 @@ func (h *Handler) ActivityLogList(c *gin.Context) {
 }
 
 func (h *Handler) ActivityLogExport(c *gin.Context) {
-	_, _, role, ok := h.user(c)
-	if !ok { return }
-	if role != "admin" { h.errHTML(c, "Hanya admin yang dapat export"); return }
+	if !h.requireAdmin(c) { return }
 
 	filters := services.ActivityLogFilters{Limit: 1000, Offset: 0}
 	if d := c.Query("date_from"); d != "" { if t, err := services.ParseDate(d); err == nil { filters.DateFrom = &t } }
