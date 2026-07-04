@@ -47,7 +47,7 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 		if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
 			return nil, fmt.Errorf("failed to set busy_timeout: %w", err)
 		}
-		if _, err := db.Exec("PRAGMA synchronous=NORMAL"); err != nil {
+		if _, err := db.Exec("PRAGMA synchronous=FULL"); err != nil {
 			return nil, fmt.Errorf("failed to set synchronous: %w", err)
 		}
 		if _, err := db.Exec("PRAGMA temp_store=MEMORY"); err != nil {
