@@ -464,15 +464,7 @@ func TestAdminUserDelete(t *testing.T) {
 }
 
 // ============================================
-// 7. AdminUserPermissions — GET + POST
-// ============================================
-
-func TestAdminUserPermissions(t *testing.T) {
-	t.Skip("Permissions routes removed in Fase 3 — functionality merged into user edit form")
-}
-
-// ============================================
-// 8. AdminCSRFProtection — missing + invalid
+// 7. AdminCSRFProtection — missing + invalid
 // ============================================
 
 func TestAdminCSRF(t *testing.T) {
