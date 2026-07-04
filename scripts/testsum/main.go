@@ -50,9 +50,16 @@ var fileLineRe = regexp.MustCompile(`(\w+\.go:\d+):`)
 
 func main() {
 	args := []string{"test", "-json", "-count=1"}
+	hasPkgPattern := false
+	for _, a := range os.Args[1:] {
+		if !strings.HasPrefix(a, "-") {
+			hasPkgPattern = true
+		}
+	}
 	if len(os.Args) > 1 {
 		args = append(args, os.Args[1:]...)
-	} else {
+	}
+	if !hasPkgPattern {
 		args = append(args, "./...")
 	}
 
