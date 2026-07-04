@@ -235,19 +235,20 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceCreate(c *gin.Context) {
-	var req CreateDeviceRequest
-	_, username, role, _ := h.user(c)
+	if !h.requireAdmin(c) { return }
 
+	var req CreateDeviceRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.renderTemplate(c, http.StatusBadRequest, "device/create.html", gin.H{
 			"title": "Tambah Perangkat", "currentPage": "devices",
-			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
+			"error": "Lengkapi data yang diperlukan",
 			"deviceTypes": h.fetchDeviceTypes(),
 		})
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	_, _, err := h.deviceService.CreateDevice(services.CreateDeviceInput{
@@ -261,7 +262,7 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 	if err != nil {
 		h.renderTemplate(c, http.StatusInternalServerError, "device/create.html", gin.H{
 			"title": "Tambah Perangkat", "currentPage": "devices",
-			"username": username, "role": role, "error": "Gagal menyimpan perangkat",
+			"error": "Gagal menyimpan perangkat",
 			"deviceTypes": h.fetchDeviceTypes(),
 		})
 		return
@@ -270,13 +271,19 @@ func (h *Handler) DeviceCreate(c *gin.Context) {
 }
 
 func (h *Handler) DeviceBatchCreate(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hanya admin"})
+		return
+	}
+
 	var req BatchCreateDeviceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Data batch tidak valid: " + err.Error()})
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	// Validate new device type fields before creating anything
@@ -445,7 +452,10 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceService.UpdateDevice(d.ID, services.UpdateDeviceInput{
@@ -472,7 +482,10 @@ func (h *Handler) DeviceDelete(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceService.DeleteDevice(d.ID, uid, u, r, ip, ua); err != nil {
@@ -534,10 +547,11 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 		h.renderEditPageWithError(c, dt, "Data tidak valid")
 		return
 	}
+
+	if !h.requireAdmin(c) { return }
+
 	uid, u, r, ok := h.user(c)
-	if !ok {
-		return
-	}
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	// Process photo ref — fallback ke existing photo jika tidak upload baru
@@ -586,7 +600,11 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=types", "Tipe perangkat tidak ditemukan")
 		return
 	}
-	uid, u, r, _ := h.user(c)
+
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceTypeService.Delete(dt.ID, uid, u, r, ip, ua); err != nil {
@@ -694,7 +712,11 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 		h.errHTML(c, "Data tidak valid")
 		return
 	}
-	uid, u, r, _ := h.user(c)
+
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.categoryService.Update(cat.ID, req.Name, req.LabelPrefix, uid, u, r, ip, ua); err != nil {
@@ -711,7 +733,11 @@ func (h *Handler) CategoryDelete(c *gin.Context) {
 		h.redirectWithError(c, "/devices?tab=types", "Kategori tidak ditemukan")
 		return
 	}
-	uid, u, r, _ := h.user(c)
+
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.categoryService.Delete(cat.ID, uid, u, r, ip, ua); err != nil {
@@ -735,14 +761,7 @@ func usageTypePriority(ut string) int {
 }
 
 func (h *Handler) DeviceExport(c *gin.Context) {
-	_, _, role, ok := h.user(c)
-	if !ok {
-		return
-	}
-	if role != "admin" {
-		h.errHTML(c, "Hanya admin yang dapat export data")
-		return
-	}
+	if !h.requireAdmin(c) { return }
 
 	devices, err := h.deviceService.List(repository.DeviceFilters{})
 	if err != nil {
@@ -955,6 +974,11 @@ func processDeviceTypePhotoRef(uploadPath, lab, fileRef string) (string, error) 
 }
 
 func (h *Handler) DeviceBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -967,7 +991,8 @@ func (h *Handler) DeviceBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.deviceService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
@@ -977,6 +1002,11 @@ func (h *Handler) DeviceBatchDelete(c *gin.Context) {
 }
 
 func (h *Handler) DeviceTypeBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -989,7 +1019,8 @@ func (h *Handler) DeviceTypeBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.deviceTypeService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())
@@ -999,6 +1030,11 @@ func (h *Handler) DeviceTypeBatchDelete(c *gin.Context) {
 }
 
 func (h *Handler) CategoryBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -1011,7 +1047,8 @@ func (h *Handler) CategoryBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.categoryService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())

@@ -31,6 +31,8 @@ type CleanupRequest struct {
 // When ANDROID=true: client has already compressed the image, save directly.
 // When ANDROID=false: save original, then server-side compress + convert to JPEG.
 func (h *Handler) UploadImage(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	file, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, UploadResponse{
@@ -204,6 +206,8 @@ func (h *Handler) UploadImage(c *gin.Context) {
 
 // DeleteTempFile handles single temp file deletion
 func (h *Handler) DeleteTempFile(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	var req CleanupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.errJSON(c, http.StatusBadRequest, "Request tidak valid")
@@ -221,6 +225,8 @@ func (h *Handler) DeleteTempFile(c *gin.Context) {
 
 // CleanupTempFiles handles multiple temp files deletion
 func (h *Handler) CleanupTempFiles(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	var req CleanupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.errJSON(c, http.StatusBadRequest, "Request tidak valid")

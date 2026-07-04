@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -79,18 +80,20 @@ func (h *Handler) DeviceLoanCreatePage(c *gin.Context) {
 }
 
 func (h *Handler) DeviceLoanCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
 	var req CreateDeviceLoanRequest
 	if err := c.ShouldBind(&req); err != nil {
-		_, username, role, _ := h.user(c)
 		h.renderTemplate(c, http.StatusBadRequest, "device_loan/create.html", gin.H{
 			"title": "Tambah Peminjaman", "currentPage": "devices",
-			"username": username, "role": role, "error": "Lengkapi data yang diperlukan",
+			"error": "Lengkapi data yang diperlukan",
 		})
 		return
 	}
 
 	deviceID, _ := strconv.Atoi(req.DeviceID)
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	_, err := h.deviceLoanService.CreateLoan(services.CreateLoanInput{
@@ -102,6 +105,14 @@ func (h *Handler) DeviceLoanCreate(c *gin.Context) {
 		Purpose:      req.Purpose,
 	}, uid, u, r, ip, ua)
 	if err != nil {
+		if errors.Is(err, services.ErrDeviceAlreadyLoaned) {
+			h.renderTemplate(c, http.StatusConflict, "device_loan/create.html", gin.H{
+				"title": "Tambah Peminjaman", "currentPage": "devices",
+				"username": u, "role": r,
+				"error": "Device ini sedang dipinjam dan belum dikembalikan",
+			})
+			return
+		}
 		h.renderTemplate(c, http.StatusInternalServerError, "device_loan/create.html", gin.H{
 			"title": "Tambah Peminjaman", "currentPage": "devices",
 			"username": u, "role": r, "error": "Gagal menyimpan peminjaman",
@@ -159,6 +170,9 @@ func (h *Handler) DeviceLoanEditPage(c *gin.Context) {
 
 func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+
+	if !h.requireAdmin(c) { return }
+
 	var req EditDeviceLoanRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.errHTML(c, "Data tidak valid")
@@ -171,7 +185,8 @@ func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceLoanService.UpdateLoan(id, services.UpdateLoanInput{
@@ -191,7 +206,11 @@ func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 
 func (h *Handler) DeviceLoanDelete(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	uid, u, r, _ := h.user(c)
+
+	if !h.requireAdmin(c) { return }
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceLoanService.DeleteLoan(id, uid, u, r, ip, ua); err != nil {
@@ -203,13 +222,20 @@ func (h *Handler) DeviceLoanDelete(c *gin.Context) {
 
 func (h *Handler) DeviceLoanExtend(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
+
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	newReturnDate := c.PostForm("return_date")
 	if newReturnDate == "" {
 		h.errJSON(c, http.StatusBadRequest, "Tanggal kembali baru harus diisi")
 		return
 	}
 
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 
 	if err := h.deviceLoanService.ExtendLoan(id, newReturnDate, uid, u, r, ip, ua); err != nil {
@@ -220,6 +246,11 @@ func (h *Handler) DeviceLoanExtend(c *gin.Context) {
 }
 
 func (h *Handler) DeviceLoanBatchDelete(c *gin.Context) {
+	if !h.requireAdmin(c) {
+		h.errJSON(c, http.StatusForbidden, "Hanya admin")
+		return
+	}
+
 	var req struct {
 		IDs []string `json:"ids"`
 	}
@@ -232,7 +263,8 @@ func (h *Handler) DeviceLoanBatchDelete(c *gin.Context) {
 		h.errJSON(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	uid, u, r, _ := h.user(c)
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
 	ip, ua := getRequestContext(c)
 	if err := h.deviceLoanService.BatchDelete(intIDs, uid, u, r, ip, ua); err != nil {
 		h.errJSON(c, http.StatusInternalServerError, err.Error())

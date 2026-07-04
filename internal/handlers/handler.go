@@ -118,6 +118,18 @@ func CanAccessProfile(actorUsername string, target models.GlobalUser, actorIsSup
 	return actorUsername == target.Username || actorIsSuperAdmin || actorIsMainAccount || actorIsGlobalAdmin
 }
 
+func (h *Handler) requireAdmin(c *gin.Context) bool {
+	_, _, role, ok := h.user(c)
+	if !ok {
+		return false
+	}
+	if role != "admin" {
+		h.errHTML(c, "Hanya admin yang dapat melakukan operasi ini")
+		return false
+	}
+	return true
+}
+
 func (h *Handler) user(c *gin.Context) (userID int, username, role string, ok bool) {
 	userID, username, _, _, ok = middleware.GetCurrentUser(c)
 	if !ok {
