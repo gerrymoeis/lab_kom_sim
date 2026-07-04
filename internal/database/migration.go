@@ -240,16 +240,6 @@ func runMigrations(db *DB, isPostgres bool) error {
 			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP,
 			updated_at {{TS}} DEFAULT CURRENT_TIMESTAMP
 		)`,
-		`CREATE TABLE IF NOT EXISTS maintenance_logs (
-			id {{PK}},
-			pc_id INTEGER NOT NULL REFERENCES pcs(id) ON DELETE CASCADE,
-			date DATE NOT NULL,
-			type TEXT NOT NULL CHECK(type IN ('repair', 'upgrade', 'cleaning', 'check')),
-			description TEXT NOT NULL,
-			technician TEXT,
-			cost REAL DEFAULT 0,
-			created_at {{TS}} DEFAULT CURRENT_TIMESTAMP
-		)`,
 		`CREATE TABLE IF NOT EXISTS sticker_templates (
 			id {{PK}},
 			name TEXT NOT NULL,
@@ -295,10 +285,9 @@ func runMigrations(db *DB, isPostgres bool) error {
 	indexes := []string{
 		`CREATE INDEX IF NOT EXISTS idx_pcs_status ON pcs(status)`,
 		`CREATE INDEX IF NOT EXISTS idx_pc_software_pc_id ON pc_software(pc_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_pc_software_software_id ON pc_software(software_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_date ON logbook_entries(date)`,
 		`CREATE INDEX IF NOT EXISTS idx_logbook_nim ON logbook_entries(nim)`,
-		`CREATE INDEX IF NOT EXISTS idx_maintenance_pc_id ON maintenance_logs(pc_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_maintenance_date ON maintenance_logs(date)`,
 		`CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action)`,
 		`CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)`,
@@ -625,6 +614,9 @@ func runMigrations(db *DB, isPostgres bool) error {
 			log.Println("  Done: devices migrated")
 		}
 	}
+
+	// Drop unused maintenance_logs table (schema cleanup — feature not in use)
+	db.Exec(`DROP TABLE IF EXISTS maintenance_logs`)
 
 	return nil
 }
