@@ -22,11 +22,11 @@ func loginAndRefresh(lab *testLab, username, password string) bool {
 }
 
 // ============================================
-// TestPC — list, detail, create, edit, delete + fail
+// TestPC â€” list, detail, create, edit, delete + fail
 // ============================================
 
 func TestPC(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -243,11 +243,11 @@ func TestPC(t *testing.T) {
 }
 
 // ============================================
-// TestSoftware — list, create, edit, delete, export + fail
+// TestSoftware â€” list, create, edit, delete, export + fail
 // ============================================
 
 func TestSoftware(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -464,11 +464,11 @@ func TestSoftware(t *testing.T) {
 }
 
 // ============================================
-// TestSchedule — list, create, edit, delete + fail
+// TestSchedule â€” list, create, edit, delete + fail
 // ============================================
 
 func TestSchedule(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -653,11 +653,11 @@ func TestSchedule(t *testing.T) {
 }
 
 // ============================================
-// TestDevice — list, create, batch, edit, detail, delete + fail
+// TestDevice â€” list, create, batch, edit, detail, delete + fail
 // ============================================
 
 func TestDevice(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -909,11 +909,11 @@ func seedDeviceViaHandler(lab *testLab, db *database.DB, serial, catName, catPre
 }
 
 // ============================================
-// TestDeviceLoan — create, edit, detail, extend, delete + fail
+// TestDeviceLoan â€” create, edit, detail, extend, delete + fail
 // ============================================
 
 func TestDeviceLoan(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -1141,11 +1141,11 @@ func TestDeviceLoan(t *testing.T) {
 }
 
 // ============================================
-// TestDeviceUsage — create, edit, detail, delete + fail
+// TestDeviceUsage â€” create, edit, detail, delete + fail
 // ============================================
 
 func TestDeviceUsage(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -1366,11 +1366,11 @@ func TestDeviceUsage(t *testing.T) {
 }
 
 // ============================================
-// TestInstallation — create, edit, detail, delete + fail
+// TestInstallation â€” create, edit, detail, delete + fail
 // ============================================
 
 func TestInstallation(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -1599,11 +1599,11 @@ func TestInstallation(t *testing.T) {
 }
 
 // ============================================
-// TestLogbook — list, create, edit, save, upload, delete + fail
+// TestLogbook â€” list, create, edit, save, upload, delete + fail
 // ============================================
 
 func TestLogbook(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	_ = env.Config
@@ -1840,7 +1840,7 @@ func TestLogbook(t *testing.T) {
 }
 
 // ============================================
-// TestLogbookUpload — OCR upload, mock API, error handling
+// TestLogbookUpload â€” OCR upload, mock API, error handling
 // ============================================
 
 func TestLogbookUpload(t *testing.T) {
@@ -1863,7 +1863,7 @@ func TestLogbookUpload(t *testing.T) {
 		if !loginAndRefresh(lab, "labA_only", "test123") {
 			t.Fatal("login failed")
 		}
-		tempDir := filepath.Join("uploads", "lab-kom-mi", "temp")
+		tempDir := filepath.Join(lab.cfg.UploadDir, "temp")
 		os.MkdirAll(tempDir, 0755)
 		src, _ := os.ReadFile(filepath.Join("tests", "resources", "logbook.jpeg"))
 		os.WriteFile(filepath.Join(tempDir, "test_upload.jpg"), src, 0644)
@@ -1896,7 +1896,7 @@ func TestLogbookUpload(t *testing.T) {
 		if !loginAndRefresh(lab, "labA_only", "test123") {
 			t.Fatal("login failed")
 		}
-		tempDir := filepath.Join("uploads", "lab-kom-mi", "temp")
+		tempDir := filepath.Join(lab.cfg.UploadDir, "temp")
 		os.MkdirAll(tempDir, 0755)
 		src, _ := os.ReadFile(filepath.Join("tests", "resources", "logbook.jpeg"))
 		os.WriteFile(filepath.Join(tempDir, "test_mock.jpg"), src, 0644)
@@ -1922,11 +1922,11 @@ func TestLogbookUpload(t *testing.T) {
 }
 
 // ============================================
-// TestDeviceType — detail, edit page, edit, delete, batch delete + fail
+// TestDeviceType â€” detail, edit page, edit, delete, batch delete + fail
 // ============================================
 
 func TestDeviceType(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {
@@ -2054,11 +2054,11 @@ func TestDeviceType(t *testing.T) {
 }
 
 // ============================================
-// TestCategory — detail, edit page, edit, delete, batch delete + fail
+// TestCategory â€” detail, edit page, edit, delete, batch delete + fail
 // ============================================
 
 func TestCategory(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 	lab := env.LabA
 	db := env.DB_A
 	if !loginAndRefresh(lab, "labA_only", "test123") {

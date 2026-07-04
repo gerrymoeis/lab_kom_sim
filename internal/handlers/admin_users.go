@@ -338,7 +338,10 @@ func (h *GlobalHandler) AdminUserEdit(c *gin.Context) {
 	fullName := c.PostForm("full_name")
 	newPassword := c.PostForm("new_password")
 	isGlobalAdmin := c.PostForm("is_global_admin") == "1"
-	isProtected := c.PostForm("is_protected") == "1"
+	isProtected := targetUser.IsProtected
+	if _, exists := c.GetPostForm("is_protected"); exists {
+		isProtected = c.PostForm("is_protected") == "1"
+	}
 
 	if isGlobalAdmin && !h.isProtected(c) {
 		h.render(c, http.StatusForbidden, "user/edit.html", gin.H{

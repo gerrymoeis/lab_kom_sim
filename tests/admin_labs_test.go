@@ -14,9 +14,9 @@ import (
 // Fase D: Lab Lifecycle Testing
 // ============================================
 
-// D.1: AdminLabCreatePage — GET /labs/create
+// D.1: AdminLabCreatePage â€” GET /labs/create
 func TestAdminLabCreatePage(t *testing.T) {
-	env := setupTestEnvironment(t)
+	env := wrapSharedEnv(t)
 
 	t.Run("D.1_success_as_super_admin", func(t *testing.T) {
 		if !loginAndRefresh(env.LabA, "admin", "admin123") {
@@ -70,8 +70,9 @@ func TestAdminLabCreatePage(t *testing.T) {
 	})
 }
 
-// D.2: AdminLabCreate — POST /labs/create
+// D.2: AdminLabCreate â€” POST /labs/create
 func TestAdminLabCreate(t *testing.T) {
+	t.Parallel()
 	uploadDir := t.TempDir()
 	env := setupTestEnvironment(t, TestConfigOverrides{UploadPath: uploadDir})
 
@@ -251,7 +252,7 @@ func TestAdminLabCreate(t *testing.T) {
 	})
 }
 
-// D.3: AdminLabDelete — POST /labs/:urlPath/delete
+// D.3: AdminLabDelete â€” POST /labs/:urlPath/delete
 func TestAdminLabDelete(t *testing.T) {
 	uploadDir := t.TempDir()
 	env := setupTestEnvironment(t, TestConfigOverrides{UploadPath: uploadDir})
@@ -335,7 +336,7 @@ func TestAdminLabDelete(t *testing.T) {
 	})
 
 	t.Run("D.3_delete_last_lab", func(t *testing.T) {
-		// This test runs in a fresh environment — only 1 lab needed
+		// This test runs in a fresh environment â€” only 1 lab needed
 		env2 := setupTestEnvironment(t, TestConfigOverrides{UploadPath: t.TempDir()})
 		if loginAndRefresh(env2.LabA, "admin", "admin123") {
 			env2.LabA.refreshCSRF()
