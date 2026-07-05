@@ -389,6 +389,16 @@ func (h *Handler) PCGetLayout(c *gin.Context) {
 		}
 	}
 
+	rowGaps := layout.RowGaps
+	if len(rowGaps) < maxRow {
+		newGaps := make([][]int, maxRow)
+		copy(newGaps, rowGaps)
+		for i := len(rowGaps); i < maxRow; i++ {
+			newGaps[i] = []int{}
+		}
+		rowGaps = newGaps
+	}
+
 	grid := make([][]pcLayoutItem, maxRow)
 	for i := range grid {
 		grid[i] = make([]pcLayoutItem, layout.ColsAtRow(i))
@@ -412,7 +422,7 @@ func (h *Handler) PCGetLayout(c *gin.Context) {
 		"special":  special,
 		"maxRow":   maxRow,
 		"columns":  columns,
-		"rowGaps":  layout.RowGaps,
+		"rowGaps":  rowGaps,
 	})
 }
 

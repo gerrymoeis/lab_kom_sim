@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -15,7 +17,39 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/render"
 )
+
+var htmlRender render.HTMLRender
+
+func SetHTMLRender(r render.HTMLRender) {
+	htmlRender = r
+}
+
+type renderBuffer struct {
+	buf bytes.Buffer
+}
+
+func (w *renderBuffer) Header() http.Header        { return http.Header{} }
+func (w *renderBuffer) Write(p []byte) (int, error) { return w.buf.Write(p) }
+func (w *renderBuffer) WriteHeader(int)             {}
+
+func safeRender(c *gin.Context, status int, tmpl string, data gin.H) {
+	if htmlRender == nil {
+		log.Printf("htmlRender not set, falling back to c.HTML for %s", tmpl)
+		c.HTML(status, tmpl, data)
+		return
+	}
+	r := htmlRender.Instance(tmpl, data)
+	var buf renderBuffer
+	if err := r.Render(&buf); err != nil {
+		log.Printf("Template %s render error: %v", tmpl, err)
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	c.Data(status, "text/html; charset=utf-8", buf.buf.Bytes())
+}
+
 
 type Handler struct {
 	cfg                *config.Config
@@ -271,7 +305,7 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 		}
 	}
 
-	c.HTML(status, tmpl, data)
+	safeRender(c, status, tmpl, data)
 }
 
 func (h *Handler) errHTML(c *gin.Context, msg string) {
