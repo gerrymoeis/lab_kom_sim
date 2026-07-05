@@ -41,13 +41,15 @@ type PackageResult struct {
 }
 
 type TestRunSummary struct {
-	Packages    map[string]*PackageResult
-	StartTime   time.Time
-	EndTime     time.Time
-	BuildErrors []string
+	Packages     map[string]*PackageResult
+	StartTime    time.Time
+	EndTime      time.Time
+	BuildErrors  []string
+	ServerErrors []string
 }
 
 var fileLineRe = regexp.MustCompile(`(\w+\.go:\d+):`)
+var serverErrorRe = regexp.MustCompile(`Error #\d+:.*`)
 
 func main() {
 	args := []string{"test", "-json", "-count=1"}
@@ -118,6 +120,10 @@ func main() {
 }
 
 func processEvent(summary *TestRunSummary, event TestEvent) {
+	if event.Action == "output" && serverErrorRe.MatchString(event.Output) {
+		summary.ServerErrors = append(summary.ServerErrors, strings.TrimSpace(event.Output))
+	}
+
 	pkgName := event.Package
 	if pkgName == "" {
 		pkgName = "(unknown)"
@@ -266,6 +272,16 @@ func printSummary(summary *TestRunSummary, exitCode int) {
 				}
 			}
 			fmt.Println()
+		}
+	}
+
+	if len(summary.ServerErrors) > 0 {
+		fmt.Println()
+		fmt.Println(strings.Repeat("\u2500", 60))
+		fmt.Println("  SERVER ERRORS (template/runtime errors in test output)")
+		fmt.Println(strings.Repeat("\u2500", 60))
+		for i, err := range summary.ServerErrors {
+			fmt.Printf("  %d) %s\n", i+1, err)
 		}
 	}
 
