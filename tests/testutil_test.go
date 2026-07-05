@@ -343,12 +343,27 @@ func (l *testLab) refreshCSRF() bool {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	token := l.extractCSRFToken(string(body))
+	bodyStr := string(body)
+	if strings.Contains(bodyStr, "Error #") {
+		fmt.Printf("  [DETECTED TEMPLATE ERROR in /dashboard] %s\n", extractErrorLine(bodyStr))
+		return false
+	}
+	token := l.extractCSRFToken(bodyStr)
 	if token == "" {
 		return false
 	}
 	l.csrf = token
 	return true
+}
+
+func extractErrorLine(s string) string {
+	lines := strings.Split(s, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "Error #") {
+			return strings.TrimSpace(line)
+		}
+	}
+	return s[:min(len(s), 200)]
 }
 
 type TestEnvironment struct {

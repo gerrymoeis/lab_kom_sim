@@ -229,6 +229,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		panic(fmt.Sprintf("Failed to load templates: %v", err))
 	}
 	router.SetHTMLTemplate(templ)
+	handlers.SetHTMLRender(router.HTMLRender)
 
 	router.GET("/static/*filepath", v.Handler())
 	router.Static("/uploads", cfg.UploadPath)

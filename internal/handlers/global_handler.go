@@ -87,7 +87,7 @@ func (h *GlobalHandler) render(c *gin.Context, status int, tmpl string, data gin
 		}
 	}
 
-	c.HTML(status, tmpl, data)
+	safeRender(c, status, tmpl, data)
 }
 
 func (h *GlobalHandler) isGlobalAdmin(c *gin.Context) bool {

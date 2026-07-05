@@ -53,6 +53,16 @@ func (s *DashboardService) GetDashboardData(layout config.GridLayout) (*Dashboar
 		}
 	}
 
+	rowGaps := layout.RowGaps
+	if len(rowGaps) < maxRow {
+		newGaps := make([][]int, maxRow)
+		copy(newGaps, rowGaps)
+		for i := len(rowGaps); i < maxRow; i++ {
+			newGaps[i] = []int{}
+		}
+		rowGaps = newGaps
+	}
+
 	colsAtRow := func(rowIndex int) int {
 		if rowIndex < 0 || rowIndex >= len(layout.ColsPerRow) {
 			return 8
@@ -98,6 +108,6 @@ func (s *DashboardService) GetDashboardData(layout config.GridLayout) (*Dashboar
 	data.SoftwareCount = softwareCount
 	data.SpecialPCs = specialPCs
 	data.ColsPerRow = layout.ColsPerRow
-	data.RowGaps = layout.RowGaps
+	data.RowGaps = rowGaps
 	return data, nil
 }
