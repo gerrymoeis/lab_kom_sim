@@ -14,6 +14,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.org/x/crypto v0.50.0
+	golang.org/x/sync v0.20.0
 	modernc.org/sqlite v1.51.0
 )
 
@@ -61,7 +62,6 @@ require (
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/image v0.25.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
