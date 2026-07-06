@@ -14,7 +14,7 @@ import (
 // Fase D: Lab Lifecycle Testing
 // ============================================
 
-// D.1: AdminLabCreatePage â€” GET /labs/create
+// D.1: AdminLabCreatePage - GET /labs/create
 func TestAdminLabCreatePage(t *testing.T) {
 	env := wrapSharedEnv(t)
 
@@ -70,7 +70,7 @@ func TestAdminLabCreatePage(t *testing.T) {
 	})
 }
 
-// D.2: AdminLabCreate â€” POST /labs/create
+// D.2: AdminLabCreate - POST /labs/create
 func TestAdminLabCreate(t *testing.T) {
 	t.Parallel()
 	uploadDir := t.TempDir()
@@ -250,9 +250,44 @@ func TestAdminLabCreate(t *testing.T) {
 			t.Errorf("expected 400 for mismatched rows/cols, got %d", resp.StatusCode)
 		}
 	})
+
+	t.Run("create_lab_creates_main_account", func(t *testing.T) {
+		var userCount int
+		env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username='labbaru'").Scan(&userCount)
+		if userCount == 0 {
+			t.Fatal("labbaru user not found — previous subtest may have failed")
+		}
+
+		// Login sebagai main account lab baru
+		// CATATAN: pakai lab.login langsung (bukan loginAndRefresh) karena refreshCSRF
+		// akan akses /lab-kom-mi/dashboard yang tidak bisa diakses oleh user labbaru.
+		if !env.LabA.login("labbaru", "labbaru123") {
+			t.Fatal("login as main account labbaru failed")
+		}
+
+		// Akses dashboard labbaru — pakai getURL agar tidak kena prefix /lab-kom-mi
+		resp, err := env.LabA.getURL(env.TS.URL + "/labbaru/dashboard")
+		if err != nil {
+			t.Fatalf("GET /labbaru/dashboard: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200 for main account dashboard, got %d", resp.StatusCode)
+		}
+
+		// Verifikasi permission di DB
+		var permCount int
+		env.GlobalDB.QueryRow(
+			`SELECT COUNT(*) FROM lab_permissions
+			 WHERE lab_url_path = 'labbaru' AND is_main_account = 1`,
+		).Scan(&permCount)
+		if permCount != 1 {
+			t.Errorf("expected 1 main account permission for labbaru, got %d", permCount)
+		}
+	})
 }
 
-// D.3: AdminLabDelete â€” POST /labs/:urlPath/delete
+// D.3: AdminLabDelete - POST /labs/:urlPath/delete
 func TestAdminLabDelete(t *testing.T) {
 	uploadDir := t.TempDir()
 	env := setupTestEnvironment(t, TestConfigOverrides{UploadPath: uploadDir})
@@ -336,7 +371,7 @@ func TestAdminLabDelete(t *testing.T) {
 	})
 
 	t.Run("D.3_delete_last_lab", func(t *testing.T) {
-		// This test runs in a fresh environment â€” only 1 lab needed
+		// This test runs in a fresh environment - only 1 lab needed
 		env2 := setupTestEnvironment(t, TestConfigOverrides{UploadPath: t.TempDir()})
 		if loginAndRefresh(env2.LabA, "admin", "admin123") {
 			env2.LabA.refreshCSRF()
