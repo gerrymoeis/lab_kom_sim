@@ -277,7 +277,7 @@ func TestSoftware(t *testing.T) {
 		var swID int
 		db.QueryRow("SELECT id FROM software_catalog WHERE name='TestSW'").Scan(&swID)
 		if swID == 0 {
-			t.Error("Software not found after create")
+			t.Fatalf("Software not found after create")
 		}
 	})
 
@@ -285,7 +285,7 @@ func TestSoftware(t *testing.T) {
 		var swSlug string
 		db.QueryRow("SELECT slug FROM software_catalog ORDER BY id LIMIT 1").Scan(&swSlug)
 		if swSlug == "" {
-			t.Skip("no software to edit")
+			t.Fatalf("no software found for edit — create_software should have created it")
 		}
 		resp, err := lab.post("/software/"+swSlug+"/edit", "name=SWUpdated&category=required&description=Updated")
 		if err != nil {
@@ -362,7 +362,7 @@ func TestSoftware(t *testing.T) {
 		var swSlug string
 		db.QueryRow("SELECT slug FROM software_catalog ORDER BY id LIMIT 1").Scan(&swSlug)
 		if swSlug == "" {
-			t.Skip("no software for detail")
+			t.Fatalf("no software found for detail — create_software should have created it")
 		}
 		resp, err := lab.get("/software/" + swSlug)
 		if err != nil {
@@ -378,7 +378,7 @@ func TestSoftware(t *testing.T) {
 		var swSlug string
 		db.QueryRow("SELECT slug FROM software_catalog WHERE name='TestSW'").Scan(&swSlug)
 		if swSlug == "" {
-			t.Skip("no software for edit page")
+			t.Fatalf("no software found for edit page — create_software should have created 'TestSW'")
 		}
 		resp, err := lab.get("/software/" + swSlug + "/edit")
 		if err != nil {
@@ -505,7 +505,7 @@ func TestSchedule(t *testing.T) {
 		var scID int
 		db.QueryRow("SELECT id FROM course_schedules ORDER BY id DESC LIMIT 1").Scan(&scID)
 		if scID == 0 {
-			t.Error("Schedule not found after create")
+			t.Fatalf("Schedule not found after create")
 		}
 	})
 
@@ -513,7 +513,7 @@ func TestSchedule(t *testing.T) {
 		var scID int
 		db.QueryRow("SELECT id FROM course_schedules ORDER BY id LIMIT 1").Scan(&scID)
 		if scID == 0 {
-			t.Skip("no schedule to edit")
+			t.Fatalf("no schedule found for edit — create_schedule should have created it")
 		}
 		resp, err := lab.post("/schedules/"+fmt.Sprint(scID)+"/edit",
 			"course_name=AlgoUpdated&lecturer=Dr.T&day=Senin&class=IF-1&time_start=08:00&time_end=09:40")
@@ -599,7 +599,7 @@ func TestSchedule(t *testing.T) {
 		var scID int
 		db.QueryRow("SELECT id FROM course_schedules ORDER BY id LIMIT 1").Scan(&scID)
 		if scID == 0 {
-			t.Skip("no schedule for edit page")
+			t.Fatalf("no schedule found for edit page — create_schedule should have created it")
 		}
 		resp, err := lab.get(fmt.Sprintf("/schedules/%d/edit", scID))
 		if err != nil {
@@ -692,7 +692,7 @@ func TestDevice(t *testing.T) {
 		var devID int
 		db.QueryRow("SELECT id FROM devices WHERE serial_number='SN-DEV-001'").Scan(&devID)
 		if devID == 0 {
-			t.Error("Device not found after create")
+			t.Fatalf("Device not found after create")
 		}
 	})
 
@@ -704,7 +704,7 @@ func TestDevice(t *testing.T) {
 			JOIN categories c ON c.id = dt.category_id
 			WHERE d.serial_number='SN-DEV-001'`).Scan(&devLabel, &catPrefix, &typePrefix)
 		if devLabel == "" {
-			t.Skip("device not found for detail")
+			t.Fatalf("device not found for detail — create_device should have created it")
 		}
 		devSlug := strings.ToLower(devLabel)
 		catSlug := strings.ToLower(catPrefix)
@@ -724,7 +724,7 @@ func TestDevice(t *testing.T) {
 		var devLabel string
 		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-DEV-001'").Scan(&devLabel)
 		if devLabel == "" {
-			t.Skip("device not found for edit")
+			t.Fatalf("device not found for edit — create_device should have created it")
 		}
 		devSlug := strings.ToLower(devLabel)
 		if !lab.refreshCSRF() {
@@ -781,7 +781,7 @@ func TestDevice(t *testing.T) {
 		var devLabel string
 		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-DEV-002'").Scan(&devLabel)
 		if devLabel == "" {
-			t.Skip("device not found for delete")
+			t.Fatalf("device not found for delete — edit_device should have updated serial to SN-DEV-002")
 		}
 		devSlug := strings.ToLower(devLabel)
 		if !lab.refreshCSRF() {
@@ -840,7 +840,7 @@ func TestDevice(t *testing.T) {
 		var devLabel string
 		db.QueryRow("SELECT label FROM devices ORDER BY id LIMIT 1").Scan(&devLabel)
 		if devLabel == "" {
-			t.Skip("no device for edit page")
+			t.Fatalf("no device found for edit page — create_device should have created it")
 		}
 		resp, err := lab.get("/devices/" + strings.ToLower(devLabel) + "/edit")
 		if err != nil {
@@ -946,7 +946,7 @@ func TestDeviceLoan(t *testing.T) {
 		var loanCount int
 		db.QueryRow("SELECT COUNT(*) FROM device_loans").Scan(&loanCount)
 		if loanCount == 0 {
-			t.Error("Loan not created")
+			t.Fatalf("Loan not created")
 		}
 	})
 
@@ -954,7 +954,7 @@ func TestDeviceLoan(t *testing.T) {
 		var loanID int
 		db.QueryRow("SELECT id FROM device_loans ORDER BY id DESC LIMIT 1").Scan(&loanID)
 		if loanID == 0 {
-			t.Skip("no loan for detail")
+			t.Fatalf("no loan found for detail — create_loan should have created it")
 		}
 		resp, err := lab.get("/device-loans/" + fmt.Sprint(loanID))
 		if err != nil {
@@ -970,7 +970,7 @@ func TestDeviceLoan(t *testing.T) {
 		var loanID int
 		db.QueryRow("SELECT id FROM device_loans ORDER BY id DESC LIMIT 1").Scan(&loanID)
 		if loanID == 0 {
-			t.Skip("no loan for edit")
+			t.Fatalf("no loan found for edit — create_loan should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -1047,7 +1047,7 @@ func TestDeviceLoan(t *testing.T) {
 		var loanID int
 		db.QueryRow("SELECT id FROM device_loans ORDER BY id DESC LIMIT 1").Scan(&loanID)
 		if loanID == 0 {
-			t.Skip("no loan to delete")
+			t.Fatalf("no loan found for delete — create_loan should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -1082,7 +1082,7 @@ func TestDeviceLoan(t *testing.T) {
 		var loanID int
 		db.QueryRow("SELECT id FROM device_loans ORDER BY id LIMIT 1").Scan(&loanID)
 		if loanID == 0 {
-			t.Skip("no loan for edit page")
+			t.Fatalf("no loan found for edit page — create_loan should have created it")
 		}
 		resp, err := lab.get("/device-loans/" + fmt.Sprint(loanID) + "/edit")
 		if err != nil {
@@ -1178,7 +1178,7 @@ func TestDeviceUsage(t *testing.T) {
 		var usageCount int
 		db.QueryRow("SELECT COUNT(*) FROM device_usages").Scan(&usageCount)
 		if usageCount == 0 {
-			t.Error("Usage not created")
+			t.Fatalf("Usage not created")
 		}
 	})
 
@@ -1186,7 +1186,7 @@ func TestDeviceUsage(t *testing.T) {
 		var usageID int
 		db.QueryRow("SELECT id FROM device_usages ORDER BY id DESC LIMIT 1").Scan(&usageID)
 		if usageID == 0 {
-			t.Skip("no usage for detail")
+			t.Fatalf("no usage found for detail — create_usage should have created it")
 		}
 		resp, err := lab.get("/device-usages/" + fmt.Sprint(usageID))
 		if err != nil {
@@ -1202,7 +1202,7 @@ func TestDeviceUsage(t *testing.T) {
 		var usageID int
 		db.QueryRow("SELECT id FROM device_usages ORDER BY id DESC LIMIT 1").Scan(&usageID)
 		if usageID == 0 {
-			t.Skip("no usage for edit")
+			t.Fatalf("no usage found for edit — create_usage should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -1243,7 +1243,7 @@ func TestDeviceUsage(t *testing.T) {
 		var usageID int
 		db.QueryRow("SELECT id FROM device_usages ORDER BY id DESC LIMIT 1").Scan(&usageID)
 		if usageID == 0 {
-			t.Skip("no usage to delete")
+			t.Fatalf("no usage found for delete — create_usage should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -1403,7 +1403,7 @@ func TestInstallation(t *testing.T) {
 		var installCount int
 		db.QueryRow("SELECT COUNT(*) FROM device_installations").Scan(&installCount)
 		if installCount == 0 {
-			t.Error("Installation not created")
+			t.Fatalf("Installation not created")
 		}
 	})
 
@@ -1411,7 +1411,7 @@ func TestInstallation(t *testing.T) {
 		var installID int
 		db.QueryRow("SELECT id FROM device_installations ORDER BY id DESC LIMIT 1").Scan(&installID)
 		if installID == 0 {
-			t.Skip("no installation for detail")
+			t.Fatalf("no installation found for detail — create_installation should have created it")
 		}
 		resp, err := lab.get("/installations/" + fmt.Sprint(installID))
 		if err != nil {
@@ -1427,7 +1427,7 @@ func TestInstallation(t *testing.T) {
 		var installID int
 		db.QueryRow("SELECT id FROM device_installations ORDER BY id DESC LIMIT 1").Scan(&installID)
 		if installID == 0 {
-			t.Skip("no installation for edit")
+			t.Fatalf("no installation found for edit — create_installation should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -1468,7 +1468,7 @@ func TestInstallation(t *testing.T) {
 		var installID int
 		db.QueryRow("SELECT id FROM device_installations ORDER BY id DESC LIMIT 1").Scan(&installID)
 		if installID == 0 {
-			t.Skip("no installation to delete")
+			t.Fatalf("no installation found for delete — create_installation should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -1635,7 +1635,7 @@ func TestLogbook(t *testing.T) {
 		var lbCount int
 		db.QueryRow("SELECT COUNT(*) FROM logbook_entries").Scan(&lbCount)
 		if lbCount == 0 {
-			t.Error("Logbook entry not created")
+			t.Fatalf("Logbook entry not created")
 		}
 	})
 
@@ -1643,7 +1643,7 @@ func TestLogbook(t *testing.T) {
 		var lbID int
 		db.QueryRow("SELECT id FROM logbook_entries ORDER BY id DESC LIMIT 1").Scan(&lbID)
 		if lbID == 0 {
-			t.Skip("no logbook entry for edit")
+			t.Fatalf("no logbook entry found for edit — create_logbook should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -1695,7 +1695,7 @@ func TestLogbook(t *testing.T) {
 		var lbID int
 		db.QueryRow("SELECT id FROM logbook_entries ORDER BY id DESC LIMIT 1").Scan(&lbID)
 		if lbID == 0 {
-			t.Skip("no logbook entry to delete")
+			t.Fatalf("no logbook entry found for delete — create_logbook should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -1744,7 +1744,7 @@ func TestLogbook(t *testing.T) {
 		var lbID int
 		db.QueryRow("SELECT id FROM logbook_entries ORDER BY id LIMIT 1").Scan(&lbID)
 		if lbID == 0 {
-			t.Skip("no logbook entry for detail")
+			t.Fatalf("no logbook entry found for detail — create_logbook should have created it")
 		}
 		resp, err := lab.get("/logbook/" + fmt.Sprint(lbID))
 		if err != nil {
@@ -1760,7 +1760,7 @@ func TestLogbook(t *testing.T) {
 		var lbID int
 		db.QueryRow("SELECT id FROM logbook_entries ORDER BY id LIMIT 1").Scan(&lbID)
 		if lbID == 0 {
-			t.Skip("no logbook entry for edit page")
+			t.Fatalf("no logbook entry found for edit page — create_logbook should have created it")
 		}
 		resp, err := lab.get("/logbook/" + fmt.Sprint(lbID) + "/edit")
 		if err != nil {
