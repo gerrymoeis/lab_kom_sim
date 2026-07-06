@@ -1,8 +1,14 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -317,3 +323,510 @@ func seedGABCatAndType(db *database.DB, id int, catName, catPrefix, dtName, dtPr
 	db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (?, ?, ?, 'GAB', 'Type', ?, 'loanable', 'Lab')",
 		id, id, dtName, dtPrefix)
 }
+
+// ============================================
+// Fase 4B — Super Admin full CRUD across labs
+// ============================================
+
+// TestSA_FullCRUD — Fase 4B: Super Admin full CRUD across labs.
+//
+//  1. sa_create_lab_login_main_account    Create lab baru + login sebagai main account
+//  2. sa_crud_all_labs                    Login sbg SA → CRUD di semua lab (A, B, baru)
+//  3. sa_delete_lab_verify_isolation      Delete lab baru + verifikasi isolasi
+func TestSA_FullCRUD(t *testing.T) {
+	env := setupTestEnvironment(t)
+
+	// Set EnvPath — required by lab creation handler (writes .env)
+	envFile := filepath.Join(t.TempDir(), ".env")
+	os.WriteFile(envFile, []byte("EXISTING_VAR=1\n"), 0644)
+	env.Config.EnvPath = envFile
+
+	adminLogin(env)
+
+	newLabURL := "testlab1"
+
+	// ———————————————————— Create lab + main account ————————————————————
+
+	t.Run("sa_create_lab_login_main_account", func(t *testing.T) {
+		saCreateLab(t, env, newLabURL)
+
+		if !env.LabA.login(newLabURL, newLabURL+"123") {
+			t.Fatal("login as main account failed")
+		}
+		resp, err := env.LabA.getURL(env.TS.URL + "/" + newLabURL + "/dashboard")
+		if err != nil {
+			t.Fatalf("GET /%s/dashboard: %v", newLabURL, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("expected 200 for main account dashboard, got %d", resp.StatusCode)
+		}
+	})
+
+	// ———————————————————— Full CRUD di semua lab ————————————————————
+
+	t.Run("sa_crud_all_labs", func(t *testing.T) {
+		// Re-login as admin (main account login in subtest 1 changed cookies)
+		env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = 'admin'")
+		adminLogin(env)
+
+		newLabDB := env.GlobalHandler.LabsDB[newLabURL]
+		if newLabDB == nil {
+			t.Fatal("new lab DB not found in GlobalHandler")
+		}
+
+		// Helper: copy admin cookies to another lab for same-session CRUD
+		copyLab := func(dst *testLab) {
+			dst.cookies = make(map[string]string)
+			for k, v := range env.LabA.cookies {
+				dst.cookies[k] = v
+			}
+			dst.csrf = env.LabA.csrf
+		}
+
+		saCRUDInLab(t, env.LabA, env.DB_A, "A", env.Config.UploadPath)
+
+		copyLab(env.LabB)
+		saCRUDInLab(t, env.LabB, env.DB_B, "B", env.Config.UploadPath)
+
+		newLab := saNewLab(env, newLabURL, env.LabA, t)
+		saCRUDInLab(t, newLab, newLabDB, "NEW", env.Config.UploadPath)
+	})
+
+	// ———————————————————— Delete lab + isolasi ————————————————————
+
+	t.Run("sa_delete_lab_verify_isolation", func(t *testing.T) {
+		env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = 'admin'")
+		adminLogin(env)
+
+		// Re-login only sets env.LabA.cookies; copy to env.LabB too
+		env.LabB.cookies = copyMap(env.LabA.cookies)
+		env.LabB.csrf = env.LabA.csrf
+
+		existingDir := filepath.Dir(env.Config.Labs[0].DBPath)
+		dbPath := filepath.Join(existingDir, "lab_"+newLabURL+".db")
+
+		saDeleteLab(t, env, newLabURL)
+
+		if _, err := os.Stat(dbPath + ".deleted"); os.IsNotExist(err) {
+			t.Error("expected DB to be renamed to .deleted")
+		}
+
+		if !env.LabA.refreshCSRF() {
+			t.Fatal("refresh CSRF after delete failed")
+		}
+		saVerifyLabAccessible(t, env.LabA, env.TS.URL+"/lab-kom-mi/dashboard")
+
+		if !env.LabB.refreshCSRF() {
+			t.Fatal("Lab B refresh CSRF failed")
+		}
+		saVerifyLabAccessible(t, env.LabB, env.TS.URL+"/vokasi/dashboard")
+
+		resp, _ := env.LabA.getURL(env.TS.URL + "/" + newLabURL + "/dashboard")
+		if resp != nil {
+			resp.Body.Close()
+			if resp.StatusCode != 302 {
+				t.Errorf("expected 302 for deleted lab, got %d", resp.StatusCode)
+			}
+		}
+	})
+}
+
+// ————— helpers —————
+
+func adminLogin(env *TestEnvironment) {
+	loginAsAdmin(env)
+}
+
+func saCreateLab(t *testing.T, env *TestEnvironment, urlPath string) {
+	if !env.LabA.refreshCSRF() {
+		t.Fatal("refresh CSRF failed")
+	}
+	formData := url.Values{
+		"_csrf": {env.LabA.csrf},
+		"id":    {"TEST-" + urlPath},
+		"title": {"Test Lab " + urlPath},
+		"url":   {urlPath},
+		"rows":  {"2"},
+		"cols":  {"8,8"},
+	}.Encode()
+	req, _ := http.NewRequest("POST", env.TS.URL+"/labs/create", strings.NewReader(formData))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	env.LabA.addCookies(req)
+	resp, err := env.Client.Do(req)
+	if err != nil {
+		t.Fatalf("POST /labs/create: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 302 {
+		t.Fatalf("expected 302 when creating lab, got %d", resp.StatusCode)
+	}
+}
+
+func saDeleteLab(t *testing.T, env *TestEnvironment, urlPath string) {
+	if !env.LabA.refreshCSRF() {
+		t.Fatal("refresh CSRF failed")
+	}
+	formData := url.Values{"_csrf": {env.LabA.csrf}}.Encode()
+	req, _ := http.NewRequest("POST", env.TS.URL+"/labs/"+urlPath+"/delete", strings.NewReader(formData))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	env.LabA.addCookies(req)
+	resp, err := env.Client.Do(req)
+	if err != nil {
+		t.Fatalf("POST /labs/%s/delete: %v", urlPath, err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 302 {
+		t.Errorf("expected 302 when deleting lab, got %d", resp.StatusCode)
+	}
+}
+
+func saVerifyLabAccessible(t *testing.T, lab *testLab, url string) {
+	t.Helper()
+	resp, err := lab.getURL(url)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200 for %s, got %d", url, resp.StatusCode)
+	}
+}
+
+func saNewLab(env *TestEnvironment, urlPath string, src *testLab, t *testing.T) *testLab {
+	return &testLab{
+		url:     urlPath,
+		prefix:  "/" + urlPath,
+		cookies: copyMap(src.cookies),
+		csrf:    src.csrf,
+		ts:      env.TS,
+		t:       t,
+		client:  env.Client,
+	}
+}
+
+func copyMap(m map[string]string) map[string]string {
+	c := make(map[string]string, len(m))
+	for k, v := range m {
+		c[k] = v
+	}
+	return c
+}
+
+// saCRUDInLab performs all CRUD operations in one lab as Super Admin.
+func saCRUDInLab(t *testing.T, lab *testLab, db *database.DB, label, uploadDir string) {
+	t.Helper()
+	now := fmt.Sprintf("%d", time.Now().UnixMilli())
+
+	// Seed category + device_type for device CRUD
+	catID := saCatID(label)
+	db.Exec("INSERT OR IGNORE INTO categories (id, name, label_prefix) VALUES (?, ?, ?)", catID, label+"-Cat", label+"C")
+	db.Exec("INSERT OR IGNORE INTO device_types (id, category_id, name, brand, model, label_prefix, usage_type, default_location) VALUES (?, ?, ?, 'SABrand', 'SAModel', ?, 'loanable', 'Lab')",
+		catID, catID, label+"-Type", label+"D")
+
+	// ============ PC ============
+	pcSerial := fmt.Sprintf("SA-%s-PC-%s", label, now)
+	postForm(t, lab, "/pc/create", url.Values{
+		"row": {"1"}, "column": {"1"},
+		"status": {"normal"}, "placement": {"dipakai"},
+		"is_mahasiswa": {"true"},
+		"serial_number": {pcSerial},
+		"operating_system": {"Win11"}, "pc_type": {"PC"},
+		"brand_model": {"Dell"}, "accessories": {"KB"},
+		"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},
+	}.Encode(), 302)
+	var pcLabel string
+	db.QueryRow("SELECT label FROM pcs WHERE serial_number=?", pcSerial).Scan(&pcLabel)
+	if pcLabel == "" {
+		t.Fatalf("[%s] PC not found after create", label)
+	}
+
+	postForm(t, lab, "/pc/"+pcLabel+"/edit",
+		"status=warning&placement=dipakai&serial_number="+pcSerial+"&operating_system=Win11&pc_type=PC&brand_model=Dell&accessories=KB&processor=i7&ram=16GB&storage=512GB&notes=SA+edited",
+		302)
+	var pcStatus string
+	db.QueryRow("SELECT status FROM pcs WHERE label=?", pcLabel).Scan(&pcStatus)
+	if pcStatus != "warning" {
+		t.Errorf("[%s] expected PC status 'warning', got %q", label, pcStatus)
+	}
+
+	lab.refreshCSRF()
+	postJSON(t, lab, "/pc/batch-delete", fmt.Sprintf(`{"ids":["%s"]}`, pcLabel), 200)
+	var pcCount int
+	db.QueryRow("SELECT COUNT(*) FROM pcs WHERE label=?", pcLabel).Scan(&pcCount)
+	if pcCount != 0 {
+		t.Errorf("[%s] PC should be deleted", label)
+	}
+	lab.refreshCSRF()
+
+	// ============ Software ============
+	swName := fmt.Sprintf("SA-%s-SW-%s", label, now)
+	postForm(t, lab, "/software/create", "name="+swName+"&category=other&description=SA+test", 302)
+	var swID int
+	db.QueryRow("SELECT id FROM software_catalog WHERE name=?", swName).Scan(&swID)
+	if swID == 0 {
+		t.Fatalf("[%s] Software not found after create", label)
+	}
+	var swSlug string
+	db.QueryRow("SELECT slug FROM software_catalog WHERE id=?", swID).Scan(&swSlug)
+
+	postForm(t, lab, "/software/"+swSlug+"/edit",
+		"name="+swName+"&category=educational&description=Edited+by+SA", 302)
+
+	lab.refreshCSRF()
+	postJSON(t, lab, "/software/batch-delete", fmt.Sprintf(`{"ids":["%d"]}`, swID), 200)
+	var swCount int
+	db.QueryRow("SELECT COUNT(*) FROM software_catalog WHERE id=?", swID).Scan(&swCount)
+	if swCount != 0 {
+		t.Errorf("[%s] Software should be deleted", label)
+	}
+	lab.refreshCSRF()
+
+	// ============ Schedule ============
+	courseName := fmt.Sprintf("SA-%s-Sched-%s", label, now)
+	postForm(t, lab, "/schedules/create",
+		"course_name="+courseName+"&lecturer=Dr.SA&day=Senin&class=IF-SA&time_start=08:00&time_end=09:40", 302)
+	db.Flush()
+	var scID int
+	db.QueryRow("SELECT id FROM course_schedules WHERE course_name=?", courseName).Scan(&scID)
+	if scID == 0 {
+		t.Fatalf("[%s] Schedule not found after create", label)
+	}
+
+	postForm(t, lab, fmt.Sprintf("/schedules/%d/edit", scID),
+		"course_name="+courseName+"&lecturer=Prof.SA&day=Selasa&class=IF-SA&time_start=10:00&time_end=11:40", 302)
+
+	lab.refreshCSRF()
+	postForm(t, lab, fmt.Sprintf("/schedules/%d/delete", scID), "", 302)
+	var scCount int
+	db.QueryRow("SELECT COUNT(*) FROM course_schedules WHERE id=?", scID).Scan(&scCount)
+	if scCount != 0 {
+		t.Errorf("[%s] Schedule should be deleted", label)
+	}
+	lab.refreshCSRF()
+
+	// ============ Device ============
+	devSerial := fmt.Sprintf("SA-%s-DEV-%s", label, now)
+	postForm(t, lab, "/devices/create",
+		fmt.Sprintf("device_type_id=%d&serial_number=%s&condition=normal&location=Lab&purchase_date=&notes=SA+device", catID, devSerial), 302)
+	var devID int
+	db.QueryRow("SELECT id FROM devices WHERE serial_number=?", devSerial).Scan(&devID)
+	if devID == 0 {
+		t.Fatalf("[%s] Device not found after create", label)
+	}
+	var devLabel string
+	db.QueryRow("SELECT label FROM devices WHERE id=?", devID).Scan(&devLabel)
+
+	postForm(t, lab, fmt.Sprintf("/devices/%s/edit", devLabel),
+		fmt.Sprintf("device_type_id=%d&serial_number=%s&condition=rusak&location=Gudang&purchase_date=&notes=SA+edited", catID, devSerial), 302)
+	var devCond string
+	db.QueryRow("SELECT condition FROM devices WHERE id=?", devID).Scan(&devCond)
+	if devCond != "rusak" {
+		t.Errorf("[%s] expected device condition 'rusak', got %q", label, devCond)
+	}
+
+	lab.refreshCSRF()
+	postJSON(t, lab, "/devices/batch-delete", fmt.Sprintf(`{"ids":["%d"]}`, devID), 200)
+	var devCount int
+	db.QueryRow("SELECT COUNT(*) FROM devices WHERE id=?", devID).Scan(&devCount)
+	if devCount != 0 {
+		t.Errorf("[%s] Device should be deleted", label)
+	}
+	lab.refreshCSRF()
+
+	// ============ Device Loan ============
+	// Re-create a device for loan/usage/installation tests
+	loanDevSerial := fmt.Sprintf("SA-%s-LDEV-%s", label, now)
+	postForm(t, lab, "/devices/create",
+		fmt.Sprintf("device_type_id=%d&serial_number=%s&condition=normal&location=Lab&purchase_date=&notes=SA+loan+device", catID, loanDevSerial), 302)
+	var loanDevID int
+	db.QueryRow("SELECT id FROM devices WHERE serial_number=?", loanDevSerial).Scan(&loanDevID)
+	if loanDevID == 0 {
+		t.Fatalf("[%s] Loan device not found after create", label)
+	}
+
+	lab.refreshCSRF()
+	postForm(t, lab, "/device-loans/create",
+		fmt.Sprintf("device_id=%d&borrower_name=SA+Student+%s&borrower_type=mahasiswa&loan_date=2026-07-01&return_date=2026-07-05&purpose=Test", loanDevID, label), 302)
+	db.Flush()
+	var loanID int
+	db.QueryRow("SELECT id FROM device_loans ORDER BY id DESC LIMIT 1").Scan(&loanID)
+	if loanID == 0 {
+		t.Fatalf("[%s] Device loan not found after create", label)
+	}
+
+	lab.refreshCSRF()
+	// extend returns JSON 200, not redirect 302
+	respExt, errExt := lab.post(fmt.Sprintf("/device-loans/%d/extend", loanID), "return_date=2026-07-12")
+	if errExt != nil {
+		t.Errorf("[%s] POST /device-loans/%d/extend: %v", label, loanID, errExt)
+	} else {
+		respExt.Body.Close()
+		if respExt.StatusCode != 200 && respExt.StatusCode != 302 {
+			t.Errorf("[%s] POST /device-loans/%d/extend: expected 200/302, got %d", label, loanID, respExt.StatusCode)
+		}
+	}
+
+	lab.refreshCSRF()
+	postForm(t, lab, fmt.Sprintf("/device-loans/%d/delete", loanID), "", 302)
+	var loanCount int
+	db.QueryRow("SELECT COUNT(*) FROM device_loans WHERE id=?", loanID).Scan(&loanCount)
+	if loanCount != 0 {
+		t.Errorf("[%s] Device loan should be deleted", label)
+	}
+	lab.refreshCSRF()
+
+	// ============ Device Usage ============
+	lab.refreshCSRF()
+	postForm(t, lab, "/device-usages/create",
+		fmt.Sprintf("device_id=%d&user_name=SA+Dosen+%s&user_type=dosen&usage_date=2026-07-01&is_available=yes&purpose=Demo", loanDevID, label), 302)
+	var usageID int
+	db.QueryRow("SELECT id FROM device_usages ORDER BY id DESC LIMIT 1").Scan(&usageID)
+	if usageID == 0 {
+		t.Fatalf("[%s] Device usage not found after create", label)
+	}
+
+	lab.refreshCSRF()
+	postForm(t, lab, fmt.Sprintf("/device-usages/%d/edit", usageID),
+		fmt.Sprintf("device_id=%d&user_name=SA+Dosen+%s&user_type=dosen&usage_date=2026-07-02&is_available=no&purpose=Demo+edited", loanDevID, label), 302)
+	var usageDate string
+	db.QueryRow("SELECT usage_date FROM device_usages WHERE id=?", usageID).Scan(&usageDate)
+	if usageDate == "" {
+		t.Errorf("[%s] Device usage date should not be empty after edit", label)
+	}
+
+	lab.refreshCSRF()
+	postForm(t, lab, fmt.Sprintf("/device-usages/%d/delete", usageID), "", 302)
+	var usageCount int
+	db.QueryRow("SELECT COUNT(*) FROM device_usages WHERE id=?", usageID).Scan(&usageCount)
+	if usageCount != 0 {
+		t.Errorf("[%s] Device usage should be deleted", label)
+	}
+	lab.refreshCSRF()
+
+	// ============ Installation ============
+	lab.refreshCSRF()
+	postForm(t, lab, "/installations/create",
+		fmt.Sprintf("device_id=%d&location_installed=Lab+SA&installation_start_date=2026-07-01&notes=SA+installation", loanDevID), 302)
+	var installID int
+	db.QueryRow("SELECT id FROM device_installations ORDER BY id DESC LIMIT 1").Scan(&installID)
+	if installID == 0 {
+		t.Fatalf("[%s] Installation not found after create", label)
+	}
+
+	lab.refreshCSRF()
+	postForm(t, lab, fmt.Sprintf("/installations/%d/edit", installID),
+		fmt.Sprintf("device_id=%d&location_installed=Lab+SA+Edited&installation_start_date=2026-07-02&notes=SA+edited+installation", loanDevID), 302)
+	var installLoc string
+	db.QueryRow("SELECT location_installed FROM device_installations WHERE id=?", installID).Scan(&installLoc)
+	if installLoc != "Lab SA Edited" {
+		t.Errorf("[%s] expected installation location 'Lab SA Edited', got %q", label, installLoc)
+	}
+
+	lab.refreshCSRF()
+	postForm(t, lab, fmt.Sprintf("/installations/%d/delete", installID), "", 302)
+	var installCount int
+	db.QueryRow("SELECT COUNT(*) FROM device_installations WHERE id=?", installID).Scan(&installCount)
+	if installCount != 0 {
+		t.Errorf("[%s] Installation should be deleted", label)
+	}
+	lab.refreshCSRF()
+
+	// Clean up the loan device
+	lab.refreshCSRF()
+	postJSON(t, lab, "/devices/batch-delete", fmt.Sprintf(`{"ids":["%d"]}`, loanDevID), 200)
+	lab.refreshCSRF()
+
+	// ============ Upload photo ============
+	uploadPCSerial := fmt.Sprintf("SA-%s-UPC-%s", label, now)
+	postForm(t, lab, "/pc/create", url.Values{
+		"row": {"1"}, "column": {"1"},
+		"status": {"normal"}, "placement": {"dipakai"},
+		"is_mahasiswa": {"true"},
+		"serial_number": {uploadPCSerial},
+		"operating_system": {"Win11"}, "pc_type": {"PC"},
+		"brand_model": {"Dell"}, "accessories": {"KB"},
+		"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},
+	}.Encode(), 302)
+
+	imgData, err := createTestJPEG(10, 10)
+	if err != nil {
+		t.Fatalf("[%s] create JPEG: %v", label, err)
+	}
+	resp, err := uploadMultipart(lab, lab.ts.URL, imgData, uploadPCSerial+".jpg", "serial")
+	if err != nil {
+		t.Fatalf("[%s] upload: %v", label, err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("[%s] upload: expected 200, got %d", label, resp.StatusCode)
+	}
+	uploadResult, decErr := decodeUploadResponse(resp)
+	if decErr != nil {
+		t.Errorf("[%s] decode upload response: %v", label, decErr)
+	} else if uploadResult != nil {
+		if _, ok := uploadResult["file_ref"].(string); !ok {
+			t.Errorf("[%s] upload response missing file_ref", label)
+		}
+	}
+
+	// ============ Export Excel ============
+	checkExport(t, lab, "/pc/export", "pc_export_")
+	checkExport(t, lab, "/software/export", "software_catalog_export_")
+	checkExport(t, lab, "/devices/export", "devices_export_")
+
+	// ============ Print sticker ============
+	var printPCLabel string
+	db.QueryRow("SELECT label FROM pcs WHERE serial_number=?", uploadPCSerial).Scan(&printPCLabel)
+	if printPCLabel != "" {
+		resp, err = lab.get(fmt.Sprintf("/print/generate?type=pc&pc_labels=%s&font_size=0.5&padding_h=0.3&padding_v=0.3&paper_size=A4&num_sheets=1", printPCLabel))
+		if err != nil {
+			t.Fatalf("[%s] GET /print/generate: %v", label, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			t.Errorf("[%s] expected 200 on print, got %d", label, resp.StatusCode)
+		}
+	}
+}
+
+// postForm is a thin helper that POSTs URL-encoded form data and verifies status.
+func postForm(t *testing.T, lab *testLab, path, data string, wantStatus int) {
+	t.Helper()
+	resp, err := lab.post(path, data)
+	if err != nil {
+		t.Fatalf("POST %s: %v", path, err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != wantStatus {
+		t.Errorf("POST %s: expected %d, got %d", path, wantStatus, resp.StatusCode)
+	}
+}
+
+// postJSON is a thin helper that POSTs JSON data and verifies status.
+func postJSON(t *testing.T, lab *testLab, path, data string, wantStatus int) {
+	t.Helper()
+	resp, err := lab.postJSON(path, data)
+	if err != nil {
+		t.Fatalf("POST %s: %v", path, err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != wantStatus {
+		t.Errorf("POST %s: expected %d, got %d", path, wantStatus, resp.StatusCode)
+	}
+}
+
+// saCatID returns a unique category ID for a lab label.
+func saCatID(label string) int {
+	switch label {
+	case "A":
+		return 300
+	case "B":
+		return 400
+	default:
+		return 500
+	}
+}
+
+// Ensure unused import suppression — these are used in test code above.
+var _ = io.Discard
+var _ = json.Marshal
