@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"inventaris-lab-kom/internal/database"
+	"golang.org/x/sync/errgroup"
 )
 
 // TestGAB_FullCRUD — Fase 4A: Global Admin (GAB) full CRUD across labs.
@@ -825,6 +827,166 @@ func saCatID(label string) int {
 	default:
 		return 500
 	}
+}
+
+// ——————————————————— Fase 4C: Concurrent Operations ———————————————————
+
+// TestConcurrentPC_Creation — 10 goroutines across 2 labs, bounded by errgroup.
+func TestConcurrentPC_Creation(t *testing.T) {
+	env := wrapSharedEnv(t)
+
+	cookies, csrf := loginAsAdmin(env)
+
+	g, ctx := errgroup.WithContext(context.Background())
+	g.SetLimit(10)
+
+	noRedirect := func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	// 5 goroutines → Lab A
+	for i := 0; i < 5; i++ {
+		i := i
+		g.Go(func() error {
+			client := &http.Client{CheckRedirect: noRedirect}
+			label := fmt.Sprintf("pc-conc-a-%d", 100+i)
+			serial := fmt.Sprintf("SN-CONC-A-%d", 100+i)
+			body := url.Values{
+				"_csrf":            {csrf},
+				"label":            {label},
+				"serial_number":    {serial},
+				"operating_system": {"Win11"},
+				"status":           {"normal"},
+				"row":              {fmt.Sprintf("%d", i+1)},
+				"column":           {"1"},
+			}.Encode()
+			req, err := http.NewRequestWithContext(ctx, "POST",
+				env.TS.URL+"/lab-kom-mi/pc/create",
+				strings.NewReader(body))
+			if err != nil {
+				return err
+			}
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			for k, v := range cookies {
+				req.AddCookie(&http.Cookie{Name: k, Value: v})
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("PC %s: unexpected status %d", label, resp.StatusCode)
+			}
+			return nil
+		})
+	}
+
+	// 5 goroutines → Lab B
+	for i := 0; i < 5; i++ {
+		i := i
+		g.Go(func() error {
+			client := &http.Client{CheckRedirect: noRedirect}
+			label := fmt.Sprintf("pc-conc-b-%d", 200+i)
+			serial := fmt.Sprintf("SN-CONC-B-%d", 200+i)
+			body := url.Values{
+				"_csrf":            {csrf},
+				"label":            {label},
+				"serial_number":    {serial},
+				"operating_system": {"Win11"},
+				"status":           {"normal"},
+				"row":              {fmt.Sprintf("%d", i+1)},
+				"column":           {"1"},
+			}.Encode()
+			req, err := http.NewRequestWithContext(ctx, "POST",
+				env.TS.URL+"/vokasi/pc/create",
+				strings.NewReader(body))
+			if err != nil {
+				return err
+			}
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			for k, v := range cookies {
+				req.AddCookie(&http.Cookie{Name: k, Value: v})
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusOK {
+				return fmt.Errorf("PC %s: unexpected status %d", label, resp.StatusCode)
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		t.Fatalf("concurrent PC creation failed: %v", err)
+	}
+
+	var countA, countB int
+	env.DB_A.QueryRow("SELECT COUNT(*) FROM pcs WHERE label LIKE 'pc-conc-a-%'").Scan(&countA)
+	env.DB_B.QueryRow("SELECT COUNT(*) FROM pcs WHERE label LIKE 'pc-conc-b-%'").Scan(&countB)
+	if countA != 5 {
+		t.Errorf("expected 5 new PCs in Lab A, got %d", countA)
+	}
+	if countB != 5 {
+		t.Errorf("expected 5 new PCs in Lab B, got %d", countB)
+	}
+}
+
+// TestConcurrentUserCreation — 10 goroutines creating users in the same lab.
+func TestConcurrentUserCreation(t *testing.T) {
+	env := wrapSharedEnv(t)
+
+	cookies, csrf := loginAsAdmin(env)
+	g, ctx := errgroup.WithContext(context.Background())
+	g.SetLimit(10)
+
+	noRedirect := func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	for i := 0; i < 10; i++ {
+		i := i
+		g.Go(func() error {
+			client := &http.Client{CheckRedirect: noRedirect}
+			username := fmt.Sprintf("conc_user_%d", i)
+			body := url.Values{
+				"_csrf":     {csrf},
+				"username":  {username},
+				"password":  {"test123"},
+				"full_name": {fmt.Sprintf("User %d", i)},
+			}.Encode()
+			req, err := http.NewRequestWithContext(ctx, "POST",
+				env.TS.URL+"/labs/admin/users/create",
+				strings.NewReader(body))
+			if err != nil {
+				return err
+			}
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			for k, v := range cookies {
+				req.AddCookie(&http.Cookie{Name: k, Value: v})
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusBadRequest {
+				return fmt.Errorf("user %s: unexpected status %d", username, resp.StatusCode)
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		t.Fatal("concurrent user creation failed:", err)
+	}
+
+	var count int
+	env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username LIKE 'conc_user_%'").Scan(&count)
+	t.Logf("Users created: %d (expected ≤10)", count)
 }
 
 // Ensure unused import suppression — these are used in test code above.
