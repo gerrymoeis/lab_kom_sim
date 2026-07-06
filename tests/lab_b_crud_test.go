@@ -86,7 +86,7 @@ func TestLabB_PC_CreateFromScratch(t *testing.T) {
 		var newID int
 		db.QueryRow("SELECT id FROM pcs WHERE serial_number='SN-LABB-PC-001'").Scan(&newID)
 		if newID == 0 {
-			t.Error("PC not found in DB after create")
+			t.Fatalf("PC not found in DB after create")
 		}
 	})
 
@@ -105,7 +105,7 @@ func TestLabB_PC_CreateFromScratch(t *testing.T) {
 		var label string
 		db.QueryRow("SELECT label FROM pcs WHERE serial_number='SN-LABB-PC-001'").Scan(&label)
 		if label == "" {
-			t.Skip("pc not found")
+			t.Fatalf("pc not found — create_pc should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -130,7 +130,7 @@ func TestLabB_PC_CreateFromScratch(t *testing.T) {
 		var label string
 		db.QueryRow("SELECT label FROM pcs WHERE serial_number='SN-LABB-PC-001'").Scan(&label)
 		if label == "" {
-			t.Skip("pc not found")
+			t.Fatalf("pc not found — create_pc should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -185,9 +185,6 @@ func TestLabB_Software_CreateFromScratch(t *testing.T) {
 	})
 
 	t.Run("edit_software", func(t *testing.T) {
-		if swSlug == "" {
-			t.Skip("software not found")
-		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
@@ -204,9 +201,6 @@ func TestLabB_Software_CreateFromScratch(t *testing.T) {
 	})
 
 	t.Run("delete_software", func(t *testing.T) {
-		if swSlug == "" {
-			t.Skip("software not found")
-		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
 		}
@@ -258,13 +252,13 @@ func TestLabB_Schedule_CreateFromScratch(t *testing.T) {
 		}
 		db.QueryRow("SELECT id FROM course_schedules ORDER BY id DESC LIMIT 1").Scan(&schedID)
 		if schedID == 0 {
-			t.Error("Schedule not found after create")
+			t.Fatalf("Schedule not found after create")
 		}
 	})
 
 	t.Run("edit_schedule", func(t *testing.T) {
 		if schedID == 0 {
-			t.Skip("schedule not found")
+			t.Fatalf("schedule not found — create_schedule should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -282,7 +276,7 @@ func TestLabB_Schedule_CreateFromScratch(t *testing.T) {
 
 	t.Run("delete_schedule", func(t *testing.T) {
 		if schedID == 0 {
-			t.Skip("schedule not found")
+			t.Fatalf("schedule not found — create_schedule should have created it")
 		}
 		if !lab.refreshCSRF() {
 			t.Fatal("failed to refresh CSRF")
@@ -345,7 +339,7 @@ func TestLabB_Device_CreateFromScratch(t *testing.T) {
 		var devID int
 		db.QueryRow("SELECT id FROM devices WHERE serial_number='SN-LABB-DEV-001'").Scan(&devID)
 		if devID == 0 {
-			t.Error("Device not found in DB after create")
+			t.Fatalf("Device not found in DB after create")
 		}
 	})
 
@@ -353,7 +347,7 @@ func TestLabB_Device_CreateFromScratch(t *testing.T) {
 		var devLabel string
 		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-LABB-DEV-001'").Scan(&devLabel)
 		if devLabel == "" {
-			t.Skip("device not found")
+			t.Fatalf("device not found — create_device should have created it")
 		}
 		devSlug := strings.ToLower(devLabel)
 		resp, err := lab.get("/devices/labcat/lbt/" + devSlug)
@@ -370,7 +364,7 @@ func TestLabB_Device_CreateFromScratch(t *testing.T) {
 		var devLabel string
 		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-LABB-DEV-001'").Scan(&devLabel)
 		if devLabel == "" {
-			t.Skip("device not found")
+			t.Fatalf("device not found — create_device should have created it")
 		}
 		devSlug := strings.ToLower(devLabel)
 		if !lab.refreshCSRF() {
@@ -396,7 +390,7 @@ func TestLabB_Device_CreateFromScratch(t *testing.T) {
 		var devLabel string
 		db.QueryRow("SELECT label FROM devices WHERE serial_number='SN-LABB-DEV-002'").Scan(&devLabel)
 		if devLabel == "" {
-			t.Skip("device not found")
+			t.Fatalf("device not found — edit_device should have updated serial to SN-LABB-DEV-002")
 		}
 		devSlug := strings.ToLower(devLabel)
 		if !lab.refreshCSRF() {
