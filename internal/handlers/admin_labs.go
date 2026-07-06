@@ -17,6 +17,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func joinInts(ints []int, sep string) string {
@@ -381,6 +382,39 @@ func (h *GlobalHandler) AdminLabCreate(c *gin.Context) {
 	h.globalDB.QueryRow("SELECT id FROM global_users WHERE is_super_admin = 1 LIMIT 1").Scan(&adminID)
 	if adminID > 0 {
 		h.globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", adminID, urlPath)
+	}
+
+	// Buat main account untuk lab baru (sama pola dengan SeedGlobalUsers)
+	log.Printf("Creating main account for lab %s (urlPath=%s)", title, urlPath)
+	mainPassword := urlPath + "123"
+	hashedMain, err := bcrypt.GenerateFromPassword([]byte(mainPassword), bcrypt.DefaultCost)
+	if err != nil {
+		db.Close()
+		os.Remove(dbPath)
+		h.render(c, http.StatusInternalServerError, "admin/lab_create.html", errorData("Gagal hash password: "+err.Error()))
+		return
+	}
+	var exists int
+	h.globalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username = ?", urlPath).Scan(&exists)
+	log.Printf("Main account exists check: %d for username=%s", exists, urlPath)
+	if exists == 0 {
+		res, err := h.globalDB.Exec(
+			`INSERT INTO global_users (username, password, full_name, password_is_default)
+			 VALUES (?, ?, ?, 1)`,
+			urlPath, string(hashedMain), "Admin "+title,
+		)
+		if err != nil {
+			db.Close()
+			os.Remove(dbPath)
+			h.render(c, http.StatusInternalServerError, "admin/lab_create.html", errorData("Gagal membuat akun admin: "+err.Error()))
+			return
+		}
+		userID, _ := res.LastInsertId()
+		h.globalDB.Exec(
+			`INSERT INTO lab_permissions (user_id, lab_url_path, role, is_main_account)
+			 VALUES (?, ?, 'admin', 1)`,
+			userID, urlPath,
+		)
 	}
 
 	// Create upload subdirs
