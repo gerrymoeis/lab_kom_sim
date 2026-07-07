@@ -1059,6 +1059,112 @@ func TestLabDelete_CleansUpUploadDir(t *testing.T) {
 	}
 }
 
+// ——————————————————— Fase 2: Lab Update Endpoint ——————————————————————
+
+// TestLabEdit_UpdatesTitle verifies the lab edit page renders, title updates persist,
+// and validation works.
+func TestLabEdit_UpdatesTitle(t *testing.T) {
+	env := wrapSharedEnv(t)
+
+	// Set EnvPath — required by lab creation + edit handlers (writes .env)
+	envFile := filepath.Join(t.TempDir(), ".env")
+	os.WriteFile(envFile, []byte("EXISTING_VAR=1\n"), 0644)
+	savedEnvPath := env.Config.EnvPath
+	env.Config.EnvPath = envFile
+
+	loginAsAdmin(env)
+
+	uniqueID := fmt.Sprintf("F2-%d", time.Now().UnixMilli())
+	uniqueURL := fmt.Sprintf("f2-%d", time.Now().UnixMilli())
+
+	// Create a new lab (adds LABS_<N>_* to .env)
+	resp := adminPost(env, "/labs/create",
+		fmt.Sprintf("id=%s&title=Before+Edit&url=%s&rows=1&cols=8", uniqueID, uniqueURL))
+	resp.Body.Close()
+	if resp.StatusCode != 302 {
+		env.Config.EnvPath = savedEnvPath
+		t.Fatalf("expected 302 when creating lab, got %d", resp.StatusCode)
+	}
+
+	// Find EnvIndex
+	var labEnvIndex int
+	for _, l := range env.Config.Labs {
+		if l.URLPath == uniqueURL {
+			labEnvIndex = l.EnvIndex
+			break
+		}
+	}
+	if labEnvIndex == 0 {
+		env.Config.EnvPath = savedEnvPath
+		t.Fatal("EnvIndex should be >0 after lab creation")
+	}
+
+	// Cleanup: restore EnvPath + delete lab (removes from config)
+	t.Cleanup(func() {
+		env.Config.EnvPath = savedEnvPath
+		del := adminPost(env, "/labs/"+uniqueURL+"/delete", "")
+		del.Body.Close()
+	})
+
+	// === 1. GET edit page → 200 with current title in form ===
+	resp = adminGet(env, "/labs/"+uniqueURL+"/edit")
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected 200 on GET edit page, got %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if !strings.Contains(string(body), "Before Edit") {
+		t.Error("edit page should contain current lab title in form")
+	}
+	if !strings.Contains(string(body), "Update") {
+		t.Error("edit page should contain Update button")
+	}
+	if !strings.Contains(string(body), uniqueID) {
+		t.Error("edit page should contain lab ID")
+	}
+	if !strings.Contains(string(body), uniqueURL) {
+		t.Error("edit page should contain lab URL path")
+	}
+
+	// === 2. POST new title → 302 ===
+	newTitle := "After Edit"
+	resp = adminPost(env, "/labs/"+uniqueURL+"/edit", "title="+url.QueryEscape(newTitle))
+	resp.Body.Close()
+	if resp.StatusCode != 302 {
+		t.Fatalf("expected 302 on POST edit, got %d", resp.StatusCode)
+	}
+
+	// Verify config updated
+	var updatedTitle string
+	for _, l := range env.Config.Labs {
+		if l.URLPath == uniqueURL {
+			updatedTitle = l.Title
+			break
+		}
+	}
+	if updatedTitle != newTitle {
+		t.Errorf("expected title %q in config, got %q", newTitle, updatedTitle)
+	}
+
+	// Verify .env file updated
+	envData, _ := os.ReadFile(envFile)
+	expectedLine := fmt.Sprintf("LABS_%d_TITLE=%s", labEnvIndex, newTitle)
+	if !strings.Contains(string(envData), expectedLine) {
+		t.Errorf(".env should contain %q", expectedLine)
+	}
+	// Verify old title no longer in .env
+	if strings.Contains(string(envData), "Before Edit") {
+		t.Error(".env should NOT contain old title")
+	}
+
+	// === 3. POST empty title → 400 ===
+	resp = adminPost(env, "/labs/"+uniqueURL+"/edit", "title=")
+	resp.Body.Close()
+	if resp.StatusCode != 400 {
+		t.Errorf("expected 400 for empty title, got %d", resp.StatusCode)
+	}
+}
+
 // Ensure unused import suppression — these are used in test code above.
 var _ = io.Discard
 var _ = json.Marshal
