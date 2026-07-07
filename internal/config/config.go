@@ -375,6 +375,28 @@ func AppendLabEnv(envPath string, lab LabConfig) (int, error) {
 	return newN, os.WriteFile(envPath, []byte(strings.Join(lines, "\n")+"\n"), 0644)
 }
 
+// UpdateLabEnv updates LABS_<N>_TITLE in the .env file to match the given lab.
+func UpdateLabEnv(envPath string, lab LabConfig) error {
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		return fmt.Errorf("gagal membaca %s: %w", envPath, err)
+	}
+	lines := strings.Split(string(data), "\n")
+	prefix := fmt.Sprintf("LABS_%d_TITLE=", lab.EnvIndex)
+	found := false
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), prefix) {
+			lines[i] = prefix + lab.Title
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("LABS_%d_TITLE tidak ditemukan di %s", lab.EnvIndex, envPath)
+	}
+	return os.WriteFile(envPath, []byte(strings.Join(lines, "\n")), 0644)
+}
+
 func defaultLab(dbPath, uploadPath string) LabConfig {
 	id := labNameFromPath(dbPath)
 	title := labTitleFromName(id)
