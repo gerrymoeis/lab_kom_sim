@@ -45,17 +45,19 @@ func (s *GlobalAuthService) Login(username, password string) (*models.GlobalUser
 		return nil, "", ErrInvalidCredentials
 	}
 
-	existingToken, _ := s.userRepo.GetSessionToken(u.ID)
-	if existingToken != "" {
-		return nil, "", ErrAlreadyLoggedIn
-	}
-
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return nil, "", fmt.Errorf("gagal generate session token: %w", err)
 	}
 	token := hex.EncodeToString(b)
-	s.userRepo.UpdateSessionToken(u.ID, token)
+
+	updated, err := s.userRepo.UpdateSessionTokenIfEmpty(u.ID, token)
+	if err != nil {
+		return nil, "", fmt.Errorf("gagal update session token: %w", err)
+	}
+	if !updated {
+		return nil, "", ErrAlreadyLoggedIn
+	}
 
 	return u, token, nil
 }
