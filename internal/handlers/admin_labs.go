@@ -472,6 +472,65 @@ func (h *GlobalHandler) AdminLabCreate(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/labs/"+urlPath)
 }
 
+// AdminLabEditPage — GET /labs/:urlPath/edit — menampilkan form edit lab.
+func (h *GlobalHandler) AdminLabEditPage(c *gin.Context) {
+	urlPath := c.Param("urlPath")
+	lab := h.labFromPath(urlPath)
+	if lab == nil {
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "Lab Tidak Ditemukan",
+			"message": "Lab '" + urlPath + "' tidak ditemukan.",
+		})
+		return
+	}
+	h.render(c, http.StatusOK, "admin/lab_edit.html", gin.H{
+		"title":       "Edit Lab: " + lab.Title,
+		"currentPage": "labs",
+		"icon":        "bi-pencil",
+		"backURL":     "/labs/" + urlPath,
+		"lab":         lab,
+	})
+}
+
+// AdminLabEdit — POST /labs/:urlPath/edit — memproses update lab.
+func (h *GlobalHandler) AdminLabEdit(c *gin.Context) {
+	urlPath := c.Param("urlPath")
+	lab := h.labFromPath(urlPath)
+	if lab == nil {
+		h.render(c, http.StatusNotFound, "error.html", gin.H{
+			"title":   "Lab Tidak Ditemukan",
+			"message": "Lab '" + urlPath + "' tidak ditemukan.",
+		})
+		return
+	}
+
+	newTitle := strings.TrimSpace(c.PostForm("title"))
+	if newTitle == "" {
+		h.render(c, http.StatusBadRequest, "admin/lab_edit.html", gin.H{
+			"title": "Edit Lab", "lab": lab, "error": "Title tidak boleh kosong",
+		})
+		return
+	}
+
+	// Update in-memory config (labFromPath returns pointer to slice element)
+	oldTitle := lab.Title
+	lab.Title = newTitle
+
+	// Update .env file
+	if err := config.UpdateLabEnv(h.cfg.EnvPath, *lab); err != nil {
+		lab.Title = oldTitle // rollback
+		h.render(c, http.StatusInternalServerError, "admin/lab_edit.html", gin.H{
+			"title": "Edit Lab", "lab": lab, "error": "Gagal update .env: " + err.Error(),
+		})
+		return
+	}
+
+	session := sessions.Default(c)
+	session.AddFlash("Lab '"+newTitle+"' berhasil diupdate", "success")
+	session.Save()
+	c.Redirect(http.StatusFound, "/labs/"+urlPath)
+}
+
 func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
 	urlPath := c.Param("urlPath")
 	lab := h.labFromPath(urlPath)

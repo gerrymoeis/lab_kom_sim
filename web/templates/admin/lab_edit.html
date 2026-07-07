@@ -1,0 +1,40 @@
+{{ template "layout/admin_base.html" . }}
+
+<form method="POST" action="/labs/{{ .lab.URLPath }}/edit">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-pencil"></i> Edit Lab</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="id" class="form-label">ID Lab</label>
+                    <input type="text" class="form-control" id="id" name="id"
+                        value="{{ .lab.ID }}" readonly>
+                    <small class="text-muted">ID tidak dapat diubah</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="title" class="form-label">Nama Lab *</label>
+                    <input type="text" class="form-control" id="title" name="title"
+                        value="{{ .lab.Title }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="url" class="form-label">URL Path</label>
+                    <input type="text" class="form-control" id="url" name="url"
+                        value="{{ .lab.URLPath }}" readonly>
+                    <small class="text-muted">URL path tidak dapat diubah</small>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer d-flex gap-2 justify-content-end">
+            <button type="submit" class="btn btn-warning">
+                <i class="bi bi-save"></i> Update
+            </button>
+            <a href="/labs/{{ .lab.URLPath }}" class="btn btn-secondary">
+                <i class="bi bi-x-circle"></i> Batal
+            </a>
+        </div>
+    </div>
+</form>
+
+{{ template "layout/admin_footer.html" . }}
