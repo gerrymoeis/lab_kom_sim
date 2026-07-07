@@ -418,7 +418,7 @@ func (h *GlobalHandler) AdminLabCreate(c *gin.Context) {
 	}
 
 	// Create upload subdirs
-	for _, sub := range []string{"pc", "device_types", "temp", "logbook", "device_installations"} {
+	for _, sub := range []string{"pc", "device_types", "temp", "device_installations"} {
 		if err := os.MkdirAll(filepath.Join(uploadDir, sub), 0755); err != nil {
 			log.Printf("Warning: gagal buat upload subdir %s/%s: %v", urlPath, sub, err)
 		}
