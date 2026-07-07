@@ -2216,3 +2216,125 @@ func TestCategory(t *testing.T) {
 		}
 	})
 }
+
+// ============================================
+// ActivityLogContent — verify activity logs are created for CRUD operations
+// ============================================
+
+func TestActivityLogContent(t *testing.T) {
+	env := wrapSharedEnv(t)
+	lab := env.LabA
+	db := env.DB_A
+
+	// ——— PC create → verify "create" activity log ———
+	t.Run("log_pc_create", func(t *testing.T) {
+		clearSessions()
+		lab.cookies = make(map[string]string)
+		if !loginAndRefresh(lab, "labA_only", "test123") {
+			t.Fatal("login failed")
+		}
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		data := url.Values{
+			"row": {"5"}, "column": {"9"},
+			"status": {"normal"}, "placement": {"dipakai"},
+			"is_mahasiswa": {"true"},
+			"serial_number": {"SN-LOG-PC-001"},
+			"operating_system": {"Win11"}, "pc_type": {"PC"},
+			"brand_model": {"Dell"}, "accessories": {"KB"},
+			"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},
+		}.Encode()
+		resp, err := lab.post("/pc/create", data)
+		if err != nil {
+			t.Fatalf("POST /pc/create: %v", err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+
+		env.FlushLogs()
+
+		var logCount int
+		db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE action='create' AND entity_type='pc' AND new_values LIKE '%SN-LOG-PC-001%'").Scan(&logCount)
+		if logCount < 1 {
+			t.Error("activity_logs missing 'create' entry for PC")
+		}
+	})
+
+	// ——— Software create + delete → verify "delete" activity log ———
+	t.Run("log_software_delete", func(t *testing.T) {
+		clearSessions()
+		lab.cookies = make(map[string]string)
+		if !loginAndRefresh(lab, "labA_only", "test123") {
+			t.Fatal("login failed")
+		}
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/software/create", "name=LogDelSW&category=other&description=To+delete")
+		if err != nil {
+			t.Fatalf("POST /software/create: %v", err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+
+		var swSlug string
+		db.QueryRow("SELECT slug FROM software_catalog WHERE name='LogDelSW'").Scan(&swSlug)
+		if swSlug == "" {
+			t.Fatal("software not found after create")
+		}
+
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err = lab.post("/software/"+swSlug+"/delete", "")
+		if err != nil {
+			t.Fatalf("POST /software/%s/delete: %v", swSlug, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 after delete, got %d", resp.StatusCode)
+		}
+
+		env.FlushLogs()
+
+		var logCount int
+		db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE action='delete' AND entity_type='software' AND old_values LIKE '%LogDelSW%'").Scan(&logCount)
+		if logCount < 1 {
+			t.Error("activity_logs missing 'delete' entry for software")
+		}
+	})
+
+	// ——— User create (via per-lab route as super admin) → verify "create" activity log ———
+	t.Run("log_user_create", func(t *testing.T) {
+		clearSessions()
+		lab.cookies = make(map[string]string)
+		if !loginAndRefresh(lab, "admin", "admin123") {
+			t.Fatal("login failed")
+		}
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/admin/users/create",
+			"username=log_act_user&password=test123&full_name=Log+Act+User&role=admin")
+		if err != nil {
+			t.Fatalf("POST /admin/users/create: %v", err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+
+		env.FlushLogs()
+
+		var logCount int
+		db.QueryRow("SELECT COUNT(*) FROM activity_logs WHERE action='create' AND entity_type='user' AND new_values LIKE '%log_act_user%'").Scan(&logCount)
+		if logCount < 1 {
+			t.Error("activity_logs missing 'create' entry for user")
+		}
+	})
+}
