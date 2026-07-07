@@ -1,12 +1,9 @@
 ﻿package handlers
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -308,7 +305,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 	}
 
 	// Process photo ref for inline device type creation
-	photoFile, err := processDeviceTypePhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.NewTypePhotoFileRef)
+	photoFile, err := services.PromoteFile(h.cfg.UploadPath, c.GetString("lab"), req.NewTypePhotoFileRef, "device_types", "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -557,7 +554,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	// Process photo ref — fallback ke existing photo jika tidak upload baru
 	photoFile := dt.Photo
 	if req.PhotoFileRef != "" {
-		photoFile, err = processDeviceTypePhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef)
+		photoFile, err = services.PromoteFile(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_types", dt.Photo)
 		if err != nil {
 			h.renderEditPageWithError(c, dt, err.Error())
 			return
@@ -613,10 +610,8 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 	}
 
 	// Cascade delete photo from disk
-	if dt.Photo != "" {
-		lab := c.GetString("lab")
-		os.Remove(filepath.Join(h.cfg.UploadPath, lab, "device_types", dt.Photo))
-	}
+	lab := c.GetString("lab")
+	services.DeleteFile(h.cfg.UploadPath, lab, "device_types", dt.Photo)
 
 	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil dihapus", "delete")
 }
@@ -1003,23 +998,6 @@ func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bo
 		curType.Devices = append(curType.Devices, d)
 	}
 	return grouped
-}
-
-func processDeviceTypePhotoRef(uploadPath, lab, fileRef string) (string, error) {
-	ref := filepath.Base(strings.TrimSpace(fileRef))
-	if ref == "" || ref == "." || ref == "/" || ref == "\\" {
-		return "", nil
-	}
-	src := filepath.Join(uploadPath, lab, "temp", ref)
-	dst := filepath.Join(uploadPath, lab, "device_types", ref)
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-		return "", fmt.Errorf("gagal membuat direktori foto: %w", err)
-	}
-	if err := services.CopyFile(src, dst); err != nil {
-		return "", fmt.Errorf("gagal menyalin foto: %w", err)
-	}
-	os.Remove(src)
-	return ref, nil
 }
 
 func (h *Handler) DeviceBatchDelete(c *gin.Context) {

@@ -3,11 +3,8 @@
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -117,12 +114,9 @@ func (h *Handler) PCCreate(c *gin.Context) {
 	lab := c.GetString("lab")
 	uploadPath := h.cfg.UploadPath
 
-	// Move photos from temp/ to pc/ using label-based scanning (more robust)
-	photoSerial, photoFront := movePCPhotos(uploadPath, lab, label)
-	// Fallback: try hidden input refs if label scanning found nothing
-	if photoSerial == "" && photoFront == "" {
-		photoSerial, photoFront = processPhotoRefs(uploadPath, lab, req.SerialFileRef, req.FrontFileRef)
-	}
+	// Promote photos from temp/ to pc/
+	photoSerial, _ := services.PromoteFile(uploadPath, lab, req.SerialFileRef, "pc", "")
+	photoFront, _ := services.PromoteFile(uploadPath, lab, req.FrontFileRef, "pc", "")
 
 	_, err := h.pcService.CreatePC(services.CreatePCInput{
 		Row: req.Row, Column: req.Column,
@@ -212,12 +206,17 @@ func (h *Handler) PCEdit(c *gin.Context) {
 		newLabel = label
 	}
 
-	// Move photos from temp/ to pc/ using label-based scanning (more robust)
-	photoSerial, photoFront := movePCPhotos(uploadPath, lab, newLabel)
-	// Fallback: try hidden input refs if label scanning found nothing
-	if photoSerial == "" && photoFront == "" {
-		photoSerial, photoFront = processPhotoRefs(uploadPath, lab, req.SerialFileRef, req.FrontFileRef)
+	// Get existing PC for old photo filenames (used by PromoteFile to clean up)
+	existingPC, _ := h.pcService.GetByLabel(label)
+	var oldSerial, oldFront string
+	if existingPC != nil {
+		oldSerial = existingPC.PhotoSerial
+		oldFront = existingPC.PhotoFront
 	}
+
+	// Promote photos from temp/ to pc/, deleting old files if replaced
+	photoSerial, _ := services.PromoteFile(uploadPath, lab, req.SerialFileRef, "pc", oldSerial)
+	photoFront, _ := services.PromoteFile(uploadPath, lab, req.FrontFileRef, "pc", oldFront)
 
 	if err := h.pcService.UpdatePC(label, services.UpdatePCInput{
 		Row: req.Row, Column: req.Column,
@@ -261,12 +260,8 @@ func (h *Handler) PCDelete(c *gin.Context) {
 	// Cascade delete photo files from disk
 	if pc != nil {
 		lab := c.GetString("lab")
-		pcDir := filepath.Join(h.cfg.UploadPath, lab, "pc")
-		for _, photo := range []string{pc.PhotoSerial, pc.PhotoFront} {
-			if photo != "" {
-				os.Remove(filepath.Join(pcDir, photo))
-			}
-		}
+		services.DeleteFile(h.cfg.UploadPath, lab, "pc", pc.PhotoSerial)
+		services.DeleteFile(h.cfg.UploadPath, lab, "pc", pc.PhotoFront)
 	}
 
 	h.redirectWithSuccess(c, "/pc", "PC berhasil dihapus", "delete")
@@ -654,96 +649,6 @@ func (h *Handler) PCMoveToCadangan(c *gin.Context) {
 		"pcs":     pcs,
 		"changes": []gin.H{{"old_label": req.Label, "new_label": newLabel}},
 	})
-}
-
-func processPhotoRef(uploadPath, lab, photoRef, subDir string) string {
-	ref := filepath.Base(strings.TrimSpace(photoRef))
-	if ref == "" || ref == "." || ref == "/" || ref == "\\" {
-		return ""
-	}
-	src := filepath.Join(uploadPath, lab, "temp", ref)
-	dst := filepath.Join(uploadPath, lab, subDir, ref)
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-		log.Printf("WARN: processPhotoRef: failed to create dir for %s/%s: %v", subDir, ref, err)
-		return ""
-	}
-	if err := services.CopyFile(src, dst); err != nil {
-		log.Printf("WARN: processPhotoRef: copy failed %s -> %s: %v", src, dst, err)
-		return ""
-	}
-	os.Remove(src)
-	return ref
-}
-
-// movePCPhotos scans temp dir for files matching the PC label pattern,
-// copies them to pc/ with standardized name {label}_{type}.jpeg,
-// and cleans up temp. Returns the new filenames.
-func movePCPhotos(uploadPath, lab, label string) (serial, front string) {
-	tempDir := filepath.Join(uploadPath, lab, "temp")
-	pcDir := filepath.Join(uploadPath, lab, "pc")
-
-	if err := os.MkdirAll(pcDir, 0755); err != nil {
-		log.Printf("WARN: movePCPhotos: failed to create pc dir: %v", err)
-		return
-	}
-
-	label = strings.ToLower(label)
-	for _, ptype := range []string{"serial", "front"} {
-		pattern := fmt.Sprintf("%s_%s_*.jpeg", label, ptype)
-		matches, err := filepath.Glob(filepath.Join(tempDir, pattern))
-		if err != nil || len(matches) == 0 {
-			continue
-		}
-		// Use the first match (most recent upload)
-		src := matches[0]
-		base := filepath.Base(src)
-		dst := filepath.Join(pcDir, base)
-
-		if err := services.CopyFile(src, dst); err != nil {
-			log.Printf("WARN: movePCPhotos: copy failed %s -> %s: %v", src, dst, err)
-			// Still clean up temp files even if copy fails
-			for _, m := range matches {
-				os.Remove(m)
-			}
-			continue
-		}
-
-		// Clean up all matching temp files for this type
-		for _, m := range matches {
-			os.Remove(m)
-		}
-
-		if ptype == "serial" {
-			serial = base
-		} else {
-			front = base
-		}
-	}
-	return
-}
-
-func processPhotoRefs(uploadPath, lab, serialRef, frontRef string) (serial, front string) {
-	for _, p := range []struct{ ref string; result *string }{
-		{serialRef, &serial}, {frontRef, &front},
-	} {
-		ref := filepath.Base(strings.TrimSpace(p.ref))
-		if ref == "" || ref == "." || ref == "/" || ref == "\\" {
-			continue
-		}
-		src := filepath.Join(uploadPath, lab, "temp", ref)
-		dst := filepath.Join(uploadPath, lab, "pc", ref)
-		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-			log.Printf("WARN: processPhotoRefs: failed to create pc dir for %s: %v", ref, err)
-			continue
-		}
-		if err := services.CopyFile(src, dst); err != nil {
-			log.Printf("WARN: processPhotoRefs: copy failed %s -> %s: %v", src, dst, err)
-			continue
-		}
-		os.Remove(src)
-		*p.result = ref
-	}
-	return
 }
 
 func (h *Handler) PCBatchDelete(c *gin.Context) {

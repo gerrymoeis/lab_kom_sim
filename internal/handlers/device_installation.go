@@ -4,8 +4,6 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
 
 	"inventaris-lab-kom/internal/repository"
@@ -90,7 +88,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 		return
 	}
 
-	photo := processPhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations")
+	photo, _ := services.PromoteFile(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations", "")
 
 	deviceID, _ := strconv.Atoi(req.DeviceID)
 	uid, u, r, ok := h.user(c)
@@ -176,9 +174,9 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		return
 	}
 
-	photo := processPhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations")
-	if photo == "" {
-		photo = inst.Photo
+	photo := inst.Photo
+	if req.PhotoFileRef != "" {
+		photo, _ = services.PromoteFile(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations", inst.Photo)
 	}
 
 	uid, u, r, ok := h.user(c)
@@ -216,9 +214,9 @@ func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
 	}
 
 	// Cascade delete photo from disk
-	if inst != nil && inst.Photo != "" {
+	if inst != nil {
 		lab := c.GetString("lab")
-		os.Remove(filepath.Join(h.cfg.UploadPath, lab, "device_installations", inst.Photo))
+		services.DeleteFile(h.cfg.UploadPath, lab, "device_installations", inst.Photo)
 	}
 
 	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil dihapus", "delete")
