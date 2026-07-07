@@ -433,6 +433,78 @@ func TestAdminUserEdit(t *testing.T) {
 			t.Errorf("expected 404 for invalid id, got %d", resp.StatusCode)
 		}
 	})
+
+	t.Run("admin_password_reset_invalidates_session", func(t *testing.T) {
+		// 1. Login sebagai user biasa (labA_only), simpan session lama
+		clearSessions()
+		env.LabA.cookies = make(map[string]string)
+		if !env.LabA.login("labA_only", "test123") {
+			t.Fatal("login as labA_only failed")
+		}
+		if !env.LabA.refreshCSRF() {
+			t.Fatal("refresh CSRF after labA_only login failed")
+		}
+
+		oldCookies := make(map[string]string)
+		for k, v := range env.LabA.cookies {
+			oldCookies[k] = v
+		}
+
+		// Verify old session works
+		dashResp, _ := env.LabA.get("/dashboard")
+		if dashResp != nil {
+			dashResp.Body.Close()
+			if dashResp.StatusCode != 200 {
+				t.Errorf("expected 200 with valid old session, got %d", dashResp.StatusCode)
+			}
+		}
+
+		// 2. Login sebagai super admin
+		clearSessions()
+		env.LabA.cookies = make(map[string]string)
+		if !env.LabA.login("admin", "admin123") {
+			t.Fatal("login as admin failed")
+		}
+
+		// 3. Super admin reset password labA_only
+		if !env.LabA.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp := adminPost(env, "/labs/admin/users/labA_only/edit",
+			"username=labA_only&full_name=Lab+A+Only&role=admin&new_password=newpass123")
+		if resp == nil {
+			t.Fatal("POST /labs/admin/users/labA_only/edit returned nil")
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 after password reset, got %d", resp.StatusCode)
+		}
+
+		// 4. User biasa dengan session LAMA → harus 302 (redirect login)
+		oldReq, _ := http.NewRequest("GET", env.TS.URL+"/lab-kom-mi/dashboard", nil)
+		for n, v := range oldCookies {
+			oldReq.AddCookie(&http.Cookie{Name: n, Value: v})
+		}
+		oldResp, err := env.Client.Do(oldReq)
+		if err != nil {
+			t.Fatalf("GET /lab-kom-mi/dashboard with old session: %v", err)
+		}
+		oldResp.Body.Close()
+		if oldResp.StatusCode != 302 {
+			t.Errorf("expected 302 (redirect to login), got %d", oldResp.StatusCode)
+		}
+
+		// 5. Login dengan password BARU → harus sukses (verifikasi login 302)
+		clearSessions()
+		env.LabA.cookies = make(map[string]string)
+		if !env.LabA.login("labA_only", "newpass123") {
+			t.Fatal("login with new password failed")
+		}
+
+		// 6. Restore original password agar test lain tidak terganggu
+		hash, _ := bcrypt.GenerateFromPassword([]byte("test123"), bcrypt.MinCost)
+		env.GlobalDB.Exec("UPDATE global_users SET password = ? WHERE username = 'labA_only'", string(hash))
+	})
 }
 
 // ============================================
