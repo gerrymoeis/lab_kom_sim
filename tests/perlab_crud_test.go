@@ -2041,6 +2041,27 @@ func TestDeviceType(t *testing.T) {
 		}
 	})
 
+	t.Run("create_device_type", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/device-types/create", "category_id=10&name=CreateTestDT&brand=CreateBrand&model=CreateModel&label_prefix=CREATEDT&usage_type=loanable&default_location=Lab")
+		if err != nil {
+			t.Fatalf("POST /device-types/create: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		var count int
+		db.QueryRow("SELECT COUNT(*) FROM device_types WHERE label_prefix='CREATEDT'").Scan(&count)
+		if count != 1 {
+			t.Errorf("expected 1 device type, got %d", count)
+		}
+		// Cleanup
+		db.Exec("DELETE FROM device_types WHERE label_prefix='CREATEDT'")
+	})
+
 	t.Run("fail_detail_not_found", func(t *testing.T) {
 		resp, err := lab.get("/device-types/nonexistent-slug")
 		if err != nil {
@@ -2161,6 +2182,27 @@ func TestCategory(t *testing.T) {
 		if count != 0 {
 			t.Error("category not deleted after batch delete")
 		}
+	})
+
+	t.Run("create_category", func(t *testing.T) {
+		if !lab.refreshCSRF() {
+			t.Fatal("failed to refresh CSRF")
+		}
+		resp, err := lab.post("/categories/create", "name=CreateTestCat&label_prefix=CREATECAT")
+		if err != nil {
+			t.Fatalf("POST /categories/create: %v", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		var count int
+		db.QueryRow("SELECT COUNT(*) FROM categories WHERE label_prefix='CREATECAT'").Scan(&count)
+		if count != 1 {
+			t.Errorf("expected 1 category, got %d", count)
+		}
+		// Cleanup
+		db.Exec("DELETE FROM categories WHERE label_prefix='CREATECAT'")
 	})
 
 	t.Run("fail_detail_not_found", func(t *testing.T) {

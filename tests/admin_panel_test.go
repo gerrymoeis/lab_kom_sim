@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -192,6 +193,30 @@ func TestAdminLabLayout(t *testing.T) {
 		env.LabA.csrf = token // restore after failed post (token unchanged)
 		if resp.StatusCode != 400 {
 			t.Errorf("expected 400 for bad cols format, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("save_layout_grid_gap", func(t *testing.T) {
+		resp := adminPost(env, "/labs/lab-kom-mi/layout", "cols_per_row=8,8,8,8,8&row_gaps_json=[[3],[],[5,7],[]]")
+		defer resp.Body.Close()
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302, got %d", resp.StatusCode)
+		}
+		var colsJSON, gapsJSON string
+		env.GlobalDB.QueryRow("SELECT cols_per_row, COALESCE(row_gaps,'') FROM grid_layouts WHERE lab_url_path='lab-kom-mi'").Scan(&colsJSON, &gapsJSON)
+		var cols []int
+		if err := json.Unmarshal([]byte(colsJSON), &cols); err != nil {
+			t.Fatalf("unmarshal cols_per_row: %v", err)
+		}
+		if len(cols) != 5 || cols[0] != 8 {
+			t.Errorf("expected 5 cols of 8, got %v", cols)
+		}
+		var gaps [][]int
+		if err := json.Unmarshal([]byte(gapsJSON), &gaps); err != nil {
+			t.Fatalf("unmarshal row_gaps: %v", err)
+		}
+		if len(gaps) != 4 {
+			t.Errorf("expected 4 row gap arrays, got %d", len(gaps))
 		}
 	})
 }

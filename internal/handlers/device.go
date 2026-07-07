@@ -621,6 +621,55 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil dihapus", "delete")
 }
 
+func (h *Handler) DeviceTypeCreatePage(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	h.renderTemplate(c, http.StatusOK, "device_type/create.html", gin.H{
+		"title": "Tambah Tipe Perangkat", "currentPage": "devices",
+		"username":   username, "role": role,
+		"categories": h.fetchCategories(""),
+		"android":    h.cfg.Android,
+	})
+}
+
+func (h *Handler) DeviceTypeCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
+	var req CreateDeviceTypeRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.renderTemplate(c, http.StatusBadRequest, "device_type/create.html", gin.H{
+			"title": "Tambah Tipe Perangkat", "currentPage": "devices",
+			"error":      "Lengkapi data yang diperlukan",
+			"categories": h.fetchCategories(""),
+		})
+		return
+	}
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
+	ip, ua := getRequestContext(c)
+
+	if _, err := h.deviceTypeService.Create(services.DeviceTypeCreateInput{
+		CategoryID:      req.CategoryID,
+		Name:            req.Name,
+		Brand:           req.Brand,
+		Model:           req.Model,
+		LabelPrefix: req.LabelPrefix,
+		UsageType:       req.UsageType,
+		DefaultLocation: req.DefaultLocation,
+	}, uid, u, r, ip, ua); err != nil {
+		h.renderTemplate(c, http.StatusInternalServerError, "device_type/create.html", gin.H{
+			"title": "Tambah Tipe Perangkat", "currentPage": "devices",
+			"error":      "Gagal menyimpan tipe perangkat",
+			"categories": h.fetchCategories(""),
+		})
+		return
+	}
+	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil ditambahkan")
+}
+
 func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 	_, username, role, ok := h.user(c)
 	if !ok { return }
@@ -1027,6 +1076,43 @@ func (h *Handler) DeviceTypeBatchDelete(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Tipe perangkat berhasil dihapus"})
+}
+
+func (h *Handler) CategoryCreatePage(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	h.renderTemplate(c, http.StatusOK, "category/create.html", gin.H{
+		"title": "Tambah Kategori", "currentPage": "devices",
+		"username": username, "role": role,
+	})
+}
+
+func (h *Handler) CategoryCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
+	var req EditCategoryRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.renderTemplate(c, http.StatusBadRequest, "category/create.html", gin.H{
+			"title": "Tambah Kategori", "currentPage": "devices",
+			"error": "Lengkapi data yang diperlukan",
+		})
+		return
+	}
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
+	ip, ua := getRequestContext(c)
+
+	if _, err := h.categoryService.Create(req.Name, req.LabelPrefix, uid, u, r, ip, ua); err != nil {
+		h.renderTemplate(c, http.StatusInternalServerError, "category/create.html", gin.H{
+			"title": "Tambah Kategori", "currentPage": "devices",
+			"error": "Gagal menyimpan kategori",
+		})
+		return
+	}
+	h.redirectWithSuccess(c, "/devices?tab=types", "Kategori berhasil ditambahkan")
 }
 
 func (h *Handler) CategoryBatchDelete(c *gin.Context) {
