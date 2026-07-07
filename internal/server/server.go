@@ -334,6 +334,8 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 		labsAdminGroup.POST("/:urlPath/layout", globalHandler.AdminLabLayoutSave)
 		labsAdminGroup.GET("/:urlPath/seeds", globalHandler.AdminLabSeeds)
 		labsAdminGroup.POST("/:urlPath/seeds/:type", globalHandler.AdminLabReseed)
+		labsAdminGroup.GET("/:urlPath/edit", globalHandler.AdminLabEditPage)
+		labsAdminGroup.POST("/:urlPath/edit", globalHandler.AdminLabEdit)
 		labsAdminGroup.POST("/:urlPath/delete", globalHandler.AdminLabDelete)
 	}
 
