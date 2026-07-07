@@ -577,6 +577,15 @@ func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
 	// Rename file DB + WAL/SHM ke .deleted (soft-delete, reversible)
 	renameLabDB(lab.DBPath)
 
+	// Hapus upload folder (setelah DB rename, sebelum config update)
+	if lab.UploadDir != "" {
+		if err := os.RemoveAll(lab.UploadDir); err != nil {
+			log.Printf("Warning: gagal hapus upload folder %s: %v", lab.UploadDir, err)
+		} else {
+			log.Printf("Upload folder %s berhasil dihapus", lab.UploadDir)
+		}
+	}
+
 	// Hapus dari config slice
 	newLabs := make([]config.LabConfig, 0, len(h.cfg.Labs)-1)
 	for _, l := range h.cfg.Labs {

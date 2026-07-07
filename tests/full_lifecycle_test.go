@@ -989,6 +989,76 @@ func TestConcurrentUserCreation(t *testing.T) {
 	t.Logf("Users created: %d (expected ≤10)", count)
 }
 
+// ——————————————————— Fase 3: Upload Folder Cleanup ————————————————————
+
+// TestLabDelete_CleansUpUploadDir verifies that deleting a lab removes its upload directory.
+func TestLabDelete_CleansUpUploadDir(t *testing.T) {
+	env := wrapSharedEnv(t)
+
+	// Set EnvPath — required by lab creation handler (writes .env)
+	envFile := filepath.Join(t.TempDir(), ".env")
+	os.WriteFile(envFile, []byte("EXISTING_VAR=1\n"), 0644)
+	savedEnvPath := env.Config.EnvPath
+	env.Config.EnvPath = envFile
+
+	loginAsAdmin(env)
+
+	uniqueID := fmt.Sprintf("F3-%d", time.Now().UnixMilli())
+	uniqueURL := fmt.Sprintf("f3-%d", time.Now().UnixMilli())
+
+	// Create a new lab
+	resp := adminPost(env, "/labs/create",
+		fmt.Sprintf("id=%s&title=Test+Fase+3&url=%s&rows=1&cols=8", uniqueID, uniqueURL))
+	resp.Body.Close()
+	if resp.StatusCode != 302 {
+		t.Fatalf("expected 302 when creating lab, got %d", resp.StatusCode)
+	}
+
+	// Get the upload dir path from config
+	var uploadDir string
+	for _, l := range env.Config.Labs {
+		if l.URLPath == uniqueURL {
+			uploadDir = l.UploadDir
+			break
+		}
+	}
+	if uploadDir == "" {
+		env.Config.EnvPath = savedEnvPath
+		t.Fatal("upload dir not found in config after lab creation")
+	}
+
+	// Register cleanup in case test fails mid-way
+	t.Cleanup(func() {
+		env.Config.EnvPath = savedEnvPath
+		os.RemoveAll(uploadDir)
+	})
+
+	// Verify upload dir exists with subdirs
+	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+		env.Config.EnvPath = savedEnvPath
+		t.Fatalf("upload dir %s should exist after lab creation", uploadDir)
+	}
+	for _, sub := range []string{"pc", "device_types", "temp", "logbook", "device_installations"} {
+		subDir := filepath.Join(uploadDir, sub)
+		if _, err := os.Stat(subDir); os.IsNotExist(err) {
+			t.Errorf("upload subdir %s should exist after lab creation", subDir)
+		}
+	}
+
+	// Delete the lab
+	resp = adminPost(env, "/labs/"+uniqueURL+"/delete", "")
+	resp.Body.Close()
+	if resp.StatusCode != 302 {
+		env.Config.EnvPath = savedEnvPath
+		t.Fatalf("expected 302 when deleting lab, got %d", resp.StatusCode)
+	}
+
+	// Verify upload dir is removed
+	if _, err := os.Stat(uploadDir); !os.IsNotExist(err) {
+		t.Errorf("upload dir %s should be removed after lab delete, got err: %v", uploadDir, err)
+	}
+}
+
 // Ensure unused import suppression — these are used in test code above.
 var _ = io.Discard
 var _ = json.Marshal
