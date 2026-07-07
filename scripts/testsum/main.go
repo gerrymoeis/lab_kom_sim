@@ -46,10 +46,16 @@ type TestRunSummary struct {
 	EndTime      time.Time
 	BuildErrors  []string
 	ServerErrors []string
+	TemplateErrors []string
+	Gin5xxErrors   []string
+	RuntimePanics  []string
 }
 
 var fileLineRe = regexp.MustCompile(`(\w+\.go:\d+):`)
 var serverErrorRe = regexp.MustCompile(`Error #\d+:.*`)
+var templateErrRe = regexp.MustCompile(`template:\s*\S+\.(?:html|tmpl):\d+:\d+:\s*(?:executing|parsing)`)
+var gin5xxRe = regexp.MustCompile(`\[GIN\]\s*\|\s*5\d{2}\s*\|`)
+var panicRe = regexp.MustCompile(`panic:\s+\S`)
 
 func main() {
 	args := []string{"test", "-json", "-count=1"}
@@ -120,8 +126,20 @@ func main() {
 }
 
 func processEvent(summary *TestRunSummary, event TestEvent) {
-	if event.Action == "output" && serverErrorRe.MatchString(event.Output) {
-		summary.ServerErrors = append(summary.ServerErrors, strings.TrimSpace(event.Output))
+	if event.Action == "output" {
+		output := event.Output
+		if serverErrorRe.MatchString(output) {
+			summary.ServerErrors = append(summary.ServerErrors, strings.TrimSpace(output))
+		}
+		if templateErrRe.MatchString(output) {
+			summary.TemplateErrors = append(summary.TemplateErrors, strings.TrimSpace(output))
+		}
+		if gin5xxRe.MatchString(output) {
+			summary.Gin5xxErrors = append(summary.Gin5xxErrors, strings.TrimSpace(output))
+		}
+		if panicRe.MatchString(output) {
+			summary.RuntimePanics = append(summary.RuntimePanics, strings.TrimSpace(output))
+		}
 	}
 
 	pkgName := event.Package
@@ -282,6 +300,31 @@ func printSummary(summary *TestRunSummary, exitCode int) {
 		fmt.Println(strings.Repeat("\u2500", 60))
 		for i, err := range summary.ServerErrors {
 			fmt.Printf("  %d) %s\n", i+1, err)
+		}
+	}
+
+	if len(summary.TemplateErrors) > 0 || len(summary.Gin5xxErrors) > 0 || len(summary.RuntimePanics) > 0 {
+		fmt.Println()
+		fmt.Println(strings.Repeat("\u2500", 60))
+		fmt.Println("  RUNTIME ERROR DETECTION")
+		fmt.Println(strings.Repeat("\u2500", 60))
+		if len(summary.TemplateErrors) > 0 {
+			fmt.Printf("  Template Errors : %d\n", len(summary.TemplateErrors))
+			for i, err := range summary.TemplateErrors {
+				fmt.Printf("    %d) %s\n", i+1, err)
+			}
+		}
+		if len(summary.Gin5xxErrors) > 0 {
+			fmt.Printf("  Gin 5xx Errors  : %d\n", len(summary.Gin5xxErrors))
+			for i, err := range summary.Gin5xxErrors {
+				fmt.Printf("    %d) %s\n", i+1, err)
+			}
+		}
+		if len(summary.RuntimePanics) > 0 {
+			fmt.Printf("  Runtime Panics  : %d\n", len(summary.RuntimePanics))
+			for i, err := range summary.RuntimePanics {
+				fmt.Printf("    %d) %s\n", i+1, err)
+			}
 		}
 	}
 
