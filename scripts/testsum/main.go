@@ -45,10 +45,12 @@ type TestRunSummary struct {
 	StartTime    time.Time
 	EndTime      time.Time
 	BuildErrors  []string
-	ServerErrors []string
-	TemplateErrors []string
-	Gin5xxErrors   []string
-	RuntimePanics  []string
+	ServerErrors    []string
+	TemplateErrors  []string
+	Gin5xxErrors    []string
+	RuntimePanics   []string
+	SetupFailedPkgs []string
+	BuildFailed     bool
 }
 
 var fileLineRe = regexp.MustCompile(`(\w+\.go:\d+):`)
@@ -56,6 +58,8 @@ var serverErrorRe = regexp.MustCompile(`Error #\d+:.*`)
 var templateErrRe = regexp.MustCompile(`template:\s*\S+\.(?:html|tmpl):\d+:\d+:\s*(?:executing|parsing)`)
 var gin5xxRe = regexp.MustCompile(`\[GIN\]\s*\|\s*5\d{2}\s*\|`)
 var panicRe = regexp.MustCompile(`panic:\s+\S`)
+var setupFailedRe = regexp.MustCompile(`FAIL\s+\S+\s+\[setup failed\]`)
+var buildErrRe = regexp.MustCompile(`(?m)^#\s+\S+`)
 
 func main() {
 	args := []string{"test", "-json", "-count=1"}
@@ -139,6 +143,14 @@ func processEvent(summary *TestRunSummary, event TestEvent) {
 		}
 		if panicRe.MatchString(output) {
 			summary.RuntimePanics = append(summary.RuntimePanics, strings.TrimSpace(output))
+		}
+		if event.Test == "" && buildErrRe.MatchString(output) {
+			summary.BuildErrors = append(summary.BuildErrors, strings.TrimSpace(output))
+			summary.BuildFailed = true
+		}
+		if event.Test == "" && strings.Contains(output, "FAIL") && setupFailedRe.MatchString(output) {
+			summary.SetupFailedPkgs = append(summary.SetupFailedPkgs, event.Package)
+			summary.BuildFailed = true
 		}
 	}
 
@@ -324,6 +336,25 @@ func printSummary(summary *TestRunSummary, exitCode int) {
 			fmt.Printf("  Runtime Panics  : %d\n", len(summary.RuntimePanics))
 			for i, err := range summary.RuntimePanics {
 				fmt.Printf("    %d) %s\n", i+1, err)
+			}
+		}
+	}
+
+	if summary.BuildFailed {
+		fmt.Println()
+		fmt.Println(strings.Repeat("\u2500", 60))
+		fmt.Println("  BUILD / SETUP FAILURES")
+		fmt.Println(strings.Repeat("\u2500", 60))
+		if len(summary.BuildErrors) > 0 {
+			fmt.Printf("  Build Errors : %d\n", len(summary.BuildErrors))
+			for i, err := range summary.BuildErrors {
+				fmt.Printf("    %d) %s\n", i+1, err)
+			}
+		}
+		if len(summary.SetupFailedPkgs) > 0 {
+			fmt.Printf("  Setup Failed : %d package(s)\n", len(summary.SetupFailedPkgs))
+			for i, pkg := range summary.SetupFailedPkgs {
+				fmt.Printf("    %d) %s\n", i+1, pkg)
 			}
 		}
 	}
