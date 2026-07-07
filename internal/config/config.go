@@ -29,7 +29,6 @@ type Config struct {
 	GeminiBaseURL    string
 	OpenRouterAPIKey string
 	OpenRouterBaseURL string
-	Android          bool
 	WriteMode        string
 	Timezone         string
 	DefaultPageSize   int
@@ -121,7 +120,6 @@ func Load() *Config {
 		GeminiBaseURL:      getEnv("GEMINI_BASE_URL", ""),
 		OpenRouterAPIKey:   getEnv("OPENROUTER_API_KEY", ""),
 		OpenRouterBaseURL:  getEnv("OPENROUTER_BASE_URL", ""),
-		Android:          getEnv("ANDROID", "false") == "true",
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
 		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
 		DefaultPageSize:    getEnvInt("DEFAULT_PAGE_SIZE", 25),

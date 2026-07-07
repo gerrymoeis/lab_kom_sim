@@ -27,9 +27,7 @@ type CleanupRequest struct {
 	FileRefs []string `json:"file_refs,omitempty"`
 }
 
-// UploadImage handles immediate image upload and processing for preview.
-// When ANDROID=true: client has already compressed the image, save directly.
-// When ANDROID=false: save original, then server-side compress + convert to JPEG.
+// UploadImage handles image upload, validates, compresses to JPEG, and saves to temp/.
 func (h *Handler) UploadImage(c *gin.Context) {
 	if !h.requireAdmin(c) { return }
 
@@ -62,12 +60,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 
 	// Validate file extension
 	ext := strings.ToLower(filepath.Ext(file.Filename))
-	var allowedExts []string
-	if h.cfg.Android {
-		allowedExts = []string{".jpg", ".jpeg"}
-	} else {
-		allowedExts = []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
-	}
+	allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
 	isAllowed := false
 	for _, allowed := range allowedExts {
 		if ext == allowed {
@@ -157,43 +150,33 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	if h.cfg.Android {
-		if err := c.SaveUploadedFile(file, finalPath); err != nil {
-			c.JSON(http.StatusInternalServerError, UploadResponse{
-				Success: false,
-				Message: "Gagal menyimpan file",
-			})
-			return
-		}
-	} else {
-		// ANDROID=false: save original, then server-side compress
-		tempOriginal := filepath.Join(h.cfg.UploadPath, lab, "temp", "original_"+fileBase+ext)
-		if err := c.SaveUploadedFile(file, tempOriginal); err != nil {
-			c.JSON(http.StatusInternalServerError, UploadResponse{
-				Success: false,
-				Message: "Gagal menyimpan file",
-			})
-			return
-		}
-
-		maxDimension := 1280
-		switch req.Type {
-		case "front":
-			maxDimension = 1920
-		case "device_type":
-			maxDimension = 1024
-		}
-
-		if err := h.imageService.CompressAndSave(tempOriginal, finalPath, maxDimension); err != nil {
-			os.Remove(tempOriginal)
-			c.JSON(http.StatusInternalServerError, UploadResponse{
-				Success: false,
-				Message: "Gagal memproses gambar",
-			})
-			return
-		}
-		os.Remove(tempOriginal)
+	// Save original, then server-side compress + convert to JPEG
+	tempOriginal := filepath.Join(h.cfg.UploadPath, lab, "temp", "original_"+fileBase+ext)
+	if err := c.SaveUploadedFile(file, tempOriginal); err != nil {
+		c.JSON(http.StatusInternalServerError, UploadResponse{
+			Success: false,
+			Message: "Gagal menyimpan file",
+		})
+		return
 	}
+
+	maxDimension := 1280
+	switch req.Type {
+	case "front":
+		maxDimension = 1920
+	case "device_type":
+		maxDimension = 1024
+	}
+
+	if err := h.imageService.CompressAndSave(tempOriginal, finalPath, maxDimension); err != nil {
+		os.Remove(tempOriginal)
+		c.JSON(http.StatusInternalServerError, UploadResponse{
+			Success: false,
+			Message: "Gagal memproses gambar",
+		})
+		return
+	}
+	os.Remove(tempOriginal)
 
 	// Return success response
 	c.JSON(http.StatusOK, UploadResponse{

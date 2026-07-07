@@ -83,7 +83,6 @@ func (h *Handler) PCCreatePage(c *gin.Context) {
 	h.renderTemplate(c, http.StatusOK, "pc/create.html", gin.H{
 		"title": "Tambah PC Baru", "currentPage": "pc",
 		"username": username, "role": role,
-		"android": h.cfg.Android,
 		"nextMahasiswaLabel": h.pcService.NextLabel("dipakai", true),
 		"nextCadanganLabel":  h.pcService.NextLabel("cadangan", false),
 		"operatingSystems":   operatingSystems,
@@ -176,7 +175,6 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 		"title": "Edit PC", "currentPage": "pc",
 		"username": username, "role": role, "pc": pc,
 		"requiredSW": requiredSW, "otherSW": otherSW,
-		"android": h.cfg.Android,
 		"purchaseDate": pd,
 		"lastChecked": lc,
 		"lastCheckedDisplay": lcDisplay,

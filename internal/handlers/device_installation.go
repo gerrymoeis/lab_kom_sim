@@ -71,7 +71,7 @@ func (h *Handler) DeviceInstallationCreatePage(c *gin.Context) {
 	deviceID, _ := strconv.Atoi(c.DefaultQuery("device_id", "0"))
 	h.renderTemplate(c, http.StatusOK, "device_installation/create.html", gin.H{
 		"title": "Tambah Instalasi", "currentPage": "devices",
-		"username": username, "role": role, "android": h.cfg.Android,
+		"username": username, "role": role,
 		"devices": devices, "preselectDeviceID": deviceID,
 	})
 }
@@ -83,7 +83,7 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 	if err := c.ShouldBind(&req); err != nil {
 		h.renderTemplate(c, http.StatusBadRequest, "device_installation/create.html", gin.H{
 			"title": "Tambah Instalasi", "currentPage": "devices",
-			"android": h.cfg.Android, "error": "Lengkapi data yang diperlukan",
+			"error": "Lengkapi data yang diperlukan",
 		})
 		return
 	}
@@ -150,7 +150,7 @@ func (h *Handler) DeviceInstallationEditPage(c *gin.Context) {
 
 	h.renderTemplate(c, http.StatusOK, "device_installation/edit.html", gin.H{
 		"title": "Edit Instalasi", "currentPage": "devices",
-		"username": username, "role": role, "android": h.cfg.Android,
+		"username": username, "role": role,
 		"installation": inst,
 		"deviceLabel":    inst.DeviceLabel,
 	})

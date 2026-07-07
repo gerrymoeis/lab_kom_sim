@@ -166,7 +166,6 @@ func createSharedEnvironment() (*TestEnvironment, string, string, error) {
 
 // TestConfigOverrides allows customising config for specific test scenarios.
 type TestConfigOverrides struct {
-	Android          bool
 	GeminiKey        string
 	OpenRouterKey    string
 	UploadPath       string
@@ -405,7 +404,6 @@ func createTestConfig(overrides ...TestConfigOverrides) *config.Config {
 		SessionSecret:     "test-secret-12345",
 		UploadPath:        uploadPath,
 		DefaultPageSize:   25,
-		Android:           cfg.Android,
 		GeminiAPIKey:      geminiKey,
 		GeminiBaseURL:     geminiBaseURL,
 		OpenRouterAPIKey:  openRouterKey,

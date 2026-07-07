@@ -227,7 +227,6 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 		"username": username, "role": role,
 		"deviceTypes": h.fetchDeviceTypes(),
 		"categories":  h.fetchCategories(""),
-		"android":     h.cfg.Android,
 	})
 }
 
@@ -528,7 +527,6 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 		"deviceType":  dt,
 		"categories":  h.fetchCategories(""),
 		"deviceTypes": h.fetchDeviceTypes(),
-		"android":     h.cfg.Android,
 	})
 }
 
@@ -586,7 +584,6 @@ func (h *Handler) renderEditPageWithError(c *gin.Context, dt *models.DeviceType,
 		"deviceType":  dt,
 		"categories":  h.fetchCategories(""),
 		"deviceTypes": h.fetchDeviceTypes(),
-		"android":     h.cfg.Android,
 	})
 }
 
@@ -625,7 +622,6 @@ func (h *Handler) DeviceTypeCreatePage(c *gin.Context) {
 		"title": "Tambah Tipe Perangkat", "currentPage": "devices",
 		"username":   username, "role": role,
 		"categories": h.fetchCategories(""),
-		"android":    h.cfg.Android,
 	})
 }
 
