@@ -432,6 +432,21 @@ func TestSA_FullCRUD(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("sa_delete_lab_cleans_global_user", func(t *testing.T) {
+		var count int
+		env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username = ?", newLabURL).Scan(&count)
+		if count != 0 {
+			t.Errorf("expected main account '%s' to be deleted, but found %d row(s)", newLabURL, count)
+		}
+
+		// Super admin should still exist
+		var adminCount int
+		env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username = 'admin'").Scan(&adminCount)
+		if adminCount != 1 {
+			t.Errorf("expected super admin to remain, got %d", adminCount)
+		}
+	})
 }
 
 // ————— helpers —————
