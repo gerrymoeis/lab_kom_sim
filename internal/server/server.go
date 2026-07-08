@@ -538,6 +538,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 			api.POST("/delete-temp-file", adapter.Handle((*handlers.Handler).DeleteTempFile))
 			api.POST("/cleanup-temp-files", adapter.Handle((*handlers.Handler).CleanupTempFiles))
 			api.POST("/clear-photo", adapter.Handle((*handlers.Handler).ClearPhoto))
+			api.GET("/download-photos", adapter.Handle((*handlers.Handler).BatchDownloadZIP))
 			api.GET("/devices/next-label", adapter.Handle((*handlers.Handler).NextLabel))
 			api.GET("/devices/next-labels", adapter.Handle((*handlers.Handler).NextLabels))
 			api.GET("/sticker-templates", adapter.Handle((*handlers.Handler).StickerTemplateList))
