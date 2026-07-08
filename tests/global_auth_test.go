@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 func TestLandingPage(t *testing.T) {
@@ -613,11 +611,14 @@ func TestDefaultPasswordHints(t *testing.T) {
 	env := wrapSharedEnv(t)
 	lab := env.LabA
 
-	// Restore shared state changes when all subtests finish
+	// Safety net: restore username if changed by subtest (password auto-restored by resetGlobalState)
 	t.Cleanup(func() {
-		adminHash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.MinCost)
-		env.GlobalDB.Exec("UPDATE global_users SET password = ? WHERE username = 'admin'", string(adminHash))
-		env.GlobalDB.Exec("UPDATE global_users SET username = 'lab-kom-mi', is_super_admin = 1 WHERE username = 'lab-kom-mi-changed'")
+		_, err := env.GlobalDB.Exec(
+			"UPDATE global_users SET username = 'lab-kom-mi', is_super_admin = 1 WHERE username = 'lab-kom-mi-changed'",
+		)
+		if err != nil {
+			t.Logf("WARNING: lab-kom-mi username restore failed: %v", err)
+		}
 	})
 
 	t.Run("hint_hides_after_password_change", func(t *testing.T) {
@@ -866,6 +867,14 @@ func TestGlobalAdminProfile(t *testing.T) {
 	// C.3: AdminChangePassword â€” POST /labs/profile/password â†’ 200 + new pw works
 	// ============================================
 	t.Run("C.3_admin_change_password", func(t *testing.T) {
+		// Safety net: always restore original admin password via direct SQL
+		t.Cleanup(func() {
+			env.GlobalDB.Exec(
+				"UPDATE global_users SET password = ? WHERE username = 'admin'",
+				bcryptHash("admin123"),
+			)
+		})
+
 		// GET profile page to extract CSRF token
 		req, _ := http.NewRequest("GET", tsURL+"/labs/profile", nil)
 		env.LabA.addCookies(req)

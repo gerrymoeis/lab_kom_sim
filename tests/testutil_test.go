@@ -21,6 +21,65 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// ── SSOT: Seed user definitions (single source of truth) ──────
+
+type seedUserDef struct {
+	Username, Password, FullName string
+	IsSuperAdmin                 bool
+}
+type seedPermDef struct {
+	Username, LabPath, Role string
+}
+
+var seedUsers = []seedUserDef{
+	{"admin", "admin123", "Administrator", true},
+	{"rekan", "rekan123", "Rekan Administrator", true},
+	{"labA_only", "test123", "Lab A Only", false},
+	{"labB_only", "test123", "Lab B Only", false},
+	{"no_perm_user", "test123", "No Permission", false},
+	{"labA_dosen", "test123", "Lab A Dosen", false},
+}
+var seedPerms = []seedPermDef{
+	{"labA_only", "lab-kom-mi", "admin"},
+	{"labB_only", "vokasi", "admin"},
+	{"labA_dosen", "lab-kom-mi", "admin"},
+}
+
+// ── DRY helpers ───────────────────────────────────────────────
+
+func bcryptHash(pw string) string {
+	h, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.MinCost)
+	if err != nil {
+		panic("bcrypt: " + err.Error())
+	}
+	return string(h)
+}
+
+func noRedirectClient() *http.Client {
+	return &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func seedGlobalUsers(db *database.DB) {
+	for _, u := range seedUsers {
+		db.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, ?)",
+			u.Username, bcryptHash(u.Password), u.FullName, boolToInt(u.IsSuperAdmin))
+	}
+	for _, p := range seedPerms {
+		var id int
+		db.QueryRow("SELECT id FROM global_users WHERE username=?", p.Username).Scan(&id)
+		db.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, ?)", id, p.LabPath, p.Role)
+	}
+}
+
 var (
 	sharedEnv     *TestEnvironment
 	sharedCleanup func()
@@ -114,23 +173,7 @@ func createSharedEnvironment() (*TestEnvironment, string, string, error) {
 	}
 	globalDB.Exec("UPDATE global_users SET session_token = ''")
 
-	bcryptHash := func(pw string) string {
-		h, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.MinCost)
-		return string(h)
-	}
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 1)", "admin", bcryptHash("admin123"), "Administrator")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 1)", "rekan", bcryptHash("rekan123"), "Rekan Administrator")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_only", bcryptHash("test123"), "Lab A Only")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labB_only", bcryptHash("test123"), "Lab B Only")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "no_perm_user", bcryptHash("test123"), "No Permission")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_dosen", bcryptHash("test123"), "Lab A Dosen")
-	var labAOnlyID, labBOnlyID, labADosenID int
-	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_only'").Scan(&labAOnlyID)
-	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labB_only'").Scan(&labBOnlyID)
-	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_dosen'").Scan(&labADosenID)
-	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labAOnlyID, labAURL)
-	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labBOnlyID, labBURL)
-	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labADosenID, labAURL)
+	seedGlobalUsers(globalDB)
 	dbs := map[string]*database.DB{labAURL: dbA, labBURL: dbB}
 	router, cleanup, flushLogs, globalHandler := server.SetupRouter(dbs, globalDB, cfg, services.DummyNotifier{})
 	sharedCleanup = cleanup
@@ -418,9 +461,45 @@ func clearSessions() {
 	}
 }
 
+func resetGlobalState() {
+	clearSessions()
+
+	// Reset passwords, full_name, is_super_admin to seed values
+	for _, u := range seedUsers {
+		sharedEnv.GlobalDB.Exec(
+			`UPDATE global_users SET password = ?, full_name = ?, is_super_admin = ? WHERE username = ?`,
+			bcryptHash(u.Password), u.FullName, boolToInt(u.IsSuperAdmin), u.Username,
+		)
+	}
+
+	// Reset permissions for seed users only (don't touch main accounts created by SetupGlobalDB)
+	for _, p := range seedPerms {
+		var id int
+		sharedEnv.GlobalDB.QueryRow("SELECT id FROM global_users WHERE username=?", p.Username).Scan(&id)
+		sharedEnv.GlobalDB.Exec("DELETE FROM lab_permissions WHERE user_id = ?", id)
+		sharedEnv.GlobalDB.Exec(
+			"INSERT INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, ?)",
+			id, p.LabPath, p.Role,
+		)
+	}
+
+	// Restore main accounts if their username was changed (e.g., lab-kom-mi → lab-kom-mi-changed)
+	for _, lab := range sharedEnv.Config.Labs {
+		var count int
+		sharedEnv.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username = ?", lab.URLPath).Scan(&count)
+		if count == 0 {
+			changedUsername := lab.URLPath + "-changed"
+			sharedEnv.GlobalDB.Exec(
+				"UPDATE global_users SET username = ?, is_super_admin = 1 WHERE username = ?",
+				lab.URLPath, changedUsername,
+			)
+		}
+	}
+}
+
 func wrapSharedEnv(t *testing.T) *TestEnvironment {
 	t.Helper()
-	clearSessions()
+	resetGlobalState()
 	noRedirect := func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }
 	client := &http.Client{CheckRedirect: noRedirect}
 	labA := &testLab{
@@ -512,23 +591,7 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 	}
 	globalDB.Exec("UPDATE global_users SET session_token = ''")
 
-	bcryptHash := func(pw string) string {
-		h, _ := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.MinCost)
-		return string(h)
-	}
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 1)", "admin", bcryptHash("admin123"), "Administrator")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 1)", "rekan", bcryptHash("rekan123"), "Rekan Administrator")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_only", bcryptHash("test123"), "Lab A Only")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labB_only", bcryptHash("test123"), "Lab B Only")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "no_perm_user", bcryptHash("test123"), "No Permission")
-	globalDB.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, 0)", "labA_dosen", bcryptHash("test123"), "Lab A Dosen")
-	var labAOnlyID, labBOnlyID, labADosenID int
-	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_only'").Scan(&labAOnlyID)
-	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labB_only'").Scan(&labBOnlyID)
-	globalDB.QueryRow("SELECT id FROM global_users WHERE username='labA_dosen'").Scan(&labADosenID)
-	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labAOnlyID, labAURL)
-	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labBOnlyID, labBURL)
-	globalDB.Exec("INSERT OR IGNORE INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, 'admin')", labADosenID, labAURL)
+	seedGlobalUsers(globalDB)
 	dbs := map[string]*database.DB{labAURL: dbA, labBURL: dbB}
 	router, cleanup, flushLogs, globalHandler := server.SetupRouter(dbs, globalDB, cfg, services.DummyNotifier{})
 	t.Cleanup(func() {
