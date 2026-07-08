@@ -103,11 +103,12 @@ func loadNavItems(role string, isGlobalAdmin bool) []NavItem {
 }
 
 func CleanupTempFiles(cfg *config.Config) {
+	ttl := time.Duration(cfg.TempTTL) * time.Hour
 	for _, lab := range cfg.Labs {
 		tempDir := filepath.Join(cfg.UploadPath, lab.URLPath, "temp")
 		filepath.Walk(tempDir,
 			func(path string, info os.FileInfo, err error) error {
-				if err == nil && !info.IsDir() && info.ModTime().Before(time.Now().Add(-1*time.Hour)) {
+				if err == nil && !info.IsDir() && info.ModTime().Before(time.Now().Add(-ttl)) {
 					os.Remove(path)
 				}
 				return nil
@@ -536,6 +537,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 			api.POST("/upload-image", adapter.Handle((*handlers.Handler).UploadImage))
 			api.POST("/delete-temp-file", adapter.Handle((*handlers.Handler).DeleteTempFile))
 			api.POST("/cleanup-temp-files", adapter.Handle((*handlers.Handler).CleanupTempFiles))
+			api.POST("/clear-photo", adapter.Handle((*handlers.Handler).ClearPhoto))
 			api.GET("/devices/next-label", adapter.Handle((*handlers.Handler).NextLabel))
 			api.GET("/devices/next-labels", adapter.Handle((*handlers.Handler).NextLabels))
 			api.GET("/sticker-templates", adapter.Handle((*handlers.Handler).StickerTemplateList))

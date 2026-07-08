@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
 )
 
@@ -226,4 +228,85 @@ func (h *Handler) CleanupTempFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+type ClearPhotoRequest struct {
+	EntityType string `json:"type"`       // "pc", "device_type", "device_installation"
+	Identifier string `json:"identifier"` // label (PC), slug (device_type), or id (device_installation)
+	PhotoField string `json:"photo"`      // "serial" or "front" (only for PC)
+}
+
+func (h *Handler) ClearPhoto(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
+	var req ClearPhotoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Request tidak valid")
+		return
+	}
+
+	lab := c.GetString("lab")
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
+	ip, ua := getRequestContext(c)
+
+	switch req.EntityType {
+	case "pc":
+		pc, err := h.pcService.GetByLabel(req.Identifier)
+		if err != nil || pc == nil {
+			h.errJSON(c, http.StatusNotFound, "PC tidak ditemukan")
+			return
+		}
+		var filename string
+		field := "photo_" + req.PhotoField
+		switch req.PhotoField {
+		case "serial":
+			filename = pc.PhotoSerial
+		case "front":
+			filename = pc.PhotoFront
+		default:
+			h.errJSON(c, http.StatusBadRequest, "Field photo tidak valid")
+			return
+		}
+		services.DeleteFile(h.cfg.UploadPath, lab, "pc", filename)
+		if err := h.pcService.ClearPhoto(req.Identifier, field); err != nil {
+			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus foto")
+			return
+		}
+
+	case "device_type":
+		dt, err := h.deviceTypeService.GetByLabelSlug(req.Identifier)
+		if err != nil || dt == nil {
+			h.errJSON(c, http.StatusNotFound, "Tipe perangkat tidak ditemukan")
+			return
+		}
+		services.DeleteFile(h.cfg.UploadPath, lab, "device_types", dt.Photo)
+		if err := h.deviceTypeService.Update(dt.ID, services.DeviceTypeUpdateInput{Photo: ""}, uid, u, r, ip, ua); err != nil {
+			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus foto")
+			return
+		}
+
+	case "device_installation":
+		id, err := strconv.Atoi(req.Identifier)
+		if err != nil {
+			h.errJSON(c, http.StatusBadRequest, "ID instalasi tidak valid")
+			return
+		}
+		inst, err := h.deviceInstallationService.GetByID(id)
+		if err != nil || inst == nil {
+			h.errJSON(c, http.StatusNotFound, "Instalasi tidak ditemukan")
+			return
+		}
+		services.DeleteFile(h.cfg.UploadPath, lab, "device_installations", inst.Photo)
+		if err := h.deviceInstallationService.Update(id, services.UpdateInstallationInput{Photo: ""}, uid, u, r, ip, ua); err != nil {
+			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus foto")
+			return
+		}
+
+	default:
+		h.errJSON(c, http.StatusBadRequest, "Tipe entity tidak dikenal")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Foto berhasil dihapus"})
 }
