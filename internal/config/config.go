@@ -21,7 +21,6 @@ type Config struct {
 	MultiLabMode     bool   // true if LABS= or LABS_<N>_* is used (multi-lab), false if only DATABASE_PATH (single-lab)
 	DatabaseURL      string
 	SessionSecret    string
-	CookieSecure     bool
 	UploadPath       string
 	GlobalDBPath     string
 	EnvPath          string
@@ -115,7 +114,6 @@ func Load() *Config {
 		EnvPath:       envPath,
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
-		CookieSecure:  getEnv("COOKIE_SECURE", "false") == "true",
 		UploadPath:    uploadPath,
 		GlobalDBPath:  getEnv("GLOBAL_DB_PATH", "data/global.db"),
 		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),

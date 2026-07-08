@@ -272,7 +272,8 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	// --- Root-level middleware (applies to ALL routes) ---
 	router.Use(middleware.GlobalDBInjector(globalDB))
-	router.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
+	router.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret))
+	router.Use(middleware.SecureSessionMiddleware())
 	router.Use(middleware.FlashReader())
 
 	router.GET("/healthz", func(c *gin.Context) {
