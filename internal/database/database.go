@@ -10,6 +10,12 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+var testMode bool
+
+func SetTestMode(v bool) {
+	testMode = v
+}
+
 func InitDB(dbPath, dbURL string) (*DB, error) {
 	if dbURL != "" {
 		log.Println("Using PostgreSQL (Neon DB)")
@@ -47,7 +53,11 @@ func InitDB(dbPath, dbURL string) (*DB, error) {
 		if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
 			return nil, fmt.Errorf("failed to set busy_timeout: %w", err)
 		}
-		if _, err := db.Exec("PRAGMA synchronous=FULL"); err != nil {
+		syncMode := "FULL"
+		if testMode {
+			syncMode = "NORMAL"
+		}
+		if _, err := db.Exec("PRAGMA synchronous=" + syncMode); err != nil {
 			return nil, fmt.Errorf("failed to set synchronous: %w", err)
 		}
 		if _, err := db.Exec("PRAGMA temp_store=MEMORY"); err != nil {
