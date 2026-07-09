@@ -406,3 +406,7 @@ func (s *PCService) BatchDeletePC(labels []string, actorID int, actorUsername, a
 		ipAddress, userAgent)
 	return nil
 }
+
+func (s *PCService) ClearPhoto(label, field string) error {
+	return s.pcRepo.ClearPhoto(label, field)
+}

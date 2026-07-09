@@ -1,12 +1,9 @@
 ﻿package handlers
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -230,7 +227,6 @@ func (h *Handler) DeviceCreatePage(c *gin.Context) {
 		"username": username, "role": role,
 		"deviceTypes": h.fetchDeviceTypes(),
 		"categories":  h.fetchCategories(""),
-		"android":     h.cfg.Android,
 	})
 }
 
@@ -308,7 +304,7 @@ func (h *Handler) DeviceBatchCreate(c *gin.Context) {
 	}
 
 	// Process photo ref for inline device type creation
-	photoFile, err := processDeviceTypePhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.NewTypePhotoFileRef)
+	photoFile, err := services.PromoteFile(h.cfg.UploadPath, c.GetString("lab"), req.NewTypePhotoFileRef, "device_types", "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -531,7 +527,6 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 		"deviceType":  dt,
 		"categories":  h.fetchCategories(""),
 		"deviceTypes": h.fetchDeviceTypes(),
-		"android":     h.cfg.Android,
 	})
 }
 
@@ -557,7 +552,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	// Process photo ref — fallback ke existing photo jika tidak upload baru
 	photoFile := dt.Photo
 	if req.PhotoFileRef != "" {
-		photoFile, err = processDeviceTypePhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef)
+		photoFile, err = services.PromoteFile(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_types", dt.Photo)
 		if err != nil {
 			h.renderEditPageWithError(c, dt, err.Error())
 			return
@@ -589,7 +584,6 @@ func (h *Handler) renderEditPageWithError(c *gin.Context, dt *models.DeviceType,
 		"deviceType":  dt,
 		"categories":  h.fetchCategories(""),
 		"deviceTypes": h.fetchDeviceTypes(),
-		"android":     h.cfg.Android,
 	})
 }
 
@@ -613,12 +607,58 @@ func (h *Handler) DeviceTypeDelete(c *gin.Context) {
 	}
 
 	// Cascade delete photo from disk
-	if dt.Photo != "" {
-		lab := c.GetString("lab")
-		os.Remove(filepath.Join(h.cfg.UploadPath, lab, "device_types", dt.Photo))
-	}
+	lab := c.GetString("lab")
+	services.DeleteFile(h.cfg.UploadPath, lab, "device_types", dt.Photo)
 
 	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil dihapus", "delete")
+}
+
+func (h *Handler) DeviceTypeCreatePage(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	h.renderTemplate(c, http.StatusOK, "device_type/create.html", gin.H{
+		"title": "Tambah Tipe Perangkat", "currentPage": "devices",
+		"username":   username, "role": role,
+		"categories": h.fetchCategories(""),
+	})
+}
+
+func (h *Handler) DeviceTypeCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
+	var req CreateDeviceTypeRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.renderTemplate(c, http.StatusBadRequest, "device_type/create.html", gin.H{
+			"title": "Tambah Tipe Perangkat", "currentPage": "devices",
+			"error":      "Lengkapi data yang diperlukan",
+			"categories": h.fetchCategories(""),
+		})
+		return
+	}
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
+	ip, ua := getRequestContext(c)
+
+	if _, err := h.deviceTypeService.Create(services.DeviceTypeCreateInput{
+		CategoryID:      req.CategoryID,
+		Name:            req.Name,
+		Brand:           req.Brand,
+		Model:           req.Model,
+		LabelPrefix: req.LabelPrefix,
+		UsageType:       req.UsageType,
+		DefaultLocation: req.DefaultLocation,
+	}, uid, u, r, ip, ua); err != nil {
+		h.renderTemplate(c, http.StatusInternalServerError, "device_type/create.html", gin.H{
+			"title": "Tambah Tipe Perangkat", "currentPage": "devices",
+			"error":      "Gagal menyimpan tipe perangkat",
+			"categories": h.fetchCategories(""),
+		})
+		return
+	}
+	h.redirectWithSuccess(c, "/devices?tab=types", "Tipe perangkat berhasil ditambahkan")
 }
 
 func (h *Handler) DeviceTypeDetail(c *gin.Context) {
@@ -956,23 +996,6 @@ func groupDevices(devices []models.Device, activeLoanIDs, depletedIDs map[int]bo
 	return grouped
 }
 
-func processDeviceTypePhotoRef(uploadPath, lab, fileRef string) (string, error) {
-	ref := filepath.Base(strings.TrimSpace(fileRef))
-	if ref == "" || ref == "." || ref == "/" || ref == "\\" {
-		return "", nil
-	}
-	src := filepath.Join(uploadPath, lab, "temp", ref)
-	dst := filepath.Join(uploadPath, lab, "device_types", ref)
-	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-		return "", fmt.Errorf("gagal membuat direktori foto: %w", err)
-	}
-	if err := services.CopyFile(src, dst); err != nil {
-		return "", fmt.Errorf("gagal menyalin foto: %w", err)
-	}
-	os.Remove(src)
-	return ref, nil
-}
-
 func (h *Handler) DeviceBatchDelete(c *gin.Context) {
 	if !h.requireAdmin(c) {
 		h.errJSON(c, http.StatusForbidden, "Hanya admin")
@@ -1027,6 +1050,43 @@ func (h *Handler) DeviceTypeBatchDelete(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Tipe perangkat berhasil dihapus"})
+}
+
+func (h *Handler) CategoryCreatePage(c *gin.Context) {
+	_, username, role, ok := h.user(c)
+	if !ok {
+		return
+	}
+	h.renderTemplate(c, http.StatusOK, "category/create.html", gin.H{
+		"title": "Tambah Kategori", "currentPage": "devices",
+		"username": username, "role": role,
+	})
+}
+
+func (h *Handler) CategoryCreate(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
+	var req EditCategoryRequest
+	if err := c.ShouldBind(&req); err != nil {
+		h.renderTemplate(c, http.StatusBadRequest, "category/create.html", gin.H{
+			"title": "Tambah Kategori", "currentPage": "devices",
+			"error": "Lengkapi data yang diperlukan",
+		})
+		return
+	}
+
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
+	ip, ua := getRequestContext(c)
+
+	if _, err := h.categoryService.Create(req.Name, req.LabelPrefix, uid, u, r, ip, ua); err != nil {
+		h.renderTemplate(c, http.StatusInternalServerError, "category/create.html", gin.H{
+			"title": "Tambah Kategori", "currentPage": "devices",
+			"error": "Gagal menyimpan kategori",
+		})
+		return
+	}
+	h.redirectWithSuccess(c, "/devices?tab=types", "Kategori berhasil ditambahkan")
 }
 
 func (h *Handler) CategoryBatchDelete(c *gin.Context) {

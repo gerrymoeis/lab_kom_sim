@@ -130,7 +130,8 @@ func main() {
 	}
 
 	go func() {
-		for { time.Sleep(30 * time.Minute); server.CleanupTempFiles(cfg) }
+		interval := time.Duration(cfg.TempCleanupInterval) * time.Minute
+		for { time.Sleep(interval); server.CleanupTempFiles(cfg) }
 	}()
 
 	for _, wq := range wqs {

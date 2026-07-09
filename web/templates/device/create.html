@@ -506,16 +506,6 @@
         showNewTypeLoading();
 
         try {
-            var ext = file.name.split('.').pop().toLowerCase();
-            if ((ext === 'heic' || ext === 'heif') && typeof HeicTo !== 'undefined') {
-                var blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
-                file = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
-            }
-
-            if (window.ANDROID_MODE) {
-                file = await compressNewTypeImage(file, 1024);
-            }
-
             var previewUrl = URL.createObjectURL(file);
             if (newTypePhotoPreviewUrl) URL.revokeObjectURL(newTypePhotoPreviewUrl);
             newTypePhotoPreviewUrl = previewUrl;
@@ -624,8 +614,5 @@
     });
 })();
 </script>
-
-<script>window.ANDROID_MODE={{ .android }};</script>
-{{ if .android }}<script src="{{ staticURL "vendor/heic-to.js" }}"></script>{{ end }}
 
 {{ template "layout/footer.html" . }}
