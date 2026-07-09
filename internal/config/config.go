@@ -120,7 +120,7 @@ func Load() *Config {
 		GeminiBaseURL:      getEnv("GEMINI_BASE_URL", ""),
 		OpenRouterAPIKey:   getEnv("OPENROUTER_API_KEY", ""),
 		OpenRouterBaseURL:  getEnv("OPENROUTER_BASE_URL", ""),
-		WriteMode:        getEnv("WRITE_MODE", "sync"),
+		WriteMode:        getEnv("WRITE_MODE", "async"),
 		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
 		DefaultPageSize:    getEnvInt("DEFAULT_PAGE_SIZE", 25),
 		LogRetentionDays:    getEnvInt("LOG_RETENTION_DAYS", 90),
