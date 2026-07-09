@@ -410,6 +410,12 @@ func (r *PCRepository) DeleteByLabel(label string) error {
 	return err
 }
 
+func (r *PCRepository) ClearPhoto(label, field string) error {
+	sql := fmt.Sprintf("UPDATE pcs SET %s=NULL, updated_at=CURRENT_TIMESTAMP WHERE label=?", field)
+	_, err := r.db.Exec(sql, label)
+	return err
+}
+
 func (r *PCRepository) Begin() (*database.Tx, error) {
 	return r.db.Begin()
 }

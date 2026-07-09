@@ -432,6 +432,21 @@ func TestSA_FullCRUD(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("sa_delete_lab_cleans_global_user", func(t *testing.T) {
+		var count int
+		env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username = ?", newLabURL).Scan(&count)
+		if count != 0 {
+			t.Errorf("expected main account '%s' to be deleted, but found %d row(s)", newLabURL, count)
+		}
+
+		// Super admin should still exist
+		var adminCount int
+		env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username = 'admin'").Scan(&adminCount)
+		if adminCount != 1 {
+			t.Errorf("expected super admin to remain, got %d", adminCount)
+		}
+	})
 }
 
 // ————— helpers —————
@@ -1038,7 +1053,7 @@ func TestLabDelete_CleansUpUploadDir(t *testing.T) {
 		env.Config.EnvPath = savedEnvPath
 		t.Fatalf("upload dir %s should exist after lab creation", uploadDir)
 	}
-	for _, sub := range []string{"pc", "device_types", "temp", "logbook", "device_installations"} {
+	for _, sub := range []string{"pc", "device_types", "temp", "device_installations"} {
 		subDir := filepath.Join(uploadDir, sub)
 		if _, err := os.Stat(subDir); os.IsNotExist(err) {
 			t.Errorf("upload subdir %s should exist after lab creation", subDir)

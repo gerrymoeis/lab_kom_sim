@@ -1,18 +1,4 @@
 // Shared image upload utility
-// Dual-mode: ANDROID_MODE=true → client-side compress, ANDROID_MODE=false → server-side compress
-
-async function heicToJpeg(file) {
-    var ext = file.name.split('.').pop().toLowerCase();
-    if (ext !== 'heic' && ext !== 'heif') return file;
-    if (typeof HeicTo === 'undefined') return file;
-    try {
-        var blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
-        return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'),
-            { type: 'image/jpeg', lastModified: Date.now() });
-    } catch (e) {
-        return file;
-    }
-}
 
 // compressImage resizes and re-encodes image to JPEG via canvas
 async function compressImage(file, maxDimension, quality) {
@@ -40,11 +26,6 @@ async function compressImage(file, maxDimension, quality) {
         img.onerror = function () { reject(new Error('Gagal memuat gambar')); };
         img.src = URL.createObjectURL(file);
     });
-}
-
-// getMaxDim returns the max dimension based on photo type
-function getMaxDim(type) {
-    return type === 'front' ? 1920 : 1280;
 }
 
 // --- PC-specific: serial & front photo handling ---
@@ -84,12 +65,6 @@ async function handleFileSelect(file, type, source) {
     showLoadingState(type);
 
     try {
-        file = await heicToJpeg(file);
-
-        if (window.ANDROID_MODE) {
-            file = await compressImage(file, getMaxDim(type), 0.75);
-        }
-
         // Local preview
         var previewUrl = URL.createObjectURL(file);
         if (type === 'serial') {

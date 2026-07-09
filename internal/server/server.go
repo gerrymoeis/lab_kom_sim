@@ -103,11 +103,12 @@ func loadNavItems(role string, isGlobalAdmin bool) []NavItem {
 }
 
 func CleanupTempFiles(cfg *config.Config) {
+	ttl := time.Duration(cfg.TempTTL) * time.Hour
 	for _, lab := range cfg.Labs {
 		tempDir := filepath.Join(cfg.UploadPath, lab.URLPath, "temp")
 		filepath.Walk(tempDir,
 			func(path string, info os.FileInfo, err error) error {
-				if err == nil && !info.IsDir() && info.ModTime().Before(time.Now().Add(-1*time.Hour)) {
+				if err == nil && !info.IsDir() && info.ModTime().Before(time.Now().Add(-ttl)) {
 					os.Remove(path)
 				}
 				return nil
@@ -271,7 +272,8 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	// --- Root-level middleware (applies to ALL routes) ---
 	router.Use(middleware.GlobalDBInjector(globalDB))
-	router.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret, cfg.CookieSecure))
+	router.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret))
+	router.Use(middleware.SecureSessionMiddleware())
 	router.Use(middleware.FlashReader())
 
 	router.GET("/healthz", func(c *gin.Context) {
@@ -425,11 +427,15 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 			protected.POST("/devices/:slug/delete", adapter.Handle((*handlers.Handler).DeviceDelete))
 			protected.POST("/devices/batch-delete", adapter.Handle((*handlers.Handler).DeviceBatchDelete))
 
+			protected.GET("/device-types/create", adapter.Handle((*handlers.Handler).DeviceTypeCreatePage))
+			protected.POST("/device-types/create", adapter.Handle((*handlers.Handler).DeviceTypeCreate))
 			protected.GET("/device-types/:slug", adapter.Handle((*handlers.Handler).DeviceTypeDetail))
 			protected.GET("/device-types/:slug/edit", adapter.Handle((*handlers.Handler).DeviceTypeEditPage))
 			protected.POST("/device-types/:slug/edit", adapter.Handle((*handlers.Handler).DeviceTypeEdit))
 			protected.POST("/device-types/:slug/delete", adapter.Handle((*handlers.Handler).DeviceTypeDelete))
 			protected.POST("/device-types/batch-delete", adapter.Handle((*handlers.Handler).DeviceTypeBatchDelete))
+			protected.GET("/categories/create", adapter.Handle((*handlers.Handler).CategoryCreatePage))
+			protected.POST("/categories/create", adapter.Handle((*handlers.Handler).CategoryCreate))
 			protected.GET("/categories/:slug", adapter.Handle((*handlers.Handler).CategoryDetail))
 			protected.GET("/categories/:slug/edit", adapter.Handle((*handlers.Handler).CategoryEditPage))
 			protected.POST("/categories/:slug/edit", adapter.Handle((*handlers.Handler).CategoryEdit))
@@ -532,6 +538,8 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 			api.POST("/upload-image", adapter.Handle((*handlers.Handler).UploadImage))
 			api.POST("/delete-temp-file", adapter.Handle((*handlers.Handler).DeleteTempFile))
 			api.POST("/cleanup-temp-files", adapter.Handle((*handlers.Handler).CleanupTempFiles))
+			api.POST("/clear-photo", adapter.Handle((*handlers.Handler).ClearPhoto))
+			api.GET("/download-photos", adapter.Handle((*handlers.Handler).BatchDownloadZIP))
 			api.GET("/devices/next-label", adapter.Handle((*handlers.Handler).NextLabel))
 			api.GET("/devices/next-labels", adapter.Handle((*handlers.Handler).NextLabels))
 			api.GET("/sticker-templates", adapter.Handle((*handlers.Handler).StickerTemplateList))

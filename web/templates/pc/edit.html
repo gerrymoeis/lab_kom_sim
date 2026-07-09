@@ -431,13 +431,6 @@ function updateNumbers() {
 }
 
 </script>
-
-<script>
-window.ANDROID_MODE = {{ .android }};
-</script>
-{{ if .android }}
-<script src="{{ staticURL "vendor/heic-to.js" }}"></script>
-{{ end }}
 <script src="{{ staticURL "js/photo-upload.js" }}"></script>
 <script src="{{ staticURL "js/layout-manager.js" }}"></script>
 {{ template "pc/layout_modal.html" . }}

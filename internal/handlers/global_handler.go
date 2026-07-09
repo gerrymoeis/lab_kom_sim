@@ -226,21 +226,11 @@ func (h *GlobalHandler) Logout(c *gin.Context) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   c.Request.TLS != nil,
+		Secure:   middleware.IsHTTPS(c),
 		SameSite: http.SameSiteLaxMode,
 	})
 	session.Clear()
 	_ = session.Save()
-
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "inventaris_session",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   c.Request.TLS != nil,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   -1,
-	})
 
 	if hasUserID {
 		role, _ := session.Get("role").(string)

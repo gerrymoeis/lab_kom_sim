@@ -4,8 +4,6 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
 
 	"inventaris-lab-kom/internal/repository"
@@ -73,7 +71,7 @@ func (h *Handler) DeviceInstallationCreatePage(c *gin.Context) {
 	deviceID, _ := strconv.Atoi(c.DefaultQuery("device_id", "0"))
 	h.renderTemplate(c, http.StatusOK, "device_installation/create.html", gin.H{
 		"title": "Tambah Instalasi", "currentPage": "devices",
-		"username": username, "role": role, "android": h.cfg.Android,
+		"username": username, "role": role,
 		"devices": devices, "preselectDeviceID": deviceID,
 	})
 }
@@ -85,12 +83,12 @@ func (h *Handler) DeviceInstallationCreate(c *gin.Context) {
 	if err := c.ShouldBind(&req); err != nil {
 		h.renderTemplate(c, http.StatusBadRequest, "device_installation/create.html", gin.H{
 			"title": "Tambah Instalasi", "currentPage": "devices",
-			"android": h.cfg.Android, "error": "Lengkapi data yang diperlukan",
+			"error": "Lengkapi data yang diperlukan",
 		})
 		return
 	}
 
-	photo := processPhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations")
+	photo, _ := services.PromoteFile(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations", "")
 
 	deviceID, _ := strconv.Atoi(req.DeviceID)
 	uid, u, r, ok := h.user(c)
@@ -152,7 +150,7 @@ func (h *Handler) DeviceInstallationEditPage(c *gin.Context) {
 
 	h.renderTemplate(c, http.StatusOK, "device_installation/edit.html", gin.H{
 		"title": "Edit Instalasi", "currentPage": "devices",
-		"username": username, "role": role, "android": h.cfg.Android,
+		"username": username, "role": role,
 		"installation": inst,
 		"deviceLabel":    inst.DeviceLabel,
 	})
@@ -176,9 +174,9 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 		return
 	}
 
-	photo := processPhotoRef(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations")
-	if photo == "" {
-		photo = inst.Photo
+	photo := inst.Photo
+	if req.PhotoFileRef != "" {
+		photo, _ = services.PromoteFile(h.cfg.UploadPath, c.GetString("lab"), req.PhotoFileRef, "device_installations", inst.Photo)
 	}
 
 	uid, u, r, ok := h.user(c)
@@ -216,9 +214,9 @@ func (h *Handler) DeviceInstallationDelete(c *gin.Context) {
 	}
 
 	// Cascade delete photo from disk
-	if inst != nil && inst.Photo != "" {
+	if inst != nil {
 		lab := c.GetString("lab")
-		os.Remove(filepath.Join(h.cfg.UploadPath, lab, "device_installations", inst.Photo))
+		services.DeleteFile(h.cfg.UploadPath, lab, "device_installations", inst.Photo)
 	}
 
 	h.redirectWithSuccess(c, "/devices?tab=installations", "Instalasi berhasil dihapus", "delete")

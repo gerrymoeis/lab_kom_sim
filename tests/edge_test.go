@@ -261,3 +261,154 @@ func TestEdgeCases(t *testing.T) {
 		t.Log("Race condition verification: run 'go test -race -run TestEdgeCases ./tests/' manually for full check")
 	})
 }
+
+// ——————————————————————————————————————
+// Fase 4 (doc 022) — Concurrent Session Tests
+// ——————————————————————————————————————
+
+// TestConcurrentLoginRace — 20 goroutine login admin sekaligus.
+// Karena ada TOCTOU race di GlobalAuthService.Login() (GetSessionToken
+// dan UpdateSessionToken tidak dalam 1 transaksi), bisa terjadi >1
+// goroutine berhasil login. Test ini mengamati & melaporkan hasilnya.
+func TestConcurrentLoginRace(t *testing.T) {
+	env := wrapSharedEnv(t)
+	tsURL := env.TS.URL
+
+	const numGoroutines = 20
+
+	type loginResult struct {
+		code int
+		err  error
+	}
+	results := make(chan loginResult, numGoroutines)
+	var wg sync.WaitGroup
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			noRedirect := func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }
+			client := &http.Client{CheckRedirect: noRedirect}
+
+			// GET /login → CSRF token + session cookie
+			req, _ := http.NewRequest("GET", tsURL+"/login", nil)
+			resp, err := client.Do(req)
+			if err != nil {
+				results <- loginResult{err: fmt.Errorf("GET /login: %w", err)}
+				return
+			}
+			cookies := make(map[string]string)
+			for _, c := range resp.Cookies() {
+				cookies[c.Name] = c.Value
+			}
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+
+			token := extractCSRFFromBody(string(body))
+			if token == "" {
+				results <- loginResult{err: fmt.Errorf("CSRF token not found")}
+				return
+			}
+
+			// POST /login
+			formData := "_csrf=" + url.QueryEscape(token) + "&username=admin&password=admin123"
+			req, _ = http.NewRequest("POST", tsURL+"/login", strings.NewReader(formData))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			for n, v := range cookies {
+				req.AddCookie(&http.Cookie{Name: n, Value: v})
+			}
+			resp, err = client.Do(req)
+			if err != nil {
+				results <- loginResult{err: fmt.Errorf("POST /login: %w", err)}
+				return
+			}
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+			results <- loginResult{code: resp.StatusCode}
+		}()
+	}
+	wg.Wait()
+	close(results)
+
+	var success, conflict, other int
+	for r := range results {
+		switch r.code {
+		case 302:
+			success++
+		case 409:
+			conflict++
+		default:
+			other++
+		}
+	}
+
+	t.Logf("Concurrent login race: success=%d, conflict(409)=%d, other=%d", success, conflict, other)
+	if success == 0 {
+		t.Error("expected at least 1 successful login (302)")
+	}
+	if success > 5 {
+		t.Logf("NOTE: %d concurrent logins succeeded — may indicate TOCTOU race in Login()", success)
+	}
+}
+
+// TestSessionIsolation — login user A, login user B (beda user),
+// verifikasi session A masih valid.
+func TestSessionIsolation(t *testing.T) {
+	env := wrapSharedEnv(t)
+
+	// Login sebagai user A (labA_only)
+	if !loginAndRefresh(env.LabA, "labA_only", "test123") {
+		t.Fatal("login as labA_only failed")
+	}
+
+	// Verifikasi session A works
+	resp, err := env.LabA.get("/dashboard")
+	if err != nil {
+		t.Fatalf("GET /dashboard for A: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200 for user A, got %d", resp.StatusCode)
+	}
+
+	// Login sebagai user B — beda lab, beda cookies
+	if !loginAndRefresh(env.LabB, "labB_only", "test123") {
+		t.Fatal("login as labB_only failed")
+	}
+
+	// Session A masih harus valid
+	resp, err = env.LabA.get("/dashboard")
+	if err != nil {
+		t.Fatalf("GET /dashboard for A after B login: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200 for user A after B login, got %d (session A invalidated)", resp.StatusCode)
+	}
+
+	// Session B juga harus valid
+	resp, err = env.LabB.get("/dashboard")
+	if err != nil {
+		t.Fatalf("GET /dashboard for B: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Errorf("expected 200 for user B, got %d", resp.StatusCode)
+	}
+}
+
+// extractCSRFFromBody — extract CSRF token from login page HTML.
+func extractCSRFFromBody(html string) string {
+	prefix := `<meta name="csrf-token" content="`
+	start := strings.Index(html, prefix)
+	if start == -1 {
+		return ""
+	}
+	start += len(prefix)
+	end := strings.Index(html[start:], `"`)
+	if end == -1 {
+		return ""
+	}
+	return html[start : start+end]
+}

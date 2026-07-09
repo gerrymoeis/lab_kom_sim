@@ -101,6 +101,14 @@ func TestChangePassword(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
+		// Safety net: always restore original password via direct SQL
+		t.Cleanup(func() {
+			env.GlobalDB.Exec(
+				"UPDATE global_users SET password = ? WHERE username = 'labA_only'",
+				bcryptHash("test123"),
+			)
+		})
+
 		var oldHash string
 		env.GlobalDB.QueryRow("SELECT password FROM global_users WHERE username='labA_only'").Scan(&oldHash)
 
@@ -122,7 +130,7 @@ func TestChangePassword(t *testing.T) {
 			t.Error("password hash should have changed after successful password change")
 		}
 
-		// Password change clears session_token â†’ re-login with new password
+		// Password change clears session_token → re-login with new password
 		lab.cookies = make(map[string]string)
 		lab.csrf = ""
 		if !loginAndRefresh(lab, "labA_only", "newpass456") {
@@ -140,7 +148,7 @@ func TestChangePassword(t *testing.T) {
 			t.Errorf("expected 302 restore, got %d", resp2.StatusCode)
 		}
 
-		// Restore also clears session_token â†’ re-login with original password
+		// Restore also clears session_token → re-login with original password
 		lab.cookies = make(map[string]string)
 		lab.csrf = ""
 		if !loginAndRefresh(lab, "labA_only", "test123") {
