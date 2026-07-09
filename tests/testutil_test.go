@@ -45,6 +45,21 @@ var seedPerms = []seedPermDef{
 	{"labA_dosen", "lab-kom-mi", "admin"},
 }
 
+// ── Pre-computed bcrypt hashes ───────────────────────────────
+// Computed once at init to avoid 576 bcrypt recomputations during test suite.
+var seedPasswords map[string]string
+
+func init() {
+	seedPasswords = make(map[string]string, len(seedUsers))
+	for _, u := range seedUsers {
+		h, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.MinCost)
+		if err != nil {
+			panic("seedPasswords init: " + err.Error())
+		}
+		seedPasswords[u.Username] = string(h)
+	}
+}
+
 // ── DRY helpers ───────────────────────────────────────────────
 
 func bcryptHash(pw string) string {
@@ -71,7 +86,7 @@ func boolToInt(b bool) int {
 func seedGlobalUsers(db *database.DB) {
 	for _, u := range seedUsers {
 		db.Exec("INSERT OR IGNORE INTO global_users (username, password, full_name, is_super_admin) VALUES (?, ?, ?, ?)",
-			u.Username, bcryptHash(u.Password), u.FullName, boolToInt(u.IsSuperAdmin))
+			u.Username, seedPasswords[u.Username], u.FullName, boolToInt(u.IsSuperAdmin))
 	}
 	for _, p := range seedPerms {
 		var id int
@@ -476,7 +491,7 @@ func resetGlobalState() {
 	// Clear global sessions inside transaction
 	tx.Exec("UPDATE global_users SET session_token = ''")
 
-	// UPSERT for each seed user — handles both insert (deleted) and update (changed)
+	// UPSERT for each seed user — uses pre-computed hashes (avoid 576 bcrypt computations)
 	for _, u := range seedUsers {
 		tx.Exec(
 			`INSERT INTO global_users (username, password, full_name, is_super_admin)
@@ -485,7 +500,7 @@ func resetGlobalState() {
 				 password = excluded.password,
 				 full_name = excluded.full_name,
 				 is_super_admin = excluded.is_super_admin`,
-			u.Username, bcryptHash(u.Password), u.FullName, boolToInt(u.IsSuperAdmin),
+			u.Username, seedPasswords[u.Username], u.FullName, boolToInt(u.IsSuperAdmin),
 		)
 	}
 

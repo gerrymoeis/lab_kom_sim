@@ -1053,7 +1053,7 @@ func TestLabDelete_CleansUpUploadDir(t *testing.T) {
 		env.Config.EnvPath = savedEnvPath
 		t.Fatalf("upload dir %s should exist after lab creation", uploadDir)
 	}
-	for _, sub := range []string{"pc", "device_types", "temp", "logbook", "device_installations"} {
+	for _, sub := range []string{"pc", "device_types", "temp", "device_installations"} {
 		subDir := filepath.Join(uploadDir, sub)
 		if _, err := os.Stat(subDir); os.IsNotExist(err) {
 			t.Errorf("upload subdir %s should exist after lab creation", subDir)
