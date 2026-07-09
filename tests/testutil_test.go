@@ -462,22 +462,39 @@ func clearSessions() {
 }
 
 func resetGlobalState() {
-	clearSessions()
+	// Per-lab DB sessions (separate databases, can't be in global transaction)
+	for _, db := range sharedEnv.GlobalHandler.LabsDB {
+		db.Exec("UPDATE users SET session_token = NULL")
+	}
 
-	// Reset passwords, full_name, is_super_admin to seed values
+	// Single transaction for all global DB operations → 1 fsync instead of 18-20
+	tx, err := sharedEnv.GlobalDB.Begin()
+	if err != nil {
+		panic("resetGlobalState: begin tx: " + err.Error())
+	}
+
+	// Clear global sessions inside transaction
+	tx.Exec("UPDATE global_users SET session_token = ''")
+
+	// UPSERT for each seed user — handles both insert (deleted) and update (changed)
 	for _, u := range seedUsers {
-		sharedEnv.GlobalDB.Exec(
-			`UPDATE global_users SET password = ?, full_name = ?, is_super_admin = ? WHERE username = ?`,
-			bcryptHash(u.Password), u.FullName, boolToInt(u.IsSuperAdmin), u.Username,
+		tx.Exec(
+			`INSERT INTO global_users (username, password, full_name, is_super_admin)
+			 VALUES (?, ?, ?, ?)
+			 ON CONFLICT(username) DO UPDATE SET
+				 password = excluded.password,
+				 full_name = excluded.full_name,
+				 is_super_admin = excluded.is_super_admin`,
+			u.Username, bcryptHash(u.Password), u.FullName, boolToInt(u.IsSuperAdmin),
 		)
 	}
 
 	// Reset permissions for seed users only (don't touch main accounts created by SetupGlobalDB)
 	for _, p := range seedPerms {
 		var id int
-		sharedEnv.GlobalDB.QueryRow("SELECT id FROM global_users WHERE username=?", p.Username).Scan(&id)
-		sharedEnv.GlobalDB.Exec("DELETE FROM lab_permissions WHERE user_id = ?", id)
-		sharedEnv.GlobalDB.Exec(
+		tx.QueryRow("SELECT id FROM global_users WHERE username=?", p.Username).Scan(&id)
+		tx.Exec("DELETE FROM lab_permissions WHERE user_id = ?", id)
+		tx.Exec(
 			"INSERT INTO lab_permissions (user_id, lab_url_path, role) VALUES (?, ?, ?)",
 			id, p.LabPath, p.Role,
 		)
@@ -486,14 +503,18 @@ func resetGlobalState() {
 	// Restore main accounts if their username was changed (e.g., lab-kom-mi → lab-kom-mi-changed)
 	for _, lab := range sharedEnv.Config.Labs {
 		var count int
-		sharedEnv.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username = ?", lab.URLPath).Scan(&count)
+		tx.QueryRow("SELECT COUNT(*) FROM global_users WHERE username = ?", lab.URLPath).Scan(&count)
 		if count == 0 {
 			changedUsername := lab.URLPath + "-changed"
-			sharedEnv.GlobalDB.Exec(
+			tx.Exec(
 				"UPDATE global_users SET username = ?, is_super_admin = 1 WHERE username = ?",
 				lab.URLPath, changedUsername,
 			)
 		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		panic("resetGlobalState: commit tx: " + err.Error())
 	}
 }
 
