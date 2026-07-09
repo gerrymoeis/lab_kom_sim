@@ -112,6 +112,8 @@ func TestMain(m *testing.M) {
 		godotenv.Load(filepath.Join(projectRoot, ".env.reference"))
 	}
 
+	database.SetTestMode(true)
+
 	code := func() int {
 		env, _, tmpDir, err := createSharedEnvironment()
 		if err != nil {
