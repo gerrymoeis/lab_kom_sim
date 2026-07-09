@@ -418,7 +418,7 @@ func (h *GlobalHandler) AdminLabCreate(c *gin.Context) {
 	}
 
 	// Create upload subdirs
-	for _, sub := range []string{"pc", "device_types", "temp", "logbook", "device_installations"} {
+	for _, sub := range []string{"pc", "device_types", "temp", "device_installations"} {
 		if err := os.MkdirAll(filepath.Join(uploadDir, sub), 0755); err != nil {
 			log.Printf("Warning: gagal buat upload subdir %s/%s: %v", urlPath, sub, err)
 		}
@@ -567,6 +567,20 @@ func (h *GlobalHandler) AdminLabDelete(c *gin.Context) {
 	// Hapus global DB records
 	h.globalDB.Exec("DELETE FROM lab_permissions WHERE lab_url_path = ?", urlPath)
 	h.globalDB.Exec("DELETE FROM grid_layouts WHERE lab_url_path = ?", urlPath)
+
+	// Hapus main account untuk lab ini (username == urlPath)
+	h.globalDB.Exec("DELETE FROM global_users WHERE username = ?", urlPath)
+
+	// Hapus orphan users: non-protected, non-super-admin yang tidak punya lab_permissions tersisa
+	h.globalDB.Exec(`
+		DELETE FROM global_users WHERE id IN (
+			SELECT gu.id FROM global_users gu
+			LEFT JOIN lab_permissions lp ON lp.user_id = gu.id
+			WHERE lp.user_id IS NULL
+			AND gu.is_super_admin = 0
+			AND gu.is_protected = 0
+		)
+	`)
 
 	// Tutup koneksi DB lab
 	if db, ok := h.LabsDB[urlPath]; ok {

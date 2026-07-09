@@ -21,7 +21,6 @@ type Config struct {
 	MultiLabMode     bool   // true if LABS= or LABS_<N>_* is used (multi-lab), false if only DATABASE_PATH (single-lab)
 	DatabaseURL      string
 	SessionSecret    string
-	CookieSecure     bool
 	UploadPath       string
 	GlobalDBPath     string
 	EnvPath          string
@@ -29,12 +28,13 @@ type Config struct {
 	GeminiBaseURL    string
 	OpenRouterAPIKey string
 	OpenRouterBaseURL string
-	Android          bool
 	WriteMode        string
 	Timezone         string
 	DefaultPageSize   int
-	LogRetentionDays  int
+	LogRetentionDays   int
 	LogCleanupInterval int
+	TempTTL            int // hours before temp files are cleaned up (default 1)
+	TempCleanupInterval int // minutes between cleanup runs (default 30)
 	Backup            BackupConfig
 	PublicBuild       PublicBuildConfig
 }
@@ -114,19 +114,19 @@ func Load() *Config {
 		EnvPath:       envPath,
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
-		CookieSecure:  getEnv("COOKIE_SECURE", "false") == "true",
 		UploadPath:    uploadPath,
 		GlobalDBPath:  getEnv("GLOBAL_DB_PATH", "data/global.db"),
 		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
 		GeminiBaseURL:      getEnv("GEMINI_BASE_URL", ""),
 		OpenRouterAPIKey:   getEnv("OPENROUTER_API_KEY", ""),
 		OpenRouterBaseURL:  getEnv("OPENROUTER_BASE_URL", ""),
-		Android:          getEnv("ANDROID", "false") == "true",
 		WriteMode:        getEnv("WRITE_MODE", "sync"),
 		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
 		DefaultPageSize:    getEnvInt("DEFAULT_PAGE_SIZE", 25),
-		LogRetentionDays:   getEnvInt("LOG_RETENTION_DAYS", 90),
-		LogCleanupInterval: getEnvInt("LOG_CLEANUP_INTERVAL", 24),
+		LogRetentionDays:    getEnvInt("LOG_RETENTION_DAYS", 90),
+		LogCleanupInterval:  getEnvInt("LOG_CLEANUP_INTERVAL", 24),
+		TempTTL:             getEnvInt("TEMP_TTL", 1),
+		TempCleanupInterval: getEnvInt("TEMP_CLEANUP_INTERVAL", 30),
 		PublicBuild: PublicBuildConfig{
 			Enabled:     getEnv("PUBLIC_BUILD_ENABLED", "false") == "true",
 			Interval:    getEnvInt("PUBLIC_BUILD_INTERVAL", 30),

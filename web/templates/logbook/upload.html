@@ -108,7 +108,6 @@
 </div>
 
 <script>
-window.ANDROID_MODE = {{ .android }};
 document.getElementById('uploadForm').addEventListener('submit', function(e) {
     var ref = document.getElementById('logbook_file_ref');
     if (!ref || !ref.value) {
@@ -120,8 +119,5 @@ document.getElementById('uploadForm').addEventListener('submit', function(e) {
     document.getElementById('loadingIndicator').classList.remove('d-none');
 });
 </script>
-{{ if .android }}
-<script src="{{ staticURL "vendor/heic-to.js" }}"></script>
-{{ end }}
 <script src="{{ staticURL "js/photo-upload.js" }}"></script>
 {{ template "layout/footer.html" . }}

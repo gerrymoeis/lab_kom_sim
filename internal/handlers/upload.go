@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
 )
 
@@ -27,9 +29,7 @@ type CleanupRequest struct {
 	FileRefs []string `json:"file_refs,omitempty"`
 }
 
-// UploadImage handles immediate image upload and processing for preview.
-// When ANDROID=true: client has already compressed the image, save directly.
-// When ANDROID=false: save original, then server-side compress + convert to JPEG.
+// UploadImage handles image upload, validates, compresses to JPEG, and saves to temp/.
 func (h *Handler) UploadImage(c *gin.Context) {
 	if !h.requireAdmin(c) { return }
 
@@ -62,12 +62,7 @@ func (h *Handler) UploadImage(c *gin.Context) {
 
 	// Validate file extension
 	ext := strings.ToLower(filepath.Ext(file.Filename))
-	var allowedExts []string
-	if h.cfg.Android {
-		allowedExts = []string{".jpg", ".jpeg"}
-	} else {
-		allowedExts = []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
-	}
+	allowedExts := []string{".jpg", ".jpeg", ".png", ".heic", ".heif"}
 	isAllowed := false
 	for _, allowed := range allowedExts {
 		if ext == allowed {
@@ -157,43 +152,33 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		return
 	}
 
-	if h.cfg.Android {
-		if err := c.SaveUploadedFile(file, finalPath); err != nil {
-			c.JSON(http.StatusInternalServerError, UploadResponse{
-				Success: false,
-				Message: "Gagal menyimpan file",
-			})
-			return
-		}
-	} else {
-		// ANDROID=false: save original, then server-side compress
-		tempOriginal := filepath.Join(h.cfg.UploadPath, lab, "temp", "original_"+fileBase+ext)
-		if err := c.SaveUploadedFile(file, tempOriginal); err != nil {
-			c.JSON(http.StatusInternalServerError, UploadResponse{
-				Success: false,
-				Message: "Gagal menyimpan file",
-			})
-			return
-		}
-
-		maxDimension := 1280
-		switch req.Type {
-		case "front":
-			maxDimension = 1920
-		case "device_type":
-			maxDimension = 1024
-		}
-
-		if err := h.imageService.CompressAndSave(tempOriginal, finalPath, maxDimension); err != nil {
-			os.Remove(tempOriginal)
-			c.JSON(http.StatusInternalServerError, UploadResponse{
-				Success: false,
-				Message: "Gagal memproses gambar",
-			})
-			return
-		}
-		os.Remove(tempOriginal)
+	// Save original, then server-side compress + convert to JPEG
+	tempOriginal := filepath.Join(h.cfg.UploadPath, lab, "temp", "original_"+fileBase+ext)
+	if err := c.SaveUploadedFile(file, tempOriginal); err != nil {
+		c.JSON(http.StatusInternalServerError, UploadResponse{
+			Success: false,
+			Message: "Gagal menyimpan file",
+		})
+		return
 	}
+
+	maxDimension := 1280
+	switch req.Type {
+	case "front":
+		maxDimension = 1920
+	case "device_type":
+		maxDimension = 1024
+	}
+
+	if err := h.imageService.CompressAndSave(tempOriginal, finalPath, maxDimension); err != nil {
+		os.Remove(tempOriginal)
+		c.JSON(http.StatusInternalServerError, UploadResponse{
+			Success: false,
+			Message: "Gagal memproses gambar",
+		})
+		return
+	}
+	os.Remove(tempOriginal)
 
 	// Return success response
 	c.JSON(http.StatusOK, UploadResponse{
@@ -243,4 +228,85 @@ func (h *Handler) CleanupTempFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+type ClearPhotoRequest struct {
+	EntityType string `json:"type"`       // "pc", "device_type", "device_installation"
+	Identifier string `json:"identifier"` // label (PC), slug (device_type), or id (device_installation)
+	PhotoField string `json:"photo"`      // "serial" or "front" (only for PC)
+}
+
+func (h *Handler) ClearPhoto(c *gin.Context) {
+	if !h.requireAdmin(c) { return }
+
+	var req ClearPhotoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errJSON(c, http.StatusBadRequest, "Request tidak valid")
+		return
+	}
+
+	lab := c.GetString("lab")
+	uid, u, r, ok := h.user(c)
+	if !ok { return }
+	ip, ua := getRequestContext(c)
+
+	switch req.EntityType {
+	case "pc":
+		pc, err := h.pcService.GetByLabel(req.Identifier)
+		if err != nil || pc == nil {
+			h.errJSON(c, http.StatusNotFound, "PC tidak ditemukan")
+			return
+		}
+		var filename string
+		field := "photo_" + req.PhotoField
+		switch req.PhotoField {
+		case "serial":
+			filename = pc.PhotoSerial
+		case "front":
+			filename = pc.PhotoFront
+		default:
+			h.errJSON(c, http.StatusBadRequest, "Field photo tidak valid")
+			return
+		}
+		services.DeleteFile(h.cfg.UploadPath, lab, "pc", filename)
+		if err := h.pcService.ClearPhoto(req.Identifier, field); err != nil {
+			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus foto")
+			return
+		}
+
+	case "device_type":
+		dt, err := h.deviceTypeService.GetByLabelSlug(req.Identifier)
+		if err != nil || dt == nil {
+			h.errJSON(c, http.StatusNotFound, "Tipe perangkat tidak ditemukan")
+			return
+		}
+		services.DeleteFile(h.cfg.UploadPath, lab, "device_types", dt.Photo)
+		if err := h.deviceTypeService.Update(dt.ID, services.DeviceTypeUpdateInput{Photo: ""}, uid, u, r, ip, ua); err != nil {
+			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus foto")
+			return
+		}
+
+	case "device_installation":
+		id, err := strconv.Atoi(req.Identifier)
+		if err != nil {
+			h.errJSON(c, http.StatusBadRequest, "ID instalasi tidak valid")
+			return
+		}
+		inst, err := h.deviceInstallationService.GetByID(id)
+		if err != nil || inst == nil {
+			h.errJSON(c, http.StatusNotFound, "Instalasi tidak ditemukan")
+			return
+		}
+		services.DeleteFile(h.cfg.UploadPath, lab, "device_installations", inst.Photo)
+		if err := h.deviceInstallationService.Update(id, services.UpdateInstallationInput{Photo: ""}, uid, u, r, ip, ua); err != nil {
+			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus foto")
+			return
+		}
+
+	default:
+		h.errJSON(c, http.StatusBadRequest, "Tipe entity tidak dikenal")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Foto berhasil dihapus"})
 }

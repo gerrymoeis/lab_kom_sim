@@ -89,7 +89,7 @@ func isJPEGMagic(buf []byte) bool {
 
 // ============================================
 // 2A.1 + 2A.2 + 2A.3 + 2A.6 + 2A.7
-// Image upload variations (default Android=false)
+// Image upload variations (single pipeline, all formats via CompressAndSave)
 // ============================================
 
 func TestUploadImageVariations(t *testing.T) {
@@ -300,95 +300,11 @@ func TestUploadImageVariations(t *testing.T) {
 }
 
 // ============================================
-// 2A.4 + 2A.5: ANDROID flag behavior
+// Single pipeline: HEIC accepted, compressed to JPEG, original cleaned up
 // ============================================
 
-func TestUploadAndroidFlag(t *testing.T) {
-	// 2A.4: ANDROID=true â€” HEIC rejected, JPG accepted directly
-	t.Run("android_true_heic_rejected_jpg_direct", func(t *testing.T) {
-		env := setupTestEnvironment(t, TestConfigOverrides{Android: true})
-		lab := env.LabA
-		tsURL := env.TS.URL
-
-		if !loginAndRefresh(lab, "labA_only", "test123") {
-			t.Fatal("login failed")
-		}
-
-		uploadDir := lab.cfg.UploadDir
-
-		// HEIC should be rejected (extension not allowed)
-		heicData, err := os.ReadFile(filepath.Join("tests", "resources", "pc1_sn.heic"))
-		if err != nil {
-			t.Fatalf("read HEIC test file: %v", err)
-		}
-		resp, err := uploadMultipart(lab, tsURL, heicData, "pc1_sn.heic", "serial")
-		if err != nil {
-			t.Fatalf("upload HEIC request: %v", err)
-		}
-		if resp.StatusCode != 400 {
-			t.Errorf("HEIC upload with Android=true: expected 400, got %d", resp.StatusCode)
-		}
-		result, err := decodeUploadResponse(resp)
-		if err != nil {
-			t.Fatalf("decode HEIC response: %v", err)
-		}
-		success, _ := result["success"].(bool)
-		if success {
-			t.Error("expected success=false for HEIC on Android")
-		}
-
-		// JPEG should be accepted directly (no compression)
-		jpegData, err := createTestJPEG(50, 50)
-		if err != nil {
-			t.Fatalf("create test JPEG: %v", err)
-		}
-		resp, err = uploadMultipart(lab, tsURL, jpegData, "photo.jpg", "serial")
-		if err != nil {
-			t.Fatalf("upload JPEG request: %v", err)
-		}
-		if resp.StatusCode != 200 {
-			t.Errorf("JPEG upload with Android=true: expected 200, got %d", resp.StatusCode)
-		}
-		result, err = decodeUploadResponse(resp)
-		if err != nil {
-			t.Fatalf("decode JPEG response: %v", err)
-		}
-		success, _ = result["success"].(bool)
-		if !success {
-			t.Error("JPEG upload success=false on Android")
-		}
-		fileRef, _ := result["file_ref"].(string)
-		if fileRef == "" {
-			t.Fatal("file_ref is empty for Android JPEG upload")
-		}
-
-		// Verify file is on disk
-		finalPath := filepath.Join(uploadDir, "temp", fileRef)
-		savedData, err := os.ReadFile(finalPath)
-		if err != nil {
-			t.Fatalf("read saved file: %v", err)
-		}
-		if !isJPEGMagic(savedData) {
-			t.Error("saved file is not a valid JPEG")
-		}
-
-		// Verify no original_ prefix file exists (file saved directly, not via compress)
-		tempDir := filepath.Join(uploadDir, "temp")
-		entries, err := os.ReadDir(tempDir)
-		if err != nil {
-			t.Fatalf("read temp dir: %v", err)
-		}
-		for _, entry := range entries {
-			if strings.HasPrefix(entry.Name(), "original_") {
-				t.Errorf("unexpected original_ file when Android=true: %s", entry.Name())
-			}
-		}
-	})
-
-	// 2A.5: ANDROID=false (default) â€” HEIC accepted, compressed, original deleted
-	// This is already tested by TestUploadImageVariations/heic_to_jpeg_conversion
-	// but we add an explicit verification of original deletion here.
-	t.Run("android_false_heic_compressed_original_cleanup", func(t *testing.T) {
+func TestUploadSinglePipeline(t *testing.T) {
+	t.Run("heic_compressed_original_cleanup", func(t *testing.T) {
 		env := wrapSharedEnv(t)
 		lab := env.LabA
 		tsURL := env.TS.URL

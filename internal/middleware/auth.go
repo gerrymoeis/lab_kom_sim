@@ -36,14 +36,14 @@ func AuthRequired() gin.HandlerFunc {
 		if err != nil || dbToken == "" ||
 			subtle.ConstantTimeCompare([]byte(dbToken), []byte(sessionToken.(string))) != 1 {
 
-			session.Clear()
 			session.Options(sessions.Options{
 				Path:     "/",
 				MaxAge:   -1,
 				HttpOnly: true,
-				Secure:   c.Request.TLS != nil,
+				Secure:   IsHTTPS(c),
 				SameSite: http.SameSiteLaxMode,
 			})
+			session.Clear()
 			_ = session.Save()
 			c.Redirect(http.StatusFound, "/login")
 			c.Abort()

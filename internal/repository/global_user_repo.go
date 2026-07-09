@@ -83,6 +83,15 @@ func (r *GlobalUserRepository) UpdateSessionToken(id int, token string) error {
 	return err
 }
 
+func (r *GlobalUserRepository) UpdateSessionTokenIfEmpty(id int, token string) (bool, error) {
+	res, err := r.db.Exec(`UPDATE global_users SET session_token = ? WHERE id = ? AND (session_token IS NULL OR session_token = '')`, token, id)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
 func (r *GlobalUserRepository) Delete(id int) error {
 	_, err := r.db.Exec(`DELETE FROM global_users WHERE id = ?`, id)
 	return err

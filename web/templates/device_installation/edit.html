@@ -91,8 +91,6 @@
     {{ template "layout/card_close.html" . }}
 </div>
 
-<script>window.ANDROID_MODE={{ .android }};</script>
-<script src="{{ staticURL "vendor/heic-to.js" }}"></script>
 <script>
 var photoFileRef = null;
 var photoPreviewUrl = null;
@@ -113,15 +111,6 @@ async function handlePhotoSelect(file, source) {
     showLoadingState();
 
     try {
-        var ext = file.name.split('.').pop().toLowerCase();
-        if ((ext === 'heic' || ext === 'heif') && typeof HeicTo !== 'undefined') {
-            var blob = await HeicTo({ blob: file, type: 'image/jpeg', quality: 0.88 });
-            file = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
-        }
-
-        if (window.ANDROID_MODE) {
-            file = await compressImage(file);
-        }
 
         var previewUrl = URL.createObjectURL(file);
         if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);

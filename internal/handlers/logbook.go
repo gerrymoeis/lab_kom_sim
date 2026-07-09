@@ -3,11 +3,9 @@
 import (
 	"fmt"
 	"html/template"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -190,7 +188,6 @@ func (h *Handler) LogbookUploadPage(c *gin.Context) {
 	h.renderTemplate(c, http.StatusOK, "logbook/upload.html", gin.H{
 		"title": "Upload Logbook", "currentPage": "logbook",
 		"username": username, "role": role,
-		"android": h.cfg.Android,
 	})
 }
 
@@ -201,8 +198,6 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 	if !ok { return }
 	ip, ua := getRequestContext(c)
 
-	var path, fn string
-
 	var uploadReq struct {
 		FileRef string `form:"file_ref"`
 	}
@@ -211,67 +206,19 @@ func (h *Handler) LogbookUpload(c *gin.Context) {
 		return
 	}
 	fileRef := strings.TrimSpace(uploadReq.FileRef)
+	if fileRef == "" {
+		h.errHTML(c, "File tidak ditemukan. Upload foto terlebih dahulu.")
+		return
+	}
+
+	fn := filepath.Base(fileRef)
+	if fn == "" || fn == "." || fn == "/" || fn == "\\" {
+		h.errHTML(c, "Nama file tidak valid")
+		return
+	}
 
 	lab := c.GetString("lab")
-	if fileRef != "" {
-		fn = filepath.Base(fileRef)
-		if fn == "" || fn == "." || fn == "/" || fn == "\\" {
-			h.errHTML(c, "Nama file tidak valid")
-			return
-		}
-		tempPath := filepath.Join(h.cfg.UploadPath, lab, "temp", fn)
-		path = filepath.Join(h.cfg.UploadPath, lab, "logbook", fn)
-		os.MkdirAll(filepath.Dir(path), 0755)
-		if err := services.CopyFile(tempPath, path); err != nil {
-			h.errHTML(c, "Gagal memproses file: file tidak ditemukan")
-			return
-		}
-		os.Remove(tempPath)
-	} else {
-		file, err := c.FormFile("logbook_image")
-		if err != nil {
-			h.errHTML(c, "Gagal mengambil file"); return
-		}
-		if file.Size > 10*1024*1024 {
-			h.errHTML(c, "File terlalu besar (max 10MB)"); return
-		}
-		ext := strings.ToLower(filepath.Ext(file.Filename))
-		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".heic" && ext != ".heif" {
-			h.errHTML(c, "Format file tidak didukung"); return
-		}
-		lf, err := file.Open()
-		if err != nil {
-			h.errHTML(c, "Gagal membaca file"); return
-		}
-		buf := make([]byte, 512)
-		if _, err := lf.Read(buf); err != nil && err != io.EOF {
-			lf.Close()
-			h.errHTML(c, "Gagal membaca file"); return
-		}
-		lf.Close()
-		mimeType := http.DetectContentType(buf)
-		if !strings.HasPrefix(mimeType, "image/") {
-			h.errHTML(c, "File harus berupa gambar"); return
-		}
-		fn = fmt.Sprintf("logbook_%d%s", time.Now().Unix(), ext)
-		tempPath := filepath.Join(h.cfg.UploadPath, lab, "temp", fn)
-		os.MkdirAll(filepath.Dir(tempPath), 0755)
-		if err := c.SaveUploadedFile(file, tempPath); err != nil {
-			h.errHTML(c, "Gagal menyimpan file"); return
-		}
-		logbookPath := filepath.Join(h.cfg.UploadPath, lab, "logbook", fn)
-		os.MkdirAll(filepath.Dir(logbookPath), 0755)
-		if err := services.CopyFile(tempPath, logbookPath); err != nil {
-			os.Remove(tempPath)
-			h.errHTML(c, "Gagal menyimpan file"); return
-		}
-		path = tempPath
-	}
-
-	// Clean up temp file (logbook copy persists for preview)
-	if fileRef == "" {
-		defer os.Remove(path)
-	}
+	path := filepath.Join(h.cfg.UploadPath, lab, "temp", fn)
 
 	var ocrOpts []services.OCROption
 	if h.cfg.GeminiBaseURL != "" {
@@ -419,6 +366,10 @@ func (h *Handler) LogbookSave(c *gin.Context) {
 	if failed > 0 {
 		message += fmt.Sprintf(" %d data gagal diproses.", failed)
 	}
+
+	// Cleanup temp file — best effort
+	services.DeleteTempFile(h.cfg.UploadPath, c.GetString("lab"), req.SourceFile)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true, "saved": saved, "duplicates": dups, "failed": failed,
 		"failed_details": failedDetails, "message": message,
