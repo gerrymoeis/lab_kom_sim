@@ -74,3 +74,6 @@ simlabmi*
 # Build linux release private package
 scripts/build_linux_release/
 .env.config
+
+# Placeholder / marker directories
+# Absolute path ke clone repo publik (untuk auto push)/

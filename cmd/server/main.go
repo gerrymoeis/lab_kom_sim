@@ -12,6 +12,7 @@ import (
 
 	"path/filepath"
 
+	"inventaris-lab-kom/internal/cleanup"
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/queue"
@@ -24,6 +25,7 @@ import (
 
 func main() {
 	cfg := config.Load()
+	cleanup.Run()
 
 	timeutil.SetTimezone(cfg.Timezone)
 	locName := timeutil.Code()
