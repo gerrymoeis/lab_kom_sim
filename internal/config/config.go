@@ -128,7 +128,7 @@ func Load() *Config {
 		TempTTL:             getEnvInt("TEMP_TTL", 1),
 		TempCleanupInterval: getEnvInt("TEMP_CLEANUP_INTERVAL", 30),
 		PublicBuild: PublicBuildConfig{
-			Enabled:     getEnv("PUBLIC_BUILD_ENABLED", "false") == "true",
+			Enabled:     getEnv("PUBLIC_BUILD_ENABLED", "true") == "true",
 			Interval:    getEnvInt("PUBLIC_BUILD_INTERVAL", 30),
 			OutDir:      getEnv("PUBLIC_BUILD_OUT", "dist"),
 			TemplateDir: getEnv("PUBLIC_BUILD_TEMPLATE_DIR", "web/templates/public"),

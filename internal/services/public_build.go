@@ -535,71 +535,65 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	return nil
 }
 
+func runGitCmd(repoDir string, args ...string) (string, error) {
+	cmd := exec.Command("git", append([]string{"-C", repoDir}, args...)...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(out), fmt.Errorf("git %v: %w\n%s", args, err, string(out))
+	}
+	return string(out), nil
+}
+
 func gitPushIfChanged(repoDir, outDir, branch string) error {
 	distPath := filepath.Join(repoDir, outDir)
 
 	if err := os.MkdirAll(distPath, 0755); err != nil {
 		return fmt.Errorf("mkdir dist: %w", err)
 	}
-
 	if err := removeAllContents(distPath); err != nil {
 		return fmt.Errorf("clean dist: %w", err)
 	}
-
 	if err := copyDir(outDir, distPath); err != nil {
 		return fmt.Errorf("copy dist: %w", err)
 	}
 
-	// Ensure we are on the target branch (must exist locally)
-	coCmd := exec.Command("git", "-C", repoDir, "checkout", branch)
-	coCmd.Stderr = os.Stderr
-	if err := coCmd.Run(); err != nil {
-		return fmt.Errorf("git checkout %s: %w — ensure branch '%s' exists locally", branch, err, branch)
+	if _, err := runGitCmd(repoDir, "checkout", branch); err != nil {
+		return fmt.Errorf("git checkout %s: %w — ensure branch exists locally", branch, err)
 	}
 
 	// Clear git index for this path to handle case-only renames
 	// on case-insensitive filesystems (Windows)
-	rmCmd := exec.Command("git", "-C", repoDir, "rm", "--cached", "-r", "--ignore-unmatch", outDir)
-	rmCmd.Stderr = nil
-	rmCmd.Run()
+	runGitCmd(repoDir, "rm", "--cached", "-r", "--ignore-unmatch", outDir)
 
-	cmds := [][]string{
-		{"git", "-C", repoDir, "add", "-A"},
-		{"git", "-C", repoDir, "diff", "--cached", "--quiet"},
-	}
-
-	for _, args := range cmds[:1] {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("git add: %w", err)
-		}
+	if _, err := runGitCmd(repoDir, "add", "-A"); err != nil {
+		return fmt.Errorf("git add: %w", err)
 	}
 
 	// Check if anything changed
-	diffCmd := exec.Command(cmds[1][0], cmds[1][1:]...)
-	if err := diffCmd.Run(); err == nil {
+	if _, err := runGitCmd(repoDir, "diff", "--cached", "--quiet"); err == nil {
 		log.Println("PublicBuild: git — no changes, skipping commit")
 		return nil
 	}
 
 	now := timeutil.Now().Format("2006-01-02 15:04:05")
-	commitCmd := exec.Command("git", "-C", repoDir, "commit", "-m", fmt.Sprintf("auto-build %s", now))
-	commitCmd.Stderr = os.Stderr
-	commitCmd.Stdout = os.Stdout
-	if err := commitCmd.Run(); err != nil {
+	if _, err := runGitCmd(repoDir, "commit", "-m", fmt.Sprintf("auto-build %s", now)); err != nil {
 		return fmt.Errorf("git commit: %w", err)
 	}
 
-	pushCmd := exec.Command("git", "-C", repoDir, "push", "origin", branch)
-	pushCmd.Stderr = os.Stderr
-	pushCmd.Stdout = os.Stdout
-	if err := pushCmd.Run(); err != nil {
-		return fmt.Errorf("git push: %w", err)
+	// Push with retry (network or race may cause transient failure)
+	const maxRetries = 2
+	var pushErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if _, pushErr = runGitCmd(repoDir, "push", "origin", branch); pushErr == nil {
+			log.Println("PublicBuild: git — committed and pushed")
+			return nil
+		}
+		log.Printf("PublicBuild: git push attempt %d/%d failed: %v", attempt, maxRetries, pushErr)
+		if attempt < maxRetries {
+			time.Sleep(2 * time.Second)
+		}
 	}
-
-	log.Println("PublicBuild: git — committed and pushed")
-	return nil
+	return fmt.Errorf("git push after %d attempts: %w", maxRetries, pushErr)
 }
 
 func removeAllContents(dir string) error {
