@@ -126,24 +126,32 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          LABS: "MI-1:data/mi-1.db:Lab Kom MI 1:mi-1"
+          UPLOAD_PATH: ./uploads
         run: |
           set -euo pipefail
 
           echo "=== Build Linux binary ==="
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o app-simlab ./cmd/server/
 
-          echo "=== Prepare archive ==="
+          echo "=== Prepare binary archive ==="
           mkdir -p app-simlab-linux
           cp app-simlab app-simlab-linux/
           cp .env.example app-simlab-linux/
-
-          echo "=== Compress archive ==="
           tar czf app-simlab-linux.tar.gz app-simlab-linux/
+
+          echo "=== Generate public site (static build) ==="
+          mkdir -p uploads/mi-1/{pc,device_types,temp,logbook,device_installations}
+          go run ./cmd/publish/
+
+          echo "=== Archive public site ==="
+          tar czf public-site.tar.gz dist/
 
           echo "=== Create GitHub Release ==="
           TAG="deploy-linux-$(date -u +%Y%m%d-%H%M%S)"
           gh release create "${TAG}" \
             app-simlab-linux.tar.gz \
+            public-site.tar.gz \
             --title "Build deploy_linux — $(date -u '+%Y-%m-%d %H:%M:%S UTC')" \
             --notes "Auto-build from \`deploy_linux\` commit ${{ github.sha }}"
 
