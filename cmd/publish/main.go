@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"inventaris-lab-kom/internal/cleanup"
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
 	"inventaris-lab-kom/internal/services"
@@ -13,6 +14,7 @@ import (
 
 func main() {
 	cfg := config.Load()
+	cleanup.Run()
 	timeutil.SetTimezone(cfg.Timezone)
 
 	var labs []config.LabConfig
