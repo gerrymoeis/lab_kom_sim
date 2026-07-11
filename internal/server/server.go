@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +22,7 @@ import (
 	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
 	"inventaris-lab-kom/internal/versioner"
+	"inventaris-lab-kom/web"
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -116,8 +119,8 @@ func CleanupTempFiles(cfg *config.Config) {
 	}
 }
 
-func LoadTemplates(templatesDir string, staticURL func(string) string) (*template.Template, error) {
-	templ := template.New("").Funcs(template.FuncMap{
+func makeServerFuncMap(staticURL func(string) string) template.FuncMap {
+	return template.FuncMap{
 		"staticURL": staticURL,
 		"add":       func(a, b int) int { return a + b },
 		"sub":       func(a, b int) int { return a - b },
@@ -186,13 +189,35 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 			}
 			return d, nil
 		},
-	})
-	err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
+	}
+}
+
+func LoadTemplates(templatesDir string, staticURL func(string) string) (*template.Template, error) {
+	templ := template.New("").Funcs(makeServerFuncMap(staticURL))
+
+	// Try filesystem first (dev mode, hot-reload)
+	if fi, err := os.Stat(templatesDir); err == nil && fi.IsDir() {
+		err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil { return err }
+			if info.IsDir() || filepath.Ext(path) != ".html" { return nil }
+			relPath, _ := filepath.Rel(templatesDir, path)
+			if strings.HasPrefix(filepath.ToSlash(relPath), "public/") { return nil }
+			content, err := os.ReadFile(path)
+			if err != nil { return err }
+			_, err = templ.New(filepath.ToSlash(relPath)).Parse(string(content))
+			return err
+		})
+		return templ, err
+	}
+
+	// Fallback to embedded templates (production binary without web/ dir)
+	log.Println("LoadTemplates: filesystem not found, using embedded templates")
+	err := fs.WalkDir(web.FS, "templates", func(path string, d fs.DirEntry, err error) error {
 		if err != nil { return err }
-		if info.IsDir() || filepath.Ext(path) != ".html" { return nil }
-		relPath, _ := filepath.Rel(templatesDir, path)
+		if d.IsDir() || filepath.Ext(path) != ".html" { return nil }
+		relPath := strings.TrimPrefix(path, "templates/")
 		if strings.HasPrefix(filepath.ToSlash(relPath), "public/") { return nil }
-		content, err := os.ReadFile(path)
+		content, err := web.FS.ReadFile(path)
 		if err != nil { return err }
 		_, err = templ.New(filepath.ToSlash(relPath)).Parse(string(content))
 		return err
@@ -220,21 +245,36 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
-	v, err := versioner.New("./web/static")
-	if err != nil {
-		panic(fmt.Sprintf("Failed to init versioner: %v", err))
+	v, verr := versioner.New("./web/static")
+	if verr != nil {
+		log.Printf("Versioner: %v — using embedded assets (no version hashes)", verr)
 	}
 
-	templ, err := LoadTemplates("web/templates", v.URL)
+	var staticURL func(string) string
+	if v != nil {
+		staticURL = v.URL
+	} else {
+		staticURL = func(path string) string { return "/static/" + path }
+	}
+
+	templ, err := LoadTemplates("web/templates", staticURL)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to load templates: %v", err))
 	}
 	router.SetHTMLTemplate(templ)
 	handlers.SetHTMLRender(router.HTMLRender)
 
-	router.GET("/static/*filepath", v.Handler())
+	if v != nil {
+		router.GET("/static/*filepath", v.Handler())
+		router.StaticFile("/favicon.ico", "./web/static/favicon.svg")
+	} else {
+		staticFS, err := fs.Sub(web.FS, "static")
+		if err != nil {
+			panic(fmt.Sprintf("Failed to get embedded static FS: %v", err))
+		}
+		router.StaticFS("/static", http.FS(staticFS))
+	}
 	router.Static("/uploads", cfg.UploadPath)
-	router.StaticFile("/favicon.ico", "./web/static/favicon.svg")
 
 	labCfgs := make(map[string]config.LabConfig)
 	if cfg.Labs != nil {
