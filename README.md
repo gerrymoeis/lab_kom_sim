@@ -544,6 +544,18 @@ Aplikasi auto-generate static site ke `PUBLIC_BUILD_OUT` (default: `dist/`) dan 
 
 Server akan rebuild & push otomatis tiap CUD operation (debounce `PUBLIC_BUILD_INTERVAL` detik). Git auth via SSH key — Termux support penuh.
 
+### Auto Cleanup
+
+Server membersihkan runtime artifacts secara otomatis setiap startup:
+- Old single-lab DB remnant (`inventaris_lab.db*` di root)
+- Pre-built binaries (`bin/`, `testsum.exe`)
+- Public build output (`dist/`)
+- Temp upload files (`uploads/*/temp/`)
+- Empty backup directories
+- Placeholder/marker directory (jika ada)
+
+Tidak ada data produksi yang terhapus — hanya artifacts yang aman dibersihkan.
+
 ### Async Write Mode
 
 - `WRITE_MODE=sync` (default): setiap write langsung ke SQLite — aman, cocok untuk beban normal
