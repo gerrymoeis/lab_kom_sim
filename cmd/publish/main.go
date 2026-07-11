@@ -19,6 +19,11 @@ func main() {
 
 	var labs []config.LabConfig
 	for _, lab := range cfg.Labs {
+		if dir := filepath.Dir(lab.DBPath); dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				log.Fatalf("Failed to create database directory %s for lab %s: %v", dir, lab.URLPath, err)
+			}
+		}
 		db, err := database.InitDB(lab.DBPath, cfg.DatabaseURL)
 		if err != nil {
 			log.Fatalf("DB init for lab %s: %v", lab.URLPath, err)
