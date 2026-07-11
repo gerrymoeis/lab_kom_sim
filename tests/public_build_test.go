@@ -1,8 +1,12 @@
 package tests
 
 import (
+	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -472,5 +476,173 @@ func checkFile(t *testing.T, parts ...string) {
 	path := filepath.Join(parts...)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		t.Errorf("expected file not found: %s", path)
+	}
+}
+
+func TestPublicBuildAllLinksValid(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "public-build-links-*")
+	if err != nil {
+		t.Fatalf("MkdirTemp: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	projectRoot := findRoot(t)
+	origWd, _ := os.Getwd()
+	t.Cleanup(func() { os.Chdir(origWd) })
+	os.Chdir(projectRoot)
+
+	dbPath := filepath.Join(tmpDir, "test.db")
+	db, err := database.InitDB(dbPath, "")
+	if err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	defer db.Close()
+
+	labName := "testlab"
+	if err := database.RunMigrations(db, false, "TEST-1", labName, filepath.Join(tmpDir, "uploads"), false); err != nil {
+		t.Fatalf("RunMigrations: %v", err)
+	}
+
+	pcs := []struct{ row, col int; status, label, placement string }{
+		{1, 1, "normal", "pc-1", "dipakai"},
+		{1, 2, "normal", "pc-2", "dipakai"},
+		{0, 0, "warning", "pc-3", "dipakai"},
+		{0, 0, "broken", "pc-33", "cadangan"},
+		{0, 0, "normal", "pc-dosen", "dipakai"},
+		{0, 0, "normal", "pc-laboran", "dipakai"},
+		{0, 0, "normal", "pc-cctv", "dipakai"},
+	}
+	for _, p := range pcs {
+		if _, err := db.Exec(`INSERT INTO pcs (row, column, status, label, placement) VALUES (?, ?, ?, ?, ?)`,
+			p.row, p.col, p.status, p.label, p.placement); err != nil {
+			t.Fatalf("insert pc %s: %v", p.label, err)
+		}
+	}
+
+	for _, name := range []string{"Visual Studio Code", "Python"} {
+		slug := strings.ReplaceAll(strings.ToLower(name), " ", "-")
+		if _, err := db.Exec(`INSERT INTO software_catalog (name, category, description, slug) VALUES (?, 'required', ?, ?)`,
+			name, "Software "+name, slug); err != nil {
+			t.Fatalf("insert software %s: %v", name, err)
+		}
+	}
+
+	if _, err := db.Exec(`INSERT INTO course_schedules (course_name, lecturer, day, class, time_start, time_end) VALUES ('Pemrograman', 'Dosen A', 'Senin', 'A', '08:00', '09:40')`); err != nil {
+		t.Fatalf("insert schedule: %v", err)
+	}
+
+	outDir := filepath.Join(tmpDir, "dist")
+	uploadPath := filepath.Join(tmpDir, "uploads")
+
+	err = services.RunPublicBuild(db, config.PublicBuildConfig{
+		TemplateDir: filepath.Join(projectRoot, "web", "templates", "public"),
+		StaticDir:   filepath.Join(projectRoot, "web", "static"),
+		OutDir:      outDir,
+		Enabled:     true,
+		Interval:    30,
+		Branch:      "main",
+	}, labName, "Test Lab", uploadPath)
+	if err != nil {
+		t.Fatalf("RunPublicBuild: %v", err)
+	}
+
+	// Build lab selector so index.html exists
+	services.GenerateLabSelector([]config.LabConfig{
+		{ID: "TEST-1", Title: "Test Lab", URLPath: labName},
+	}, config.PublicBuildConfig{
+		TemplateDir: filepath.Join(projectRoot, "web", "templates", "public"),
+		StaticDir:   filepath.Join(projectRoot, "web", "static"),
+		OutDir:      outDir,
+	})
+
+	ts := httptest.NewServer(http.FileServer(http.Dir(outDir)))
+	defer ts.Close()
+
+	linkRe := regexp.MustCompile(`(?:href|src)="([^"]+)"`)
+
+	err = filepath.WalkDir(outDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(d.Name(), ".html") {
+			return nil
+		}
+		relPath, _ := filepath.Rel(outDir, path)
+		relPath = strings.ReplaceAll(relPath, "\\", "/")
+		pageURL := "/" + relPath
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("read %s: %v", pageURL, err)
+			return nil
+		}
+
+		for _, m := range linkRe.FindAllStringSubmatch(string(data), -1) {
+			link := m[1]
+			if strings.HasPrefix(link, "#") ||
+				strings.HasPrefix(link, "javascript:") ||
+				strings.HasPrefix(link, "mailto:") ||
+				strings.HasPrefix(link, "data:") ||
+				strings.HasPrefix(link, "http://") ||
+				strings.HasPrefix(link, "https://") ||
+				strings.HasPrefix(link, "'") ||
+				strings.HasPrefix(link, "(") {
+				continue
+			}
+			if link == "." || link == "./" {
+				continue
+			}
+			// Skip JS template expressions inside DataTables render functions
+			if strings.Contains(link, "'+") || strings.Contains(link, "+'") || strings.Contains(link, "`") || strings.Contains(link, "${") {
+				continue
+			}
+
+			absLink := link
+			if !strings.HasPrefix(link, "/") {
+				baseDir := "/" + strings.TrimSuffix(relPath, d.Name())
+				if baseDir == "/" {
+					absLink = "/" + link
+				} else {
+					absLink = baseDir + link
+				}
+				absLink = filepath.ToSlash(filepath.Clean(absLink))
+				if !strings.HasPrefix(absLink, "/") {
+					absLink = "/" + absLink
+				}
+			}
+
+			resp, getErr := ts.Client().Get(ts.URL + absLink)
+			if getErr != nil {
+				t.Errorf("GET %s (from %s): %v", link, pageURL, getErr)
+				continue
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				t.Errorf("GET %s → %s (from %s): status %d (expected 200)", link, absLink, pageURL, resp.StatusCode)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WalkDir: %v", err)
+	}
+
+	// Also verify data JSON files are directly accessible
+	jsonFiles := []string{
+		labName + "/data/pc.json",
+		labName + "/data/devices.json",
+		labName + "/data/software.json",
+		labName + "/data/schedules.json",
+	}
+	for _, jf := range jsonFiles {
+		resp, err := ts.Client().Get(ts.URL + "/" + jf)
+		if err != nil {
+			t.Errorf("GET /%s: %v", jf, err)
+			continue
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("GET /%s: status %d (expected 200)", jf, resp.StatusCode)
+		}
 	}
 }
