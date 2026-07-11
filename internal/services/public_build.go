@@ -54,8 +54,15 @@ func getPCPlacementInfo(placement string) PlacementInfo {
 	return pcPlacementMap["dipakai"]
 }
 
-func loadPublicFuncMap() template.FuncMap {
+func makePublicFuncMap(basePath string) template.FuncMap {
 	return template.FuncMap{
+		"staticURL": func(path string) string {
+			return basePath + "/static/" + path
+		},
+		"json": func(v interface{}) (template.JS, error) {
+			b, err := json.Marshal(v)
+			return template.JS(b), err
+		},
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 { return nil, fmt.Errorf("dict: odd number of arguments") }
 			d := make(map[string]interface{}, len(values)/2)
@@ -87,51 +94,41 @@ func loadPublicFuncMap() template.FuncMap {
 			return false
 		},
 		"formatPCLabel": func(pc models.PC) string {
-			if pc.Label != "" {
-				return pc.Label
-			}
+			if pc.Label != "" { return pc.Label }
 			return "-"
 		},
 		"localTime": func(t interface{}) interface{} {
 			switch v := t.(type) {
 			case time.Time:
-				if v.IsZero() {
-					return v
-				}
+				if v.IsZero() { return v }
 				return v.In(timeutil.Location())
 			case *time.Time:
-				if v == nil || v.IsZero() {
-					return v
-				}
+				if v == nil || v.IsZero() { return v }
 				return v.In(timeutil.Location())
 			}
 			return t
 		},
 		"tzCode": func() string { return timeutil.Code() },
 		"imgv": func(t time.Time, filename string) string {
-			if filename == "" || t.IsZero() {
-				return filename
-			}
+			if filename == "" || t.IsZero() { return filename }
 			return filename + "?v=" + fmt.Sprintf("%d", t.Unix())
 		},
 	}
 }
 
-func loadPublicTemplates(templatesDir string, funcMap template.FuncMap) (*template.Template, error) {
+func loadTemplatesForPublic(rootDir string, funcMap template.FuncMap) (*template.Template, error) {
 	templ := template.New("").Funcs(funcMap)
-	err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() || filepath.Ext(path) != ".html" {
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil { return err }
+		if info.IsDir() || filepath.Ext(path) != ".html" { return nil }
+		relPath, _ := filepath.Rel(rootDir, path)
+		relPath = filepath.ToSlash(relPath)
+		if !strings.HasPrefix(relPath, "layout/") && !strings.HasPrefix(relPath, "public/") {
 			return nil
 		}
-		relPath, _ := filepath.Rel(templatesDir, path)
 		content, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		_, err = templ.New(filepath.ToSlash(relPath)).Parse(string(content))
+		if err != nil { return err }
+		_, err = templ.New(relPath).Parse(string(content))
 		return err
 	})
 	return templ, err
@@ -199,10 +196,14 @@ func buildDashboardGrid(pcs []models.PC, colsPerRow []int) ([][]models.PC, []mod
 		if pc.Placement == "cadangan" {
 			continue
 		}
-		maxCol := colsPerRow[pc.Row-1]
-		if pc.Row >= 1 && pc.Row <= gridRowCount && pc.Column >= 1 && pc.Column <= maxCol {
-			grid[pc.Row-1][pc.Column-1] = pc
-		} else if pc.Label != "" && isNumericLabel(pc.Label) {
+		if pc.Row >= 1 && pc.Row <= gridRowCount && pc.Column >= 1 {
+			maxCol := colsPerRow[pc.Row-1]
+			if pc.Column <= maxCol {
+				grid[pc.Row-1][pc.Column-1] = pc
+				continue
+			}
+		}
+		if pc.Label != "" && isNumericLabel(pc.Label) {
 			extraPCs = append(extraPCs, pc)
 		} else if strings.EqualFold(pc.Label, "pc-dosen") {
 			pcLecturer = pc
@@ -270,8 +271,21 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	if softwareStats == nil { softwareStats = []repository.SoftwareStat{} }
 	if schedules == nil { schedules = []models.CourseSchedule{} }
 
-	funcMap := loadPublicFuncMap()
-	tmpl, err := loadPublicTemplates(cfg.TemplateDir, funcMap)
+	outDir := filepath.Join(cfg.OutDir, labName)
+	os.RemoveAll(outDir)
+	os.MkdirAll(outDir, 0755)
+
+	basePath := "/" + labName
+	commonData := map[string]interface{}{
+		"basePath":        basePath,
+		"labName":         labName,
+		"labTitle":        labTitle,
+		"isPublic":        true,
+		"showLabSelector": true,
+	}
+
+	funcMap := makePublicFuncMap(basePath)
+	tmpl, err := loadTemplatesForPublic(filepath.Dir(cfg.TemplateDir), funcMap)
 	if err != nil {
 		return fmt.Errorf("load templates: %w", err)
 	}
@@ -285,15 +299,6 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 				return fmt.Errorf("parse grid_component.html: %w", err)
 			}
 		}
-	}
-
-	outDir := filepath.Join(cfg.OutDir, labName)
-	os.RemoveAll(outDir)
-	os.MkdirAll(outDir, 0755)
-
-	basePath := "/" + labName
-	commonData := map[string]interface{}{
-		"basePath": basePath, "labName": labName, "labTitle": labTitle,
 	}
 
 	var errs []error
@@ -312,7 +317,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	// Dashboard
 	layout := config.GetGridLayout(labName)
 	grid, extraPCs, pcLecturer, pcLaboran, pcCCTV, specialPCs, statusCounts, spareCount := buildDashboardGrid(pcs, layout.ColsPerRow)
-	re("dashboard.html", filepath.Join(outDir, "dashboard.html"), mergeData(commonData, map[string]interface{}{
+	re("public/dashboard.html", filepath.Join(outDir, "dashboard.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Dashboard", "currentPage": "dashboard",
 		"grid": grid, "pcs": pcs, "extraPCs": extraPCs,
 		"statusCounts": statusCounts, "spareCount": spareCount,
@@ -331,7 +336,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	if err != nil {
 		errs = append(errs, fmt.Errorf("marshal pcs: %w", err))
 	}
-	re("pc/list.html", filepath.Join(outDir, "pc", "list.html"), mergeData(commonData, map[string]interface{}{
+	re("public/pc/list.html", filepath.Join(outDir, "pc", "list.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Daftar PC", "currentPage": "pc",
 		"dataJSON": template.JS(pcJSON),
 	}))
@@ -342,7 +347,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 		if label == "" {
 			label = fmt.Sprintf("pc-%d", pc.ID)
 		}
-		re("pc/detail.html", filepath.Join(outDir, "pc", "detail", label+".html"), mergeData(commonData, map[string]interface{}{
+		re("public/pc/detail.html", filepath.Join(outDir, "pc", "detail", label+".html"), mergeData(commonData, map[string]interface{}{
 			"title": "Detail " + label, "currentPage": "pc",
 			"pc": pc,
 		}))
@@ -353,14 +358,14 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	if err != nil {
 		errs = append(errs, fmt.Errorf("marshal devices: %w", err))
 	}
-	re("device/list.html", filepath.Join(outDir, "devices", "list.html"), mergeData(commonData, map[string]interface{}{
+	re("public/device/list.html", filepath.Join(outDir, "devices", "list.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Daftar Perangkat", "currentPage": "devices",
 		"dataJSON": template.JS(devJSON),
 	}))
 
 	// Device detail — one file per device
 	for _, d := range devices {
-		re("device/detail.html", filepath.Join(outDir, "devices", "detail", strings.ToLower(d.Label)+".html"), mergeData(commonData, map[string]interface{}{
+		re("public/device/detail.html", filepath.Join(outDir, "devices", "detail", strings.ToLower(d.Label)+".html"), mergeData(commonData, map[string]interface{}{
 			"title":          "Detail - " + d.Label,
 			"currentPage":    "devices",
 			"device":         d,
@@ -373,7 +378,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	if err != nil {
 		errs = append(errs, fmt.Errorf("marshal software: %w", err))
 	}
-	re("software/list.html", filepath.Join(outDir, "software", "list.html"), mergeData(commonData, map[string]interface{}{
+	re("public/software/list.html", filepath.Join(outDir, "software", "list.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Software Catalog", "currentPage": "software",
 		"dataJSON": template.JS(swJSON),
 	}))
@@ -392,7 +397,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 			}
 		}
 		swGrid := BuildSoftwareGrid(pcList, layout)
-		re("software/detail.html", filepath.Join(outDir, "software", "detail", sw.Slug+".html"), mergeData(commonData, map[string]interface{}{
+		re("public/software/detail.html", filepath.Join(outDir, "software", "detail", sw.Slug+".html"), mergeData(commonData, map[string]interface{}{
 			"title":          "Detail Software - " + sw.Name,
 			"currentPage":    "software",
 			"software":       sw.SoftwareCatalog,
@@ -408,7 +413,7 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	if err != nil {
 		errs = append(errs, fmt.Errorf("marshal schedules: %w", err))
 	}
-	re("schedule/list.html", filepath.Join(outDir, "schedules", "list.html"), mergeData(commonData, map[string]interface{}{
+	re("public/schedule/list.html", filepath.Join(outDir, "schedules", "list.html"), mergeData(commonData, map[string]interface{}{
 		"title": "Jadwal Mata Kuliah", "currentPage": "schedules",
 		"dataJSON": template.JS(schJSON),
 	}))
@@ -558,25 +563,17 @@ func mergeData(base, extra map[string]interface{}) map[string]interface{} {
 func GenerateLabSelector(labs []config.LabConfig, cfg config.PublicBuildConfig) error {
 	os.MkdirAll(cfg.OutDir, 0755)
 
-	tmpl, err := loadPublicTemplates(cfg.TemplateDir, template.FuncMap{})
+	tmpl, err := template.New("lab_selector").Parse(labSelectorTemplate)
 	if err != nil {
-		tmpl = template.New("lab_selector")
-		tmpl.Parse(labSelectorTemplate)
+		return fmt.Errorf("parse lab selector template: %w", err)
 	}
 
 	var buf bytes.Buffer
-	if err := tmpl.ExecuteTemplate(&buf, "lab_selector.html", map[string]interface{}{
+	if err := tmpl.Execute(&buf, map[string]interface{}{
 		"title": "Pilih Laboratorium",
 		"labs":  labs,
 	}); err != nil {
-		// fallback: execute as standalone
-		buf.Reset()
-		if err2 := tmpl.Execute(&buf, map[string]interface{}{
-			"title": "Pilih Laboratorium",
-			"labs":  labs,
-		}); err2 != nil {
-			return fmt.Errorf("render lab selector: %w", err2)
-		}
+		return fmt.Errorf("render lab selector: %w", err)
 	}
 
 	path := filepath.Join(cfg.OutDir, "index.html")
