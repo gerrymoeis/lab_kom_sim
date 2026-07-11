@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -19,6 +20,7 @@ import (
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
 	"inventaris-lab-kom/internal/timeutil"
+	"inventaris-lab-kom/web"
 )
 
 type PCStatusInfo struct {
@@ -118,15 +120,36 @@ func makePublicFuncMap(basePath string) template.FuncMap {
 
 func loadTemplatesForPublic(rootDir string, funcMap template.FuncMap) (*template.Template, error) {
 	templ := template.New("").Funcs(funcMap)
-	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+
+	// Try filesystem first (dev mode)
+	if fi, err := os.Stat(rootDir); err == nil && fi.IsDir() {
+		err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil { return err }
+			if info.IsDir() || filepath.Ext(path) != ".html" { return nil }
+			relPath, _ := filepath.Rel(rootDir, path)
+			relPath = filepath.ToSlash(relPath)
+			if !strings.HasPrefix(relPath, "layout/") && !strings.HasPrefix(relPath, "public/") {
+				return nil
+			}
+			content, err := os.ReadFile(path)
+			if err != nil { return err }
+			_, err = templ.New(relPath).Parse(string(content))
+			return err
+		})
+		return templ, err
+	}
+
+	// Fallback to embedded templates
+	log.Println("loadTemplatesForPublic: filesystem not found, using embedded templates")
+	err := fs.WalkDir(web.FS, "templates", func(path string, d fs.DirEntry, err error) error {
 		if err != nil { return err }
-		if info.IsDir() || filepath.Ext(path) != ".html" { return nil }
-		relPath, _ := filepath.Rel(rootDir, path)
+		if d.IsDir() || filepath.Ext(path) != ".html" { return nil }
+		relPath := strings.TrimPrefix(path, "templates/")
 		relPath = filepath.ToSlash(relPath)
 		if !strings.HasPrefix(relPath, "layout/") && !strings.HasPrefix(relPath, "public/") {
 			return nil
 		}
-		content, err := os.ReadFile(path)
+		content, err := web.FS.ReadFile(path)
 		if err != nil { return err }
 		_, err = templ.New(relPath).Parse(string(content))
 		return err
@@ -169,6 +192,28 @@ func copyDir(src, dst string) error {
 		defer dstFile.Close()
 		_, err = io.Copy(dstFile, srcFile)
 		return err
+	})
+}
+
+func copyEmbedDir(srcPrefix, dstDir string) error {
+	return fs.WalkDir(web.FS, srcPrefix, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath := strings.TrimPrefix(path, srcPrefix+"/")
+		if relPath == "" {
+			return nil
+		}
+		target := filepath.Join(dstDir, relPath)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0755)
+		}
+		data, err := web.FS.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		os.MkdirAll(filepath.Dir(target), 0755)
+		return os.WriteFile(target, data, 0644)
 	})
 }
 
@@ -290,13 +335,24 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 		return fmt.Errorf("load templates: %w", err)
 	}
 	// Load shared grid_component.html from regular templates to avoid duplication
-	gridComponentPath := filepath.Join(filepath.Dir(cfg.TemplateDir), "pc", "grid_component.html")
-	if _, err := os.Stat(gridComponentPath); err == nil {
-		gridContent, err := os.ReadFile(gridComponentPath)
-		if err == nil {
-			_, err = tmpl.New("pc/grid_component.html").Parse(string(gridContent))
-			if err != nil {
-				return fmt.Errorf("parse grid_component.html: %w", err)
+	templatesRoot := filepath.Dir(cfg.TemplateDir)
+	gridComponentPath := filepath.Join(templatesRoot, "pc", "grid_component.html")
+	var gridContent []byte
+	if fi, gErr := os.Stat(gridComponentPath); gErr == nil && fi != nil {
+		gridContent, gErr = os.ReadFile(gridComponentPath)
+		if gErr == nil {
+			_, gErr = tmpl.New("pc/grid_component.html").Parse(string(gridContent))
+			if gErr != nil {
+				return fmt.Errorf("parse grid_component.html: %w", gErr)
+			}
+		}
+	} else {
+		// Fallback to embedded templates
+		gridContent, gErr = web.FS.ReadFile("templates/pc/grid_component.html")
+		if gErr == nil {
+			_, gErr = tmpl.New("pc/grid_component.html").Parse(string(gridContent))
+			if gErr != nil {
+				return fmt.Errorf("parse embedded grid_component.html: %w", gErr)
 			}
 		}
 	}
@@ -426,12 +482,26 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	wj(filepath.Join(outDir, "data", "schedules.json"), schedules)
 
 	// Copy static assets (shared at root level — for lab selector page)
-	if err := copyDir(cfg.StaticDir, filepath.Join(cfg.OutDir, "static")); err != nil {
-		errs = append(errs, fmt.Errorf("copy static shared: %w", err))
+	staticDstShared := filepath.Join(cfg.OutDir, "static")
+	if fi, sErr := os.Stat(cfg.StaticDir); sErr == nil && fi.IsDir() {
+		if err := copyDir(cfg.StaticDir, staticDstShared); err != nil {
+			errs = append(errs, fmt.Errorf("copy static shared: %w", err))
+		}
+	} else {
+		if err := copyEmbedDir("static", staticDstShared); err != nil {
+			errs = append(errs, fmt.Errorf("copy static shared from embed: %w", err))
+		}
 	}
 	// Copy static assets (per-lab — so pages reference ./static/ via basePath)
-	if err := copyDir(cfg.StaticDir, filepath.Join(outDir, "static")); err != nil {
-		errs = append(errs, fmt.Errorf("copy static per-lab: %w", err))
+	staticDstLab := filepath.Join(outDir, "static")
+	if fi, sErr := os.Stat(cfg.StaticDir); sErr == nil && fi.IsDir() {
+		if err := copyDir(cfg.StaticDir, staticDstLab); err != nil {
+			errs = append(errs, fmt.Errorf("copy static per-lab: %w", err))
+		}
+	} else {
+		if err := copyEmbedDir("static", staticDstLab); err != nil {
+			errs = append(errs, fmt.Errorf("copy static per-lab from embed: %w", err))
+		}
 	}
 
 	// Copy device type photos (per-lab)

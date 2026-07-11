@@ -133,14 +133,9 @@ jobs:
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o app-simlab ./cmd/server/
 
           echo "=== Prepare archive ==="
-          mkdir -p app-simlab-linux/web/static
+          mkdir -p app-simlab-linux
           cp app-simlab app-simlab-linux/
           cp .env.example app-simlab-linux/
-          cp -r web/templates app-simlab-linux/web/
-          cp -r web/static/css app-simlab-linux/web/static/
-          cp -r web/static/js app-simlab-linux/web/static/
-          cp web/static/favicon.svg app-simlab-linux/web/static/ 2>/dev/null || true
-          [ -d web/static/vendor ] && cp -r web/static/vendor app-simlab-linux/web/static/
 
           echo "=== Compress archive ==="
           tar czf app-simlab-linux.tar.gz app-simlab-linux/
