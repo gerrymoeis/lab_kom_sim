@@ -425,9 +425,13 @@ func RunPublicBuild(db *database.DB, cfg config.PublicBuildConfig, labName, labT
 	wj(filepath.Join(outDir, "data", "software.json"), softwareStats)
 	wj(filepath.Join(outDir, "data", "schedules.json"), schedules)
 
-	// Copy static assets (shared at root level)
+	// Copy static assets (shared at root level — for lab selector page)
 	if err := copyDir(cfg.StaticDir, filepath.Join(cfg.OutDir, "static")); err != nil {
-		errs = append(errs, fmt.Errorf("copy static: %w", err))
+		errs = append(errs, fmt.Errorf("copy static shared: %w", err))
+	}
+	// Copy static assets (per-lab — so pages reference ./static/ via basePath)
+	if err := copyDir(cfg.StaticDir, filepath.Join(outDir, "static")); err != nil {
+		errs = append(errs, fmt.Errorf("copy static per-lab: %w", err))
 	}
 
 	// Copy device type photos (per-lab)
