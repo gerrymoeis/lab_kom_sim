@@ -8,18 +8,25 @@
     <link rel="stylesheet" href="{{ staticURL "vendor/bootstrap-icons/bootstrap-icons.min.css" }}">
     <link rel="stylesheet" href="{{ staticURL "css/style.css" }}">
     <link rel="icon" type="image/svg+xml" href="{{ staticURL "favicon.svg" }}">
+    {{ if not .isPublic }}
     <meta name="csrf-token" content="{{ .csrf_token }}">
+    {{ end }}
     <script>window.BASE_PATH = {{ .basePath | json }};</script>
 </head>
-<body{{ if .isGlobalArea }} class="bg-light"{{ end }}>
+<body{{ if or .isGlobalArea .isPublic }} class="bg-light"{{ end }}>
     {{ template "layout/navbar.html" . }}
-    <div class="container-fluid{{ if .isGlobalArea }} py-4{{ else }} my-4{{ end }}"
-         {{ if .isGlobalArea }}style="padding-top:70px;"{{ end }}>
+    <div class="container-fluid{{ if .isGlobalArea }} py-4{{ end }} my-4"
+         {{ if or .isGlobalArea .isPublic }}style="padding-top:70px;"{{ end }}>
 
 {{ define "layout/footer.html" }}
     </div>
+    {{ if not .isPublic }}
     {{ template "layout/delete_confirm_modal.html" . }}
+    {{ end }}
     <script src="{{ staticURL "vendor/bootstrap/js/bootstrap.bundle.min.js" }}"></script>
+    {{ if .isPublic }}
+    <script src="{{ staticURL "js/public.js" }}"></script>
+    {{ else }}
     <script src="{{ staticURL "js/main.js" }}"></script>
     <script>
     function fetchWithCSRF(url, options) {
@@ -45,6 +52,7 @@
         }
     })();
     </script>
+    {{ end }}
 </body>
 </html>
 {{ end }}
