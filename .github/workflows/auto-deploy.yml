@@ -134,9 +134,13 @@ jobs:
           echo "=== Build Linux binary ==="
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o app-simlab ./cmd/server/
 
+          echo "=== Build publish binary ==="
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o app-simlab-publish ./cmd/publish/
+
           echo "=== Prepare binary archive ==="
           mkdir -p app-simlab-linux
           cp app-simlab app-simlab-linux/
+          cp app-simlab-publish app-simlab-linux/
           cp .env.example app-simlab-linux/
           tar czf app-simlab-linux.tar.gz app-simlab-linux/
 
