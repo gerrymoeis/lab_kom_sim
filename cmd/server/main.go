@@ -112,8 +112,10 @@ func main() {
 		notifiers = append(notifiers, backupSvc)
 
 		pubSvc := services.NewPublicBuildService(db, cfg.PublicBuild, lab.URLPath, lab.Title, cfg.UploadPath)
-		publicBuildSvcs = append(publicBuildSvcs, pubSvc)
-		notifiers = append(notifiers, pubSvc)
+		if cfg.PublicBuild.Enabled {
+			publicBuildSvcs = append(publicBuildSvcs, pubSvc)
+			notifiers = append(notifiers, pubSvc)
+		}
 	}
 	notifier := services.NewMultiNotifier(notifiers...)
 
