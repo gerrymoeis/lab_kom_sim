@@ -148,6 +148,16 @@ func main() {
 		defer s.Stop()
 	}
 
+	// Initial public build (non-blocking)
+	for _, s := range publicBuildSvcs {
+		svc := s
+		go func() {
+			if err := svc.BuildNow(); err != nil {
+				log.Printf("PublicBuild[%s]: initial build — %v", svc.LabName(), err)
+			}
+		}()
+	}
+
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
 	srv := &http.Server{Addr: addr, Handler: router}
 

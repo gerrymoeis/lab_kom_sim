@@ -115,6 +115,10 @@ func (s *PublicBuildService) Stop() {
 	log.Printf("PublicBuild[%s]: stopped", s.labName)
 }
 
+func (s *PublicBuildService) LabName() string {
+	return s.labName
+}
+
 func (s *PublicBuildService) BuildNow() error {
 	if !s.cfg.Enabled {
 		return fmt.Errorf("public build is disabled")
