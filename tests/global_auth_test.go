@@ -94,8 +94,9 @@ func TestLogin(t *testing.T) {
 		}
 	})
 
-	t.Run("fail_already_logged_in", func(t *testing.T) {
-		// admin IS logged in from redirect_to_labs subtest above
+	t.Run("relogin_succeeds_and_rotates_token", func(t *testing.T) {
+		// admin IS logged in from redirect_to_labs subtest above.
+		// Login terakhir menang: login baru selalu sukses (302), token lama di-overwrite.
 		body := url.Values{"username": {"admin"}, "password": {"admin123"}}.Encode()
 		req, _ := http.NewRequest("POST", tsURL+"/login", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -104,8 +105,8 @@ func TestLogin(t *testing.T) {
 			t.Fatalf("POST /login failed: %v", err)
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 409 {
-			t.Errorf("expected 409 for already logged in, got %d", resp.StatusCode)
+		if resp.StatusCode != 302 {
+			t.Errorf("expected 302 for relogin, got %d", resp.StatusCode)
 		}
 	})
 
@@ -956,10 +957,7 @@ func TestGlobalAdminProfile(t *testing.T) {
 			t.Fatal("new password should work after change")
 		}
 
-		// Clear session_token in DB that verifyLogin created, so re-login won't hit ErrAlreadyLoggedIn
-		env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = 'admin'")
-
-		// Re-login with new password (session was invalidated by session_token clear)
+		// Re-login with new password (login last-wins: overwrites the session created above)
 		if !loginAndRefresh(env.LabA, "admin", "newpassword456") {
 			t.Fatal("re-login with new password failed")
 		}

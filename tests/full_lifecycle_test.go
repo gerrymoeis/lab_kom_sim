@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"inventaris-lab-kom/internal/database"
 	"golang.org/x/sync/errgroup"
+	"inventaris-lab-kom/internal/database"
 )
 
 // TestGAB_FullCRUD — Fase 4A: Global Admin (GAB) full CRUD across labs.
@@ -57,8 +57,8 @@ func TestGAB_FullCRUD(t *testing.T) {
 		pcData := url.Values{
 			"row": {"1"}, "column": {"1"},
 			"status": {"normal"}, "placement": {"dipakai"},
-			"is_mahasiswa": {"true"},
-			"serial_number": {pcSerial},
+			"is_mahasiswa":     {"true"},
+			"serial_number":    {pcSerial},
 			"operating_system": {"Win11"}, "pc_type": {"PC"},
 			"brand_model": {"Dell"}, "accessories": {"KB"},
 			"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},
@@ -228,9 +228,6 @@ func TestGAB_FullCRUD(t *testing.T) {
 	// ———————————————————— Lab B + isolasi ————————————————————
 
 	t.Run("gab_crud_lab_b_isolation", func(t *testing.T) {
-		// Clear GAB session to avoid ErrAlreadyLoggedIn
-		env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = ?", gabUsername)
-
 		if !loginAndRefresh(env.LabB, gabUsername, "test123") {
 			t.Fatal("GAB login for Lab B failed")
 		}
@@ -246,8 +243,8 @@ func TestGAB_FullCRUD(t *testing.T) {
 		pcDataB := url.Values{
 			"row": {"2"}, "column": {"2"},
 			"status": {"normal"}, "placement": {"dipakai"},
-			"is_mahasiswa": {"true"},
-			"serial_number": {pcSerialB},
+			"is_mahasiswa":     {"true"},
+			"serial_number":    {pcSerialB},
 			"operating_system": {"Win11"}, "pc_type": {"PC"},
 			"brand_model": {"Dell"}, "accessories": {"KB"},
 			"processor": {"i5"}, "ram": {"8GB"}, "storage": {"256GB"},
@@ -546,8 +543,8 @@ func saCRUDInLab(t *testing.T, lab *testLab, db *database.DB, label, uploadDir s
 	postForm(t, lab, "/pc/create", url.Values{
 		"row": {"1"}, "column": {"1"},
 		"status": {"normal"}, "placement": {"dipakai"},
-		"is_mahasiswa": {"true"},
-		"serial_number": {pcSerial},
+		"is_mahasiswa":     {"true"},
+		"serial_number":    {pcSerial},
 		"operating_system": {"Win11"}, "pc_type": {"PC"},
 		"brand_model": {"Dell"}, "accessories": {"KB"},
 		"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},
@@ -759,8 +756,8 @@ func saCRUDInLab(t *testing.T, lab *testLab, db *database.DB, label, uploadDir s
 	postForm(t, lab, "/pc/create", url.Values{
 		"row": {"1"}, "column": {"1"},
 		"status": {"normal"}, "placement": {"dipakai"},
-		"is_mahasiswa": {"true"},
-		"serial_number": {uploadPCSerial},
+		"is_mahasiswa":     {"true"},
+		"serial_number":    {uploadPCSerial},
 		"operating_system": {"Win11"}, "pc_type": {"PC"},
 		"brand_model": {"Dell"}, "accessories": {"KB"},
 		"processor": {"i7"}, "ram": {"16GB"}, "storage": {"512GB"},

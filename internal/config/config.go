@@ -14,29 +14,30 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	Environment      string
-	Host             string
-	Port             string
-	Labs             []LabConfig
-	MultiLabMode     bool   // true if LABS= or LABS_<N>_* is used (multi-lab), false if only DATABASE_PATH (single-lab)
-	DatabaseURL      string
-	SessionSecret    string
-	UploadPath       string
-	GlobalDBPath     string
-	EnvPath          string
-	GeminiAPIKey     string
-	GeminiBaseURL    string
-	OpenRouterAPIKey string
-	OpenRouterBaseURL string
-	WriteMode        string
-	Timezone         string
-	DefaultPageSize   int
-	LogRetentionDays   int
-	LogCleanupInterval int
-	TempTTL            int // hours before temp files are cleaned up (default 1)
-	TempCleanupInterval int // minutes between cleanup runs (default 30)
-	Backup            BackupConfig
-	PublicBuild       PublicBuildConfig
+	Environment          string
+	Host                 string
+	Port                 string
+	Labs                 []LabConfig
+	MultiLabMode         bool // true if LABS= or LABS_<N>_* is used (multi-lab), false if only DATABASE_PATH (single-lab)
+	DatabaseURL          string
+	SessionSecret        string
+	SessionMaxAgeSeconds int
+	UploadPath           string
+	GlobalDBPath         string
+	EnvPath              string
+	GeminiAPIKey         string
+	GeminiBaseURL        string
+	OpenRouterAPIKey     string
+	OpenRouterBaseURL    string
+	WriteMode            string
+	Timezone             string
+	DefaultPageSize      int
+	LogRetentionDays     int
+	LogCleanupInterval   int
+	TempTTL              int // hours before temp files are cleaned up (default 1)
+	TempCleanupInterval  int // minutes between cleanup runs (default 30)
+	Backup               BackupConfig
+	PublicBuild          PublicBuildConfig
 }
 
 // BackupConfig holds SQLite auto-backup configuration
@@ -51,13 +52,13 @@ type BackupConfig struct {
 
 // PublicBuildConfig holds SSG auto-build configuration
 type PublicBuildConfig struct {
-	Enabled      bool
-	Interval     int
-	OutDir       string
-	TemplateDir  string
-	StaticDir    string
-	RepoDir      string
-	Branch       string
+	Enabled     bool
+	Interval    int
+	OutDir      string
+	TemplateDir string
+	StaticDir   string
+	RepoDir     string
+	Branch      string
 }
 
 // Load loads configuration from environment variables with defaults
@@ -106,27 +107,28 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Environment:   getEnv("ENVIRONMENT", "development"),
-		Host:          getEnv("HOST", "0.0.0.0"),
-		Port:          getEnv("PORT", "8080"),
-		Labs:          labs,
-		MultiLabMode:  multiLabMode,
-		EnvPath:       envPath,
-		DatabaseURL:   getEnv("DATABASE_URL", ""),
-		SessionSecret: getEnv("SESSION_SECRET", "change-this-secret-in-production"),
-		UploadPath:    uploadPath,
-		GlobalDBPath:  getEnv("GLOBAL_DB_PATH", "data/global.db"),
-		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
-		GeminiBaseURL:      getEnv("GEMINI_BASE_URL", ""),
-		OpenRouterAPIKey:   getEnv("OPENROUTER_API_KEY", ""),
-		OpenRouterBaseURL:  getEnv("OPENROUTER_BASE_URL", ""),
-		WriteMode:        getEnv("WRITE_MODE", "async"),
-		Timezone:         getEnv("TIMEZONE", "Asia/Jakarta"),
-		DefaultPageSize:    getEnvInt("DEFAULT_PAGE_SIZE", 25),
-		LogRetentionDays:    getEnvInt("LOG_RETENTION_DAYS", 90),
-		LogCleanupInterval:  getEnvInt("LOG_CLEANUP_INTERVAL", 24),
-		TempTTL:             getEnvInt("TEMP_TTL", 1),
-		TempCleanupInterval: getEnvInt("TEMP_CLEANUP_INTERVAL", 30),
+		Environment:          getEnv("ENVIRONMENT", "development"),
+		Host:                 getEnv("HOST", "0.0.0.0"),
+		Port:                 getEnv("PORT", "8080"),
+		Labs:                 labs,
+		MultiLabMode:         multiLabMode,
+		EnvPath:              envPath,
+		DatabaseURL:          getEnv("DATABASE_URL", ""),
+		SessionSecret:        getEnv("SESSION_SECRET", "change-this-secret-in-production"),
+		SessionMaxAgeSeconds: getEnvInt("SESSION_MAX_AGE_SECONDS", 604800),
+		UploadPath:           uploadPath,
+		GlobalDBPath:         getEnv("GLOBAL_DB_PATH", "data/global.db"),
+		GeminiAPIKey:         getEnv("GEMINI_API_KEY", ""),
+		GeminiBaseURL:        getEnv("GEMINI_BASE_URL", ""),
+		OpenRouterAPIKey:     getEnv("OPENROUTER_API_KEY", ""),
+		OpenRouterBaseURL:    getEnv("OPENROUTER_BASE_URL", ""),
+		WriteMode:            getEnv("WRITE_MODE", "async"),
+		Timezone:             getEnv("TIMEZONE", "Asia/Jakarta"),
+		DefaultPageSize:      getEnvInt("DEFAULT_PAGE_SIZE", 25),
+		LogRetentionDays:     getEnvInt("LOG_RETENTION_DAYS", 90),
+		LogCleanupInterval:   getEnvInt("LOG_CLEANUP_INTERVAL", 24),
+		TempTTL:              getEnvInt("TEMP_TTL", 1),
+		TempCleanupInterval:  getEnvInt("TEMP_CLEANUP_INTERVAL", 30),
 		PublicBuild: PublicBuildConfig{
 			Enabled:     getEnv("PUBLIC_BUILD_ENABLED", "true") == "true",
 			Interval:    getEnvInt("PUBLIC_BUILD_INTERVAL", 30),
