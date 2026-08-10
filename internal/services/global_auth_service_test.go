@@ -91,6 +91,7 @@ func seedPermission(t *testing.T, db *database.DB, userID int, labURLPath, role 
 func TestGlobalAuthLogin(t *testing.T) {
 	svc, repo, db := setupGlobalAuthTest(t)
 	id := seedTestUser(t, db, "testuser", "secret123", "Test User", false, false)
+	var token1 string
 
 	t.Run("success", func(t *testing.T) {
 		user, token, err := svc.Login("testuser", "secret123")
@@ -106,6 +107,7 @@ func TestGlobalAuthLogin(t *testing.T) {
 		if token == "" {
 			t.Error("expected non-empty session token")
 		}
+		token1 = token
 	})
 
 	t.Run("fail_wrong_password", func(t *testing.T) {
@@ -124,13 +126,16 @@ func TestGlobalAuthLogin(t *testing.T) {
 
 	t.Run("relogin_succeeds_and_rotates_token", func(t *testing.T) {
 		// First login already created session_token from "success" subtest.
-		// Login terakhir menang: login kedua harus sukses dan menimpa token lama.
+		// Login terakhir menang: login kedua harus sukses DAN token baru ≠ token lama.
 		_, token2, err := svc.Login("testuser", "secret123")
 		if err != nil {
 			t.Fatalf("expected relogin success, got %v", err)
 		}
 		if token2 == "" {
 			t.Error("expected non-empty token on relogin")
+		}
+		if token2 == token1 {
+			t.Error("expected relogin to rotate (new token differs from previous)")
 		}
 		dbToken, ts, err := repo.GetSession(id)
 		if err != nil {
@@ -156,16 +161,19 @@ func TestGlobalAuthLogout(t *testing.T) {
 	}
 
 	t.Run("clears_session_token", func(t *testing.T) {
-		token, _, _ := repo.GetSession(id)
-		if token == "" {
-			t.Fatal("expected session_token before logout")
+		token, ts, _ := repo.GetSession(id)
+		if token == "" || ts == 0 {
+			t.Fatal("expected session_token + session_updated_at before logout")
 		}
 
 		svc.Logout(id)
 
-		token, _, _ = repo.GetSession(id)
+		token, ts, _ = repo.GetSession(id)
 		if token != "" {
 			t.Error("expected empty session_token after logout")
+		}
+		if ts != 0 {
+			t.Error("expected session_updated_at reset to 0 after logout")
 		}
 	})
 
