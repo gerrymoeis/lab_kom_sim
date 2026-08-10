@@ -63,8 +63,6 @@ func adminPost(env *TestEnvironment, path, data string) *http.Response {
 func loginAs(env *TestEnvironment, username, password string) (cookies map[string]string, csrf string) {
 	env.LabA.cookies = make(map[string]string)
 	env.LabA.csrf = ""
-	// Clear any existing session_token to avoid ErrAlreadyLoggedIn
-	env.GlobalDB.Exec("UPDATE global_users SET session_token = '' WHERE username = ?", username)
 	if !env.LabA.login(username, password) {
 		env.LabA.t.Fatalf("%s login failed", username)
 	}
@@ -600,7 +598,7 @@ func TestAdminCSRF(t *testing.T) {
 		}
 	})
 
-		t.Run("get_routes_without_auth_redirect", func(t *testing.T) {
+	t.Run("get_routes_without_auth_redirect", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", env.TS.URL+"/labs", nil)
 		resp, err := env.Client.Do(req)
 		if err != nil {

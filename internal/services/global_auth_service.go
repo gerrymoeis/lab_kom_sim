@@ -9,16 +9,16 @@ import (
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/models"
 	"inventaris-lab-kom/internal/repository"
+	"inventaris-lab-kom/internal/timeutil"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	ErrInvalidCredentials      = errors.New("username atau password salah")
-	ErrAlreadyLoggedIn         = errors.New("akun sudah login di tempat lain")
-	ErrProtectedUser            = errors.New("cannot delete protected user")
-	ErrCannotDeleteSuperAdmin   = errors.New("cannot delete super admin")
-	ErrCannotDeleteGlobalAdmin  = errors.New("cannot delete global admin")
+	ErrProtectedUser           = errors.New("cannot delete protected user")
+	ErrCannotDeleteSuperAdmin  = errors.New("cannot delete super admin")
+	ErrCannotDeleteGlobalAdmin = errors.New("cannot delete global admin")
 )
 
 var DefaultPasswordMap = map[string]string{
@@ -51,19 +51,16 @@ func (s *GlobalAuthService) Login(username, password string) (*models.GlobalUser
 	}
 	token := hex.EncodeToString(b)
 
-	updated, err := s.userRepo.UpdateSessionTokenIfEmpty(u.ID, token)
-	if err != nil {
+	// Login selalu berhasil: token lama di-overwrite, sesi/perangkat lama otomatis invalid.
+	if err := s.userRepo.SetSession(u.ID, token, timeutil.Now().Unix()); err != nil {
 		return nil, "", fmt.Errorf("gagal update session token: %w", err)
-	}
-	if !updated {
-		return nil, "", ErrAlreadyLoggedIn
 	}
 
 	return u, token, nil
 }
 
 func (s *GlobalAuthService) Logout(userID int) {
-	s.userRepo.ClearSessionToken(userID)
+	s.userRepo.ClearSession(userID)
 }
 
 func (s *GlobalAuthService) GetPermissions(userID int) ([]models.LabPermission, error) {
@@ -147,7 +144,7 @@ func (s *GlobalAuthService) DeleteUser(id int) error {
 		return ErrCannotDeleteGlobalAdmin
 	}
 	s.userRepo.ClearPermissions(id)
-	s.userRepo.ClearSessionToken(id)
+	s.userRepo.ClearSession(id)
 	return s.userRepo.Delete(id)
 }
 
@@ -159,7 +156,7 @@ func (s *GlobalAuthService) UpdateUserPassword(id int, password string) error {
 	if err := s.userRepo.UpdatePassword(id, string(hash)); err != nil {
 		return err
 	}
-	if err := s.userRepo.ClearSessionToken(id); err != nil {
+	if err := s.userRepo.ClearSession(id); err != nil {
 		return err
 	}
 	return s.userRepo.ClearDefaultPasswordFlag(id)

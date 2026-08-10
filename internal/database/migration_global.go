@@ -35,7 +35,6 @@ func RunGlobalMigrations(db *DB) error {
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)`,
-
 	}
 
 	for _, t := range tables {
@@ -62,6 +61,17 @@ func RunGlobalMigrations(db *DB) error {
 	if !colExistsGlobal(db, "global_users", "is_global_admin") {
 		if _, err := db.Exec(`ALTER TABLE global_users ADD COLUMN is_global_admin INTEGER NOT NULL DEFAULT 0`); err != nil {
 			return fmt.Errorf("failed to add is_global_admin to global_users: %w", err)
+		}
+	}
+
+	// Add session_updated_at to global_users (unix seconds) — session TTL tracking
+	if !colExistsGlobal(db, "global_users", "session_updated_at") {
+		if _, err := db.Exec(`ALTER TABLE global_users ADD COLUMN session_updated_at INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("failed to add session_updated_at to global_users: %w", err)
+		}
+		// Backfill existing active sessions so they don't instantly expire on upgrade
+		if _, err := db.Exec(`UPDATE global_users SET session_updated_at = strftime('%s', updated_at) WHERE session_updated_at = 0 AND session_token != ''`); err != nil {
+			return fmt.Errorf("failed to backfill session_updated_at: %w", err)
 		}
 	}
 

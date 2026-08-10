@@ -226,10 +226,10 @@ func createSharedEnvironment() (*TestEnvironment, string, string, error) {
 
 // TestConfigOverrides allows customising config for specific test scenarios.
 type TestConfigOverrides struct {
-	GeminiKey        string
-	OpenRouterKey    string
-	UploadPath       string
-	GeminiBaseURL    string
+	GeminiKey         string
+	OpenRouterKey     string
+	UploadPath        string
+	GeminiBaseURL     string
 	OpenRouterBaseURL string
 }
 
@@ -426,13 +426,13 @@ func extractErrorLine(s string) string {
 }
 
 type TestEnvironment struct {
-	LabA, LabB   *testLab
-	TS           *httptest.Server
-	Client       *http.Client
+	LabA, LabB           *testLab
+	TS                   *httptest.Server
+	Client               *http.Client
 	GlobalDB, DB_A, DB_B *database.DB
-	Config       *config.Config
-	FlushLogs    func()
-	GlobalHandler *handlers.GlobalHandler
+	Config               *config.Config
+	FlushLogs            func()
+	GlobalHandler        *handlers.GlobalHandler
 }
 
 func createTestConfig(overrides ...TestConfigOverrides) *config.Config {
@@ -461,18 +461,19 @@ func createTestConfig(overrides ...TestConfigOverrides) *config.Config {
 		openRouterBaseURL = os.Getenv("OPENROUTER_BASE_URL")
 	}
 	return &config.Config{
-		SessionSecret:     "test-secret-12345",
-		UploadPath:        uploadPath,
-		DefaultPageSize:   25,
-		GeminiAPIKey:      geminiKey,
-		GeminiBaseURL:     geminiBaseURL,
-		OpenRouterAPIKey:  openRouterKey,
-		OpenRouterBaseURL: openRouterBaseURL,
+		SessionSecret:        "test-secret-12345",
+		SessionMaxAgeSeconds: 604800,
+		UploadPath:           uploadPath,
+		DefaultPageSize:      25,
+		GeminiAPIKey:         geminiKey,
+		GeminiBaseURL:        geminiBaseURL,
+		OpenRouterAPIKey:     openRouterKey,
+		OpenRouterBaseURL:    openRouterBaseURL,
 	}
 }
 
 func clearSessions() {
-	sharedEnv.GlobalDB.Exec("UPDATE global_users SET session_token = ''")
+	sharedEnv.GlobalDB.Exec("UPDATE global_users SET session_token = '', session_updated_at = 0")
 	for _, db := range sharedEnv.GlobalHandler.LabsDB {
 		db.Exec("UPDATE users SET session_token = NULL")
 	}
@@ -491,7 +492,7 @@ func resetGlobalState() {
 	}
 
 	// Clear global sessions inside transaction
-	tx.Exec("UPDATE global_users SET session_token = ''")
+	tx.Exec("UPDATE global_users SET session_token = '', session_updated_at = 0")
 
 	// UPSERT for each seed user — uses pre-computed hashes (avoid 576 bcrypt computations)
 	for _, u := range seedUsers {
@@ -544,13 +545,13 @@ func wrapSharedEnv(t *testing.T) *TestEnvironment {
 		url: sharedEnv.LabA.url, id: sharedEnv.LabA.id, prefix: sharedEnv.LabA.prefix,
 		db: sharedEnv.DB_A, cfg: sharedEnv.Config.Labs[0],
 		cookies: make(map[string]string),
-		ts: sharedEnv.TS, t: t, client: client,
+		ts:      sharedEnv.TS, t: t, client: client,
 	}
 	labB := &testLab{
 		url: sharedEnv.LabB.url, id: sharedEnv.LabB.id, prefix: sharedEnv.LabB.prefix,
 		db: sharedEnv.DB_B, cfg: sharedEnv.Config.Labs[1],
 		cookies: make(map[string]string),
-		ts: sharedEnv.TS, t: t, client: client,
+		ts:      sharedEnv.TS, t: t, client: client,
 	}
 	return &TestEnvironment{
 		LabA:          labA,
