@@ -78,34 +78,26 @@ func (r *GlobalUserRepository) UpdatePassword(id int, hashedPassword string) err
 	return err
 }
 
-func (r *GlobalUserRepository) UpdateSessionToken(id int, token string) error {
-	_, err := r.db.Exec(`UPDATE global_users SET session_token = ? WHERE id = ?`, token, id)
+func (r *GlobalUserRepository) SetSession(id int, token string, updatedAt int64) error {
+	_, err := r.db.Exec(`UPDATE global_users SET session_token = ?, session_updated_at = ? WHERE id = ?`, token, updatedAt, id)
 	return err
 }
 
-func (r *GlobalUserRepository) UpdateSessionTokenIfEmpty(id int, token string) (bool, error) {
-	res, err := r.db.Exec(`UPDATE global_users SET session_token = ? WHERE id = ? AND (session_token IS NULL OR session_token = '')`, token, id)
-	if err != nil {
-		return false, err
-	}
-	n, _ := res.RowsAffected()
-	return n > 0, nil
+func (r *GlobalUserRepository) GetSession(id int) (string, int64, error) {
+	var token string
+	var updatedAt int64
+	err := r.db.QueryRow(`SELECT session_token, COALESCE(session_updated_at, 0) FROM global_users WHERE id = ?`, id).Scan(&token, &updatedAt)
+	return token, updatedAt, err
+}
+
+func (r *GlobalUserRepository) ClearSession(id int) error {
+	_, err := r.db.Exec(`UPDATE global_users SET session_token = '', session_updated_at = 0 WHERE id = ?`, id)
+	return err
 }
 
 func (r *GlobalUserRepository) Delete(id int) error {
 	_, err := r.db.Exec(`DELETE FROM global_users WHERE id = ?`, id)
 	return err
-}
-
-func (r *GlobalUserRepository) ClearSessionToken(id int) error {
-	_, err := r.db.Exec(`UPDATE global_users SET session_token = '' WHERE id = ?`, id)
-	return err
-}
-
-func (r *GlobalUserRepository) GetSessionToken(id int) (string, error) {
-	var token string
-	err := r.db.QueryRow(`SELECT session_token FROM global_users WHERE id = ?`, id).Scan(&token)
-	return token, err
 }
 
 func (r *GlobalUserRepository) List() ([]models.GlobalUser, error) {

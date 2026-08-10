@@ -267,9 +267,8 @@ func TestEdgeCases(t *testing.T) {
 // ——————————————————————————————————————
 
 // TestConcurrentLoginRace — 20 goroutine login admin sekaligus.
-// Karena ada TOCTOU race di GlobalAuthService.Login() (GetSessionToken
-// dan UpdateSessionToken tidak dalam 1 transaksi), bisa terjadi >1
-// goroutine berhasil login. Test ini mengamati & melaporkan hasilnya.
+// Dengan prinsip "login terakhir menang", SEMUA login harus sukses (302)
+// dan token DB akhir = salah satu token dari 20 goroutine (semua valid).
 func TestConcurrentLoginRace(t *testing.T) {
 	env := wrapSharedEnv(t)
 	tsURL := env.TS.URL
@@ -331,24 +330,33 @@ func TestConcurrentLoginRace(t *testing.T) {
 	wg.Wait()
 	close(results)
 
-	var success, conflict, other int
+	var success, other int
 	for r := range results {
 		switch r.code {
 		case 302:
 			success++
-		case 409:
-			conflict++
 		default:
 			other++
 		}
 	}
 
-	t.Logf("Concurrent login race: success=%d, conflict(409)=%d, other=%d", success, conflict, other)
+	t.Logf("Concurrent login race: success(302)=%d, other=%d", success, other)
 	if success == 0 {
 		t.Error("expected at least 1 successful login (302)")
 	}
-	if success > 5 {
-		t.Logf("NOTE: %d concurrent logins succeeded — may indicate TOCTOU race in Login()", success)
+	// Login terakhir menang → semua login diizinkan; tidak ada lagi 409.
+	if other > 0 {
+		t.Errorf("unexpected non-302 login results: %d", other)
+	}
+
+	// Verifikasi: hanya 1 token aktif tersimpan di DB (hasil login terakhir).
+	var activeSessions int
+	err := env.GlobalDB.QueryRow("SELECT COUNT(*) FROM global_users WHERE username = 'admin' AND session_token != ''").Scan(&activeSessions)
+	if err != nil {
+		t.Fatalf("count admin sessions: %v", err)
+	}
+	if activeSessions != 1 {
+		t.Errorf("expected 1 active session for admin, got %d", activeSessions)
 	}
 }
 

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -141,8 +140,8 @@ func (h *GlobalHandler) LoginPage(c *gin.Context) {
 	_ = session.Save()
 
 	h.render(c, http.StatusOK, "login.html", gin.H{
-		"title":             "Login - Sistem Inventaris Lab",
-		"csrf_token":        token,
+		"title":              "Login - Sistem Inventaris Lab",
+		"csrf_token":         token,
 		"defaultCredentials": h.getDefaultCredentials(),
 	})
 }
@@ -151,8 +150,8 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBind(&req); err != nil {
 		h.render(c, http.StatusBadRequest, "login.html", gin.H{
-			"title":             "Login - Sistem Inventaris Lab",
-			"error":             "Username dan password harus diisi",
+			"title":              "Login - Sistem Inventaris Lab",
+			"error":              "Username dan password harus diisi",
 			"defaultCredentials": h.getDefaultCredentials(),
 		})
 		return
@@ -160,17 +159,9 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 
 	user, token, err := h.globalAuthService.Login(req.Username, req.Password)
 	if err != nil {
-		msg := "Username atau password salah"
-		if errors.Is(err, services.ErrAlreadyLoggedIn) {
-			msg = "Akun ini sudah login di perangkat lain. Silakan logout terlebih dahulu."
-		}
-		status := http.StatusUnauthorized
-		if errors.Is(err, services.ErrAlreadyLoggedIn) {
-			status = http.StatusConflict
-		}
-		h.render(c, status, "login.html", gin.H{
-			"title":             "Login - Sistem Inventaris Lab",
-			"error":             msg,
+		h.render(c, http.StatusUnauthorized, "login.html", gin.H{
+			"title":              "Login - Sistem Inventaris Lab",
+			"error":              "Username atau password salah",
 			"defaultCredentials": h.getDefaultCredentials(),
 		})
 		return
@@ -191,8 +182,8 @@ func (h *GlobalHandler) Login(c *gin.Context) {
 	middleware.NewCSRFToken(session)
 	if err := session.Save(); err != nil {
 		h.render(c, http.StatusInternalServerError, "login.html", gin.H{
-			"title":             "Login - Sistem Inventaris Lab",
-			"error":             "Gagal menyimpan session",
+			"title":              "Login - Sistem Inventaris Lab",
+			"error":              "Gagal menyimpan session",
 			"defaultCredentials": h.getDefaultCredentials(),
 		})
 		return
@@ -517,5 +508,3 @@ func (h *GlobalHandler) LabSelector(c *gin.Context) {
 		"labs":          labs,
 	})
 }
-
-

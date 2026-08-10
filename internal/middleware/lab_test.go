@@ -7,6 +7,7 @@ import (
 
 	"inventaris-lab-kom/internal/config"
 	"inventaris-lab-kom/internal/database"
+	"inventaris-lab-kom/internal/timeutil"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -31,6 +32,7 @@ func setupMiddlewareTest(t *testing.T) (globalDB *database.DB, dbs map[string]*d
 		is_super_admin INTEGER NOT NULL DEFAULT 0,
 		is_protected INTEGER NOT NULL DEFAULT 0,
 		session_token TEXT DEFAULT '',
+		session_updated_at INTEGER NOT NULL DEFAULT 0,
 		password_is_default INTEGER NOT NULL DEFAULT 1,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -301,4 +303,112 @@ func createTestContext(lab string) *gin.Context {
 	c, _ := gin.CreateTestContext(w)
 	c.Set("lab", lab)
 	return c
+}
+
+// TestAuthRequiredSessionTTL — server-side session TTL (sliding) + rotasi token:
+//   - fresh token → 200 dan session_updated_at di-rolling refresh;
+//   - token mismatch (dirotasi login baru) → 302, token DB TIDAK disentuh;
+//   - token stale (> maxAge) → 302 dan token DB dibersihkan (free slot).
+func TestAuthRequiredSessionTTL(t *testing.T) {
+	globalDB, _, _ := setupMiddlewareTest(t)
+	maxAge := int64(7 * 86400)
+	now := timeutil.Now().Unix()
+	realToken := "tok-real-abc"
+
+	_, err := globalDB.Exec(`INSERT INTO global_users (id, username, password, full_name, is_super_admin, is_protected, session_token, session_updated_at)
+		VALUES (10, 'ttluser', ?, 'TTL User', 0, 0, ?, ?)`, "$2a$10$dummy", realToken, now-3600)
+	if err != nil {
+		t.Fatalf("insert ttluser: %v", err)
+	}
+
+	buildRouter := func(sessToken string) (*gin.Engine, *httptest.ResponseRecorder) {
+		testRouter := gin.New()
+		store := cookie.NewStore([]byte("test-secret"))
+		testRouter.Use(sessions.Sessions("inventaris_session", store))
+		testRouter.Use(GlobalDBInjector(globalDB))
+		testRouter.GET("/set", func(c *gin.Context) {
+			s := sessions.Default(c)
+			s.Set("user_id", 10)
+			s.Set("session_token", sessToken)
+			_ = s.Save()
+			c.String(200, "ok")
+		})
+		testRouter.GET("/protected", AuthRequired(7*86400), func(c *gin.Context) {
+			c.String(200, "ok")
+		})
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("GET", "/set", nil)
+		testRouter.ServeHTTP(w, req)
+		return testRouter, w
+	}
+
+	t.Run("fresh_token_allows_and_rolls_refresh", func(t *testing.T) {
+		router, setW := buildRouter(realToken)
+		w2 := httptest.NewRecorder()
+		req2, _ := http.NewRequest("GET", "/protected", nil)
+		for _, ck := range setW.Result().Cookies() {
+			req2.AddCookie(ck)
+		}
+		router.ServeHTTP(w2, req2)
+		if w2.Code != 200 {
+			t.Errorf("expected 200 for fresh token, got %d", w2.Code)
+		}
+		// Rolling refresh harus memperbarui session_updated_at ke ~sekarang.
+		var updatedAt int64
+		if err := globalDB.QueryRow("SELECT session_updated_at FROM global_users WHERE id = 10").Scan(&updatedAt); err != nil {
+			t.Fatalf("read session_updated_at: %v", err)
+		}
+		if updatedAt < now-2 {
+			t.Errorf("expected rolling refresh (session_updated_at >= %d), got %d", now-2, updatedAt)
+		}
+	})
+
+	t.Run("stale_token_cleared_and_redirected", func(t *testing.T) {
+		// Paksa token basi (> maxAge) agar menjadi "stale/abandoned".
+		if _, err := globalDB.Exec(`UPDATE global_users SET session_token = 'tok-stale', session_updated_at = ? WHERE id = 10`, now-maxAge-3600); err != nil {
+			t.Fatalf("set stale session: %v", err)
+		}
+		router, setW := buildRouter("tok-stale")
+		w2 := httptest.NewRecorder()
+		req2, _ := http.NewRequest("GET", "/protected", nil)
+		for _, ck := range setW.Result().Cookies() {
+			req2.AddCookie(ck)
+		}
+		router.ServeHTTP(w2, req2)
+		if w2.Code != 302 {
+			t.Errorf("expected 302 for stale token, got %d", w2.Code)
+		}
+		// Token stale dibersihkan dari DB (slot kosong untuk login baru).
+		var dbToken string
+		if err := globalDB.QueryRow("SELECT session_token FROM global_users WHERE id = 10").Scan(&dbToken); err != nil {
+			t.Fatalf("read session_token: %v", err)
+		}
+		if dbToken != "" {
+			t.Errorf("expected session_token cleared on stale, got %q", dbToken)
+		}
+	})
+
+	t.Run("mismatch_token_not_touching_db", func(t *testing.T) {
+		if _, err := globalDB.Exec(`UPDATE global_users SET session_token = ?, session_updated_at = ? WHERE id = 10`, realToken, now-3600); err != nil {
+			t.Fatalf("restore session: %v", err)
+		}
+		router, setW := buildRouter("tok-compromised")
+		w2 := httptest.NewRecorder()
+		req2, _ := http.NewRequest("GET", "/protected", nil)
+		for _, ck := range setW.Result().Cookies() {
+			req2.AddCookie(ck)
+		}
+		router.ServeHTTP(w2, req2)
+		if w2.Code != 302 {
+			t.Errorf("expected 302 for mismatched token, got %d", w2.Code)
+		}
+		// Token DB milik sesi aktif TIDAK boleh dibersihkan (hanya cookie lama yang mati).
+		var dbToken string
+		if err := globalDB.QueryRow("SELECT session_token FROM global_users WHERE id = 10").Scan(&dbToken); err != nil {
+			t.Fatalf("read session_token: %v", err)
+		}
+		if dbToken != realToken {
+			t.Errorf("expected DB token untouched on mismatch, got %q", dbToken)
+		}
+	})
 }

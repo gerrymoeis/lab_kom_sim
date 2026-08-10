@@ -29,6 +29,7 @@ func setupGlobalAuthTest(t *testing.T) (*GlobalAuthService, *repository.GlobalUs
 			is_protected INTEGER NOT NULL DEFAULT 0,
 			is_global_admin INTEGER NOT NULL DEFAULT 0,
 			session_token TEXT DEFAULT '',
+			session_updated_at INTEGER NOT NULL DEFAULT 0,
 			password_is_default INTEGER NOT NULL DEFAULT 1,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -88,8 +89,8 @@ func seedPermission(t *testing.T, db *database.DB, userID int, labURLPath, role 
 // --- Tests ---
 
 func TestGlobalAuthLogin(t *testing.T) {
-	svc, _, db := setupGlobalAuthTest(t)
-	seedTestUser(t, db, "testuser", "secret123", "Test User", false, false)
+	svc, repo, db := setupGlobalAuthTest(t)
+	id := seedTestUser(t, db, "testuser", "secret123", "Test User", false, false)
 
 	t.Run("success", func(t *testing.T) {
 		user, token, err := svc.Login("testuser", "secret123")
@@ -121,11 +122,25 @@ func TestGlobalAuthLogin(t *testing.T) {
 		}
 	})
 
-	t.Run("fail_already_logged_in", func(t *testing.T) {
-		// First login already created session_token from "success" subtest
-		_, _, err := svc.Login("testuser", "secret123")
-		if err != ErrAlreadyLoggedIn {
-			t.Errorf("expected ErrAlreadyLoggedIn, got %v", err)
+	t.Run("relogin_succeeds_and_rotates_token", func(t *testing.T) {
+		// First login already created session_token from "success" subtest.
+		// Login terakhir menang: login kedua harus sukses dan menimpa token lama.
+		_, token2, err := svc.Login("testuser", "secret123")
+		if err != nil {
+			t.Fatalf("expected relogin success, got %v", err)
+		}
+		if token2 == "" {
+			t.Error("expected non-empty token on relogin")
+		}
+		dbToken, ts, err := repo.GetSession(id)
+		if err != nil {
+			t.Fatalf("GetSession: %v", err)
+		}
+		if dbToken != token2 {
+			t.Error("expected DB token to be overwritten by latest login")
+		}
+		if ts == 0 {
+			t.Error("expected session_updated_at > 0")
 		}
 	})
 }
@@ -141,14 +156,14 @@ func TestGlobalAuthLogout(t *testing.T) {
 	}
 
 	t.Run("clears_session_token", func(t *testing.T) {
-		token, _ := repo.GetSessionToken(id)
+		token, _, _ := repo.GetSession(id)
 		if token == "" {
 			t.Fatal("expected session_token before logout")
 		}
 
 		svc.Logout(id)
 
-		token, _ = repo.GetSessionToken(id)
+		token, _, _ = repo.GetSession(id)
 		if token != "" {
 			t.Error("expected empty session_token after logout")
 		}
