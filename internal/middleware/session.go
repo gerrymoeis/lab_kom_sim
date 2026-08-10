@@ -8,12 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GlobalSessionMiddleware(secret string) gin.HandlerFunc {
+func GlobalSessionMiddleware(secret string, maxAgeSeconds int) gin.HandlerFunc {
 	store := cookie.NewStore([]byte(secret))
 
 	store.Options(sessions.Options{
 		Path:     "/",
-		MaxAge:   86400 * 7,
+		MaxAge:   maxAgeSeconds,
 		HttpOnly: true,
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,

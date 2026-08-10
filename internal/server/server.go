@@ -126,12 +126,16 @@ func makeServerFuncMap(staticURL func(string) string) template.FuncMap {
 		"sub":       func(a, b int) int { return a - b },
 		"seq": func(n int) []int {
 			r := make([]int, n)
-			for i := 1; i <= n; i++ { r[i-1] = i }
+			for i := 1; i <= n; i++ {
+				r[i-1] = i
+			}
 			return r
 		},
 		"iterate": func(count int) []int {
 			r := make([]int, count)
-			for i := 0; i < count; i++ { r[i] = i }
+			for i := 0; i < count; i++ {
+				r[i] = i
+			}
 			return r
 		},
 		"lower":           func(s string) string { return strings.ToLower(s) },
@@ -141,25 +145,37 @@ func makeServerFuncMap(staticURL func(string) string) template.FuncMap {
 		"pcPlacementInfo": func(placement string) PlacementInfo { return getPCPlacementInfo(placement) },
 		"json":            func(v interface{}) (template.JS, error) { b, err := json.Marshal(v); return template.JS(b), err },
 		"isSpecialLabel": func(label, placement string) bool {
-			if placement != "dipakai" { return false }
-			if len(label) < 4 || !strings.HasPrefix(label, "pc-") { return false }
+			if placement != "dipakai" {
+				return false
+			}
+			if len(label) < 4 || !strings.HasPrefix(label, "pc-") {
+				return false
+			}
 			for _, c := range label[3:] {
-				if c >= '0' && c <= '9' { continue }
+				if c >= '0' && c <= '9' {
+					continue
+				}
 				return true
 			}
 			return false
 		},
 		"formatPCLabel": func(pc models.PC) string {
-			if pc.Label != "" { return pc.Label }
+			if pc.Label != "" {
+				return pc.Label
+			}
 			return "-"
 		},
 		"localTime": func(t interface{}) interface{} {
 			switch v := t.(type) {
 			case time.Time:
-				if v.IsZero() { return v }
+				if v.IsZero() {
+					return v
+				}
 				return v.In(timeutil.Location())
 			case *time.Time:
-				if v == nil || v.IsZero() { return v }
+				if v == nil || v.IsZero() {
+					return v
+				}
 				return v.In(timeutil.Location())
 			}
 			return t
@@ -170,7 +186,9 @@ func makeServerFuncMap(staticURL func(string) string) template.FuncMap {
 		},
 		"currentDateAfter": func(t time.Time) bool { return time.Now().After(t) },
 		"daysBetween": func(start, end *time.Time) string {
-			if start == nil || end == nil { return "-" }
+			if start == nil || end == nil {
+				return "-"
+			}
 			return fmt.Sprintf("%d", int(end.Sub(*start).Hours()/24)+1)
 		},
 		"imgv": func(t time.Time, filename string) string {
@@ -180,11 +198,15 @@ func makeServerFuncMap(staticURL func(string) string) template.FuncMap {
 			return filename + "?v=" + fmt.Sprintf("%d", t.Unix())
 		},
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
-			if len(values)%2 != 0 { return nil, fmt.Errorf("dict: odd number of arguments") }
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("dict: odd number of arguments")
+			}
 			d := make(map[string]interface{}, len(values)/2)
 			for i := 0; i < len(values); i += 2 {
 				key, ok := values[i].(string)
-				if !ok { return nil, fmt.Errorf("dict: keys must be strings") }
+				if !ok {
+					return nil, fmt.Errorf("dict: keys must be strings")
+				}
 				d[key] = values[i+1]
 			}
 			return d, nil
@@ -198,12 +220,20 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 	// Try filesystem first (dev mode, hot-reload)
 	if fi, err := os.Stat(templatesDir); err == nil && fi.IsDir() {
 		err := filepath.Walk(templatesDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil { return err }
-			if info.IsDir() || filepath.Ext(path) != ".html" { return nil }
+			if err != nil {
+				return err
+			}
+			if info.IsDir() || filepath.Ext(path) != ".html" {
+				return nil
+			}
 			relPath, _ := filepath.Rel(templatesDir, path)
-			if strings.HasPrefix(filepath.ToSlash(relPath), "public/") { return nil }
+			if strings.HasPrefix(filepath.ToSlash(relPath), "public/") {
+				return nil
+			}
 			content, err := os.ReadFile(path)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			_, err = templ.New(filepath.ToSlash(relPath)).Parse(string(content))
 			return err
 		})
@@ -213,12 +243,20 @@ func LoadTemplates(templatesDir string, staticURL func(string) string) (*templat
 	// Fallback to embedded templates (production binary without web/ dir)
 	log.Println("LoadTemplates: filesystem not found, using embedded templates")
 	err := fs.WalkDir(web.FS, "templates", func(path string, d fs.DirEntry, err error) error {
-		if err != nil { return err }
-		if d.IsDir() || filepath.Ext(path) != ".html" { return nil }
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || filepath.Ext(path) != ".html" {
+			return nil
+		}
 		relPath := strings.TrimPrefix(path, "templates/")
-		if strings.HasPrefix(filepath.ToSlash(relPath), "public/") { return nil }
+		if strings.HasPrefix(filepath.ToSlash(relPath), "public/") {
+			return nil
+		}
 		content, err := web.FS.ReadFile(path)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		_, err = templ.New(filepath.ToSlash(relPath)).Parse(string(content))
 		return err
 	})
@@ -312,8 +350,8 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	// --- Root-level middleware (applies to ALL routes) ---
 	router.Use(middleware.GlobalDBInjector(globalDB))
-	router.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret))
-	router.Use(middleware.SecureSessionMiddleware())
+	router.Use(middleware.GlobalSessionMiddleware(cfg.SessionSecret, cfg.SessionMaxAgeSeconds))
+	router.Use(middleware.SecureSessionMiddleware(cfg.SessionMaxAgeSeconds))
 	router.Use(middleware.FlashReader())
 
 	router.GET("/healthz", func(c *gin.Context) {
@@ -344,7 +382,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	// Profile routes — any authenticated user (not just SA/GAB)
 	labsProfileGroup := router.Group("/labs")
-	labsProfileGroup.Use(middleware.AuthRequired(), middleware.CSRF())
+	labsProfileGroup.Use(middleware.AuthRequired(cfg.SessionMaxAgeSeconds), middleware.CSRF())
 	{
 		labsProfileGroup.GET("/profile", globalHandler.AdminProfile)
 		labsProfileGroup.POST("/profile", globalHandler.AdminUpdateProfile)
@@ -353,7 +391,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	// Super admin only routes under /labs/
 	labsAdminGroup := router.Group("/labs")
-	labsAdminGroup.Use(middleware.AuthRequired(), middleware.CSRF(), middleware.SuperAdminRequired())
+	labsAdminGroup.Use(middleware.AuthRequired(cfg.SessionMaxAgeSeconds), middleware.CSRF(), middleware.SuperAdminRequired())
 	{
 		// SA/GAB dashboard — manages lab list
 		labsAdminGroup.GET("", globalHandler.AdminLabList)
@@ -436,7 +474,7 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 
 	labGroup := router.Group("/:lab")
 	labGroup.Use(middleware.DBInjector(dbs, labCfgs))
-	labGroup.Use(middleware.AuthRequired())
+	labGroup.Use(middleware.AuthRequired(cfg.SessionMaxAgeSeconds))
 	labGroup.Use(middleware.LabPermissionRequired())
 	labGroup.Use(middleware.LabRoleInjector())
 	{
