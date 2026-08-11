@@ -177,6 +177,12 @@ func seedPCsFromJSON(db *DB, folder string, urlPath string) error {
 			return fmt.Sprintf("pc-%d", n)
 		}
 	}
+	labelForSpec := func(pc jsonPCSpec) string {
+		if pc.Label != "" {
+			return pc.Label
+		}
+		return labelFor(pc.Number)
+	}
 
 	existing := map[string]bool{}
 	if rows, err := db.Query(`SELECT label FROM pcs`); err == nil {
@@ -191,13 +197,10 @@ func seedPCsFromJSON(db *DB, folder string, urlPath string) error {
 
 	missing := map[string]bool{}
 	for _, pc := range pcs {
-		lbl := labelFor(pc.Number)
+		lbl := labelForSpec(pc)
 		if !existing[lbl] {
 			missing[lbl] = true
 		}
-	}
-	if len(missing) == 0 {
-		return nil
 	}
 
 	swByName := map[string]int{}
@@ -251,52 +254,49 @@ func seedPCsFromJSON(db *DB, folder string, urlPath string) error {
 			pcStatus = defStatus
 		}
 
-		label := pc.Label
-		if label == "" {
-			label = labelFor(pc.Number)
-		}
-		if !missing[label] {
-			continue
-		}
-		pcType := defPCType
-		brandModel := defBrandModel
-		if pc.BrandModel != "" {
-			brandModel = pc.BrandModel
-		} else if pc.Number >= 41 && pc.Label == "" {
-			pcType = label
-			brandModel = ""
-		}
-		placement := pc.Placement
-		if placement == "" {
-			placement = defPlacement
-			if pcStatus == "broken" && pc.SN == "" {
-				placement = "cadangan"
-			}
-		}
-		row := rowFor(pc.Number)
-		col := colFor(pc.Number)
-		if pc.Row > 0 {
-			row = pc.Row
-		}
-		if pc.Column > 0 {
-			col = pc.Column
-		}
-		_, execErr := tx.Exec(`INSERT INTO pcs ("row", "column", status, processor, ram, storage,
-			serial_number, operating_system, pc_type, brand_model, accessories,
-			pc_brand, mouse_brand, keyboard_brand,
-			notes, label, placement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-			CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-			row, col,
-			pcStatus, defProcessor, defRAM, defStorage,
-			pc.SN, pc.OS, pcType, brandModel, defAccessories,
-			pc.PCBrand, pc.MouseBrand, pc.KeyboardBrand,
-			pc.Notes, label, placement)
-		if execErr != nil {
-			tx.Rollback()
-			return fmt.Errorf("failed to seed PC-%d: %w", pc.Number, execErr)
-		}
+		label := labelForSpec(pc)
 
 		var pcID int
+		if missing[label] {
+			pcType := defPCType
+			brandModel := defBrandModel
+			if pc.BrandModel != "" {
+				brandModel = pc.BrandModel
+			} else if pc.Number >= 41 && pc.Label == "" {
+				pcType = label
+				brandModel = ""
+			}
+			placement := pc.Placement
+			if placement == "" {
+				placement = defPlacement
+				if pcStatus == "broken" && pc.SN == "" {
+					placement = "cadangan"
+				}
+			}
+			row := rowFor(pc.Number)
+			col := colFor(pc.Number)
+			if pc.Row > 0 {
+				row = pc.Row
+			}
+			if pc.Column > 0 {
+				col = pc.Column
+			}
+			_, execErr := tx.Exec(`INSERT INTO pcs ("row", "column", status, processor, ram, storage,
+				serial_number, operating_system, pc_type, brand_model, accessories,
+				pc_brand, mouse_brand, keyboard_brand,
+				notes, label, placement, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+				CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+				row, col,
+				pcStatus, defProcessor, defRAM, defStorage,
+				pc.SN, pc.OS, pcType, brandModel, defAccessories,
+				pc.PCBrand, pc.MouseBrand, pc.KeyboardBrand,
+				pc.Notes, label, placement)
+			if execErr != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to seed PC-%d: %w", pc.Number, execErr)
+			}
+		}
+
 		tx.QueryRow(`SELECT id FROM pcs WHERE label = ?`, label).Scan(&pcID)
 		if pcID == 0 {
 			continue

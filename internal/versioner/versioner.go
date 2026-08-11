@@ -51,7 +51,10 @@ func New(staticDir string) (*Versioner, error) {
 		v.hashes[relPath] = base + "." + hash + ext
 		return nil
 	})
-	return v, err
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 func (v *Versioner) URL(path string) string {
