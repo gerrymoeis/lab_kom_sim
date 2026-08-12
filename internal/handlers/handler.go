@@ -308,9 +308,13 @@ func (h *Handler) renderTemplate(c *gin.Context, status int, tmpl string, data g
 	safeRender(c, status, tmpl, data)
 }
 
-func (h *Handler) errHTML(c *gin.Context, msg string) {
+func (h *Handler) errHTML(c *gin.Context, msg string, status ...int) {
+	code := http.StatusInternalServerError
+	if len(status) > 0 {
+		code = status[0]
+	}
 	_, username, role, _ := h.user(c)
-	h.renderTemplate(c, http.StatusInternalServerError, "error.html", gin.H{
+	h.renderTemplate(c, code, "error.html", gin.H{
 		"title": "Error", "message": msg,
 		"currentPage": "", "username": username, "role": role,
 	})

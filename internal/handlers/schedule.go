@@ -102,7 +102,7 @@ func (h *Handler) ScheduleEditPage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	s, err := h.scheduleService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Jadwal tidak ditemukan")
+		h.errHTML(c, "Jadwal tidak ditemukan", http.StatusNotFound)
 		return
 	}
 

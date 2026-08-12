@@ -120,7 +120,7 @@ func (h *Handler) DeviceUsageDetail(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	usage, err := h.deviceUsageService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Pemakaian tidak ditemukan")
+		h.errHTML(c, "Pemakaian tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *Handler) DeviceUsageEditPage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	usage, err := h.deviceUsageService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Pemakaian tidak ditemukan")
+		h.errHTML(c, "Pemakaian tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -160,7 +160,7 @@ func (h *Handler) DeviceUsageEdit(c *gin.Context) {
 	if !h.requireAdmin(c) { return }
 
 	if _, err := h.deviceUsageService.GetByID(id); err != nil {
-		h.errHTML(c, "Pemakaian tidak ditemukan")
+		h.errHTML(c, "Pemakaian tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
