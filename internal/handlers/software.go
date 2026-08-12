@@ -64,7 +64,7 @@ func (h *Handler) SoftwareDetail(c *gin.Context) {
 	slug := c.Param("slug")
 	sw, err := h.softwareService.GetBySlug(slug)
 	if err != nil {
-		h.errHTML(c, "Software tidak ditemukan")
+		h.errHTML(c, "Software tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *Handler) SoftwareEditPage(c *gin.Context) {
 	slug := c.Param("slug")
 	sw, err := h.softwareService.GetBySlug(slug)
 	if err != nil {
-		h.errHTML(c, "Software tidak ditemukan")
+		h.errHTML(c, "Software tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *Handler) SoftwareEdit(c *gin.Context) {
 	slug := c.Param("slug")
 	sw, err := h.softwareService.GetBySlug(slug)
 	if err != nil {
-		h.errHTML(c, "Software tidak ditemukan")
+		h.errHTML(c, "Software tidak ditemukan", http.StatusNotFound)
 		return
 	}
 

@@ -177,7 +177,7 @@ func (h *Handler) PrintGeneratePDF(c *gin.Context) {
 			}
 			dt, err := h.deviceTypeService.GetByLabelSlug(p)
 			if err != nil {
-				h.errHTML(c, "Device type tidak ditemukan: "+p)
+				h.errHTML(c, "Device type tidak ditemukan: "+p, http.StatusNotFound)
 				return
 			}
 			ids = append(ids, fmt.Sprintf("%d", dt.ID))
