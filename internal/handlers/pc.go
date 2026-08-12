@@ -62,7 +62,7 @@ func (h *Handler) PCDetail(c *gin.Context) {
 
 	label := c.Param("label")
 	pc, err := h.pcService.GetByLabel(label)
-	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
+	if err != nil { h.errHTML(c, "PC tidak ditemukan", http.StatusNotFound); return }
 
 	requiredSW, otherSW, _ := h.pcService.GetSoftware(pc.ID)
 
@@ -146,7 +146,7 @@ func (h *Handler) PCEditPage(c *gin.Context) {
 
 	label := c.Param("label")
 	pc, err := h.pcService.GetByLabelEdit(label)
-	if err != nil { h.errHTML(c, "PC tidak ditemukan"); return }
+	if err != nil { h.errHTML(c, "PC tidak ditemukan", http.StatusNotFound); return }
 
 	requiredSW, otherSW, _ := h.pcService.GetSoftware(pc.ID)
 

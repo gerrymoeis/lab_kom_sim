@@ -122,7 +122,7 @@ func (h *Handler) DeviceInstallationDetail(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	inst, err := h.deviceInstallationService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Instalasi tidak ditemukan")
+		h.errHTML(c, "Instalasi tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -144,7 +144,7 @@ func (h *Handler) DeviceInstallationEditPage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	inst, err := h.deviceInstallationService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Instalasi tidak ditemukan")
+		h.errHTML(c, "Instalasi tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -170,7 +170,7 @@ func (h *Handler) DeviceInstallationEdit(c *gin.Context) {
 	// Verify installation exists before updating
 	inst, err := h.deviceInstallationService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Instalasi tidak ditemukan")
+		h.errHTML(c, "Instalasi tidak ditemukan", http.StatusNotFound)
 		return
 	}
 

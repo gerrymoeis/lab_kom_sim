@@ -131,7 +131,7 @@ func (h *Handler) DeviceLoanDetail(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	loan, err := h.deviceLoanService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Peminjaman tidak ditemukan")
+		h.errHTML(c, "Peminjaman tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (h *Handler) DeviceLoanEditPage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	loan, err := h.deviceLoanService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Peminjaman tidak ditemukan")
+		h.errHTML(c, "Peminjaman tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -181,7 +181,7 @@ func (h *Handler) DeviceLoanEdit(c *gin.Context) {
 
 	existing, err := h.deviceLoanService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Peminjaman tidak ditemukan")
+		h.errHTML(c, "Peminjaman tidak ditemukan", http.StatusNotFound)
 		return
 	}
 

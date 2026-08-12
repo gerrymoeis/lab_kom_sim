@@ -371,12 +371,12 @@ func (h *Handler) DeviceDetail(c *gin.Context) {
 	assetCode := c.Param("assetCode")
 	d, err := h.deviceService.GetByLabelSlug(assetCode)
 	if err != nil {
-		h.errHTML(c, "Perangkat tidak ditemukan")
+		h.errHTML(c, "Perangkat tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
 	if strings.ToLower(d.CategoryPrefix) != c.Param("slug") || strings.ToLower(d.DeviceTypePrefix) != c.Param("typeSlug") {
-		h.errHTML(c, "Perangkat tidak ditemukan")
+		h.errHTML(c, "Perangkat tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -422,7 +422,7 @@ func (h *Handler) DeviceEditPage(c *gin.Context) {
 	slug := c.Param("slug")
 	d, err := h.deviceService.GetByLabelSlug(slug)
 	if err != nil {
-		h.errHTML(c, "Perangkat tidak ditemukan")
+		h.errHTML(c, "Perangkat tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -438,7 +438,7 @@ func (h *Handler) DeviceEdit(c *gin.Context) {
 	slug := c.Param("slug")
 	d, err := h.deviceService.GetByLabelSlug(slug)
 	if err != nil {
-		h.errHTML(c, "Perangkat tidak ditemukan")
+		h.errHTML(c, "Perangkat tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -518,7 +518,7 @@ func (h *Handler) DeviceTypeEditPage(c *gin.Context) {
 	slug := c.Param("slug")
 	dt, err := h.deviceTypeService.GetByLabelSlug(slug)
 	if err != nil {
-		h.errHTML(c, "Tipe perangkat tidak ditemukan")
+		h.errHTML(c, "Tipe perangkat tidak ditemukan", http.StatusNotFound)
 		return
 	}
 	h.renderTemplate(c, http.StatusOK, "device_type/edit.html", gin.H{
@@ -534,7 +534,7 @@ func (h *Handler) DeviceTypeEdit(c *gin.Context) {
 	slug := c.Param("slug")
 	dt, err := h.deviceTypeService.GetByLabelSlug(slug)
 	if err != nil {
-		h.errHTML(c, "Tipe perangkat tidak ditemukan")
+		h.errHTML(c, "Tipe perangkat tidak ditemukan", http.StatusNotFound)
 		return
 	}
 	var req EditDeviceTypeRequest
@@ -667,7 +667,7 @@ func (h *Handler) DeviceTypeDetail(c *gin.Context) {
 	slug := c.Param("slug")
 	dt, err := h.deviceTypeService.GetByLabelSlug(slug)
 	if err != nil {
-		h.errHTML(c, "Tipe perangkat tidak ditemukan")
+		h.errHTML(c, "Tipe perangkat tidak ditemukan", http.StatusNotFound)
 		return
 	}
 	deviceCount, _ := h.deviceService.CountByDeviceTypeID(dt.ID)
@@ -706,7 +706,7 @@ func (h *Handler) CategoryDetail(c *gin.Context) {
 	slug := c.Param("slug")
 	cat, err := h.categoryService.GetByLabelSlug(slug)
 	if err != nil {
-		h.errHTML(c, "Kategori tidak ditemukan")
+		h.errHTML(c, "Kategori tidak ditemukan", http.StatusNotFound)
 		return
 	}
 	types, _ := h.deviceTypeService.GetByCategoryID(cat.ID)
@@ -730,7 +730,7 @@ func (h *Handler) CategoryEditPage(c *gin.Context) {
 	slug := c.Param("slug")
 	cat, err := h.categoryService.GetByLabelSlug(slug)
 	if err != nil {
-		h.errHTML(c, "Kategori tidak ditemukan")
+		h.errHTML(c, "Kategori tidak ditemukan", http.StatusNotFound)
 		return
 	}
 	h.renderTemplate(c, http.StatusOK, "category/edit.html", gin.H{
@@ -744,7 +744,7 @@ func (h *Handler) CategoryEdit(c *gin.Context) {
 	slug := c.Param("slug")
 	cat, err := h.categoryService.GetByLabelSlug(slug)
 	if err != nil {
-		h.errHTML(c, "Kategori tidak ditemukan")
+		h.errHTML(c, "Kategori tidak ditemukan", http.StatusNotFound)
 		return
 	}
 	var req EditCategoryRequest
