@@ -172,7 +172,7 @@ func (h *Handler) LogbookDetail(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	entry, err := h.logbookService.GetByID(id)
 	if err != nil {
-		h.errHTML(c, "Entry tidak ditemukan")
+		h.errHTML(c, "Entry tidak ditemukan", http.StatusNotFound)
 		return
 	}
 
@@ -518,7 +518,7 @@ func (h *Handler) LogbookEditPage(c *gin.Context) {
 
 	id, _ := strconv.Atoi(c.Param("id"))
 	entry, err := h.logbookService.GetByID(id)
-	if err != nil { h.errHTML(c, "Data tidak ditemukan"); return }
+	if err != nil { h.errHTML(c, "Data tidak ditemukan", http.StatusNotFound); return }
 
 	h.renderTemplate(c, http.StatusOK, "logbook/edit.html", gin.H{
 		"title": "Edit Logbook", "currentPage": "logbook",
@@ -535,7 +535,7 @@ func (h *Handler) LogbookEdit(c *gin.Context) {
 	renderEditWithError := func(errMsg string) {
 		entry, err := h.logbookService.GetByID(id)
 		if err != nil {
-			h.errHTML(c, "Data tidak ditemukan")
+			h.errHTML(c, "Data tidak ditemukan", http.StatusNotFound)
 			return
 		}
 		h.renderTemplate(c, http.StatusBadRequest, "logbook/edit.html", gin.H{
