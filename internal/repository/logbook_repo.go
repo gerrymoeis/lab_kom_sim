@@ -70,7 +70,7 @@ func (r *LogbookRepository) List(filters LogbookFilters) ([]models.LogbookEntry,
 		offset = 0
 	}
 
-	query := `SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at FROM logbook_entries` + where +
+	query := `SELECT id, date, student_name, nim, time_in, COALESCE(time_out,''), COALESCE(purpose,''), COALESCE(source_file,''), created_at FROM logbook_entries` + where +
 		` ORDER BY ` + sortBy + ` ` + sortOrder + `, time_in ` + sortOrder + ` LIMIT ? OFFSET ?`
 	args = append(args, filters.PageSize, offset)
 
@@ -118,7 +118,7 @@ func (r *LogbookRepository) ListAll(filters LogbookFilters) ([]models.LogbookEnt
 		sortOrder = "ASC"
 	}
 
-	query := `SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at FROM logbook_entries` + where +
+	query := `SELECT id, date, student_name, nim, time_in, COALESCE(time_out,''), COALESCE(purpose,''), COALESCE(source_file,''), created_at FROM logbook_entries` + where +
 		` ORDER BY ` + sortBy + ` ` + sortOrder + `, time_in ` + sortOrder
 
 	rows, err := r.db.Query(query, args...)
@@ -172,7 +172,7 @@ func (r *LogbookRepository) ListCursor(filters LogbookFilters) ([]models.Logbook
 		orderDir = "DESC"
 	}
 
-	query := `SELECT id, date, student_name, nim, time_in, time_out, purpose` + from + where +
+	query := `SELECT id, date, student_name, nim, time_in, COALESCE(time_out,''), COALESCE(purpose,'')` + from + where +
 		` ORDER BY date ` + orderDir + `, time_in ` + orderDir + `, id ` + orderDir + ` LIMIT ?`
 	args = append(args, limit)
 
@@ -206,7 +206,7 @@ func (r *LogbookRepository) ListCursor(filters LogbookFilters) ([]models.Logbook
 	return entries, hasMore, nil
 }
 
-var logbookCols = []string{"id", "date", "student_name", "nim", "time_in", "time_out", "purpose", "source_file", "created_at", "updated_at"}
+var logbookCols = []string{"id", "date", "student_name", "nim", "time_in", "COALESCE(time_out,'')", "COALESCE(purpose,'')", "COALESCE(source_file,'')", "created_at", "updated_at"}
 
 func (r *LogbookRepository) GetByID(id int) (*models.LogbookEntry, error) {
 	return getOne[models.LogbookEntry](r.db, "logbook_entries", logbookCols, "id = ?", id)
@@ -305,7 +305,7 @@ type ExportFilters struct {
 }
 
 func (r *LogbookRepository) Export(filters ExportFilters) ([]models.LogbookEntry, error) {
-	query := `SELECT id, date, student_name, nim, time_in, time_out, purpose, source_file, created_at FROM logbook_entries WHERE 1=1`
+	query := `SELECT id, date, student_name, nim, time_in, COALESCE(time_out,''), COALESCE(purpose,''), COALESCE(source_file,''), created_at FROM logbook_entries WHERE 1=1`
 	var args []any
 
 	if filters.StartDate != "" {
