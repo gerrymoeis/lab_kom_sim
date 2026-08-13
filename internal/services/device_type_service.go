@@ -1,4 +1,4 @@
-﻿package services
+package services
 
 import (
 	"inventaris-lab-kom/internal/models"
@@ -83,6 +83,18 @@ func (s *DeviceTypeService) Update(id int, in DeviceTypeUpdateInput, actorID int
 	}
 	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", id,
 		oldVals, newVals, ipAddress, userAgent)
+	return nil
+}
+
+func (s *DeviceTypeService) ClearPhoto(id int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	err := s.repo.ClearPhoto(id)
+	if err != nil {
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", id,
+			map[string]any{}, nil, ipAddress, userAgent, err.Error())
+		return sanitizeDBError(err)
+	}
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_type", id,
+		map[string]any{"photo": ""}, nil, ipAddress, userAgent)
 	return nil
 }
 
