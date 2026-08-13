@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"database/sql"
@@ -174,6 +174,11 @@ func (r *DeviceTypeRepository) Update(id, categoryID int, name, brand, model, pr
 	_, err := r.db.Exec(`UPDATE device_types SET category_id=?, name=?, brand=?, model=?,
 		label_prefix=?, usage_type=?, default_location=?, photo=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
 		categoryID, name, brand, model, prefix, usageType, location, photo, id)
+	return err
+}
+
+func (r *DeviceTypeRepository) ClearPhoto(id int) error {
+	_, err := r.db.Exec(`UPDATE device_types SET photo='', updated_at=CURRENT_TIMESTAMP WHERE id=?`, id)
 	return err
 }
 
