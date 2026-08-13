@@ -281,7 +281,7 @@ func (h *Handler) ClearPhoto(c *gin.Context) {
 			return
 		}
 		services.DeleteFile(h.cfg.UploadPath, lab, "device_types", dt.Photo)
-		if err := h.deviceTypeService.Update(dt.ID, services.DeviceTypeUpdateInput{Photo: ""}, uid, u, r, ip, ua); err != nil {
+		if err := h.deviceTypeService.ClearPhoto(dt.ID, uid, u, r, ip, ua); err != nil {
 			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus foto")
 			return
 		}
@@ -298,7 +298,7 @@ func (h *Handler) ClearPhoto(c *gin.Context) {
 			return
 		}
 		services.DeleteFile(h.cfg.UploadPath, lab, "device_installations", inst.Photo)
-		if err := h.deviceInstallationService.Update(id, services.UpdateInstallationInput{Photo: ""}, uid, u, r, ip, ua); err != nil {
+		if err := h.deviceInstallationService.ClearPhoto(id, uid, u, r, ip, ua); err != nil {
 			h.errJSON(c, http.StatusInternalServerError, "Gagal menghapus foto")
 			return
 		}

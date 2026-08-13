@@ -233,6 +233,11 @@ func (r *DeviceInstallationRepository) Update(id int, location string, startDate
 	return err
 }
 
+func (r *DeviceInstallationRepository) ClearPhoto(id int) error {
+	_, err := r.db.Exec(`UPDATE device_installations SET photo='', updated_at=CURRENT_TIMESTAMP WHERE id=?`, id)
+	return err
+}
+
 func (r *DeviceInstallationRepository) Delete(id int) error {
 	_, err := r.db.Exec("DELETE FROM device_installations WHERE id = ?", id)
 	return err
