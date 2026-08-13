@@ -110,6 +110,18 @@ func (s *DeviceInstallationService) Update(id int, in UpdateInstallationInput, a
 	return nil
 }
 
+func (s *DeviceInstallationService) ClearPhoto(id int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
+	err := s.repo.ClearPhoto(id)
+	if err != nil {
+		s.log.LogUpdate(actorID, actorUsername, actorRole, "device_installation", id,
+			map[string]any{}, nil, ipAddress, userAgent, err.Error())
+		return err
+	}
+	s.log.LogUpdate(actorID, actorUsername, actorRole, "device_installation", id,
+		map[string]any{"photo": ""}, nil, ipAddress, userAgent)
+	return nil
+}
+
 func (s *DeviceInstallationService) Delete(id int, actorID int, actorUsername, actorRole, ipAddress, userAgent string) error {
 	err := s.repo.Delete(id)
 	if err != nil {
