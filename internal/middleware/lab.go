@@ -49,7 +49,6 @@ func GlobalDBInjector(globalDB *database.DB) gin.HandlerFunc {
 }
 
 // LabRoleInjector reads lab_permissions and sets role in context.
-// Also auto-syncs global user to per-lab users table.
 func LabRoleInjector() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("role", "admin")

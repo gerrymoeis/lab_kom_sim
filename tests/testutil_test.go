@@ -167,7 +167,6 @@ func createSharedEnvironment() (*TestEnvironment, string, string, error) {
 	if err := database.SeedDefaultUser(dbA); err != nil {
 		return nil, "", tmpDir, fmt.Errorf("Seed user lab A: %w", err)
 	}
-	dbA.Exec("UPDATE users SET session_token = NULL")
 
 	dbB, err := database.InitDB(dbPathB, "")
 	if err != nil {
@@ -179,7 +178,6 @@ func createSharedEnvironment() (*TestEnvironment, string, string, error) {
 	if err := database.SeedDefaultUser(dbB); err != nil {
 		return nil, "", tmpDir, fmt.Errorf("Seed user lab B: %w", err)
 	}
-	dbB.Exec("UPDATE users SET session_token = NULL")
 
 	globalDB, err := database.InitDB(globalDBPath, "")
 	if err != nil {
@@ -474,17 +472,9 @@ func createTestConfig(overrides ...TestConfigOverrides) *config.Config {
 
 func clearSessions() {
 	sharedEnv.GlobalDB.Exec("UPDATE global_users SET session_token = '', session_updated_at = 0")
-	for _, db := range sharedEnv.GlobalHandler.LabsDB {
-		db.Exec("UPDATE users SET session_token = NULL")
-	}
 }
 
 func resetGlobalState() {
-	// Per-lab DB sessions (separate databases, can't be in global transaction)
-	for _, db := range sharedEnv.GlobalHandler.LabsDB {
-		db.Exec("UPDATE users SET session_token = NULL")
-	}
-
 	// Single transaction for all global DB operations → 1 fsync instead of 18-20
 	tx, err := sharedEnv.GlobalDB.Begin()
 	if err != nil {
@@ -607,7 +597,6 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 	if err := database.SeedDefaultUser(dbA); err != nil {
 		t.Errorf("Seed user lab A: %v", err)
 	}
-	dbA.Exec("UPDATE users SET session_token = NULL")
 
 	dbB, err := database.InitDB(dbPathB, "")
 	if err != nil {
@@ -619,7 +608,6 @@ func setupTestEnvironment(t *testing.T, overrides ...TestConfigOverrides) *TestE
 	if err := database.SeedDefaultUser(dbB); err != nil {
 		t.Errorf("Seed user lab B: %v", err)
 	}
-	dbB.Exec("UPDATE users SET session_token = NULL")
 
 	globalDB, err := database.InitDB(globalDBPath, "")
 	if err != nil {
