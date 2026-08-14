@@ -1,0 +1,30 @@
+# =============================================================================
+# SIMLABKOM — E2E Production Test — artefak runtime (jangan di-commit)
+# =============================================================================
+
+# Hasil runtime di VM / di lokal
+logs/
+out/
+data/
+staging/
+repo/
+old_run/
+new_run/
+backups/
+
+# Binary & artefak build
+etl
+etl.exe
+etl-config.json
+
+# Secrets & env lokal
+keys.env
+
+# Bundle hasil prepare_e2e.ps1
+e2e_bundle_*.tar.gz
+e2e_results_*.tar.gz
+e2e_report.json
+
+# OS
+Thumbs.db
+.DS_Store

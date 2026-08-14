@@ -1,0 +1,10 @@
+# Pastikan file yang dijalankan di Linux selalu LF (bukan CRLF)
+*.sh text eol=lf
+*.env.example text eol=lf
+*.tpl text eol=lf
+*.ps1 text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
