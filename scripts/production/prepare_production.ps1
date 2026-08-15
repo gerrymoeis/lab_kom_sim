@@ -344,7 +344,7 @@ isi bundle:
   bin/     : etl, app-simlab, app-simlab-publish
   test-runner/ : go.mod, .env.reference, seeds/, test-bin/ (8 *.test)
   seeds/   : mi-1, vokasi-1, default
-  deploy_production.sh + lib/ (Fase B/C) + bundle-meta.txt (commit & nama bundle utk report P13)
+  deploy_production.sh + lib/ (Fase B/C/D) + bundle-meta.txt (commit & nama bundle utk report P13)
 
 next: verifikasi eksekusi test binary linux di VM:
   scp $bundleName.tar.gz root@server:/opt/simlab/

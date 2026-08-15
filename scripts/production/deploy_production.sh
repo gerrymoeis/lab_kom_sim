@@ -7,7 +7,7 @@
 #   cd deploy_production_<ts>
 #   sudo bash deploy_production.sh [--skip-migrate] [--skip-test]
 #
-# Tahap (Fase C: P0–P11 + P13 + P14, tanpa test suite):
+# Tahap (Fase D: P0–P14 lengkap):
 #   P0  Validasi prasyarat + bundle lengkap                  → STOP
 #   P1  Deteksi format .env (single/multi) + regenerate      → STOP
 #   P2  Backup penuh data/ + .env + release aktif            → STOP
@@ -20,6 +20,7 @@
 #   P9  Health check /healthz                                → ROLLBACK
 #   P10 Readiness check /readyz (deep)                       → ROLLBACK
 #   P11 Verifikasi read-only app-simlab -verify              → ROLLBACK
+#   P12 Full test suite refactoring (test binary)            → ROLLBACK
 #   P13 Report JSON deploy_report_<ts>.json                  → WARN
 #   P14 Cleanup (release keep 3, single DB, uploads flat)    → WARN
 #
@@ -59,6 +60,16 @@ VERIFY_UPLOADS=false
 VERIFY_SEED=false
 READYZ_STATUS="n/a"
 SERVER_URL=""
+
+# ---- Variabel utk P12 test suite (diisi di fase terkait)
+TEST_TOTAL=0
+TEST_PASS=0
+TEST_FAIL=0
+TEST_SKIP=0
+TEST_PKG_OK=""
+TEST_PKG_JSON="[]"
+TEST_STATUS="not_run"
+TEST_RUN_DIR=""
 
 # ============================================================================
 # ROLLBACK — dipicu kegagalan P4–P11
@@ -414,6 +425,83 @@ if [ -f "${VERIFY_LOG}" ]; then
 fi
 
 # ============================================================================
+# P12 — FULL TEST SUITE REFACTORING (test binary, tanpa go CLI)
+# ============================================================================
+declare_phase "P12" "Full test suite refactoring (test binary, 0-skip 0-error)"
+# Komponen #6: jalankan SEMUA test binary dari bundle (test-runner/test-bin)
+# dengan -test.v -test.count=1 -test.timeout=600s, parse Total/Passed/Failed/Skipped
+# (pola F10). Bila ada FAIL atau SKIP → fase FAIL → ROLLBACK.
+TEST_RUN_DIR="${BACKUP_DIR}/test_run"
+if [ "${SKIP_TEST}" = "true" ]; then
+    TEST_STATUS="skipped"
+    phase_skip "P12" "--skip-test"
+elif [ ! -d "${SCRIPT_DIR}/test-runner/test-bin" ]; then
+    TEST_STATUS="missing"
+    warn "P12: test-runner/test-bin tidak ada di bundle — skip (Fase D bundle belum lengkap?)"
+    phase_warn "P12" "test binary hilang di bundle"
+else
+    # 1) Siapkan staging test-runner (go.mod + seeds/ + .env.reference) dari bundle
+    rm -rf "${TEST_RUN_DIR}"
+    mkdir -p "${TEST_RUN_DIR}"
+    cp -r "${SCRIPT_DIR}/test-runner/." "${TEST_RUN_DIR}/"
+    chmod +x "${TEST_RUN_DIR}"/test-bin/*.test
+    log "P12: staging test-runner → ${TEST_RUN_DIR}"
+
+    # 2) Jalankan tiap test binary dari test-runner dir (TestMain `tests` chdir
+    #    ke projectRoot = dir berisi go.mod → seeds/ + .env.reference harus ada).
+    pkg_log="" pass=0 fail=0 skip=0 pkg="" t="" logfile="" rc=0
+    for t in "${TEST_RUN_DIR}"/test-bin/*.test; do
+        [ -f "${t}" ] || continue
+        pkg="$(basename "${t}" .test)"
+        logfile="${TEST_RUN_DIR}/P12_${pkg}.log"
+        if (cd "${TEST_RUN_DIR}" && "./test-bin/${pkg}.test" -test.v -test.count=1 -test.timeout=600s) > "${logfile}" 2>&1; then
+            rc=0
+        else
+            rc=$?
+        fi
+        pass=$(grep -c '^--- PASS:' "${logfile}" || true)
+        fail=$(grep -c '^--- FAIL:' "${logfile}" || true)
+        skip=$(grep -c '^--- SKIP:' "${logfile}" || true)
+        TEST_PASS=$((TEST_PASS + pass))
+        TEST_FAIL=$((TEST_FAIL + fail))
+        TEST_SKIP=$((TEST_SKIP + skip))
+        TEST_TOTAL=$((TEST_TOTAL + pass + fail + skip))
+        log "P12: ${pkg}.test → pass=${pass} fail=${fail} skip=${skip} rc=${rc}"
+        if [ "${fail}" -eq 0 ] && [ "${skip}" -eq 0 ]; then
+            TEST_PKG_OK="${TEST_PKG_OK} ${pkg}"
+        fi
+    done
+
+    # 3) Verifikasi 0-skip 0-error (pola F10)
+    if [ "${TEST_FAIL}" -gt 0 ]; then
+        log "P12: daftar FAILED:"
+        grep -h '^--- FAIL:' "${TEST_RUN_DIR}"/P12_*.log || true
+    fi
+    if [ "${TEST_SKIP}" -gt 0 ]; then
+        log "P12: daftar SKIPPED:"
+        grep -h '^--- SKIP:' "${TEST_RUN_DIR}"/P12_*.log || true
+    fi
+    if [ "${TEST_FAIL}" -eq 0 ] && [ "${TEST_SKIP}" -eq 0 ] && [ "${TEST_TOTAL}" -ge 1 ]; then
+        TEST_STATUS="ran"
+        # Bangun JSON array packages dari TEST_PKG_OK (spasi-separated).
+        TEST_PKG_JSON="["
+        local_pkg_json=""
+        for pkg in ${TEST_PKG_OK}; do
+            if [ -n "${local_pkg_json}" ]; then TEST_PKG_JSON="${TEST_PKG_JSON}, "; fi
+            TEST_PKG_JSON="${TEST_PKG_JSON}\"${pkg}\""
+            local_pkg_json=1
+        done
+        TEST_PKG_JSON="${TEST_PKG_JSON}]"
+        log "P12: SELESAI — semua test lolos (total=${TEST_TOTAL} pass=${TEST_PASS})"
+        phase_pass "P12"
+    else
+        TEST_STATUS="failed"
+        phase_fail "P12" "test suite GAGAL (pass=${TEST_PASS} fail=${TEST_FAIL} skip=${TEST_SKIP}) — lihat ${TEST_RUN_DIR}"
+        rollback
+    fi
+fi
+
+# ============================================================================
 # P13 — REPORT JSON
 # ============================================================================
 declare_phase "P13" "Report JSON deploy_report_<ts>.json"
@@ -445,10 +533,13 @@ SERVER_URL="http://$(hostname -I 2>/dev/null | awk '{print $1}'):$(get_port)"
     echo "    \"seed_done\": ${VERIFY_SEED}"
     echo "  },"
     echo "  \"tests\": {"
-    echo "    \"total\": null,"
-    echo "    \"pass\": null,"
-    echo "    \"fail\": null,"
-    echo "    \"skip\": null"
+    echo "    \"status\": \"${TEST_STATUS}\","
+    echo "    \"total\": ${TEST_TOTAL},"
+    echo "    \"pass\": ${TEST_PASS},"
+    echo "    \"fail\": ${TEST_FAIL},"
+    echo "    \"skip\": ${TEST_SKIP},"
+    echo "    \"packages\": ${TEST_PKG_JSON},"
+    echo "    \"log\": \"${TEST_RUN_DIR}\""
     echo "  },"
     echo "  \"server\": {"
     echo "    \"service_active\": $(service_is_active && echo true || echo false),"
