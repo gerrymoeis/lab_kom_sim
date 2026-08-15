@@ -24,14 +24,17 @@ $ErrorActionPreference = "Stop"
 # ---------------------------------------------------------------- 1. Build ETL linux
 Write-Host "==> Build ETL (linux/amd64) dari $Repo"
 $etlBin = Join-Path $BundlePath "etl"
+$oldGOOS = $env:GOOS; $oldGOARCH = $env:GOARCH; $oldCGO = $env:CGO_ENABLED
 Push-Location $Repo
 try {
+    $env:GOOS = "linux"; $env:GOARCH = "amd64"; $env:CGO_ENABLED = "0"
     & go build -o $etlBin ./...
     if ($LASTEXITCODE -ne 0) { throw "go build ETL gagal (exit $LASTEXITCODE)" }
 } finally {
+    $env:GOOS = $oldGOOS; $env:GOARCH = $oldGOARCH; $env:CGO_ENABLED = $oldCGO
     Pop-Location
 }
-Write-Host "    OK: $etlBin"
+Write-Host "    OK: $etlBin (linux/amd64, CGO=0)"
 
 # ---------------------------------------------------------------- 2. Siapkan bundle
 Write-Host "==> Susun bundle staging"
@@ -74,7 +77,7 @@ try {
     Pop-Location
 }
 Write-Host "    OK: $zipPath"
-Write-Host "    Upload: scp $zipPath $SSH:/tmp/"
+Write-Host "    Upload: scp $zipPath ${SSH}:/tmp/"
 
 # ---------------------------------------------------------------- 3. Deploy + run di VM
 if ($Deploy -and $SSH -ne "") {

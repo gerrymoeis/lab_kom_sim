@@ -109,8 +109,10 @@ fi
 if [ ! -d "$REFACTOR_DIR/.git" ]; then
     git clone --quiet --branch refactoring "$REPO_URL" "$REFACTOR_DIR" 2>>"$LOG_DIR/F1_clone.log"
 fi
-log "F1: main @$(git -C "$MAIN_DIR" rev-parse --short HEAD)"
-log "F1: refactoring @$(git -C "$REFACTOR_DIR" rev-parse --short HEAD)"
+MAIN_COMMIT=$(git -C "$MAIN_DIR" rev-parse --short HEAD)
+REFACTOR_COMMIT=$(git -C "$REFACTOR_DIR" rev-parse --short HEAD)
+log "F1: main @$MAIN_COMMIT"
+log "F1: refactoring @$REFACTOR_COMMIT"
 log "F1: SELESAI"
 
 # ---------------------------------------------------------------- F2: Run versi lama
@@ -118,7 +120,8 @@ phase "F2 — Build & run versi LAMA (main)"
 OLD_RUN="$E2E_ROOT/old_run"
 mkdir -p "$OLD_RUN"
 
-(cd "$MAIN_DIR" && go build -o "$OLD_RUN/app-simlab" ./cmd/server/main.go) \
+# Build sesuai produksi (build-linux.sh: modernc pure-Go, tanpa C compiler)
+(cd "$MAIN_DIR" && CGO_ENABLED=0 go build -o "$OLD_RUN/app-simlab" ./cmd/server/main.go) \
     >>"$LOG_DIR/F2_old_build.log" 2>&1 || fail "F2: go build main gagal"
 log "F2: binary lama built"
 
@@ -286,7 +289,8 @@ phase "F6 — Deploy versi BARU (refactoring, multi-DB)"
 NEW_RUN="$E2E_ROOT/new_run"
 mkdir -p "$NEW_RUN"
 
-(cd "$REFACTOR_DIR" && go build -o "$NEW_RUN/app-simlab" ./cmd/server/main.go) \
+# Build sesuai produksi (deploy.sh: CGO_ENABLED=0)
+(cd "$REFACTOR_DIR" && CGO_ENABLED=0 go build -o "$NEW_RUN/app-simlab" ./cmd/server/main.go) \
     >>"$LOG_DIR/F6_new_build.log" 2>&1 || fail "F6: go build refactoring gagal"
 log "F6: binary baru built (self-contained, //go:embed)"
 
@@ -462,8 +466,8 @@ cat > "$REPORT" <<EOF
   "status": "PASS",
   "timestamp": "$(date -Is)",
   "e2e_root": "$E2E_ROOT",
-  "repo_main_commit": "$(git -C "$MAIN_DIR" rev-parse --short HEAD 2>/dev/null || echo 'n/a')",
-  "repo_refactoring_commit": "$(git -C "$REFACTOR_DIR" rev-parse --short HEAD 2>/dev/null || echo 'n/a')",
+  "repo_main_commit": "$MAIN_COMMIT",
+  "repo_refactoring_commit": "$REFACTOR_COMMIT",
   "phases": {
     "F0": "PASS", "F1": "PASS", "F2": "PASS", "F3": "PASS", "F4": "PASS",
     "F5": "PASS", "F6": "PASS", "F7": "PASS", "F8": "PASS", "F9": "PASS"
