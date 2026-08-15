@@ -19,11 +19,18 @@ import (
 	"inventaris-lab-kom/internal/server"
 	"inventaris-lab-kom/internal/services"
 	"inventaris-lab-kom/internal/timeutil"
+	"inventaris-lab-kom/internal/verify"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	// Subcommand production tools: app-simlab -verify
+	// Verifikasi read-only hasil deploy (global + per-lab DB + uploads).
+	if len(os.Args) > 1 && os.Args[1] == "-verify" {
+		os.Exit(runVerify())
+	}
+
 	cfg := config.Load()
 	cleanup.Run()
 
@@ -188,4 +195,48 @@ func main() {
 	}
 
 	log.Println("✅ Server exited gracefully")
+}
+
+// runVerify menjalankan verifikasi read-only hasil deploy dan mengembalikan
+// exit code 0 = semuanya lolos, 1 = ada pelanggaran/error fatal.
+func runVerify() int {
+	cfg := config.Load()
+
+	fmt.Println("=== VERIFY: mulai verifikasi hasil deploy ===")
+	rep, err := verify.Run(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "VERIFY FAIL: %v\n", err)
+		return 1
+	}
+
+	fmt.Printf("Global DB: %s\n", cfg.GlobalDBPath)
+	for _, c := range rep.GlobalChecks {
+		fmt.Println("  [global] " + c)
+	}
+	for _, c := range rep.Errors {
+		fmt.Println("  [global] ERROR: " + c)
+	}
+	for name, n := range rep.GlobalCounts {
+		fmt.Printf("  [global] count %s = %d\n", name, n)
+	}
+
+	for _, lab := range rep.Labs {
+		fmt.Printf("Lab %s (url=%s):\n", lab.URLPath, lab.URLPath)
+		for _, c := range lab.Checks {
+			fmt.Println("  " + c)
+		}
+		for _, u := range lab.Uploads {
+			fmt.Println("  " + u)
+		}
+		for t, n := range lab.Counts {
+			fmt.Printf("  count %s = %d\n", t, n)
+		}
+	}
+
+	if rep.Failed {
+		fmt.Println("=== VERIFY FAIL ===")
+		return 1
+	}
+	fmt.Println("=== VERIFY OK ===")
+	return 0
 }
