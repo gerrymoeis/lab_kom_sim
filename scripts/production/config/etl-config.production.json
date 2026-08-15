@@ -1,0 +1,32 @@
+{
+  "source_db": "/opt/simlab/data/inventaris_lab.db",
+  "source_uploads": "/opt/simlab/data/uploads",
+  "source_upload_dir": "lab-kom-mi",
+  "global_db": "/opt/simlab/data/global.db",
+  "uploads_dest": "/opt/simlab/data/uploads",
+  "main_account_suffix": "123",
+  "labs": [
+    {
+      "id": "MI-1",
+      "url": "lab-mi",
+      "db": "/opt/simlab/data/lab_mi_1.db",
+      "title": "Lab Kom MI",
+      "mode": "source",
+      "cols": [8, 8, 8, 8, 8],
+      "has_gap": false,
+      "gap_pos": 0,
+      "row_gaps": [[], [], [], [], []]
+    },
+    {
+      "id": "VOKASI-1",
+      "url": "lab-vokasi-1",
+      "db": "/opt/simlab/data/lab_vokasi_1.db",
+      "title": "Lab Kom Vokasi 1",
+      "mode": "seed",
+      "cols": [11, 9, 11, 11],
+      "has_gap": true,
+      "gap_pos": 5,
+      "row_gaps": [[5], [5], [5], [5]]
+    }
+  ]
+}
