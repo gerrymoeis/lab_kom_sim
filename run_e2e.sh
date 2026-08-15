@@ -14,6 +14,10 @@
 #   F8  Cleanup versi lama (backup dulu, hapus, verifikasi bersih)
 #   F9  Report JSON + arsip log
 #
+# F10 (full test suite refactoring) dijalankan SETELAH F7 dan SEBELUM F8,
+# karena F8 menghapus repo clone (REFACTOR_DIR) — test memerlukan source.
+# Prinsip: 0-skip, 0-error, logging lengkap (json per event).
+#
 # Data dummy DETERMINISTIK (bukan random) agar mudah diverifikasi akurat.
 #
 # Cara pakai:
@@ -480,6 +484,49 @@ log "F7: PC photo files total=$SEED_PC_COUNT (seed PC_PHOTO aktif bila >1)"
 log "F7: SELESAI — semua cek lulus"
 cat "$V_LOG"
 
+# ---------------------------------------------------------------- F10: Full test suite refactoring
+# Dijalankan SETELAH F7 dan SEBELUM F8 karena F8 menghapus repo clone.
+# Prinsip (revisi #2): SEMUA test (~600) dijalankan 1-to-1 — 0 skip, 0 error.
+phase "F10 — Full test suite refactoring (0-skip, 0-error)"
+F10_JSON="$LOG_DIR/F10_gotest.json"
+: > "$F10_JSON"
+
+# go test -json → satu event JSON per baris (test-level + package-level).
+# Catatan: test suite SELF-CONTAINED (httptest + mockGemini, temp SQLite) —
+# tidak butuh API key nyata maupun jaringan luar; aman dijalankan di VM.
+set +e
+(
+    cd "$REFACTOR_DIR" &&
+    CGO_ENABLED=0 go test ./... -count=1 -json -timeout 600s
+) >"$F10_JSON" 2>&1
+F10_EXIT=$?
+set -e
+
+# Parsing: hitung event test-LEVEL (baris yang punya "Test":"..."). Baris
+# package-level (Test kosong / tanpa field Test) tidak dihitung sebagai test.
+F10_PASS=$(grep -c '"Action":"pass".*"Test":"[^"]' "$F10_JSON" || true)
+F10_FAIL=$(grep -c '"Action":"fail".*"Test":"[^"]' "$F10_JSON" || true)
+F10_SKIP=$(grep -c '"Action":"skip".*"Test":"[^"]' "$F10_JSON" || true)
+F10_TOTAL=$((F10_PASS + F10_FAIL + F10_SKIP))
+
+log "F10: exit=$F10_EXIT total=$F10_TOTAL pass=$F10_PASS fail=$F10_FAIL skip=$F10_SKIP"
+cat "$F10_JSON" > "$LOG_DIR/F10_console.log"
+
+if [ "$F10_EXIT" -ne 0 ] || [ "$F10_FAIL" -gt 0 ] || [ "$F10_SKIP" -gt 0 ]; then
+    # Rincian test yang gagal/skip untuk audit (rule: logging lengkap).
+    if [ "$F10_FAIL" -gt 0 ]; then
+        log "F10: daftar FAILED:"
+        grep '"Action":"fail".*"Test":"[^"]' "$F10_JSON" | grep -o '"Test":"[^"]*"' || true
+    fi
+    if [ "$F10_SKIP" -gt 0 ]; then
+        log "F10: daftar SKIPPED:"
+        grep '"Action":"skip".*"Test":"[^"]' "$F10_JSON" | grep -o '"Test":"[^"]*"' || true
+    fi
+    fail "F10: test suite GAGAL (pass=$F10_PASS fail=$F10_FAIL skip=$F10_SKIP) — lihat $F10_JSON"
+fi
+[ "$F10_TOTAL" -ge 1 ] || fail "F10: tidak ada test yang dijalankan (total=0)"
+log "F10: SELESAI — semua test lolos ($F10_TOTAL)"
+
 # ---------------------------------------------------------------- F8: Cleanup versi lama
 phase "F8 — Cleanup versi lama (total, backup dulu)"
 BK_DIR="$E2E_ROOT/backups/pre_e2e_$(date +%Y%m%d-%H%M%S)"
@@ -534,7 +581,11 @@ cat > "$REPORT" <<EOF
   "repo_refactoring_commit": "$REFACTOR_COMMIT",
   "phases": {
     "F0": "PASS", "F1": "PASS", "F2": "PASS", "F3": "PASS", "F4": "PASS",
-    "F5": "PASS", "F6": "PASS", "F7": "PASS", "F8": "PASS", "F9": "PASS"
+    "F5": "PASS", "F6": "PASS", "F7": "PASS", "F10": "PASS", "F8": "PASS", "F9": "PASS"
+  },
+  "test_suite": {
+    "total": "$F10_TOTAL", "pass": "$F10_PASS", "fail": "$F10_FAIL", "skip": "$F10_SKIP",
+    "log": "$LOG_DIR/F10_gotest.json"
   },
   "parity": {
     "pcs": "$LPCS", "devices": "$LDEV", "software": "$LSOFT",
