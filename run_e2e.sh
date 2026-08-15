@@ -263,8 +263,21 @@ log "F3: upload foto PC OK"
 # Ambil file_ref dari response JSON upload
 SERIAL_REF=$(grep -o '"file_ref":"[^"]*"' "$COOKIE_DIR/admin_upload.json" | sed 's/.*":"//; s/"//')
 [ -n "$SERIAL_REF" ] || fail "F3: file_ref kosong dari upload"
+# Kirim form edit LENGKAP seperti UI asli (status/placement/row/column wajib —
+# UpdatePC meng-set field kosong -> melanggar CHECK constraint di tabel pcs).
 post_form admin "$OLD_BASE/pc/PC-01/edit" \
+    --data-urlencode "label=PC-01" \
+    --data-urlencode "placement=dipakai" \
+    --data-urlencode "row=1" \
+    --data-urlencode "column=1" \
+    --data-urlencode "status=normal" \
+    --data-urlencode "pc_type=PC All-in-one" \
     --data-urlencode "serial_number=SN-E2E-PC-01" \
+    --data-urlencode "brand_model=E2E Mypc" \
+    --data-urlencode "accessories=Keyboard & Mouse E2E" \
+    --data-urlencode "processor=E2E i5" \
+    --data-urlencode "ram=8 GB" \
+    --data-urlencode "storage=256 GB" \
     --data-urlencode "operating_system=Windows 10" \
     --data-urlencode "serial_file_ref=$SERIAL_REF"
 [ -f "$OLD_RUN/uploads/pc/$SERIAL_REF" ] || fail "F3: foto tidak berpindah ke uploads/pc"
