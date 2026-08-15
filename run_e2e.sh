@@ -23,7 +23,8 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------- Konfigurasi
-E2E_ROOT="${E2E_ROOT:-$HOME/e2e_test}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+E2E_ROOT="${E2E_ROOT:-$SCRIPT_DIR}"
 OLD_PORT="${OLD_PORT:-18080}"
 NEW_PORT="${NEW_PORT:-18081}"
 OLD_BASE="http://127.0.0.1:${OLD_PORT}"
@@ -49,16 +50,19 @@ mkdir -p "$LOG_DIR" "$COOKIE_DIR" "$STAGING_DIR" "$OUT_DIR" "$DATA_DIR"
 PHASE_LOG="$LOG_DIR/console.log"
 source "$LIB_DIR/common.sh"
 
-# Muat keys.env bila ada (untuk memicu semua API key). Wajib terisi di F0.
-if [ -f "$KEYS_FILE" ]; then
-    set -a; source "$KEYS_FILE"; set +a
-fi
+# keys.env berisi SEMUA variabel (nilai asli dari .env.config) — dibaca via helper
+# get_env (tidak di-export ke environment agar .env per-versi yang kita tulis dipakai).
+get_env() {
+    grep -E "^$1=" "$KEYS_FILE" 2>/dev/null | tail -1 | cut -d= -f2- || true
+}
 
 # ---------------------------------------------------------------- Helper
 require_key() {
     local name="$1"
-    if [ -z "${!name:-}" ]; then
-        fail "F0: API key '$name' belum terisi (isi $KEYS_FILE dari keys.env.example)"
+    local val
+    val=$(get_env "$name")
+    if [ -z "$val" ]; then
+        fail "F0: API key '$name' belum terisi (cek .env.config -> rebuild bundle)"
     fi
     log "F0: key $name = OK (terisi)"
 }
@@ -87,11 +91,37 @@ stop_server() {
 
 # ---------------------------------------------------------------- F0: Prasyarat
 phase "F0 — Prasyarat & API keys"
+
+# Auto-install toolchain bila kurang (distro-agnostic: Arch pacman / Debian apt).
+# sudo interaktif — user akan diminta password sekali saat fase ini.
+MISSING=()
+command -v git     >/dev/null 2>&1 || MISSING+=("git")
+command -v go      >/dev/null 2>&1 || MISSING+=("go")
+command -v curl    >/dev/null 2>&1 || MISSING+=("curl")
+command -v sqlite3 >/dev/null 2>&1 || MISSING+=("sqlite3")
+command -v pkill   >/dev/null 2>&1 || MISSING+=("pkill")
+command -v tar     >/dev/null 2>&1 || MISSING+=("tar")
+if [ ${#MISSING[@]} -gt 0 ]; then
+    log "F0: toolchain kurang: ${MISSING[*]} — coba auto-install (sudo diminta bila perlu)"
+    if command -v pacman >/dev/null 2>&1; then
+        sudo pacman -S --noconfirm --needed git go curl sqlite tar procps-ng \
+            >>"$LOG_DIR/F0_install.log" 2>&1 || \
+            warn "F0: auto-install Arch gagal — install manual: sudo pacman -S --needed git go curl sqlite tar procps-ng"
+    elif command -v apt-get >/dev/null 2>&1; then
+        sudo apt-get update >>"$LOG_DIR/F0_install.log" 2>&1 || true
+        sudo apt-get install -y git golang-go curl sqlite3 tar procps \
+            >>"$LOG_DIR/F0_install.log" 2>&1 || \
+            warn "F0: auto-install Debian gagal — install manual: sudo apt-get install -y git golang-go curl sqlite3 tar procps"
+    else
+        warn "F0: package manager tidak dikenali — install toolchain manual"
+    fi
+fi
 command -v git  >/dev/null 2>&1 || fail "F0: git tidak ada"
-command -v go   >/dev/null 2>&1 || fail "F0: go tidak ada"
+command -v go   >/dev/null 2>&1 || fail "F0: go tidak ada (install: Arch 'sudo pacman -S go' / Debian 'sudo apt-get install golang-go')"
 command -v curl >/dev/null 2>&1 || fail "F0: curl tidak ada"
 command -v sqlite3 >/dev/null 2>&1 || fail "F0: sqlite3 CLI tidak ada"
 command -v pkill >/dev/null 2>&1 || fail "F0: pkill tidak ada"
+command -v tar >/dev/null 2>&1 || fail "F0: tar tidak ada"
 log "F0: toolchain lengkap"
 
 require_key GEMINI_API_KEY
@@ -125,18 +155,17 @@ mkdir -p "$OLD_RUN"
     >>"$LOG_DIR/F2_old_build.log" 2>&1 || fail "F2: go build main gagal"
 log "F2: binary lama built"
 
-# .env versi lama (single-DB) — SEMUA API key
-cat > "$OLD_RUN/.env" <<EOF
+# .env versi lama (single-DB) — SEMUA variabel dari keys.env + override path/port E2E
+# (baris duplikat: yang belakangan menang di godotenv, jadi override di akhir file)
+cp "$KEYS_FILE" "$OLD_RUN/.env"
+cat >> "$OLD_RUN/.env" <<EOF
+# --- Override E2E (path/port disesuaikan lingkungan test) ---
 ENVIRONMENT=production
 HOST=127.0.0.1
 PORT=$OLD_PORT
 DATABASE_PATH=$E2E_ROOT/old_run/inventaris_lab.db
 UPLOAD_PATH=$E2E_ROOT/old_run/uploads
 SESSION_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
-GEMINI_API_KEY=$GEMINI_API_KEY
-OPENROUTER_API_KEY=$OPENROUTER_API_KEY
-PC_PHOTO_RELEASE_URL=$PC_PHOTO_RELEASE_URL
-GITHUB_TOKEN=$GITHUB_TOKEN
 WRITE_MODE=sync
 TIMEZONE=Asia/Jakarta
 ANDROID=false
@@ -144,7 +173,7 @@ DEFAULT_PAGE_SIZE=25
 BACKUP_ENABLED=false
 PUBLIC_BUILD_ENABLED=false
 EOF
-log "F2: .env lama ditulis (single-DB)"
+log "F2: .env lama ditulis dari keys.env + override (single-DB)"
 
 # Versi lama butuh folder web/ di samping binary (tidak self-contained)
 cp -r "$MAIN_DIR/web" "$OLD_RUN/web"
@@ -312,8 +341,11 @@ cp -r "$REFACTOR_DIR/seeds/mi-1" "$NEW_RUN/seeds/"
 cp -r "$REFACTOR_DIR/seeds/vokasi-1" "$NEW_RUN/seeds/"
 cp -r "$REFACTOR_DIR/seeds/default" "$NEW_RUN/seeds/" 2>/dev/null || true
 
-# .env multi-lab (dari .env.config) — SEMUA API key
-cat > "$NEW_RUN/.env" <<EOF
+# .env multi-lab — SEMUA variabel dari keys.env + override path/port E2E.
+# (LABS_<N>_DB dari keys.env (/opt/simlab/...) ditimpa ke DATA_DIR E2E.)
+cp "$KEYS_FILE" "$NEW_RUN/.env"
+cat >> "$NEW_RUN/.env" <<EOF
+# --- Override E2E (path/port disesuaikan lingkungan test) ---
 ENVIRONMENT=production
 HOST=127.0.0.1
 PORT=$NEW_PORT
@@ -326,20 +358,16 @@ LABS_2_ID=VOKASI-1
 LABS_2_DB=$DATA_DIR/lab_vokasi_1.db
 LABS_2_TITLE=Lab Kom Vokasi 1
 LABS_2_URL=lab-vokasi-1
-SESSION_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
 UPLOAD_PATH=$DATA_DIR/uploads
+SESSION_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
 WRITE_MODE=sync
 TIMEZONE=Asia/Jakarta
 ANDROID=false
 DEFAULT_PAGE_SIZE=25
 BACKUP_ENABLED=false
 PUBLIC_BUILD_ENABLED=false
-GEMINI_API_KEY=$GEMINI_API_KEY
-OPENROUTER_API_KEY=$OPENROUTER_API_KEY
-PC_PHOTO_RELEASE_URL=$PC_PHOTO_RELEASE_URL
-PC_PHOTO_TOKEN=$PC_PHOTO_TOKEN
 EOF
-log "F6: .env baru ditulis (multi-lab)"
+log "F6: .env baru ditulis dari keys.env + override (multi-lab)"
 
 stop_server "app-simlab"
 start_server "$NEW_RUN" "app-simlab" "$NEW_PORT" "$LOG_DIR/F6_new_run.log" \

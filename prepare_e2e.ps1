@@ -93,8 +93,8 @@ if (-not (Test-Path -LiteralPath (Join-Path $staging "etl"))) {
     throw "binary etl tidak tersalin ke staging - build ETL gagal/terlewat"
 }
 
-# keys.env: OTOMATIS diisi penuh dari poc_prototype/scripts/build_linux_release/.env.config
-# (sumber nilai asli). Tidak perlu copy-paste manual di VM.
+# keys.env: OTOMATIS diisi PENUH dari poc_prototype/scripts/build_linux_release/.env.config
+# (sumber nilai asli - SEMUA variabel, bukan cuma API key). Tidak perlu sentuh manual di VM.
 $envConfigPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\poc_prototype\scripts\build_linux_release\.env.config"))
 $cfg = @{}
 Read-EnvFile -Path $envConfigPath -Into $cfg
@@ -103,22 +103,20 @@ Read-EnvFile -Path $envConfigPath -Into $cfg
 # PC_PHOTO_TOKEN. Keduanya PAT GitHub yang SAMA (GITHUB_ reserved prefix GitHub Actions).
 $cfg["GITHUB_TOKEN"] = $cfg["PC_PHOTO_TOKEN"]
 
+# Buang placeholder SESSION_SECRET - run_e2e.sh generate random saat menulis .env per versi.
+$cfg.Remove("SESSION_SECRET")
+
 $requiredKeys = @("GEMINI_API_KEY", "OPENROUTER_API_KEY", "PC_PHOTO_RELEASE_URL", "PC_PHOTO_TOKEN", "GITHUB_TOKEN")
 $missing = @($requiredKeys | Where-Object { -not $cfg.ContainsKey($_) -or [string]::IsNullOrWhiteSpace($cfg[$_]) })
 if ($missing.Count -gt 0) {
     throw "key kosong/tidak ada di $envConfigPath : $($missing -join ', ')"
 }
-$keysContent = @(
-    "# Auto-generated oleh prepare_e2e.ps1 dari .env.config - JANGAN commit ke git",
-    "GEMINI_API_KEY=$($cfg['GEMINI_API_KEY'])",
-    "OPENROUTER_API_KEY=$($cfg['OPENROUTER_API_KEY'])",
-    "PC_PHOTO_RELEASE_URL=$($cfg['PC_PHOTO_RELEASE_URL'])",
-    "PC_PHOTO_TOKEN=$($cfg['PC_PHOTO_TOKEN'])",
-    "GITHUB_TOKEN=$($cfg['GITHUB_TOKEN'])"
-) -join "`n"
+# Sertakan SEMUA variabel dari .env.config (nilai asli), diurutkan biar konsisten.
+$lines = foreach ($key in ($cfg.Keys | Sort-Object)) { "$key=$($cfg[$key])" }
+$keysContent = ("# Auto-generated oleh prepare_e2e.ps1 dari .env.config - JANGAN commit ke git`n" + ($lines -join "`n") + "`n")
 $keysPath = Join-Path $staging "keys.env"
 [System.IO.File]::WriteAllText($keysPath, $keysContent, (New-Object System.Text.UTF8Encoding($false)))
-Write-Host "    keys.env diisi OTOMATIS dari $envConfigPath (5 key lengkap)"
+Write-Host "    keys.env diisi OTOMATIS dari $envConfigPath ($($lines.Count) variabel, 5 API key lengkap)"
 
 # Archive bundle (path ABSOLUT supaya tar tidak menulis ke dalam staging).
 $zipName = "e2e_bundle_$(Get-Date -Format yyyyMMdd_HHmmss).tar.gz"
