@@ -364,6 +364,16 @@ func SetupRouter(dbs map[string]*database.DB, globalDB *database.DB, cfg *config
 				return
 			}
 		}
+		if globalDB == nil || globalDB.Ping() != nil {
+			c.String(503, "global db not ready")
+			return
+		}
+		for _, lab := range cfg.Labs {
+			if _, err := os.Stat(lab.UploadDir); err != nil {
+				c.String(503, "uploads %s not ready", lab.URLPath)
+				return
+			}
+		}
 		c.String(200, "ready")
 	})
 
