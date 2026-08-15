@@ -190,6 +190,17 @@ cd "$OLD_RUN"
 login "admin" "admin123"
 login "rekan" "rekan123"
 
+# --- Baseline: versi main men-seed saat boot (43 PC + 14 software required) —
+# E2E menambah data di ATAS baseline, jadi verifikasi = baseline + delta.
+B_PC=$(db_count "$OLD_RUN/inventaris_lab.db" "pcs")
+B_CAT=$(db_count "$OLD_RUN/inventaris_lab.db" "categories")
+B_DT=$(db_count "$OLD_RUN/inventaris_lab.db" "device_types")
+B_DEV=$(db_count "$OLD_RUN/inventaris_lab.db" "devices")
+B_SW=$(db_count "$OLD_RUN/inventaris_lab.db" "software_catalog")
+B_SCH=$(db_count "$OLD_RUN/inventaris_lab.db" "course_schedules")
+B_LB=$(db_count "$OLD_RUN/inventaris_lab.db" "logbook_entries")
+log "F3: baseline seed main -> pcs=$B_PC software=$B_SW schedules=$B_SCH categories=$B_CAT device_types=$B_DT devices=$B_DEV logbook=$B_LB"
+
 # --- PC: buat 3 PC deterministik (label, SN, OS tetap)
 for i in 1 2 3; do
     post_form admin "$OLD_BASE/pc/create" \
@@ -202,8 +213,8 @@ for i in 1 2 3; do
         --data-urlencode "operating_system=Windows 10"
 done
 PC_COUNT=$(db_count "$OLD_RUN/inventaris_lab.db" "pcs")
-[ "$PC_COUNT" = "3" ] || fail "F3: PC count != 3 (=$PC_COUNT)"
-log "F3: PC=3 OK"
+[ "$PC_COUNT" = "$((B_PC + 3))" ] || fail "F3: PC count != $((B_PC + 3)) (=$PC_COUNT, baseline=$B_PC)"
+log "F3: PC=$PC_COUNT (baseline $B_PC + 3) OK"
 
 # --- Category + device type + devices (batch-create via /devices/batch-create)
 api_post_json admin "$OLD_BASE/devices/batch-create" \
@@ -217,12 +228,12 @@ api_post_json admin "$OLD_BASE/devices/batch-create" \
 CAT_COUNT=$(db_count "$OLD_RUN/inventaris_lab.db" "categories")
 DT_COUNT=$(db_count "$OLD_RUN/inventaris_lab.db" "device_types")
 DEV_COUNT=$(db_count "$OLD_RUN/inventaris_lab.db" "devices")
-[ "$CAT_COUNT" = "1" ] || fail "F3: categories != 1 (=$CAT_COUNT)"
-[ "$DT_COUNT" = "1" ]  || fail "F3: device_types != 1 (=$DT_COUNT)"
-[ "$DEV_COUNT" = "2" ] || fail "F3: devices != 2 (=$DEV_COUNT)"
-log "F3: categories=1 device_types=1 devices=2 OK"
+[ "$CAT_COUNT" = "$((B_CAT + 1))" ] || fail "F3: categories != $((B_CAT + 1)) (=$CAT_COUNT, baseline=$B_CAT)"
+[ "$DT_COUNT" = "$((B_DT + 1))" ]  || fail "F3: device_types != $((B_DT + 1)) (=$DT_COUNT, baseline=$B_DT)"
+[ "$DEV_COUNT" = "$((B_DEV + 2))" ] || fail "F3: devices != $((B_DEV + 2)) (=$DEV_COUNT, baseline=$B_DEV)"
+log "F3: categories=$(($B_CAT+1)) device_types=$(($B_DT+1)) devices=$(($B_DEV+2)) OK"
 
-# --- Software (2)
+# --- Software (2 di atas baseline seed main)
 post_form admin "$OLD_BASE/software/create" \
     --data-urlencode "name=E2E Word" --data-urlencode "category=required" \
     --data-urlencode "description=Software wajib E2E"
@@ -230,8 +241,8 @@ post_form admin "$OLD_BASE/software/create" \
     --data-urlencode "name=E2E Chrome" --data-urlencode "category=other" \
     --data-urlencode "description=Software lain E2E"
 SW_COUNT=$(db_count "$OLD_RUN/inventaris_lab.db" "software_catalog")
-[ "$SW_COUNT" = "2" ] || fail "F3: software != 2 (=$SW_COUNT)"
-log "F3: software=2 OK"
+[ "$SW_COUNT" = "$((B_SW + 2))" ] || fail "F3: software != $((B_SW + 2)) (=$SW_COUNT, baseline=$B_SW)"
+log "F3: software=$SW_COUNT (baseline $B_SW + 2) OK"
 
 # --- Schedule (1)
 post_form admin "$OLD_BASE/schedules/create" \
@@ -243,8 +254,8 @@ post_form admin "$OLD_BASE/schedules/create" \
     --data-urlencode "time_end=08:40" \
     --data-urlencode "notes=Jadwal E2E"
 SCH_COUNT=$(db_count "$OLD_RUN/inventaris_lab.db" "course_schedules")
-[ "$SCH_COUNT" = "1" ] || fail "F3: schedules != 1 (=$SCH_COUNT)"
-log "F3: schedules=1 OK"
+[ "$SCH_COUNT" = "$((B_SCH + 1))" ] || fail "F3: schedules != $((B_SCH + 1)) (=$SCH_COUNT, baseline=$B_SCH)"
+log "F3: schedules=$SCH_COUNT (baseline $B_SCH + 1) OK"
 
 # --- Upload foto PC (memicu upload pipeline) lalu tempel ke PC-01 via edit agar file pindah ke uploads/pc
 api_upload admin "$OLD_BASE/api/upload-image" "$ASSETS_DIR/logbook_sample.png" "serial" "pc-01"
@@ -268,8 +279,8 @@ post_form admin "$OLD_BASE/logbook/create" \
     --data-urlencode "time_out=09:30" \
     --data-urlencode "purpose=Praktikum E2E"
 LB_COUNT=$(db_count "$OLD_RUN/inventaris_lab.db" "logbook_entries")
-[ "$LB_COUNT" = "1" ] || fail "F3: logbook != 1 (=$LB_COUNT)"
-log "F3: logbook=1 OK"
+[ "$LB_COUNT" = "$((B_LB + 1))" ] || fail "F3: logbook != $((B_LB + 1)) (=$LB_COUNT, baseline=$B_LB)"
+log "F3: logbook=$LB_COUNT (baseline $B_LB + 1) OK"
 
 # --- OCR logbook (GEMINI primary, OPENROUTER fallback) — memicu kedua API key
 LOGBOOK_UPLOAD="$OLD_BASE/logbook/upload"
@@ -383,30 +394,39 @@ V_LOG="$LOG_DIR/F7_verify.log"
 curl -sf "$NEW_BASE/healthz" >/dev/null 2>&1 || fail "F7: healthz gagal"
 echo "1. healthz OK" >>"$V_LOG"
 
-# 2. Parity pcs / devices / software / schedules / logbook (global user + lab_mi)
+# 2. Parity pcs / devices / software / schedules / logbook — bandingkan lab_mi
+#    terhadap DB SUMBER (staging) hasil ETL, bukan hardcode (main men-seed 43 PC).
+#    Catatan: F6 menempatkan marker .seed_done utk lab-mi sehingga RunSeedFolder
+#    TIDAK menambah seed lagi — parity jadi murni source->target.
+SRC_PC=$(db_count "$STAGING_DIR/inventaris_lab.db" "pcs")
+SRC_DEV=$(db_count "$STAGING_DIR/inventaris_lab.db" "devices")
+SRC_SW=$(db_count "$STAGING_DIR/inventaris_lab.db" "software_catalog")
+SRC_SCH=$(db_count "$STAGING_DIR/inventaris_lab.db" "course_schedules")
+SRC_LB=$(db_count "$STAGING_DIR/inventaris_lab.db" "logbook_entries")
+
 GPCS=$(db_count "$DATA_DIR/global.db" "global_users")
 [ "$GPCS" -ge 1 ] || fail "F7: global_users kosong"
 echo "2. global_users=$GPCS" >>"$V_LOG"
 
 LPCS=$(db_count "$DATA_DIR/lab_mi_1.db" "pcs")
-[ "$LPCS" = "3" ] || fail "F7: lab_mi pcs != 3 (=$LPCS)"
-echo "3. lab_mi pcs=$LPCS" >>"$V_LOG"
+[ "$LPCS" = "$SRC_PC" ] || fail "F7: lab_mi pcs != source (lab_mi=$LPCS source=$SRC_PC)"
+echo "3. lab_mi pcs=$LPCS (source=$SRC_PC)" >>"$V_LOG"
 
 LDEV=$(db_count "$DATA_DIR/lab_mi_1.db" "devices")
-[ "$LDEV" = "2" ] || fail "F7: lab_mi devices != 2 (=$LDEV)"
-echo "4. lab_mi devices=$LDEV" >>"$V_LOG"
+[ "$LDEV" = "$SRC_DEV" ] || fail "F7: lab_mi devices != source (lab_mi=$LDEV source=$SRC_DEV)"
+echo "4. lab_mi devices=$LDEV (source=$SRC_DEV)" >>"$V_LOG"
 
 LSOFT=$(db_count "$DATA_DIR/lab_mi_1.db" "software_catalog")
-[ "$LSOFT" = "2" ] || fail "F7: lab_mi software != 2 (=$LSOFT)"
-echo "5. lab_mi software=$LSOFT" >>"$V_LOG"
+[ "$LSOFT" = "$SRC_SW" ] || fail "F7: lab_mi software != source (lab_mi=$LSOFT source=$SRC_SW)"
+echo "5. lab_mi software=$LSOFT (source=$SRC_SW)" >>"$V_LOG"
 
 LSCH=$(db_count "$DATA_DIR/lab_mi_1.db" "course_schedules")
-[ "$LSCH" = "1" ] || fail "F7: lab_mi schedules != 1 (=$LSCH)"
-echo "6. lab_mi schedules=$LSCH" >>"$V_LOG"
+[ "$LSCH" = "$SRC_SCH" ] || fail "F7: lab_mi schedules != source (lab_mi=$LSCH source=$SRC_SCH)"
+echo "6. lab_mi schedules=$LSCH (source=$SRC_SCH)" >>"$V_LOG"
 
 LLB=$(db_count "$DATA_DIR/lab_mi_1.db" "logbook_entries")
-[ "$LLB" = "1" ] || fail "F7: lab_mi logbook != 1 (=$LLB)"
-echo "7. lab_mi logbook=$LLB" >>"$V_LOG"
+[ "$LLB" = "$SRC_LB" ] || fail "F7: lab_mi logbook != source (lab_mi=$LLB source=$SRC_LB)"
+echo "7. lab_mi logbook=$LLB (source=$SRC_LB)" >>"$V_LOG"
 
 # 3. integrity check
 for db in "$DATA_DIR/global.db" "$DATA_DIR/lab_mi_1.db" "$DATA_DIR/lab_vokasi_1.db"; do
