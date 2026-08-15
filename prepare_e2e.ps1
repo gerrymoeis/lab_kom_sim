@@ -15,11 +15,18 @@
 param(
     [string]$SSH = "",
     [switch]$Deploy,
-    [string]$BundlePath = ".",
+    [string]$BundlePath = "$PSScriptRoot",
     [string]$Repo = "$PSScriptRoot\..\tools\migrate_single_to_multi"
 )
 
 $ErrorActionPreference = "Stop"
+
+# Resolusi path relatif terhadap $PWD (lokasi PowerShell), BUKAN CWD .NET —
+# supaya bundle/etl selalu lahir di folder yang dimaksud user.
+if (-not [System.IO.Path]::IsPathRooted($BundlePath)) {
+    $BundlePath = Join-Path $PWD $BundlePath
+}
+$BundlePath = [System.IO.Path]::GetFullPath($BundlePath)
 
 # ---------------------------------------------------------------- 1. Build ETL linux
 $etlBin = [System.IO.Path]::GetFullPath((Join-Path $BundlePath "etl"))
