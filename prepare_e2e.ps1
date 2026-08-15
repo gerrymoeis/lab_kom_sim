@@ -21,7 +21,34 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Resolusi path relatif terhadap $PWD (lokasi PowerShell), BUKAN CWD .NET —
+# ---------------------------------------------------------------- Helper: baca file .env
+function Read-EnvFile {
+    param([string]$Path, [hashtable]$Into)
+    $Into.Clear()
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "file env tidak ada: $Path"
+    }
+    foreach ($line in Get-Content -LiteralPath $Path) {
+        $t = $line.Trim()
+        if ($t -eq "" -or $t.StartsWith("#")) { continue }
+        if ($t -match '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {
+            $name = $Matches[1]
+            $val  = $Matches[2]
+            # Buang komentar inline: spasi lalu '#' (hanya bila # didahului spasi,
+            # agar URL/token yang sah tidak terpotong).
+            if ($val -match '^(.*?)[ \t]+#') {
+                $val = $Matches[1]
+            }
+            $val = $val.Trim()
+            if ($val.Length -ge 2 -and (($val[0] -eq '"' -and $val[-1] -eq '"') -or ($val[0] -eq "'" -and $val[-1] -eq "'"))) {
+                $val = $val.Substring(1, $val.Length - 2)
+            }
+            $Into[$name] = $val
+        }
+    }
+}
+
+# Resolusi path relatif terhadap $PWD (lokasi PowerShell), BUKAN CWD .NET -
 # supaya bundle/etl selalu lahir di folder yang dimaksud user.
 if (-not [System.IO.Path]::IsPathRooted($BundlePath)) {
     $BundlePath = Join-Path $PWD $BundlePath
@@ -66,10 +93,32 @@ if (-not (Test-Path -LiteralPath (Join-Path $staging "etl"))) {
     throw "binary etl tidak tersalin ke staging - build ETL gagal/terlewat"
 }
 
-# keys.env: template kosong ikut bundle; nilai ASLI diisi di VM (JANGAN commit).
-$keysExample = Join-Path $PSScriptRoot "config\keys.env.example"
-Copy-Item $keysExample (Join-Path $staging "keys.env")
-Write-Host "    keys.env (template) masuk bundle - ISI nilai ASLI di VM sebelum run"
+# keys.env: OTOMATIS diisi penuh dari poc_prototype/scripts/build_linux_release/.env.config
+# (sumber nilai asli). Tidak perlu copy-paste manual di VM.
+$envConfigPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\poc_prototype\scripts\build_linux_release\.env.config"))
+$cfg = @{}
+Read-EnvFile -Path $envConfigPath -Into $cfg
+
+# GITHUB_TOKEN: main (versi lama) pakai nama GITHUB_TOKEN; refactoring (versi baru) pakai
+# PC_PHOTO_TOKEN. Keduanya PAT GitHub yang SAMA (GITHUB_ reserved prefix GitHub Actions).
+$cfg["GITHUB_TOKEN"] = $cfg["PC_PHOTO_TOKEN"]
+
+$requiredKeys = @("GEMINI_API_KEY", "OPENROUTER_API_KEY", "PC_PHOTO_RELEASE_URL", "PC_PHOTO_TOKEN", "GITHUB_TOKEN")
+$missing = @($requiredKeys | Where-Object { -not $cfg.ContainsKey($_) -or [string]::IsNullOrWhiteSpace($cfg[$_]) })
+if ($missing.Count -gt 0) {
+    throw "key kosong/tidak ada di $envConfigPath : $($missing -join ', ')"
+}
+$keysContent = @(
+    "# Auto-generated oleh prepare_e2e.ps1 dari .env.config - JANGAN commit ke git",
+    "GEMINI_API_KEY=$($cfg['GEMINI_API_KEY'])",
+    "OPENROUTER_API_KEY=$($cfg['OPENROUTER_API_KEY'])",
+    "PC_PHOTO_RELEASE_URL=$($cfg['PC_PHOTO_RELEASE_URL'])",
+    "PC_PHOTO_TOKEN=$($cfg['PC_PHOTO_TOKEN'])",
+    "GITHUB_TOKEN=$($cfg['GITHUB_TOKEN'])"
+) -join "`n"
+$keysPath = Join-Path $staging "keys.env"
+[System.IO.File]::WriteAllText($keysPath, $keysContent, (New-Object System.Text.UTF8Encoding($false)))
+Write-Host "    keys.env diisi OTOMATIS dari $envConfigPath (5 key lengkap)"
 
 # Archive bundle (path ABSOLUT supaya tar tidak menulis ke dalam staging).
 $zipName = "e2e_bundle_$(Get-Date -Format yyyyMMdd_HHmmss).tar.gz"
@@ -106,9 +155,9 @@ if ($Deploy -and $SSH -ne "") {
                  "sudo apt-get install -y git golang-go curl sqlite3 tar procps >/dev/null 2>&1; fi; " +
                  "mkdir -p ~/e2e_test && tar -xzf /tmp/$zipName -C ~/e2e_test; " +
                  "cd ~/e2e_test && bash run_e2e.sh"
-    Write-Host "==> SSH run run_e2e.sh (interaktif, butuh keys.env terisi di VM)"
+    Write-Host "==> SSH run run_e2e.sh (keys.env sudah terisi otomatis di bundle)"
     & ssh $SSH $remoteCmd
     if ($LASTEXITCODE -ne 0) { throw "ssh run gagal" }
 }
 
-Write-Host "==> Selesai. Di VM: cd ~/e2e_test && bash run_e2e.sh"
+Write-Host "==> Selesai. Di VM: cd ~/e2e_test && bash run_e2e.sh (keys.env sudah terisi)"
