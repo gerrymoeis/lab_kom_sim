@@ -72,6 +72,40 @@ phase_summary() {
     done
     log "============================================"
 }
+# phase_report_key: nama key JSON report utk fase (pola doc 014 komponen #4).
+phase_report_key() {
+    case "$1" in
+        P0)  echo "P0_validate" ;;
+        P1)  echo "P1_env" ;;
+        P2)  echo "P2_backup" ;;
+        P3)  echo "P3_stop" ;;
+        P4)  echo "P4_migrate" ;;
+        P5)  echo "P5_seed" ;;
+        P6)  echo "P6_deploy" ;;
+        P7)  echo "P7_publish" ;;
+        P8)  echo "P8_start" ;;
+        P9)  echo "P9_healthz" ;;
+        P10) echo "P10_readyz" ;;
+        P11) echo "P11_verify" ;;
+        P12) echo "P12_test" ;;
+        P13) echo "P13_report" ;;
+        P14) echo "P14_cleanup" ;;
+        PK)  echo "PK_autorun" ;;
+        *)   echo "$1" ;;
+    esac
+}
+# phase_json: output PHASES/PHASE_STATUS sebagai objek JSON
+# (key = phase_report_key, status = PASS|SKIP|WARN|FAIL|RUNNING).
+phase_json() {
+    local i key val out="" first=1
+    for i in "${!PHASES[@]}"; do
+        key="$(phase_report_key "${PHASES[$i]}")"
+        val="${PHASE_STATUS[$i]}"
+        if [ "$first" -eq 1 ]; then first=0; else out="${out},"; fi
+        out="${out}\"${key}\":\"${val}\""
+    done
+    echo "{${out}}"
+}
 
 # ---------------------------------------------------------------- .env helpers
 # baca_env KEY: ambil nilai KEY dari ENV_FILE (baris pertama yang cocok).

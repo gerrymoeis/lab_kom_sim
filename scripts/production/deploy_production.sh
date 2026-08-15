@@ -7,7 +7,7 @@
 #   cd deploy_production_<ts>
 #   sudo bash deploy_production.sh [--skip-migrate] [--skip-test]
 #
-# Tahap (Fase B: P0–P9 + P14, tanpa test suite):
+# Tahap (Fase C: P0–P11 + P13 + P14, tanpa test suite):
 #   P0  Validasi prasyarat + bundle lengkap                  → STOP
 #   P1  Deteksi format .env (single/multi) + regenerate      → STOP
 #   P2  Backup penuh data/ + .env + release aktif            → STOP
@@ -18,6 +18,9 @@
 #   P7  Generate public site (app-simlab-publish)            → WARN
 #   P8  Start service                                        → ROLLBACK
 #   P9  Health check /healthz                                → ROLLBACK
+#   P10 Readiness check /readyz (deep)                       → ROLLBACK
+#   P11 Verifikasi read-only app-simlab -verify              → ROLLBACK
+#   P13 Report JSON deploy_report_<ts>.json                  → WARN
 #   P14 Cleanup (release keep 3, single DB, uploads flat)    → WARN
 #
 # ROLLBACK: stop service, restore symlink + data dari backup, start, health.
@@ -43,8 +46,22 @@ SAVED_CURRENT=""
 MIGRATION_RAN=0
 SOURCE_DB="${DATA_DIR}/inventaris_lab.db"
 
+# ---- Variabel utk P13 report (diisi di fase terkait)
+MIG_STATUS="skipped"
+MIG_GLOBAL_USERS=0
+MIG_SUPER_ADMIN=0
+MIG_ROWS_PC=0
+MIG_UPLOAD_FILES=0
+VERIFY_INTEGRITY="n/a"
+VERIFY_SUPER_ADMIN=0
+VERIFY_ORPHAN=0
+VERIFY_UPLOADS=false
+VERIFY_SEED=false
+READYZ_STATUS="n/a"
+SERVER_URL=""
+
 # ============================================================================
-# ROLLBACK — dipicu kegagalan P4–P9
+# ROLLBACK — dipicu kegagalan P4–P11
 # ============================================================================
 rollback() {
     log "🔄 ROLLBACK dimulai..."
@@ -263,6 +280,11 @@ elif should_migrate; then
     [ -n "${ROWS_PC}" ] && [ "${ROWS_PC}" -gt 0 ] \
         || warn "P4: rows_pcs=${ROWS_PC:-0} (0) — periksa data source kosong?"
     log "P4: ETL OK — super_admin=${SUPER_ADMIN} rows_pcs=${ROWS_PC:-0}"
+    MIG_STATUS="ran"
+    MIG_SUPER_ADMIN="${SUPER_ADMIN:-0}"
+    MIG_ROWS_PC="${ROWS_PC:-0}"
+    MIG_GLOBAL_USERS=$(grep -o '"global_users": *[0-9]*' "${DATA_DIR}/migration_report.json" | grep -o '[0-9]*$' || echo 0)
+    MIG_UPLOAD_FILES=$(grep -o '"upload_files_copied": *[0-9]*' "${DATA_DIR}/migration_report.json" | grep -o '[0-9]*$' || echo 0)
     chown_data
     phase_pass "P4"
 else
@@ -351,6 +373,99 @@ fi
 phase_pass "P9"
 
 # ============================================================================
+# P10 — READINESS CHECK (deep)
+# ============================================================================
+declare_phase "P10" "Readiness check /readyz (semua DB lab + global + uploads)"
+if ! readyz_check; then
+    READYZ_STATUS="fail"
+    phase_fail "P10" "readyz gagal"
+    rollback
+fi
+READYZ_STATUS="ok"
+phase_pass "P10"
+
+# ============================================================================
+# P11 — VERIFIKASI READ-ONLY (app-simlab -verify)
+# ============================================================================
+declare_phase "P11" "Verifikasi read-only app-simlab -verify"
+# -verify read-only: integrity, super_admin>=1, orphan FK, uploads subdir, marker .seed_done.
+# Dijalankan dari RELEASE_DIR (memuat .env yang benar via config.Load CWD).
+VERIFY_LOG="${BACKUP_DIR}/verify.log"
+if [ -x "${RELEASE_DIR}/app-simlab" ]; then
+    if (cd "${RELEASE_DIR}" && ./app-simlab -verify) > "${VERIFY_LOG}" 2>&1; then
+        log "P11: app-simlab -verify OK (exit 0) — lihat ${VERIFY_LOG}"
+        phase_pass "P11"
+    else
+        phase_fail "P11" "app-simlab -verify exit != 0 — lihat ${VERIFY_LOG}"
+        rollback
+    fi
+else
+    phase_fail "P11" "app-simlab tidak ditemukan di RELEASE_DIR"
+    rollback
+fi
+# Parsing ringkasan verify (untuk P13 report)
+if [ -f "${VERIFY_LOG}" ]; then
+    if grep -q "integrity_check ok" "${VERIFY_LOG}"; then VERIFY_INTEGRITY="ok"; fi
+    VERIFY_SUPER_ADMIN=$(grep -o 'super_admin=[0-9]*' "${VERIFY_LOG}" | head -1 | cut -d= -f2)
+    [ -n "${VERIFY_SUPER_ADMIN}" ] || VERIFY_SUPER_ADMIN=0
+    if grep -q "orphan FK=0 ok" "${VERIFY_LOG}"; then VERIFY_ORPHAN=0; fi
+    if grep -q "pc/ ok" "${VERIFY_LOG}"; then VERIFY_UPLOADS=true; fi
+    if grep -q "marker .seed_done=true" "${VERIFY_LOG}"; then VERIFY_SEED=true; fi
+fi
+
+# ============================================================================
+# P13 — REPORT JSON
+# ============================================================================
+declare_phase "P13" "Report JSON deploy_report_<ts>.json"
+# Komponen #4: pola e2e_report.json + migration_report.json.
+phase_pass "P13"
+REPORT_TS="$(date +%Y%m%d-%H%M%S)"
+REPORT_FILE="${DATA_DIR}/backups/deploy_report_${REPORT_TS}.json"
+BUNDLE_COMMIT="$(grep '^commit=' "${SCRIPT_DIR}/bundle-meta.txt" 2>/dev/null | head -1 | cut -d= -f2- || echo unknown)"
+SERVER_URL="http://$(hostname -I 2>/dev/null | awk '{print $1}'):$(get_port)"
+{
+    echo "{"
+    echo "  \"timestamp\": \"$(date -Is)\","
+    echo "  \"release_tag\": \"bundle-${REPORT_TS}\","
+    echo "  \"commit\": \"${BUNDLE_COMMIT}\","
+    echo "  \"environment\": \"production\","
+    echo "  \"phases\": $(phase_json),"
+    echo "  \"migration\": {"
+    echo "    \"status\": \"${MIG_STATUS}\","
+    echo "    \"global_users\": ${MIG_GLOBAL_USERS},"
+    echo "    \"rows_pcs\": ${MIG_ROWS_PC},"
+    echo "    \"super_admin\": ${MIG_SUPER_ADMIN},"
+    echo "    \"upload_files_copied\": ${MIG_UPLOAD_FILES}"
+    echo "  },"
+    echo "  \"verify\": {"
+    echo "    \"integrity\": \"${VERIFY_INTEGRITY}\","
+    echo "    \"super_admin_count\": ${VERIFY_SUPER_ADMIN},"
+    echo "    \"orphan_fk\": ${VERIFY_ORPHAN},"
+    echo "    \"uploads_ok\": ${VERIFY_UPLOADS},"
+    echo "    \"seed_done\": ${VERIFY_SEED}"
+    echo "  },"
+    echo "  \"tests\": {"
+    echo "    \"total\": null,"
+    echo "    \"pass\": null,"
+    echo "    \"fail\": null,"
+    echo "    \"skip\": null"
+    echo "  },"
+    echo "  \"server\": {"
+    echo "    \"service_active\": $(service_is_active && echo true || echo false),"
+    echo "    \"readyz\": \"${READYZ_STATUS}\","
+    echo "    \"url\": \"${SERVER_URL}\""
+    echo "  }"
+    echo "}"
+} > "${REPORT_FILE}"
+if [ -s "${REPORT_FILE}" ]; then
+    chmod 640 "${REPORT_FILE}"
+    log "P13: report → ${REPORT_FILE}"
+else
+    warn "P13: report tidak tertulis"
+    phase_warn "P13" "report gagal ditulis"
+fi
+
+# ============================================================================
 # P14 — CLEANUP + VERIFIER
 # ============================================================================
 declare_phase "P14" "Cleanup (release keep 3, single DB, uploads flat)"
@@ -416,7 +531,10 @@ ok "✅ DEPLOY PRODUCTION SELESAI"
 ok "   Release: ${RELEASE_DIR}"
 ok "   Service: ${SERVICE_NAME}"
 ok "   Status : $(systemctl is-active "${SERVICE_NAME}" 2>/dev/null || echo unknown)"
-ok "   URL    : http://$(hostname -I 2>/dev/null | awk '{print $1}'):$(get_port)"
+ok "   URL    : ${SERVER_URL}"
 ok "   Backup : ${BACKUP_DIR}"
+if [ -n "${REPORT_FILE}" ]; then
+    ok "   Report : ${REPORT_FILE}"
+fi
 ok "==============================================="
-log "Langkah berikutnya (Fase C/D/E): /readyz, app-simlab -verify, test suite, cleanup_production.sh"
+log "Langkah berikutnya (Fase D/E): test suite P12, cleanup_production.sh"

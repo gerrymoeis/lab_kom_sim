@@ -182,6 +182,10 @@ foreach ($src in $SourceScripts) {
         Write-Host "    OK: $(Split-Path $src -Leaf)"
     }
 }
+# bundle-meta.txt — dibaca deploy_production.sh P13 utk report (commit + nama bundle).
+$metaLines = @("commit=$headCommit", "bundle=$bundleName")
+Set-Content -LiteralPath (Join-Path $staging "bundle-meta.txt") -Value $metaLines -Encoding ascii
+Write-Host "    OK: bundle-meta.txt (commit=$headCommit)"
 
 # ---------------------------------------------------------------- 8. Verifikasi parse 1-to-1 (F10)
 Write-Host "==> Verifikasi parsing -test.v 1-to-1 dengan go test -json (F10)"
@@ -340,7 +344,7 @@ isi bundle:
   bin/     : etl, app-simlab, app-simlab-publish
   test-runner/ : go.mod, .env.reference, seeds/, test-bin/ (8 *.test)
   seeds/   : mi-1, vokasi-1, default
-  (deploy_production.sh / cleanup_production.sh / lib/ ditambahkan pada Fase B/E)
+  deploy_production.sh + lib/ (Fase B/C) + bundle-meta.txt (commit & nama bundle utk report P13)
 
 next: verifikasi eksekusi test binary linux di VM:
   scp $bundleName.tar.gz root@server:/opt/simlab/
