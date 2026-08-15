@@ -328,7 +328,10 @@ log "F4: SELESAI"
 # ---------------------------------------------------------------- F5: ETL di VM
 phase "F5 — ETL (migrate_single_to_multi) di VM Linux"
 ETL_BIN="$E2E_ROOT/etl"
-[ -x "$ETL_BIN" ] || fail "F5: binary ETL tidak ada di $ETL_BIN (build dari tools/migrate_single_to_multi, GOOS=linux)"
+# Bundle dibuat di host Windows -> tar menyimpan mode 0644 (tanpa execute bit).
+# Pastikan binary etl executable sebelum dijalankan.
+chmod +x "$ETL_BIN" 2>/dev/null || true
+[ -x "$ETL_BIN" ] || fail "F5: binary ETL tidak ada/eksekusi di $ETL_BIN (build dari tools/migrate_single_to_multi, GOOS=linux)"
 sed "s|{{E2E_ROOT}}|$E2E_ROOT|g" "$CONFIG_TPL" > "$E2E_ROOT/etl-config.json"
 (cd "$OUT_DIR" && "$ETL_BIN" -config "$E2E_ROOT/etl-config.json" -force) \
     >>"$LOG_DIR/F5_etl.log" 2>&1 || fail "F5: ETL gagal — lihat $LOG_DIR/F5_etl.log"
