@@ -75,5 +75,8 @@ simlabmi*
 scripts/build_linux_release/
 .env.config
 
+# Production tools bundle output (prepare_production.ps1)
+scripts/production/out/
+
 # Placeholder / marker directories
 # Absolute path ke clone repo publik (untuk auto push)/
