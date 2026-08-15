@@ -489,6 +489,7 @@ cat "$V_LOG"
 # Prinsip (revisi #2): SEMUA test (~600) dijalankan 1-to-1 — 0 skip, 0 error.
 phase "F10 — Full test suite refactoring (0-skip, 0-error)"
 F10_JSON="$LOG_DIR/F10_gotest.json"
+F10_START=$(date +%s)
 : > "$F10_JSON"
 
 # go test -json → satu event JSON per baris (test-level + package-level).
@@ -501,6 +502,7 @@ set +e
 ) >"$F10_JSON" 2>&1
 F10_EXIT=$?
 set -e
+F10_ELAPSED=$(( $(date +%s) - F10_START ))
 
 # Parsing: hitung event test-LEVEL (baris yang punya "Test":"..."). Baris
 # package-level (Test kosong / tanpa field Test) tidak dihitung sebagai test.
@@ -509,7 +511,15 @@ F10_FAIL=$(grep -c '"Action":"fail".*"Test":"[^"]' "$F10_JSON" || true)
 F10_SKIP=$(grep -c '"Action":"skip".*"Test":"[^"]' "$F10_JSON" || true)
 F10_TOTAL=$((F10_PASS + F10_FAIL + F10_SKIP))
 
-log "F10: exit=$F10_EXIT total=$F10_TOTAL pass=$F10_PASS fail=$F10_FAIL skip=$F10_SKIP"
+# Bukti eksekusi nyata per-package: daftar package yang lulus (event package-level
+# TANPA field Test) — tampil di console agar terlihat test benar-benar berjalan.
+F10_PKG_OK=$(grep '"Action":"pass"' "$F10_JSON" | grep -v '"Test":"[^"]' \
+    | grep -o '"Package":"[^"]*"' | sed 's/"Package":"//; s/"//' | sort -u || true)
+
+log "F10: exit=$F10_EXIT total=$F10_TOTAL pass=$F10_PASS fail=$F10_FAIL skip=$F10_SKIP (durasi ${F10_ELAPSED}s)"
+if [ -n "$F10_PKG_OK" ]; then
+    log "F10: package lulus: $(echo "$F10_PKG_OK" | tr '\n' ' ')"
+fi
 cat "$F10_JSON" > "$LOG_DIR/F10_console.log"
 
 if [ "$F10_EXIT" -ne 0 ] || [ "$F10_FAIL" -gt 0 ] || [ "$F10_SKIP" -gt 0 ]; then
