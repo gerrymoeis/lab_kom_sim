@@ -7,7 +7,7 @@
 #   cd deploy_production_<ts>
 #   sudo bash deploy_production.sh [--skip-migrate] [--skip-test]
 #
-# Tahap (Fase D: P0–P14 lengkap):
+# Tahap (Fase E: P0–PK lengkap):
 #   P0  Validasi prasyarat + bundle lengkap                  → STOP
 #   P1  Deteksi format .env (single/multi) + regenerate      → STOP
 #   P2  Backup penuh data/ + .env + release aktif            → STOP
@@ -23,6 +23,8 @@
 #   P12 Full test suite refactoring (test binary)            → ROLLBACK
 #   P13 Report JSON deploy_report_<ts>.json                  → WARN
 #   P14 Cleanup (release keep 3, single DB, uploads flat)    → WARN
+#   PK  Auto-run server + verify final (report digenerate    → WARN
+#       ulang agar memuat PK_autorun)
 #
 # ROLLBACK: stop service, restore symlink + data dari backup, start, health.
 # Jalur sukses maupun rollback selalu berakhir dengan server RUNNING.
@@ -506,55 +508,62 @@ fi
 # ============================================================================
 declare_phase "P13" "Report JSON deploy_report_<ts>.json"
 # Komponen #4: pola e2e_report.json + migration_report.json.
-phase_pass "P13"
+# write_report: fungsi agar report bisa digenerate ulang (P13 awal & setelah PK
+# agar memuat PK_autorun).
 REPORT_TS="$(date +%Y%m%d-%H%M%S)"
 REPORT_FILE="${DATA_DIR}/backups/deploy_report_${REPORT_TS}.json"
 BUNDLE_COMMIT="$(grep '^commit=' "${SCRIPT_DIR}/bundle-meta.txt" 2>/dev/null | head -1 | cut -d= -f2- || echo unknown)"
-SERVER_URL="http://$(hostname -I 2>/dev/null | awk '{print $1}'):$(get_port)"
-{
-    echo "{"
-    echo "  \"timestamp\": \"$(date -Is)\","
-    echo "  \"release_tag\": \"bundle-${REPORT_TS}\","
-    echo "  \"commit\": \"${BUNDLE_COMMIT}\","
-    echo "  \"environment\": \"production\","
-    echo "  \"phases\": $(phase_json),"
-    echo "  \"migration\": {"
-    echo "    \"status\": \"${MIG_STATUS}\","
-    echo "    \"global_users\": ${MIG_GLOBAL_USERS},"
-    echo "    \"rows_pcs\": ${MIG_ROWS_PC},"
-    echo "    \"super_admin\": ${MIG_SUPER_ADMIN},"
-    echo "    \"upload_files_copied\": ${MIG_UPLOAD_FILES}"
-    echo "  },"
-    echo "  \"verify\": {"
-    echo "    \"integrity\": \"${VERIFY_INTEGRITY}\","
-    echo "    \"super_admin_count\": ${VERIFY_SUPER_ADMIN},"
-    echo "    \"orphan_fk\": ${VERIFY_ORPHAN},"
-    echo "    \"uploads_ok\": ${VERIFY_UPLOADS},"
-    echo "    \"seed_done\": ${VERIFY_SEED}"
-    echo "  },"
-    echo "  \"tests\": {"
-    echo "    \"status\": \"${TEST_STATUS}\","
-    echo "    \"total\": ${TEST_TOTAL},"
-    echo "    \"pass\": ${TEST_PASS},"
-    echo "    \"fail\": ${TEST_FAIL},"
-    echo "    \"skip\": ${TEST_SKIP},"
-    echo "    \"packages\": ${TEST_PKG_JSON},"
-    echo "    \"log\": \"${TEST_RUN_DIR}\""
-    echo "  },"
-    echo "  \"server\": {"
-    echo "    \"service_active\": $(service_is_active && echo true || echo false),"
-    echo "    \"readyz\": \"${READYZ_STATUS}\","
-    echo "    \"url\": \"${SERVER_URL}\""
-    echo "  }"
-    echo "}"
-} > "${REPORT_FILE}"
-if [ -s "${REPORT_FILE}" ]; then
-    chmod 640 "${REPORT_FILE}"
-    log "P13: report → ${REPORT_FILE}"
-else
-    warn "P13: report tidak tertulis"
-    phase_warn "P13" "report gagal ditulis"
-fi
+
+write_report() {
+    SERVER_URL="http://$(hostname -I 2>/dev/null | awk '{print $1}'):$(get_port)"
+    {
+        echo "{"
+        echo "  \"timestamp\": \"$(date -Is)\","
+        echo "  \"release_tag\": \"bundle-${REPORT_TS}\","
+        echo "  \"commit\": \"${BUNDLE_COMMIT}\","
+        echo "  \"environment\": \"production\","
+        echo "  \"phases\": $(phase_json),"
+        echo "  \"migration\": {"
+        echo "    \"status\": \"${MIG_STATUS}\","
+        echo "    \"global_users\": ${MIG_GLOBAL_USERS},"
+        echo "    \"rows_pcs\": ${MIG_ROWS_PC},"
+        echo "    \"super_admin\": ${MIG_SUPER_ADMIN},"
+        echo "    \"upload_files_copied\": ${MIG_UPLOAD_FILES}"
+        echo "  },"
+        echo "  \"verify\": {"
+        echo "    \"integrity\": \"${VERIFY_INTEGRITY}\","
+        echo "    \"super_admin_count\": ${VERIFY_SUPER_ADMIN},"
+        echo "    \"orphan_fk\": ${VERIFY_ORPHAN},"
+        echo "    \"uploads_ok\": ${VERIFY_UPLOADS},"
+        echo "    \"seed_done\": ${VERIFY_SEED}"
+        echo "  },"
+        echo "  \"tests\": {"
+        echo "    \"status\": \"${TEST_STATUS}\","
+        echo "    \"total\": ${TEST_TOTAL},"
+        echo "    \"pass\": ${TEST_PASS},"
+        echo "    \"fail\": ${TEST_FAIL},"
+        echo "    \"skip\": ${TEST_SKIP},"
+        echo "    \"packages\": ${TEST_PKG_JSON},"
+        echo "    \"log\": \"${TEST_RUN_DIR}\""
+        echo "  },"
+        echo "  \"server\": {"
+        echo "    \"service_active\": $(service_is_active && echo true || echo false),"
+        echo "    \"readyz\": \"${READYZ_STATUS}\","
+        echo "    \"url\": \"${SERVER_URL}\""
+        echo "  }"
+        echo "}"
+    } > "${REPORT_FILE}"
+    if [ -s "${REPORT_FILE}" ]; then
+        chmod 640 "${REPORT_FILE}"
+        log "report → ${REPORT_FILE}"
+    else
+        warn "report tidak tertulis"
+        phase_warn "P13" "report gagal ditulis"
+    fi
+}
+
+phase_pass "P13"
+write_report
 
 # ============================================================================
 # P14 — CLEANUP + VERIFIER
@@ -614,6 +623,36 @@ else
 fi
 
 # ============================================================================
+# PK — AUTO-RUN SERVER + VERIFY FINAL
+# ============================================================================
+declare_phase "PK" "Auto-run server + verify final"
+# Syarat user: server otomatis di-run setelah tools selesai. Diposisikan PALING
+# AKHIR setelah semua tahap. Jalur sukses: server RUNNING + /readyz OK +
+# report digenerate ulang agar memuat PK_autorun.
+PK_OK=1
+if ! service_is_active; then
+    warn "PK: service ${SERVICE_NAME} tidak active — butuh intervensi manual (journalctl -u ${SERVICE_NAME} -n 50)"
+    phase_warn "PK" "service tidak active"
+    PK_OK=0
+else
+    log "PK: service ${SERVICE_NAME} active"
+fi
+if ! readyz_check; then
+    warn "PK: /readyz tidak OK — butuh intervensi manual"
+    phase_warn "PK" "readyz gagal"
+    PK_OK=0
+else
+    log "PK: /readyz OK"
+fi
+if [ "${PK_OK}" -eq 1 ]; then
+    phase_pass "PK"
+fi
+# Regenerate report agar PK_autorun ikut tercatat (komponen #4 + syarat §5).
+if [ -n "${REPORT_FILE}" ]; then
+    write_report
+fi
+
+# ============================================================================
 # SELESAI — ringkasan
 # ============================================================================
 phase_summary
@@ -628,4 +667,4 @@ if [ -n "${REPORT_FILE}" ]; then
     ok "   Report : ${REPORT_FILE}"
 fi
 ok "==============================================="
-log "Langkah berikutnya (Fase D/E): test suite P12, cleanup_production.sh"
+log "Langkah berikutnya (Fase E): cleanup_production.sh utk hapus bundle+zip setelah semua aman"
