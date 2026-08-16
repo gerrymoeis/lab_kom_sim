@@ -26,6 +26,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
+check_root
 FORCE=false
 for arg in "$@"; do
     case "${arg}" in
@@ -68,7 +69,7 @@ for z in ${TMP_ZIPS}; do log "  - /tmp zip      : ${z}"; done
 
 if [ "${FORCE}" = "false" ]; then
     printf "Hapus artefak bundle di atas? [y/N] "
-    read -r ans
+    read -r ans || ans=""
     case "${ans}" in
         y|Y|yes|YES) ;;
         *) log "Dibatalkan — tidak ada yang dihapus. Server tetap RUNNING."; exit 0 ;;
