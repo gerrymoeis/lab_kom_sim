@@ -67,6 +67,27 @@ Setelah selesai:
   — wajib memuat `"PK_autorun": "PASS"`.
 - Buka URL akses di browser + verifikasi via `/readyz`.
 
+## PostgreSQL (opsional)
+
+Server bisa memakai **PostgreSQL** sebagai backend selain SQLite lokal (default). Aktifkan
+dengan mengisi `DATABASE_URL` di `/opt/simlab/.env` (format `postgres://user:pass@host:5432/db`).
+Bila kosong → backend SQLite (file `.db` di `/opt/simlab/data/`).
+
+Alur deploy menyesuaikan otomatis saat `DATABASE_URL` terisi (backend `postgres`):
+- **P1** log `backend PostgreSQL aktif`; `DATABASE_URL` lama **dipertahankan** bila `.env`
+  diregenerate dari template.
+- **P3** tunggu WAL/SHM SQLite dilewati (PostgreSQL tidak memakai file WAL lokal).
+- **P4** ETL (SQLite-only) **dilewati** — migrasi data Postgres tidak dipakai jalur ini.
+- **P10** `/readyz` menjadi verifikasi DB utama (ping global + semua lab via app).
+- **P11** `app-simlab -verify` (SQLite-only) **dilewati**.
+- **P14** file `.db` lokal **tidak dihapus** di backend Postgres (data ada di server Postgres).
+- **P13** report memuat `"database": {"backend": "postgres", "url_set": true}`.
+
+Catatan:
+- Backup tools mencakup **uploads, `.env`, release** — data PostgreSQL di-backup via penyedia
+  DB / tool Postgres (bukan `data.tar.gz`).
+- Nilai `DATABASE_URL` tidak pernah di-log (berisi kredensial).
+
 ## 3. Cleanup (setelah semua aman & sesuai)
 
 Hapus artefak bundle (folder extract + zip + tar.gz sementara di `/tmp`):

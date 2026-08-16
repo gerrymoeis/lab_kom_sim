@@ -7,14 +7,19 @@
 #   cd deploy_production_<ts>
 #   sudo bash deploy_production.sh [--skip-migrate] [--skip-test]
 #
-# Tahap (Fase E: P0–PK lengkap; Fase P-B: N-Lab aware):
+# Tahap (Fase E: P0–PK lengkap; Fase P-B: N-Lab aware; Fase P-C: PostgreSQL aware):
 #   P0  Validasi prasyarat + bundle lengkap                  → STOP
 #   P1  Deteksi format .env (single/multi) + regenerate      → STOP
-#       (N-Lab: REQUIRED_KEYS dari LABS_<N>_* terdeteksi)
+#       (N-Lab: REQUIRED_KEYS dari LABS_<N>_* terdeteksi;
+#        P-C: DATABASE_URL terisi → backend PostgreSQL, DATABASE_URL lama
+#        dipertahankan saat regenerate dari template)
 #   P2  Backup penuh data/ + .env + release aktif            → STOP
+#       (P-C: di Postgres data DB ada di luar; backup lokal = uploads/.env/release)
 #   P3  Stop service + tunggu WAL/SHM                        → STOP
+#       (P-C: skip tunggu WAL/SHM — tidak ada SQLite di Postgres)
 #   P4  Deteksi migrasi; jalankan ETL bila perlu             → ROLLBACK
-#       (N-Lab: config ETL digenerate dari .env; verifikasi lab source)
+#       (N-Lab: config ETL digenerate dari .env; verifikasi lab source;
+#        P-C: ETL SQLite-only dilewati di Postgres — verifikasi via app/readyz)
 #   P5  Siapkan release dir + seeds (tanpa marker)           → ROLLBACK
 #       (N-Lab: seeds per lab terdeteksi / fallback default)
 #   P6  Deploy binary + atomic symlink swap                  → ROLLBACK
@@ -22,11 +27,15 @@
 #   P8  Start service                                        → ROLLBACK
 #   P9  Health check /healthz                                → ROLLBACK
 #   P10 Readiness check /readyz (deep)                       → ROLLBACK
+#       (P-C: satu-satunya verifikasi DB di Postgres — ping via app)
 #   P11 Verifikasi read-only app-simlab -verify              → ROLLBACK
+#       (P-C: -verify SQLite-only dilewati di Postgres)
 #   P12 Full test suite refactoring (test binary)            → ROLLBACK
 #   P13 Report JSON deploy_report_<ts>.json                  → WARN
+#       (P-C: field database.backend = sqlite|postgres, url_set)
 #   P14 Cleanup (release keep 3, single DB, uploads flat)    → WARN
-#       (N-Lab: single DB pakai MIG_SOURCE_STEM terdeteksi)
+#       (N-Lab: single DB pakai MIG_SOURCE_STEM terdeteksi;
+#        P-C: di Postgres file .db lokal TIDAK dihapus)
 #   PK  Auto-run server + verify final (report digenerate    → WARN
 #       ulang agar memuat PK_autorun)
 #
@@ -79,6 +88,8 @@ TEST_RUN_DIR=""
 LAB_COUNT=0
 SEED_MISSING=0
 MIG_SOURCE_STEM="inventaris_lab"
+DATABASE_URL=""
+DB_BACKEND="sqlite"
 
 # ============================================================================
 # N-Lab helpers (Fase P-B): baca daftar lab dari ENV_FILE (.env format V2)
@@ -228,7 +239,19 @@ regenerate_env() {
     else
         log "SESSION_SECRET dipreserve dari .env lama"
     fi
+    # P-C: preserve DATABASE_URL bila lama terisi (regenerate dari template
+    # menimpa .env; DATABASE_URL template kosong → backend Postgres hilang).
+    local old_db_url
+    old_db_url="$(baca_env DATABASE_URL)"
     sed "s/__AUTO_GENERATE__/${secret}/g" "${ENV_CONFIG_TEMPLATE}" > "${ENV_FILE}"
+    if [ -n "${old_db_url}" ]; then
+        # Ganti baris DATABASE_URL secara aman (grep buang + append; nilai URL
+        # bisa memuat &, ?, = yang tidak aman untuk delimiter sed).
+        grep -v '^DATABASE_URL=' "${ENV_FILE}" > "${ENV_FILE}.tmp" || true
+        printf 'DATABASE_URL=%s\n' "${old_db_url}" >> "${ENV_FILE}.tmp"
+        mv "${ENV_FILE}.tmp" "${ENV_FILE}"
+        log "DATABASE_URL lama dipertahankan (backend PostgreSQL)"
+    fi
     chmod 600 "${ENV_FILE}"
     log "✅ .env diregenerate dari template (SESSION_SECRET ${#secret} char)"
 }
@@ -272,6 +295,18 @@ for key in GEMINI_API_KEY OPENROUTER_API_KEY PC_PHOTO_TOKEN; do
     val=$(baca_env "${key}")
     [ -n "${val}" ] || warn "P1: API key '${key}' kosong (server fitur terkait tidak jalan)"
 done
+# P-C: deteksi backend DB. DATABASE_URL terisi → PostgreSQL (Neon); nilai tidak
+# di-log (sekret). ETL/backup/-verify SQLite-only → alur menyesuaikan (lihat P3/P4/P11/P14).
+DATABASE_URL="$(baca_env DATABASE_URL)"
+if [ -n "${DATABASE_URL}" ]; then
+    DB_BACKEND="postgres"
+    log "P1: DATABASE_URL terisi → backend PostgreSQL aktif"
+    warn "P1: PostgreSQL aktif — ETL (SQLite-only) & -verify dilewati; backup data lokal hanya uploads/.env/release;"
+    warn "    verifikasi DB Postgres via app (/readyz, P10). File .db lokal tidak dihapus (P14)."
+else
+    DB_BACKEND="sqlite"
+    log "P1: DATABASE_URL kosong → backend SQLite (default)"
+fi
 phase_pass "P1"
 
 # ============================================================================
@@ -286,7 +321,11 @@ phase_pass "P2"
 # ============================================================================
 declare_phase "P3" "Stop service & tunggu WAL/SHM tertutup"
 service_stop
-tunggu_wal_closed
+if [ "${DB_BACKEND}" = "postgres" ]; then
+    log "P3: backend PostgreSQL — tidak ada WAL/SHM SQLite, skip tunggu_wal_closed"
+else
+    tunggu_wal_closed
+fi
 phase_pass "P3"
 
 # ============================================================================
@@ -392,6 +431,13 @@ generate_etl_config() {
 
 if [ "${SKIP_MIGRATE}" = "true" ]; then
     phase_skip "P4" "--skip-migrate"
+elif [ "${DB_BACKEND}" = "postgres" ]; then
+    # P-C: ETL SQLite-only — tidak bisa baca data PostgreSQL. Bila server
+    # single-DB Postgres → bukan SQLite file; bila sudah multi → global.db
+    # tidak dipakai. Verifikasi DB Postgres via app (/readyz, P10).
+    log "P4: backend PostgreSQL — ETL dilewati (SQLite-only), verifikasi via app"
+    phase_skip "P4" "PostgreSQL aktif (ETL SQLite-only)"
+    MIG_STATUS="postgres"
 elif should_migrate; then
     SRC_DB="$(detect_source_db)"
     SRC_UPLOAD_DIR="$(detect_source_upload_dir "${SRC_DB}")"
@@ -545,7 +591,12 @@ declare_phase "P11" "Verifikasi read-only app-simlab -verify"
 # -verify read-only: integrity, super_admin>=1, orphan FK, uploads subdir, marker .seed_done.
 # Dijalankan dari RELEASE_DIR (memuat .env yang benar via config.Load CWD).
 VERIFY_LOG="${BACKUP_DIR}/verify.log"
-if [ -x "${RELEASE_DIR}/app-simlab" ]; then
+if [ "${DB_BACKEND}" = "postgres" ]; then
+    # P-C: verify.Run SQLite-only (membuka file .db langsung) — di PostgreSQL DB
+    # tidak berupa file lokal. Verifikasi DB Postgres via app (/readyz, P10).
+    log "P11: backend PostgreSQL — app-simlab -verify (SQLite-only) dilewati"
+    phase_skip "P11" "PostgreSQL aktif (-verify SQLite-only)"
+elif [ -x "${RELEASE_DIR}/app-simlab" ]; then
     if (cd "${RELEASE_DIR}" && ./app-simlab -verify) > "${VERIFY_LOG}" 2>&1; then
         log "P11: app-simlab -verify OK (exit 0) — lihat ${VERIFY_LOG}"
         phase_pass "P11"
@@ -669,6 +720,10 @@ write_report() {
         echo "  \"release_tag\": \"bundle-${REPORT_TS}\","
         echo "  \"commit\": \"${BUNDLE_COMMIT}\","
         echo "  \"environment\": \"production\","
+        echo "  \"database\": {"
+        echo "    \"backend\": \"${DB_BACKEND}\","
+        echo "    \"url_set\": $( [ -n "${DATABASE_URL}" ] && echo true || echo false )"
+        echo "  },"
         echo "  \"phases\": $(phase_json),"
         echo "  \"migration\": {"
         echo "    \"status\": \"${MIG_STATUS}\","
@@ -723,12 +778,15 @@ cleanup_old_releases
 
 # 2) single DB lama (sudah di-backup) — nama dari source terdeteksi
 #    (MIG_SOURCE_STEM), default inventaris_lab bila migrasi tidak berjalan.
-for f in "${MIG_SOURCE_STEM}.db" "${MIG_SOURCE_STEM}.db-shm" "${MIG_SOURCE_STEM}.db-wal"; do
-    if [ -e "${DATA_DIR}/${f}" ]; then
-        rm -f "${DATA_DIR}/${f}"
-        log "P14: hapus single DB lama ${f}"
-    fi
-done
+#    P-C: skip bila PostgreSQL — file .db lokal TIDAK dihapus (data di Postgres).
+if [ "${DB_BACKEND}" != "postgres" ]; then
+    for f in "${MIG_SOURCE_STEM}.db" "${MIG_SOURCE_STEM}.db-shm" "${MIG_SOURCE_STEM}.db-wal"; do
+        if [ -e "${DATA_DIR}/${f}" ]; then
+            rm -f "${DATA_DIR}/${f}"
+            log "P14: hapus single DB lama ${f}"
+        fi
+    done
+fi
 
 # 3) uploads flat lama (pc, device_types, device_installations, logbook, temp)
 for sub in pc device_types device_installations logbook temp; do
@@ -748,18 +806,24 @@ for a in dist bin testsum.exe; do
 done
 
 # ---- Cleanup verifier (komponen #5) ----
-for f in "${MIG_SOURCE_STEM}.db" "${MIG_SOURCE_STEM}.db-shm" "${MIG_SOURCE_STEM}.db-wal"; do
-    if find "${DATA_DIR}" -name "${f}" -not -path "${BACKUP_DIR}/*" 2>/dev/null | grep -q .; then
-        LEFTOVER=1
-    fi
-done
+# P-C: di PostgreSQL tidak ada file DB lokal yang harus bersih; verifier DB
+# (single DB + WAL/SHM) dilewati — uploads flat & release tetap diperiksa.
+if [ "${DB_BACKEND}" != "postgres" ]; then
+    for f in "${MIG_SOURCE_STEM}.db" "${MIG_SOURCE_STEM}.db-shm" "${MIG_SOURCE_STEM}.db-wal"; do
+        if find "${DATA_DIR}" -name "${f}" -not -path "${BACKUP_DIR}/*" 2>/dev/null | grep -q .; then
+            LEFTOVER=1
+        fi
+    done
+fi
 for sub in pc device_types device_installations logbook; do
     [ -d "${DATA_DIR}/uploads/${sub}" ] && LEFTOVER=1
 done
 REL_COUNT=$(ls -1t "${RELEASES_DIR}" 2>/dev/null | wc -l)
 [ "${REL_COUNT}" -le 3 ] || LEFTOVER=1
-if find "${DATA_DIR}" \( -name "*.db-wal" -o -name "*.db-shm" \) 2>/dev/null | grep -q .; then
-    LEFTOVER=1
+if [ "${DB_BACKEND}" != "postgres" ]; then
+    if find "${DATA_DIR}" \( -name "*.db-wal" -o -name "*.db-shm" \) 2>/dev/null | grep -q .; then
+        LEFTOVER=1
+    fi
 fi
 
 if [ "${LEFTOVER}" -eq 0 ]; then
