@@ -3,6 +3,24 @@
 Bundle `deploy_production_<ts>.tar.gz` berisi tools deploy untuk server Linux production.
 Ikuti urutan di bawah. Semua perintah dijalankan sebagai `root` via SSH.
 
+## Prasyarat Server (Linux)
+
+- **Sistem**: Linux dengan `bash` + `systemd` (systemd dibutuhkan utk service unit `simlab.service`).
+  Diuji utama di **Debian/Ubuntu** (coreutils). Script portabel: `swap_symlink` memakai idiom tanpa
+  GNU-only `mv -T`, `hostname -I` punya fallback `hostname` → `localhost` — kompatibel dengan
+  distro minimal/busybox (Alpine, container) untuk alur shell.
+- **Arsitektur**: binary statik (`CGO_ENABLED=0`) — sama bisa jalan di glibc maupun musl.
+  Bundle default **amd64**; server ARM64/ARM32 butuh bundle dibangun dengan `-Arch` (lihat
+  "Membangun Bundle"). Cek arsitektur server: `uname -m`.
+- **User & service**: `install.sh` membuat user `simlab` + unit `simlab.service`
+  (`EnvironmentFile=/opt/simlab/.env`, `ExecStart=/opt/simlab/app/current/app-simlab`,
+  `Restart=on-failure`). Deploy memakai user ini utk `chown`. Bila belum ada, P0 memberi
+  warning jelas (deploy tetap lanjut, chown akan gagal) — jalankan `install.sh` dulu.
+- **Dependensi** (dibutuhkan `install.sh`): `curl`, `procps`, `systemd`. Server harus online
+  utk download release (jalur `update.sh`); bundle lokal tidak butuh internet saat deploy.
+- **Disk**: deploy cek ruang (`check_disk`, default 500 MB) — pastikan `/opt/simlab` punya
+  ruang cukup untuk data + backup + 3 release.
+
 ## Isi Bundle
 
 ```
@@ -29,9 +47,32 @@ cd deploy_production_<ts>
 > Catatan: folder `/opt/simlab/app` (symlink ke release), `/opt/simlab/data` (data+backup),
 > `data/backups/`, dan release TIDAK disentuh oleh cleanup.
 
-> Keamanan: `config/.env.config` di bundle memuat **API key nyata** (GEMINI/OPENROUTER/PC_PHOTO_TOKEN).
-> Setelah extract, kunci akses file tsb (tar dari Windows menyimpan perm 0644):
-> `chmod 600 config/.env.config`. `cleanup_production.sh` akan menghapus bundle setelah deploy selesai.
+## Sekret & Keamanan
+
+- `config/.env.config` di bundle memuat **API key nyata** (GEMINI/OPENROUTER/PC_PHOTO_TOKEN).
+  Setelah extract, kunci akses file tsb (tar dari Windows menyimpan perm 0644):
+  `chmod 600 config/.env.config`. `cleanup_production.sh` akan menghapus bundle setelah deploy
+  selesai.
+- `/opt/simlab/.env` (EnvironmentFile service) memuat `SESSION_SECRET`, API key, dan opsional
+  `DATABASE_URL` (kredensial Postgres). Deploy set `chmod 600` saat meregenerate/restore —
+  jangan ubah perm-nya. **Nilai `DATABASE_URL` tidak pernah di-log** oleh deploy tools.
+- Backup `.env` (`data/backups/env.bak`, `env.single_lab.bak`) juga di-`chmod 600`.
+- Jangan membagikan bundle/laporan yang memuat `.env.config` (API key) ke pihak yang tidak
+  berwenang.
+
+## N-Lab (multi-lab)
+
+Server bisa punya **beberapa lab** (mis. `MI-1`, `VOKASI-1`, dst). Daftar lab dibaca otomatis
+dari `.env` (`LABS_<N>_*`, format V2 multi-lab), bukan hardcode:
+
+- **P1** `parse_env_labs` mendeteksi semua lab di `.env`; bila tidak ada lab (format V1
+  single-lab) → fallback default `MI-1` + `VOKASI-1` (backward-compat, `detect_source_db`).
+- **P4** ETL: lab **pertama** = `source` (penerima copy data), sisanya `seed`.
+  `MIG_SOURCE_STEM` diambil dari nama DB source utk P14 single-DB cleanup.
+- **P5** seeds per lab: `seeds/<lowercase id>` ATAU fallback `seeds/default` (pola
+  `resolveSeedFolder` app). Warning bila lab tak punya seed.
+- **Rollback** menghapus DB + uploads **semua lab** yang terdeteksi (bukan hardcode 2 lab).
+- **P14** verifier single-DB/`*.db-wal`/`*.db-shm` memakai `MIG_SOURCE_STEM` + semua lab.
 
 ## 2. Deploy
 
@@ -102,7 +143,9 @@ Bangun bundle dengan `prepare_production.ps1` (host Windows, butuh Go + `.env.co
   `-Arch` (amd64: ELF64/x86-64, arm64: ELF64/AArch64, arm: ELF32/ARM).
 - `-Deploy -SSH user@vm`: upload bundle + jalankan test binary linux di VM.
 
-## 4. Cleanup (setelah semua aman & sesuai)Hapus artefak bundle (folder extract + zip + tar.gz sementara di `/tmp`):
+## 4. Cleanup (setelah semua aman & sesuai)
+
+Hapus artefak bundle (folder extract + zip + tar.gz sementara di `/tmp`):
 
 ```sh
 cd deploy_production_<ts>          # masih di folder extract
@@ -116,6 +159,42 @@ sudo bash cleanup_production.sh
 
 Verifikasi pasca-cleanup: tidak ada sisa bundle di `/opt/simlab/`, service tetap RUNNING + `/readyz` OK.
 Log: `/opt/simlab/data/backups/cleanup_<ts>.log`.
+
+## Test Manual di VM Linux (pola Fase E)
+
+Sebelum dipakai di production, uji tiap jalur di **VM Linux terisolasi** (mengikuti pola Fase E
+dari doc 014 — VirtualBox/VM dengan Debian/Ubuntu, forward port 8080). Jalur yang wajib:
+
+**A. Instalasi + deploy dasar (SQLite 2-lab default)**
+1. `chmod +x install.sh update.sh && sudo ./install.sh` (membuat user `simlab` + service).
+2. Extract bundle → `chmod 600 config/.env.config` → `sudo bash deploy_production.sh`.
+3. Verifikasi: report `PK_autorun: PASS`, `/readyz` OK, akses `http://<vm>:8080`.
+
+**B. N-lab (multi-lab)** — P-B
+1. Isi `.env` format V2 dgn 3 lab (`LABS_1_ID` … `LABS_3_ID`, pola `LABS_<N>_*`).
+2. Deploy: ETL harus menjalankan lab pertama sebagai `source`, sisanya `seed`;
+   setiap lab punya seed (`seeds/<lowercase id>` atau `seeds/default`).
+3. Rollback test: simulasikan kegagalan P4–P11 → DB + uploads **semua lab** terhapus,
+   symlink kembali ke release sebelumnya, service RUNNING.
+4. Fallback test: `.env` tanpa lab (V1 single-lab) → P4 memakai default `MI-1`+`VOKASI-1`
+   (backward-compat).
+
+**C. PostgreSQL** — P-C
+1. Isi `DATABASE_URL` (Postgres test server) di `.env` → deploy.
+2. Verifikasi: P4 ETL **dilewati** (MIG_STATUS postgres), P11 `-verify` dilewati,
+   P14 tidak menghapus `.db` lokal, report `"database":{"backend":"postgres"}`.
+3. `DATABASE_URL` lama dipertahankan setelah P1 regenerate (cek `.env` hasil).
+4. Hapus `DATABASE_URL` → deploy kembali berperilaku SQLite (default).
+
+**D. Portabilitas** — P-D
+1. Bangun bundle `-Arch arm64` → jalankan test binary linux di VM ARM64 (atau `qemu-aarch64`);
+   magic-byte check harus lulus.
+2. Uji `swap_symlink` di distro busybox (Alpine): deploy + rollback tetap jalan tanpa `mv -T`.
+
+**E. Cleanup** (setiap selesai uji)
+1. `sudo bash cleanup_production.sh` — hanya jalan bila service active + `/readyz` OK +
+   report terbaru `PK_autorun: PASS`; konfirmasi `[y/N]`.
+2. Verifikasi: bundle/zip hilang, service tetap RUNNING.
 
 ## Troubleshooting Singkat
 
