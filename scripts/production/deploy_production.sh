@@ -7,13 +7,16 @@
 #   cd deploy_production_<ts>
 #   sudo bash deploy_production.sh [--skip-migrate] [--skip-test]
 #
-# Tahap (Fase E: P0–PK lengkap):
+# Tahap (Fase E: P0–PK lengkap; Fase P-B: N-Lab aware):
 #   P0  Validasi prasyarat + bundle lengkap                  → STOP
 #   P1  Deteksi format .env (single/multi) + regenerate      → STOP
+#       (N-Lab: REQUIRED_KEYS dari LABS_<N>_* terdeteksi)
 #   P2  Backup penuh data/ + .env + release aktif            → STOP
 #   P3  Stop service + tunggu WAL/SHM                        → STOP
 #   P4  Deteksi migrasi; jalankan ETL bila perlu             → ROLLBACK
+#       (N-Lab: config ETL digenerate dari .env; verifikasi lab source)
 #   P5  Siapkan release dir + seeds (tanpa marker)           → ROLLBACK
+#       (N-Lab: seeds per lab terdeteksi / fallback default)
 #   P6  Deploy binary + atomic symlink swap                  → ROLLBACK
 #   P7  Generate public site (app-simlab-publish)            → WARN
 #   P8  Start service                                        → ROLLBACK
@@ -23,6 +26,7 @@
 #   P12 Full test suite refactoring (test binary)            → ROLLBACK
 #   P13 Report JSON deploy_report_<ts>.json                  → WARN
 #   P14 Cleanup (release keep 3, single DB, uploads flat)    → WARN
+#       (N-Lab: single DB pakai MIG_SOURCE_STEM terdeteksi)
 #   PK  Auto-run server + verify final (report digenerate    → WARN
 #       ulang agar memuat PK_autorun)
 #
@@ -72,6 +76,61 @@ TEST_PKG_OK=""
 TEST_PKG_JSON="[]"
 TEST_STATUS="not_run"
 TEST_RUN_DIR=""
+LAB_COUNT=0
+SEED_MISSING=0
+MIG_SOURCE_STEM="inventaris_lab"
+
+# ============================================================================
+# N-Lab helpers (Fase P-B): baca daftar lab dari ENV_FILE (.env format V2)
+# ============================================================================
+# parse_env_labs: output satu baris per lab: "<N>\t<ID>\t<DB>\t<TITLE>\t<URL>"
+#   (N = indeks LABS_<N>_*, dimulai 1). Skip bila ID/DB kosong.
+parse_env_labs() {
+    local n=1 id db title url
+    while :; do
+        id=$(baca_env "LABS_${n}_ID")
+        db=$(baca_env "LABS_${n}_DB")
+        [ -n "${id}" ] || break
+        [ -n "${db}" ] || break
+        title=$(baca_env "LABS_${n}_TITLE")
+        url=$(baca_env "LABS_${n}_URL")
+        [ -n "${url}" ] || url=$(printf '%s' "${id}" | tr '[:upper:]' '[:lower:]')
+        printf '%s\t%s\t%s\t%s\t%s\n' "${n}" "${id}" "${db}" "${title}" "${url}"
+        n=$((n + 1))
+    done
+}
+# source_lab_db: DB path lab pertama (mode source ETL) — pola LABS_1_DB.
+# Tidak pakai `head -1` (SIGPIPE di bawah set -euo pipefail); baca baris pertama
+# langsung dari parse_env_labs. Output kosong bila tidak ada lab.
+source_lab_db() {
+    local n id db title url
+    while IFS=$'\t' read -r n id db title url; do
+        printf '%s\n' "${db}"
+        return 0
+    done < <(parse_env_labs)
+    return 0
+}
+# is_lab_db: true bila path $1 terdaftar sebagai DB salah satu lab di .env.
+is_lab_db() {
+    local cand="$1" n id db title url
+    while IFS=$'\t' read -r n id db title url; do
+        [ -n "${db}" ] || continue
+        [ "${db}" = "${cand}" ] && return 0
+    done < <(parse_env_labs)
+    return 1
+}
+# etl_layout_for_url: fragmen JSON layout utk sebuah lab URL (default: 8/baris).
+etl_layout_for_url() {
+    local url="$1"
+    case "${url}" in
+        lab-mi|lab-kom-mi|labkom-mi)
+            printf '%s' '"cols": [8, 8, 8, 8, 8], "has_gap": false, "gap_pos": 0, "row_gaps": [[], [], [], [], []]' ;;
+        lab-vokasi-1|lab-kom-vokasi-1|labkom-vokasi-1|vokasi)
+            printf '%s' '"cols": [11, 9, 11, 11], "has_gap": true, "gap_pos": 5, "row_gaps": [[5], [5], [5], [5]]' ;;
+        *)
+            printf '%s' '"cols": [8, 8, 8, 8, 8], "has_gap": false, "gap_pos": 0, "row_gaps": [[], [], [], [], []]' ;;
+    esac
+}
 
 # ============================================================================
 # ROLLBACK — dipicu kegagalan P4–P11
@@ -87,13 +146,18 @@ rollback() {
         log "ROLLBACK: symlink → ${SAVED_CURRENT}"
     fi
 
-    # 2) hapus file hasil ETL (bila migrasi baru berjalan) lalu restore backup
+    # 2) hapus file hasil ETL (bila migrasi baru berjalan) lalu restore backup.
+    #    N-Lab aware: hapus DB + uploads semua lab terdeteksi (dari .env),
+    #    bukan hardcode lab_mi_1.db / lab_vokasi_1.db.
     if [ "${MIGRATION_RAN}" -eq 1 ] && [ -n "${BACKUP_DIR}" ] && [ -d "${BACKUP_DIR}" ]; then
         rm -f "${DATA_DIR}/global.db" "${DATA_DIR}/global.db-shm" "${DATA_DIR}/global.db-wal"
-        rm -f "${DATA_DIR}/lab_mi_1.db" "${DATA_DIR}/lab_mi_1.db-shm" "${DATA_DIR}/lab_mi_1.db-wal"
-        rm -f "${DATA_DIR}/lab_vokasi_1.db" "${DATA_DIR}/lab_vokasi_1.db-shm" "${DATA_DIR}/lab_vokasi_1.db-wal"
+        while IFS=$'\t' read -r n id db title url; do
+            [ -n "${id}" ] || continue
+            [ -n "${db}" ] || continue
+            rm -f "${db}" "${db}-shm" "${db}-wal"
+            rm -rf "${UPLOADS_DIR}/${url}"
+        done < <(parse_env_labs)
         rm -f "${DATA_DIR}/migration_report.json"
-        rm -rf "${DATA_DIR}/uploads/lab-mi" "${DATA_DIR}/uploads/lab-vokasi-1"
     fi
     if [ -n "${BACKUP_DIR}" ] && [ -d "${BACKUP_DIR}" ]; then
         restore_backup "${BACKUP_DIR}"
@@ -189,8 +253,17 @@ else
     regenerate_env ""
 fi
 
-# Validasi key wajib ada (nilai tidak di-log)
-REQUIRED_KEYS="GLOBAL_DB_PATH LABS_1_ID LABS_1_DB LABS_1_TITLE LABS_1_URL LABS_2_ID LABS_2_DB LABS_2_TITLE LABS_2_URL SESSION_SECRET UPLOAD_PATH"
+# Validasi key wajib ada (nilai tidak di-log). Daftar lab dibaca dari .env
+# (N-Lab aware): REQUIRED_KEYS dibangun dari LABS_<N>_* yang terdeteksi,
+# bukan hardcode LABS_1/LABS_2.
+REQUIRED_KEYS="GLOBAL_DB_PATH SESSION_SECRET UPLOAD_PATH"
+LAB_COUNT=0
+while IFS=$'\t' read -r n id db title url; do
+    [ -n "${id}" ] || continue
+    REQUIRED_KEYS="${REQUIRED_KEYS} LABS_${n}_ID LABS_${n}_DB LABS_${n}_TITLE LABS_${n}_URL"
+    LAB_COUNT=$((LAB_COUNT + 1))
+done < <(parse_env_labs)
+[ "${LAB_COUNT}" -ge 1 ] || error "P1: tidak ada LABS_<N>_* terdeteksi di ${ENV_FILE}"
 for key in ${REQUIRED_KEYS}; do
     val=$(baca_env "${key}")
     [ -n "${val}" ] || error "P1: key wajib '${key}' kosong di ${ENV_FILE}"
@@ -241,6 +314,8 @@ detect_source_db() {
         case "${base}" in
             global.db|lab_*.db) continue ;;
         esac
+        # N-Lab aware: skip DB yang terdaftar sebagai lab di .env
+        is_lab_db "${f}" && continue
         echo "${f}"
         return 0
     done
@@ -264,10 +339,54 @@ detect_source_upload_dir() {
 generate_etl_config() {
     local src_db="$1" src_upload_dir="$2" runtime
     runtime="${BACKUP_DIR}/etl-config.runtime.json"
-    sed \
-        -e "s|\"source_db\": *\"[^\"]*\"|\"source_db\": \"${src_db}\"|" \
-        -e "s|\"source_upload_dir\": *\"[^\"]*\"|\"source_upload_dir\": \"${src_upload_dir}\"|" \
-        "${SCRIPT_DIR}/config/etl-config.production.json" > "${runtime}"
+    # Bangun labs[] dari daftar lab terdeteksi di .env (N-Lab aware),
+    # bukan sed atas template statis 2-lab. Mode: lab pertama = source
+    # (penerima copy data), sisanya seed. Bila tidak ada lab → fallback
+    # default MI-1+VOKASI-1 (backward-compat).
+    local n id db title url layout mode
+    local first=1
+    {
+        echo "{"
+        echo "  \"source_db\": \"${src_db}\","
+        echo "  \"source_uploads\": \"${UPLOADS_DIR}\","
+        echo "  \"source_upload_dir\": \"${src_upload_dir}\","
+        echo "  \"global_db\": \"${DATA_DIR}/global.db\","
+        echo "  \"uploads_dest\": \"${UPLOADS_DIR}\","
+        echo "  \"main_account_suffix\": \"123\","
+        echo "  \"labs\": ["
+        local has_lab=0 printed=0
+        while IFS=$'\t' read -r n id db title url; do
+            [ -n "${id}" ] || continue
+            has_lab=1
+            if [ "${first}" -eq 1 ]; then
+                mode="source"
+                first=0
+            else
+                mode="seed"
+            fi
+            layout="$(etl_layout_for_url "${url}")"
+            if [ "${printed}" -eq 1 ]; then
+                printf ',\n'
+            fi
+            if [ -n "${db}" ]; then
+                printf '    {\n      "id": "%s",\n      "url": "%s",\n      "db": "%s",\n      "title": "%s",\n      "mode": "%s",\n      %s\n    }' \
+                    "${id}" "${url}" "${db}" "${title}" "${mode}" "${layout}"
+            else
+                printf '    {\n      "id": "%s",\n      "url": "%s",\n      "title": "%s",\n      "mode": "%s",\n      %s\n    }' \
+                    "${id}" "${url}" "${title}" "${mode}" "${layout}"
+            fi
+            printed=1
+        done < <(parse_env_labs)
+        if [ "${has_lab}" -eq 0 ]; then
+            # Fallback default 2 lab (backward-compat, sama template lama)
+            printf '    {\n      "id": "MI-1",\n      "url": "lab-mi",\n      "db": "%s",\n      "title": "Lab Kom MI",\n      "mode": "source",\n      %s\n    },\n' \
+                "${DATA_DIR}/lab_mi_1.db" "$(etl_layout_for_url "lab-mi")"
+            printf '    {\n      "id": "VOKASI-1",\n      "url": "lab-vokasi-1",\n      "db": "%s",\n      "title": "Lab Kom Vokasi 1",\n      "mode": "seed",\n      %s\n    }\n' \
+                "${DATA_DIR}/lab_vokasi_1.db" "$(etl_layout_for_url "lab-vokasi-1")"
+        fi
+        echo "  ]"
+        echo "}"
+    } > "${runtime}"
     echo "${runtime}"
 }
 
@@ -292,10 +411,13 @@ elif should_migrate; then
     fi
     MIGRATION_RAN=1
 
-    # Verifikasi hasil ETL
+    # Verifikasi hasil ETL (N-Lab aware: lab source = lab pertama dari .env)
+    SRC_LAB_DB="$(source_lab_db)"
+    [ -n "${SRC_LAB_DB}" ] || { phase_fail "P4" "tidak ada lab source terdeteksi"; rollback; }
     [ -f "${DATA_DIR}/global.db" ]       || { phase_fail "P4" "global.db tidak dihasilkan"; rollback; }
-    [ -f "${DATA_DIR}/lab_mi_1.db" ]     || { phase_fail "P4" "lab_mi_1.db tidak dihasilkan"; rollback; }
+    [ -f "${SRC_LAB_DB}" ]               || { phase_fail "P4" "DB lab source tidak dihasilkan: ${SRC_LAB_DB}"; rollback; }
     [ -f "${DATA_DIR}/migration_report.json" ] || { phase_fail "P4" "migration_report.json hilang"; rollback; }
+    MIG_SOURCE_STEM="$(basename "${SRC_DB}" .db)"
     SUPER_ADMIN=$(grep -o '"super_admin_count": *[0-9]*' "${DATA_DIR}/migration_report.json" | grep -o '[0-9]*$' || true)
     ROWS_PC=$(grep -o '"rows_pcs": *[0-9]*' "${DATA_DIR}/migration_report.json" | grep -o '[0-9]*$' || true)
     [ -n "${SUPER_ADMIN}" ] && [ "${SUPER_ADMIN}" -ge 1 ] \
@@ -322,9 +444,18 @@ TS="$(date +%Y%m%d-%H%M%S)"
 RELEASE_DIR="${RELEASES_DIR}/${TS}"
 mkdir -p "${RELEASE_DIR}/seeds"
 cp -r "${SCRIPT_DIR}/seeds/." "${RELEASE_DIR}/seeds/"
-for seed in mi-1 vokasi-1 default; do
-    [ -d "${RELEASE_DIR}/seeds/${seed}" ] || { phase_fail "P5" "seeds/${seed} tidak tersalin"; rollback; }
-done
+# Verifikasi seeds (N-Lab aware): tiap lab terdeteksi harus punya folder
+# seeds/<lowercase id> atau fallback seeds/default (pola resolveSeedFolder app).
+SEED_MISSING=0
+while IFS=$'\t' read -r n id db title url; do
+    [ -n "${id}" ] || continue
+    seed_id="$(printf '%s' "${id}" | tr '[:upper:]' '[:lower:]')"
+    if [ ! -d "${RELEASE_DIR}/seeds/${seed_id}" ] && [ ! -d "${RELEASE_DIR}/seeds/default" ]; then
+        warn "P5: seeds/${seed_id} tidak ada & seeds/default tidak ada — lab ${id} tak punya seed"
+        SEED_MISSING=1
+    fi
+done < <(parse_env_labs)
+[ "${SEED_MISSING}" -eq 0 ] || { phase_fail "P5" "seeds lab tidak lengkap"; rollback; }
 # JANGAN buat marker .seed_done — RunSeedFolder menulisnya sendiri saat boot.
 if find "${RELEASE_DIR}/seeds" -name ".seed_done" -print -quit | grep -q .; then
     { phase_fail "P5" "marker .seed_done terdeteksi di seeds — hapus manual"; rollback; }
@@ -590,8 +721,9 @@ LEFTOVER=0
 # 1) release lama keep 3 (kecuali release aktif)
 cleanup_old_releases
 
-# 2) single DB lama (sudah di-backup)
-for f in inventaris_lab.db inventaris_lab.db-shm inventaris_lab.db-wal; do
+# 2) single DB lama (sudah di-backup) — nama dari source terdeteksi
+#    (MIG_SOURCE_STEM), default inventaris_lab bila migrasi tidak berjalan.
+for f in "${MIG_SOURCE_STEM}.db" "${MIG_SOURCE_STEM}.db-shm" "${MIG_SOURCE_STEM}.db-wal"; do
     if [ -e "${DATA_DIR}/${f}" ]; then
         rm -f "${DATA_DIR}/${f}"
         log "P14: hapus single DB lama ${f}"
@@ -616,7 +748,7 @@ for a in dist bin testsum.exe; do
 done
 
 # ---- Cleanup verifier (komponen #5) ----
-for f in inventaris_lab.db inventaris_lab.db-shm inventaris_lab.db-wal; do
+for f in "${MIG_SOURCE_STEM}.db" "${MIG_SOURCE_STEM}.db-shm" "${MIG_SOURCE_STEM}.db-wal"; do
     if find "${DATA_DIR}" -name "${f}" -not -path "${BACKUP_DIR}/*" 2>/dev/null | grep -q .; then
         LEFTOVER=1
     fi
