@@ -56,13 +56,14 @@ set_install_dir() {
 # (GLOBAL_DB_PATH + SESSION_SECRET + minimal 1 LABS_<N>_ID), data/global.db ATAU
 # backend PostgreSQL aktif (DATABASE_URL terisi di .env).
 validate_install_dir() {
-    local cand="$1" tgt
+    local cand="$1" tgt base_real
     [ -n "${cand}" ] || return 1
     [ -d "${cand}" ] || return 1
     [ -L "${cand}/app/current" ] || return 1
     tgt="$(readlink -f "${cand}/app/current" 2>/dev/null || true)"
+    base_real="$(readlink -f "${cand}" 2>/dev/null || true)"
     case "${tgt}" in
-        "${cand}"/app/releases/*) ;;
+        "${base_real}"/app/releases/*) ;;
         *) return 1 ;;
     esac
     [ -d "${tgt}" ] || return 1
@@ -120,7 +121,7 @@ scan_install_dir() {
 # dan DETECT_ENV_FILE bila EnvironmentFile valid. Return 0 bila ketemu.
 locate_by_systemd() {
     command -v systemctl >/dev/null 2>&1 || return 1
-    local work="" envf="" base="" tmp=""
+    local work="" envf="" base=""
     DETECT_CAND=""
     work=$(systemctl show "${SERVICE_NAME}" -p WorkingDirectory --value 2>/dev/null || true)
     if [ -z "${work}" ]; then
@@ -139,7 +140,7 @@ locate_by_systemd() {
 # locate_by_process: baca CWD/ENV_PATH proses app-simlab yang berjalan.
 # Isi DETECT_CAND (INSTALL_DIR) & DETECT_ENV_FILE bila ENV_PATH valid.
 locate_by_process() {
-    local pid="" cwd="" envp="" base="" tmp=""
+    local pid="" cwd="" envp="" base=""
     DETECT_CAND=""
     pid=$(pgrep -f "app-simlab" 2>/dev/null | head -1 || true)
     [ -n "${pid}" ] || return 1
@@ -155,7 +156,7 @@ locate_by_process() {
 # resolve_install_dir: orchestrator deteksi hierarkis (doc 017 §2).
 # Menetapkan INSTALL_DIR + turunan + DETECT_METHOD. Aman dipanggil berulang (idempotent).
 resolve_install_dir() {
-    local cand="" i method="default"
+    local cand=""
     DETECT_ENV_FILE=""
     DETECT_CAND=""
     SCAN_CANDIDATES=()
