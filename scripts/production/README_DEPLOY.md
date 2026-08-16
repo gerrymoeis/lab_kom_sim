@@ -7,7 +7,7 @@ Ikuti urutan di bawah. Semua perintah dijalankan sebagai `root` via SSH.
 
 ```
 deploy_production_<ts>/
-├── bin/                          # binary linux (ELF amd64): etl, app-simlab, app-simlab-publish
+├── bin/                          # binary linux (ELF amd64/arm64/arm): etl, app-simlab, app-simlab-publish
 ├── config/                       # etl-config.production.json + .env.config
 ├── test-runner/                  # full test suite (test binary linux, 8 package)
 ├── seeds/                        # mi-1, vokasi-1, default
@@ -88,9 +88,21 @@ Catatan:
   DB / tool Postgres (bukan `data.tar.gz`).
 - Nilai `DATABASE_URL` tidak pernah di-log (berisi kredensial).
 
-## 3. Cleanup (setelah semua aman & sesuai)
+## 3. Membangun Bundle (host Windows)
 
-Hapus artefak bundle (folder extract + zip + tar.gz sementara di `/tmp`):
+Bangun bundle dengan `prepare_production.ps1` (host Windows, butuh Go + `.env.config`):
+
+```powershell
+.\prepare_production.ps1                    # amd64 (default)
+.\prepare_production.ps1 -Arch arm64        # AArch64 (Raspberry Pi 4/arm64 server)
+.\prepare_production.ps1 -Arch arm          # ARM32
+```
+
+- Verifikasi otomatis: parsing `-test.v` 1-to-1 dengan `go test -json` (F10) + magic byte ELF sesuai
+  `-Arch` (amd64: ELF64/x86-64, arm64: ELF64/AArch64, arm: ELF32/ARM).
+- `-Deploy -SSH user@vm`: upload bundle + jalankan test binary linux di VM.
+
+## 4. Cleanup (setelah semua aman & sesuai)Hapus artefak bundle (folder extract + zip + tar.gz sementara di `/tmp`):
 
 ```sh
 cd deploy_production_<ts>          # masih di folder extract

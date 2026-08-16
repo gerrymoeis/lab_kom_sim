@@ -19,12 +19,16 @@
 #     linux dilakukan di VM Linux (opsi -SSH / manual: test-runner/test-bin).
 #
 # Jalankan di PowerShell:
-#   .\prepare_production.ps1                         # build + verifikasi parse saja
+#   .\prepare_production.ps1                         # build + verifikasi parse saja (amd64)
+#   .\prepare_production.ps1 -Arch arm64             # build utk ARM64 (AArch64)
+#   .\prepare_production.ps1 -Arch arm               # build utk ARM32
 #   .\prepare_production.ps1 -SSH user@vm -Deploy    # + upload & jalankan di VM
 # =============================================================================
 param(
     [string]$SSH = "",
     [switch]$Deploy,
+    [ValidateSet("amd64", "arm64", "arm")]
+    [string]$Arch = "amd64",
     [string]$OutDir = "$PSScriptRoot\out",
     [string]$PocProto = "$PSScriptRoot\..\..",
     [string]$Tools = "$PSScriptRoot\..\..\..\tools\migrate_single_to_multi",
@@ -91,13 +95,13 @@ New-Item -ItemType Directory -Path (Join-Path $staging "seeds") -Force | Out-Nul
 Write-Host "==> Staging bundle: $staging"
 
 # ---------------------------------------------------------------- 3. Build binary linux
-Write-Host "==> Build binary linux (GOOS=linux GOARCH=amd64 CGO_ENABLED=0)"
+Write-Host "==> Build binary linux (GOOS=linux GOARCH=$Arch CGO_ENABLED=0)"
 $oldGOOS = $env:GOOS; $oldGOARCH = $env:GOARCH; $oldCGO = $env:CGO_ENABLED
 function Invoke-GoBuild {
     param([string]$Dir, [string]$Target, [string]$Out, [string]$Label)
     Push-Location $Dir
     try {
-        $env:GOOS = "linux"; $env:GOARCH = "amd64"; $env:CGO_ENABLED = "0"
+        $env:GOOS = "linux"; $env:GOARCH = $Arch; $env:CGO_ENABLED = "0"
         & go build -o $Out $Target
         if ($LASTEXITCODE -ne 0) { throw "go build $Label gagal (exit $LASTEXITCODE)" }
     } finally {
@@ -112,13 +116,13 @@ Invoke-GoBuild -Dir $PocProto -Target "./cmd/publish/main.go" -Out (Join-Path $b
 Invoke-GoBuild -Dir $Tools -Target "./..." -Out (Join-Path $binDir "etl") -Label "etl"
 
 # ---------------------------------------------------------------- 4. Build 8 test binary linux
-Write-Host "==> Build test binary linux (8 package)"
+Write-Host "==> Build test binary linux (8 package, GOARCH=$Arch)"
 foreach ($pkg in $TestPackages) {
     $name = Split-Path $pkg -Leaf
     $out = Join-Path $testBinDir "$name.test"
     Push-Location $PocProto
     try {
-        $env:GOOS = "linux"; $env:GOARCH = "amd64"; $env:CGO_ENABLED = "0"
+        $env:GOOS = "linux"; $env:GOARCH = $Arch; $env:CGO_ENABLED = "0"
         & go test -c -o $out ./$pkg
         if ($LASTEXITCODE -ne 0) { throw "go test -c $pkg gagal (exit $LASTEXITCODE)" }
     } finally {
@@ -264,31 +268,32 @@ if (-not $parseOk) {
 }
 Write-Host "    OK: parsing -test.v 1-to-1 dengan go test -json ($binTotal test, 0 skip, 0 fail)"
 
-# ---------------------------------------------------------------- 9. Cek magic byte binary linux (ELF)
-Write-Host "==> Cek magic byte binary linux (ELF amd64)"
-foreach ($b in @("etl", "app-simlab", "app-simlab-publish")) {
-    $path = Join-Path $binDir $b
-    $fs = [System.IO.File]::OpenRead($path)
+# ---------------------------------------------------------------- 9. Cek magic byte binary linux (ELF + arch)
+# ELF header: byte 0-3=0x7FELF, byte 4=EI_CLASS (1=ELF32,2=ELF64),
+# byte 18-19 e_machine LE: 0x3E(62)=x86-64, 0xB7(183)=AArch64, 0x28(40)=ARM.
+$archClass = @{ amd64 = @(2, 0x3E); arm64 = @(2, 0xB7); arm = @(1, 0x28) }[$Arch]
+function Test-ElfMachine([string]$Path) {
+    $fs = [System.IO.File]::OpenRead($Path)
     try {
         $buf = New-Object byte[] 20
         $fs.Read($buf, 0, 20) | Out-Null
         $isELF = ($buf[0] -eq 0x7F -and $buf[1] -eq 0x45 -and $buf[2] -eq 0x4C -and $buf[3] -eq 0x46)
-        $isAmd64 = ($buf[18] -eq 0x3E)  # e_machine x86-64 (ELF64)
-        if (-not ($isELF -and $isAmd64)) { throw "bukan ELF amd64: $b" }
+        $classOk = ($buf[4] -eq $archClass[0])
+        $machine = $buf[18] -bor ($buf[19] -shl 8)
+        $machineOk = ($machine -eq $archClass[1])
+        return ($isELF -and $classOk -and $machineOk)
     } finally { $fs.Dispose() }
-    Write-Host "    OK: $b (ELF amd64)"
+}
+Write-Host "==> Cek magic byte binary linux (ELF $Arch)"
+foreach ($b in @("etl", "app-simlab", "app-simlab-publish")) {
+    $path = Join-Path $binDir $b
+    if (-not (Test-ElfMachine $path)) { throw "bukan ELF ${Arch}: $b" }
+    Write-Host "    OK: $b (ELF ${Arch})"
 }
 foreach ($t in Get-ChildItem $testBinDir -Filter *.test) {
-    $fs = [System.IO.File]::OpenRead($t.FullName)
-    try {
-        $buf = New-Object byte[] 20
-        $fs.Read($buf, 0, 20) | Out-Null
-        if (-not ($buf[0] -eq 0x7F -and $buf[1] -eq 0x45 -and $buf[2] -eq 0x4C -and $buf[3] -eq 0x46)) {
-            throw "bukan ELF: $($t.Name)"
-        }
-    } finally { $fs.Dispose() }
+    if (-not (Test-ElfMachine $t.FullName)) { throw "bukan ELF ${Arch}: $($t.Name)" }
 }
-Write-Host "    OK: 8 test binary linux (ELF)"
+Write-Host "    OK: 8 test binary linux (ELF ${Arch})"
 
 # ---------------------------------------------------------------- 10. Buat tar.gz
 Write-Host "==> Buat tar.gz"
@@ -327,12 +332,13 @@ PRODUCTION BUNDLE BUILD REPORT
 bundle: $bundleName.tar.gz
 timestamp: $(Get-Date -Format o)
 commit_refactoring: $headCommit (pin doc014: $Commit)
+arch: $Arch
 env_config: $EnvConfigPath
 
-binary linux (ELF amd64):
+binary linux (ELF $Arch):
   bin/etl, bin/app-simlab, bin/app-simlab-publish
 
-test binary linux (ELF amd64): 8 package di test-runner/test-bin/
+test binary linux (ELF $Arch): 8 package di test-runner/test-bin/
   $($TestPackages -join ', ')
 
 verifikasi parsing -test.v 1-to-1 (F10):

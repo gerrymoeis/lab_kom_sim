@@ -152,8 +152,7 @@ rollback() {
 
     # 1) restore symlink release sebelumnya
     if [ -n "${SAVED_CURRENT}" ] && [ -d "${SAVED_CURRENT}" ]; then
-        ln -sfn "${SAVED_CURRENT}" "${CURRENT_DIR}.new"
-        mv -T "${CURRENT_DIR}.new" "${CURRENT_DIR}"
+        swap_symlink "${SAVED_CURRENT}"
         log "ROLLBACK: symlink → ${SAVED_CURRENT}"
     fi
 
@@ -523,8 +522,7 @@ if [ -L "${CURRENT_DIR}" ] && [ -d "$(readlink -f "${CURRENT_DIR}" 2>/dev/null)"
     SAVED_CURRENT="$(readlink -f "${CURRENT_DIR}")"
     log "P6: release sebelumnya: ${SAVED_CURRENT}"
 fi
-ln -sfn "${RELEASE_DIR}" "${CURRENT_DIR}.new"
-mv -T "${CURRENT_DIR}.new" "${CURRENT_DIR}"
+swap_symlink "${RELEASE_DIR}"
 chown -R "${APP_NAME}:${APP_NAME}" "${RELEASE_DIR}"
 log "P6: symlink ${CURRENT_DIR} → ${RELEASE_DIR}"
 phase_pass "P6"

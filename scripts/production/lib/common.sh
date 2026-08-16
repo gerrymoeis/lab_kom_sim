@@ -22,6 +22,23 @@ SERVICE_NAME="${APP_NAME}.service"
 PORT="${PORT:-8080}"
 RELEASE_KEEP=3
 
+# ---------------------------------------------------------------- Atomic symlink swap (portable)
+# Ganti symlink CURRENT_DIR menuju target secara portabel (tanpa GNU-only `mv -T`
+# yang tidak ada di busybox/BSD). Idiom: ln -sfn ke nama temp lalu mv rename;
+# bila CURRENT_DIR symlink lama masih ada, rm dulu link-nya (bukan target dir),
+# karena `mv` tanpa -T akan memindah ke DALAM direktori tujuan bila dest adalah
+# symlink ke direktori. Service sudah stop saat dipakai (P6/rollback/restore).
+swap_symlink() {
+    local target="$1" tmp="${CURRENT_DIR}.new"
+    ln -sfn "${target}" "${tmp}"
+    if [ -L "${CURRENT_DIR}" ]; then
+        rm -f "${CURRENT_DIR}"
+    elif [ -e "${CURRENT_DIR}" ]; then
+        error "swap_symlink: ${CURRENT_DIR} bukan symlink — tidak aman utk diganti"
+    fi
+    mv "${tmp}" "${CURRENT_DIR}"
+}
+
 # ---------------------------------------------------------------- Logging
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 warn() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] ⚠️  $*"; }
@@ -294,8 +311,7 @@ restore_backup() {
         local rel
         rel=$(find "${tmp}" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -1 || true)
         if [ -n "${rel}" ]; then
-            ln -sfn "${rel}" "${CURRENT_DIR}.new"
-            mv -T "${CURRENT_DIR}.new" "${CURRENT_DIR}"
+            swap_symlink "${rel}"
             log "Restore release aktif → ${rel}"
         fi
     fi
