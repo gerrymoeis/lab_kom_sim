@@ -29,6 +29,10 @@ cd deploy_production_<ts>
 > Catatan: folder `/opt/simlab/app` (symlink ke release), `/opt/simlab/data` (data+backup),
 > `data/backups/`, dan release TIDAK disentuh oleh cleanup.
 
+> Keamanan: `config/.env.config` di bundle memuat **API key nyata** (GEMINI/OPENROUTER/PC_PHOTO_TOKEN).
+> Setelah extract, kunci akses file tsb (tar dari Windows menyimpan perm 0644):
+> `chmod 600 config/.env.config`. `cleanup_production.sh` akan menghapus bundle setelah deploy selesai.
+
 ## 2. Deploy
 
 ```sh

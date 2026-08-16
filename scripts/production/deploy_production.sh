@@ -123,7 +123,7 @@ rollback() {
 declare_phase "P0" "Validasi prasyarat & bundle"
 check_root
 check_cmds
-check_disk 500
+check_disk
 mkdir -p "${RELEASES_DIR}" "${DATA_DIR}" "${DATA_DIR}/uploads" "${DATA_DIR}/backups"
 
 # Validasi isi bundle (bin/ + config/ + seeds/)
@@ -138,6 +138,13 @@ for seed in mi-1 vokasi-1 default; do
     [ -d "${SCRIPT_DIR}/seeds/${seed}" ] || error "P0: seeds/${seed} hilang di bundle"
 done
 [ -d "${SCRIPT_DIR}/test-runner/test-bin" ] || warn "P0: test-runner/test-bin belum ada (Fase D)"
+# User service (dibuat install.sh). Bila belum ada → warning jelas: chown akan gagal.
+if id -u "${APP_NAME}" >/dev/null 2>&1; then
+    log "P0: user ${APP_NAME} ada (uid $(id -u "${APP_NAME}"))"
+else
+    warn "P0: user '${APP_NAME}' tidak ditemukan — jalankan install.sh dulu (membuat user + service),"
+    warn "    atau buat manual: useradd -r -s /usr/sbin/nologin ${APP_NAME}. chown nanti akan gagal."
+fi
 phase_pass "P0"
 
 # ============================================================================
@@ -169,6 +176,7 @@ if [ -f "${ENV_FILE}" ]; then
     else
         log "P1: .env format single-lab (lama) — backup & regenerate dari template"
         cp "${ENV_FILE}" "${BACKUP_DIR}/env.single_lab.bak"
+        chmod 600 "${BACKUP_DIR}/env.single_lab.bak"
         SECRET="$(baca_env SESSION_SECRET)"
         if [ -n "${SECRET}" ] && [ "${SECRET}" != "__AUTO_GENERATE__" ]; then
             regenerate_env "${SECRET}"
@@ -240,9 +248,11 @@ detect_source_db() {
 }
 detect_source_upload_dir() {
     # Baseline-aware: server single-lab menyimpan di uploads/<urlPath>/<sub>/
-    # (urlPath = lowercase nama file DB). Fallback "lab-kom-mi" (default ETL).
-    local dbname cand
-    dbname="$(basename "${SOURCE_DB}" .db)"
+    # (urlPath = lowercase nama file DB). $1 = path source DB hasil deteksi
+    # (default ${SRC_DB}, lalu ${SOURCE_DB}). Fallback "lab-kom-mi" (default ETL).
+    local src_db="${1:-}" dbname cand
+    [ -n "${src_db}" ] || src_db="${SRC_DB:-${SOURCE_DB}}"
+    dbname="$(basename "${src_db}" .db)"
     if [ -d "${UPLOADS_DIR}/${dbname}/pc" ]; then echo "${dbname}"; return 0; fi
     if [ -d "${UPLOADS_DIR}/lab-kom-mi/pc" ]; then echo "lab-kom-mi"; return 0; fi
     for cand in "${UPLOADS_DIR}"/*/; do
@@ -265,7 +275,7 @@ if [ "${SKIP_MIGRATE}" = "true" ]; then
     phase_skip "P4" "--skip-migrate"
 elif should_migrate; then
     SRC_DB="$(detect_source_db)"
-    SRC_UPLOAD_DIR="$(detect_source_upload_dir)"
+    SRC_UPLOAD_DIR="$(detect_source_upload_dir "${SRC_DB}")"
     log "P4: migrasi diperlukan — source_db=${SRC_DB} source_upload_dir=${SRC_UPLOAD_DIR}"
     if [ ! -f "${SRC_DB}" ]; then
         phase_fail "P4" "source DB tidak ditemukan: ${SRC_DB}"
@@ -515,7 +525,13 @@ REPORT_FILE="${DATA_DIR}/backups/deploy_report_${REPORT_TS}.json"
 BUNDLE_COMMIT="$(grep '^commit=' "${SCRIPT_DIR}/bundle-meta.txt" 2>/dev/null | head -1 | cut -d= -f2- || echo unknown)"
 
 write_report() {
-    SERVER_URL="http://$(hostname -I 2>/dev/null | awk '{print $1}'):$(get_port)"
+    # SERVER_URL: fallback bila hostname -I kosong (distro minimal/container).
+    # Guard `|| true`: hostname -I tidak ada → command substitution gagal di
+    # bawah set -euo pipefail, jangan biarkan write_report exit.
+    local server_ip=""
+    server_ip="$(hostname -I 2>/dev/null | awk '{print $1}')" || true
+    [ -n "${server_ip}" ] || server_ip="$(hostname 2>/dev/null || echo 'localhost')"
+    SERVER_URL="http://${server_ip}:$(get_port)"
     {
         echo "{"
         echo "  \"timestamp\": \"$(date -Is)\","

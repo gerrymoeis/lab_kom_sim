@@ -262,6 +262,7 @@ tarball_backup() {
     # 2) .env
     if [ -f "${ENV_FILE}" ]; then
         cp "${ENV_FILE}" "${dest}/env.bak"
+        chmod 600 "${dest}/env.bak"
         log "Backup .env → ${dest}/env.bak"
     fi
     # 3) release aktif (symlink target)
@@ -333,15 +334,16 @@ check_cmds() {
     command -v tar >/dev/null 2>&1 || error "tar tidak terinstall"
 }
 # check_disk: pastikan ada ruang disk minimal $1 MB di DATA_DIR.
+#   $1 opsional; default ${MIN_DISK_MB:-500} (dapat di-override via env).
 check_disk() {
-    local need_mb="${1:-500}" avail_kb
+    local need_mb="${1:-${MIN_DISK_MB:-500}}" avail_kb
     avail_kb=$(df -k "${DATA_DIR}" 2>/dev/null | awk 'NR==2 {print $4}' || true)
     if [ -n "${avail_kb}" ]; then
         local avail_mb=$((avail_kb / 1024))
         if [ "${avail_mb}" -lt "${need_mb}" ]; then
             warn "Ruang disk tersedia ${avail_mb}MB < ${need_mb}MB"
         else
-            log "Ruang disk OK: ${avail_mb}MB tersedia"
+            log "Ruang disk OK: ${avail_mb}MB tersedia (min ${need_mb}MB)"
         fi
     fi
 }
