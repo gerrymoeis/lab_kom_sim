@@ -263,7 +263,14 @@ regenerate_env() {
     # menimpa .env; DATABASE_URL template kosong → backend Postgres hilang).
     local old_db_url
     old_db_url="$(baca_env DATABASE_URL)"
-    sed "s/__AUTO_GENERATE__/${secret}/g" "${ENV_CONFIG_TEMPLATE}" > "${ENV_FILE}"
+    # Template berisi path absolut /opt/simlab — substitusi ke INSTALL_DIR hasil
+    # auto-discovery (doc 017) agar .env regenerated menunjuk lokasi sebenarnya
+    # (no-op bila INSTALL_DIR=/opt/simlab default). secret = hex (aman utk awk).
+    awk -v base="${INSTALL_DIR}" -v secret="${secret}" '{
+        gsub(/\/opt\/simlab/, base)
+        gsub(/__AUTO_GENERATE__/, secret)
+        print
+    }' "${ENV_CONFIG_TEMPLATE}" > "${ENV_FILE}"
     if [ -n "${old_db_url}" ]; then
         # Ganti baris DATABASE_URL secara aman (grep buang + append; nilai URL
         # bisa memuat &, ?, = yang tidak aman untuk delimiter sed).
