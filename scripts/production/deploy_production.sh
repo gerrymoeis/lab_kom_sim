@@ -49,18 +49,38 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 SKIP_MIGRATE=false
 SKIP_TEST=false
-for arg in "$@"; do
-    case "${arg}" in
+args=("$@")
+i=0
+while [ "${i}" -lt "${#args[@]}" ]; do
+    case "${args[${i}]}" in
         --skip-migrate) SKIP_MIGRATE=true ;;
         --skip-test)    SKIP_TEST=true ;;
+        --install-dir)
+            i=$((i + 1))
+            [ "${i}" -lt "${#args[@]}" ] || error "--install-dir membutuhkan nilai (path lokasi install)"
+            INSTALL_DIR_EXPLICIT="${args[${i}]}"
+            ;;
+        --allow-roots)
+            i=$((i + 1))
+            [ "${i}" -lt "${#args[@]}" ] || error "--allow-roots membutuhkan nilai (daftar root, spasi-separated)"
+            ALLOWED_ROOTS="${args[${i}]}"
+            ;;
+        *) : ;;
     esac
+    i=$((i + 1))
 done
+
+# Auto-discovery lokasi install (doc 017): override → systemd → proses → bounded
+# scan → default. Wajib SEBELUM P0 karena RELEASES_DIR/DATA_DIR/ENV_FILE dst.
+# diturunkan dari INSTALL_DIR.
+resolve_install_dir
+log "Lokasi install terdeteksi: INSTALL_DIR=${INSTALL_DIR} (method=${DETECT_METHOD})"
+SOURCE_DB="${DATA_DIR}/inventaris_lab.db"
 
 # ---------------------------------------------------------------- Variabel global
 BACKUP_DIR=""
 SAVED_CURRENT=""
 MIGRATION_RAN=0
-SOURCE_DB="${DATA_DIR}/inventaris_lab.db"
 
 # ---- Variabel utk P13 report (diisi di fase terkait)
 MIG_STATUS="skipped"
@@ -195,6 +215,7 @@ rollback() {
 # P0 — VALIDASI PRASYARAT + BUNDLE
 # ============================================================================
 declare_phase "P0" "Validasi prasyarat & bundle"
+log "P0: lokasi install=${INSTALL_DIR} (deteksi=${DETECT_METHOD}, env_file=${ENV_FILE}, kandidat_scan=${DETECT_CANDIDATES})"
 check_root
 check_cmds
 check_disk
@@ -718,6 +739,12 @@ write_report() {
         echo "  \"release_tag\": \"bundle-${REPORT_TS}\","
         echo "  \"commit\": \"${BUNDLE_COMMIT}\","
         echo "  \"environment\": \"production\","
+        echo "  \"location\": {"
+        echo "    \"install_dir\": \"${INSTALL_DIR}\","
+        echo "    \"method\": \"${DETECT_METHOD}\","
+        echo "    \"env_file\": \"${ENV_FILE}\","
+        echo "    \"candidates\": ${DETECT_CANDIDATES}"
+        echo "  },"
         echo "  \"database\": {"
         echo "    \"backend\": \"${DB_BACKEND}\","
         echo "    \"url_set\": $( [ -n "${DATABASE_URL}" ] && echo true || echo false )"

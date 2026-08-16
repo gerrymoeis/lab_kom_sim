@@ -10,7 +10,10 @@
 
 # ---------------------------------------------------------------- Konstanta
 APP_NAME="${APP_NAME:-simlab}"
-INSTALL_DIR="${INSTALL_DIR:-/opt/simlab}"
+# INSTALL_DIR_EXPLICIT: nilai env INSTALL_DIR yang diberikan user SEBELUM default
+# diterapkan (dipakai resolve_install_dir utk metode "override"). Empty = tidak di-set.
+INSTALL_DIR_EXPLICIT="${INSTALL_DIR:-}"
+INSTALL_DIR="${INSTALL_DIR_EXPLICIT:-/opt/simlab}"
 APP_DIR="${INSTALL_DIR}/app"
 RELEASES_DIR="${APP_DIR}/releases"
 CURRENT_DIR="${APP_DIR}/current"
@@ -21,6 +24,202 @@ ENV_CONFIG_DIR="${INSTALL_DIR}/.env.config.orig"
 SERVICE_NAME="${APP_NAME}.service"
 PORT="${PORT:-8080}"
 RELEASE_KEEP=3
+# Auto-discovery (doc 017): root direktori yang diizinkan utk bounded scan.
+ALLOWED_ROOTS="${ALLOWED_ROOTS:-/opt /srv /usr/local /var /home /data /app}"
+DETECT_METHOD=""         # override|systemd|process|scan|default (hasil resolve_install_dir)
+DETECT_CANDIDATES=0      # jumlah kandidat lokasi valid yang ditemukan saat scan
+
+# ---------------------------------------------------------------- Auto-discovery lokasi install (doc 017)
+# Temukan letak asli SIMLab di-deploy & dikonfigurasi ketika lokasi TIDAK diketahui
+# tools. Prioritas hierarkis: override → systemd → proses → bounded scan → default.
+# Dipanggil oleh deploy_production.sh / cleanup_production.sh SETELAH source common.sh.
+DETECT_ENV_FILE=""       # hasil deteksi (EnvironmentFile/ENV_PATH) utk ENV_FILE bila valid
+SCAN_CANDIDATES=()       # daftar kandidat lokasi valid (dari bounded scan)
+# set_install_dir DIR METHOD: tetapkan INSTALL_DIR + seluruh turunan + DETECT_METHOD.
+set_install_dir() {
+    local dir="$1" method="$2"
+    INSTALL_DIR="${dir}"
+    APP_DIR="${INSTALL_DIR}/app"
+    RELEASES_DIR="${APP_DIR}/releases"
+    CURRENT_DIR="${APP_DIR}/current"
+    DATA_DIR="${INSTALL_DIR}/data"
+    UPLOADS_DIR="${DATA_DIR}/uploads"
+    ENV_FILE="${INSTALL_DIR}/.env"
+    ENV_CONFIG_DIR="${INSTALL_DIR}/.env.config.orig"
+    DETECT_METHOD="${method}"
+    if [ -n "${DETECT_ENV_FILE}" ] && [ -f "${DETECT_ENV_FILE}" ]; then
+        ENV_FILE="${DETECT_ENV_FILE}"
+    fi
+}
+# validate_install_dir CAND: pastikan CAND adalah lokasi install SIMLab valid.
+# 0 = valid, 1 = tidak. Cek: app/current symlink → app/releases/<ts>, .env lengkap
+# (GLOBAL_DB_PATH + SESSION_SECRET + minimal 1 LABS_<N>_ID), data/global.db ATAU
+# backend PostgreSQL aktif (DATABASE_URL terisi di .env).
+validate_install_dir() {
+    local cand="$1" tgt
+    [ -n "${cand}" ] || return 1
+    [ -d "${cand}" ] || return 1
+    [ -L "${cand}/app/current" ] || return 1
+    tgt="$(readlink -f "${cand}/app/current" 2>/dev/null || true)"
+    case "${tgt}" in
+        "${cand}"/app/releases/*) ;;
+        *) return 1 ;;
+    esac
+    [ -d "${tgt}" ] || return 1
+    [ -f "${cand}/.env" ] || return 1
+    grep -qE '^GLOBAL_DB_PATH=' "${cand}/.env" || return 1
+    grep -qE '^SESSION_SECRET=' "${cand}/.env" || return 1
+    grep -qE '^LABS_[0-9]+_ID=' "${cand}/.env" || return 1
+    if [ -f "${cand}/data/global.db" ]; then
+        return 0
+    fi
+    if grep -qE '^DATABASE_URL=.+' "${cand}/.env" 2>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+# _scan_add_candidate: tambah kandidat unik (tanpa duplikat) + count.
+_scan_add_candidate() {
+    local c="$1" i
+    for i in "${SCAN_CANDIDATES[@]}"; do
+        [ "${i}" = "${c}" ] && return 0
+    done
+    SCAN_CANDIDATES+=("${c}")
+    DETECT_CANDIDATES=$((DETECT_CANDIDATES + 1))
+}
+# scan_install_dir: bounded scan pada ALLOWED_ROOTS (whitelist, maxdepth) utk marker
+# struktur SIMLab: (a) app/releases/<ts>/app-simlab, (b) .env ber GLOBAL_DB_PATH +
+# (LABS_1_ID ATAU SESSION_SECRET). Mengisi SCAN_CANDIDATES & DETECT_CANDIDATES.
+# TIDAK scan seluruh '/', tidak me-log isi .env. Return 0 bila ≥1 kandidat.
+scan_install_dir() {
+    local root releases envf cand
+    SCAN_CANDIDATES=()
+    DETECT_CANDIDATES=0
+    for root in ${ALLOWED_ROOTS}; do
+        [ -d "${root}" ] || continue
+        while IFS= read -r releases; do
+            [ -n "${releases}" ] || continue
+            if ls "${releases}"/*/app-simlab >/dev/null 2>&1; then
+                cand="$(dirname "$(dirname "${releases}")")"
+                _scan_add_candidate "${cand}"
+            fi
+        done < <(find "${root}" -maxdepth 6 -type d -path '*/app/releases' 2>/dev/null || true)
+        while IFS= read -r envf; do
+            [ -n "${envf}" ] || continue
+            if grep -qE '^GLOBAL_DB_PATH=' "${envf}" 2>/dev/null && \
+               (grep -qE '^LABS_1_ID=' "${envf}" 2>/dev/null || grep -qE '^SESSION_SECRET=' "${envf}" 2>/dev/null); then
+                cand="$(dirname "${envf}")"
+                _scan_add_candidate "${cand}"
+            fi
+        done < <(find "${root}" -maxdepth 3 -name '.env' 2>/dev/null || true)
+    done
+    [ "${DETECT_CANDIDATES}" -gt 0 ]
+}
+# locate_by_systemd: baca WorkingDirectory/EnvironmentFile dari unit systemd
+# (parsed properties systemd, source of truth service). Isi DETECT_CAND (INSTALL_DIR)
+# dan DETECT_ENV_FILE bila EnvironmentFile valid. Return 0 bila ketemu.
+locate_by_systemd() {
+    command -v systemctl >/dev/null 2>&1 || return 1
+    local work="" envf="" base="" tmp=""
+    DETECT_CAND=""
+    work=$(systemctl show "${SERVICE_NAME}" -p WorkingDirectory --value 2>/dev/null || true)
+    if [ -z "${work}" ]; then
+        work=$(systemctl show "${SERVICE_NAME}" -p WorkingDirectory 2>/dev/null | sed -n 's/^WorkingDirectory=//p' | head -1 || true)
+    fi
+    [ -n "${work}" ] || return 1
+    base="$(dirname "$(dirname "${work}")")"   # .../app/current → naik 2 level
+    [ -n "${base}" ] || return 1
+    envf=$(systemctl show "${SERVICE_NAME}" -p EnvironmentFile --value 2>/dev/null || true)
+    if [ -z "${envf}" ]; then
+        envf=$(systemctl show "${SERVICE_NAME}" -p EnvironmentFile 2>/dev/null | sed -n 's/^EnvironmentFile=//p' | head -1 || true)
+    fi
+    if [ -n "${envf}" ] && [ -f "${envf}" ]; then DETECT_ENV_FILE="${envf}"; fi
+    DETECT_CAND="${base}"
+}
+# locate_by_process: baca CWD/ENV_PATH proses app-simlab yang berjalan.
+# Isi DETECT_CAND (INSTALL_DIR) & DETECT_ENV_FILE bila ENV_PATH valid.
+locate_by_process() {
+    local pid="" cwd="" envp="" base="" tmp=""
+    DETECT_CAND=""
+    pid=$(pgrep -f "app-simlab" 2>/dev/null | head -1 || true)
+    [ -n "${pid}" ] || return 1
+    [ -d "/proc/${pid}" ] || return 1
+    cwd=$(readlink -e "/proc/${pid}/cwd" 2>/dev/null || true)
+    [ -n "${cwd}" ] || return 1
+    base="$(dirname "$(dirname "$(dirname "${cwd}")")")"   # .../app/releases/<ts> → naik 3
+    [ -n "${base}" ] || return 1
+    envp=$(tr '\0' '\n' < "/proc/${pid}/environ" 2>/dev/null | sed -n 's/^ENV_PATH=//p' | head -1 || true)
+    if [ -n "${envp}" ] && [ -f "${envp}" ]; then DETECT_ENV_FILE="${envp}"; fi
+    DETECT_CAND="${base}"
+}
+# resolve_install_dir: orchestrator deteksi hierarkis (doc 017 §2).
+# Menetapkan INSTALL_DIR + turunan + DETECT_METHOD. Aman dipanggil berulang (idempotent).
+resolve_install_dir() {
+    local cand="" i method="default"
+    DETECT_ENV_FILE=""
+    DETECT_CAND=""
+    SCAN_CANDIDATES=()
+    DETECT_CANDIDATES=0
+    # 1) override eksplisit
+    if [ -n "${INSTALL_DIR_EXPLICIT}" ]; then
+        if validate_install_dir "${INSTALL_DIR_EXPLICIT}"; then
+            set_install_dir "${INSTALL_DIR_EXPLICIT}" "override"
+            log "Deteksi lokasi install: override (${INSTALL_DIR_EXPLICIT})"
+            return 0
+        fi
+        warn "INSTALL_DIR=${INSTALL_DIR_EXPLICIT} tidak valid (bukan struktur SIMLab) — lanjut deteksi otomatis"
+    fi
+    # 2) systemd
+    if locate_by_systemd; then
+        cand="${DETECT_CAND}"
+        if [ -n "${cand}" ] && validate_install_dir "${cand}"; then
+            set_install_dir "${cand}" "systemd"
+            log "Deteksi lokasi install: systemd (${cand})"
+            return 0
+        fi
+    fi
+    # 3) proses berjalan
+    if locate_by_process; then
+        cand="${DETECT_CAND}"
+        if [ -n "${cand}" ] && validate_install_dir "${cand}"; then
+            set_install_dir "${cand}" "process"
+            log "Deteksi lokasi install: process (${cand})"
+            return 0
+        fi
+    fi
+    # 4) bounded scan
+    if scan_install_dir; then
+        if [ "${DETECT_CANDIDATES}" -eq 1 ]; then
+            cand="${SCAN_CANDIDATES[0]}"
+            if validate_install_dir "${cand}"; then
+                set_install_dir "${cand}" "scan"
+                log "Deteksi lokasi install: scan (${cand})"
+                return 0
+            fi
+        else
+            log "Ambigu: ${DETECT_CANDIDATES} kandidat lokasi SIMLab ditemukan:"
+            for cand in "${SCAN_CANDIDATES[@]}"; do
+                log "  - ${cand}"
+            done
+            if [ -t 0 ]; then
+                printf "Pilih lokasi (ketik path, kosong=default): "
+                read -r cand || cand=""
+                if [ -n "${cand}" ] && validate_install_dir "${cand}"; then
+                    set_install_dir "${cand}" "scan"
+                    log "Deteksi lokasi install: scan (pilihan user: ${cand})"
+                    return 0
+                fi
+                warn "Pilihan tidak valid — lanjut default"
+            else
+                error "Deteksi lokasi install ambigu (${DETECT_CANDIDATES} kandidat) & non-interaktif — tentukan INSTALL_DIR secara eksplisit"
+            fi
+        fi
+    fi
+    # 5) default (backward-compat /opt/simlab)
+    set_install_dir "/opt/simlab" "default"
+    log "Deteksi lokasi install: default (/opt/simlab)"
+    return 0
+}
 
 # ---------------------------------------------------------------- Atomic symlink swap (portable)
 # Ganti symlink CURRENT_DIR menuju target secara portabel (tanpa GNU-only `mv -T`

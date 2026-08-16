@@ -81,7 +81,43 @@ sudo bash deploy_production.sh
 # atau skip migrasi / skip full test suite bila memang sudah pernah:
 sudo bash deploy_production.sh --skip-migrate
 sudo bash deploy_production.sh --skip-migrate --skip-test
+# lokasi install / root scan eksplisit (lihat Auto-discovery di bawah):
+sudo bash deploy_production.sh --install-dir /srv/simlab
+sudo bash deploy_production.sh --allow-roots "/srv /data"
 ```
+
+## Auto-discovery Lokasi Install (doc 017)
+
+Deploy dan cleanup **menemukan sendiri letak asli SIMLab** di server — tidak perlu asumsi
+`/opt/simlab`. Urutan prioritas (berhenti di yang pertama valid):
+
+1. **Override eksplisit** — flag `--install-dir <path>` atau env `INSTALL_DIR=<path>`.
+2. **systemd** — `systemctl show simlab.service -p WorkingDirectory/EnvironmentFile`
+   (source of truth service; `--value` dengan fallback parse, portabel untuk systemd tua).
+3. **Proses berjalan** — `pgrep -f app-simlab` + baca `/proc/<pid>/cwd` dan `ENV_PATH`
+   dari `/proc/<pid>/environ`.
+4. **Bounded scan** — cari marker struktur SIMLab (`app/releases/<ts>/app-simlab` atau
+   `.env` ber `GLOBAL_DB_PATH` + `LABS_1_ID`/`SESSION_SECRET`) di bawah root whitelist
+   `ALLOWED_ROOTS` (default: `/opt /srv /usr/local /var /home /data /app`), dengan batas
+   kedalaman. Diubah via flag `--allow-roots "<r1 <r2>"` atau env `ALLOWED_ROOTS`.
+   **Tidak pernah scan seluruh `/`**.
+5. **Default** — `/opt/simlab` (backward-compat bila tidak ada yang terdeteksi).
+
+Hasil deteksi (metode, lokasi, env file) di-log di P0 dan dicatat di report P13
+(`"location": {"install_dir", "method", "env_file", "candidates"}`).
+
+Aturan perilaku:
+- Kandidat divalidasi sebelum dipakai: `app/current` symlink → `app/releases/<ts>`, `.env`
+  lengkap (`GLOBAL_DB_PATH` + `SESSION_SECRET` + minimal 1 `LABS_<N>_ID`), dan `data/global.db`
+  ATAU `DATABASE_URL` terisi (PostgreSQL).
+- Bila scan menemukan **lebih dari satu** kandidat: saat interaktif diminta memilih path;
+  saat non-interaktif deploy **berhenti** (minta `--install-dir` eksplisit) — tidak menebak.
+- Bila override tidak valid, tetap lanjut ke deteksi otomatis (warning jelas).
+- Nilai `.env` tidak pernah di-log (hanya lokasi file). `SOURCE_DB`/`DATA_DIR` dst. otomatis
+  mengikuti lokasi hasil deteksi.
+
+> Catatan: `install.sh`/`update.sh` tetap memakai `/opt/simlab` (installer standar). Auto-discovery
+> melayani server yang sudah terpasang di lokasi non-standar/random.
 
 Tahap yang dijalankan (P0–PK):
 - **P0** validasi prasyarat + bundle lengkap (STOP bila gagal)

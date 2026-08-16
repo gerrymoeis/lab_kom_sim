@@ -36,9 +36,13 @@ for arg in "$@"; do
 done
 
 LOG_TS="$(date +%Y%m%d-%H%M%S)"
+# Auto-discovery lokasi install (doc 017): sama seperti deploy — override → systemd →
+# proses → bounded scan → default. INSTALL_DIR/ENV_FILE diturunkan dari hasilnya.
+resolve_install_dir
 LOG_FILE="${DATA_DIR}/backups/cleanup_${LOG_TS}.log"
 mkdir -p "${DATA_DIR}/backups"
 log "=== cleanup_production.sh (${LOG_TS}) ==="
+log "Lokasi install terdeteksi: INSTALL_DIR=${INSTALL_DIR} (method=${DETECT_METHOD})"
 
 BUNDLE_DIR="${SCRIPT_DIR}"
 BUNDLE_NAME="$(basename "${SCRIPT_DIR}")"            # deploy_production_<ts>
