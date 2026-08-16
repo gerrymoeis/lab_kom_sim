@@ -52,8 +52,9 @@ set_install_dir() {
     fi
 }
 # validate_install_dir CAND: pastikan CAND adalah lokasi install SIMLab valid.
-# 0 = valid, 1 = tidak. Cek: app/current symlink → app/releases/<ts>, .env lengkap
-# (GLOBAL_DB_PATH + SESSION_SECRET + minimal 1 LABS_<N>_ID), data/global.db ATAU
+# 0 = valid, 1 = tidak. Cek: app/current symlink → app/releases/<ts>, .env ber-marker
+# (SESSION_SECRET + GLOBAL_DB_PATH [V2/global] ATAU DATABASE_PATH [V1 legacy]),
+# dan data/global.db ATAU data/inventaris_lab.db (V1 legacy single-DB) ATAU
 # backend PostgreSQL aktif (DATABASE_URL terisi di .env).
 validate_install_dir() {
     local cand="$1" tgt base_real
@@ -68,10 +69,11 @@ validate_install_dir() {
     esac
     [ -d "${tgt}" ] || return 1
     [ -f "${cand}/.env" ] || return 1
-    grep -qE '^GLOBAL_DB_PATH=' "${cand}/.env" || return 1
     grep -qE '^SESSION_SECRET=' "${cand}/.env" || return 1
-    grep -qE '^LABS_[0-9]+_ID=' "${cand}/.env" || return 1
-    if [ -f "${cand}/data/global.db" ]; then
+    if ! grep -qE '^GLOBAL_DB_PATH=' "${cand}/.env" && ! grep -qE '^DATABASE_PATH=' "${cand}/.env"; then
+        return 1
+    fi
+    if [ -f "${cand}/data/global.db" ] || [ -f "${cand}/data/inventaris_lab.db" ]; then
         return 0
     fi
     if grep -qE '^DATABASE_URL=.+' "${cand}/.env" 2>/dev/null; then
@@ -89,9 +91,10 @@ _scan_add_candidate() {
     DETECT_CANDIDATES=$((DETECT_CANDIDATES + 1))
 }
 # scan_install_dir: bounded scan pada ALLOWED_ROOTS (whitelist, maxdepth) utk marker
-# struktur SIMLab: (a) app/releases/<ts>/app-simlab, (b) .env ber GLOBAL_DB_PATH +
-# (LABS_1_ID ATAU SESSION_SECRET). Mengisi SCAN_CANDIDATES & DETECT_CANDIDATES.
-# TIDAK scan seluruh '/', tidak me-log isi .env. Return 0 bila ≥1 kandidat.
+# struktur SIMLab: (a) app/releases/<ts>/app-simlab, (b) .env ber SESSION_SECRET +
+# (GLOBAL_DB_PATH ATAU DATABASE_PATH [V1 legacy]). Mengisi SCAN_CANDIDATES &
+# DETECT_CANDIDATES. TIDAK scan seluruh '/', tidak me-log isi .env.
+# Return 0 bila ≥1 kandidat.
 scan_install_dir() {
     local root releases envf cand
     SCAN_CANDIDATES=()
@@ -107,8 +110,8 @@ scan_install_dir() {
         done < <(find "${root}" -maxdepth 6 -type d -path '*/app/releases' 2>/dev/null || true)
         while IFS= read -r envf; do
             [ -n "${envf}" ] || continue
-            if grep -qE '^GLOBAL_DB_PATH=' "${envf}" 2>/dev/null && \
-               (grep -qE '^LABS_1_ID=' "${envf}" 2>/dev/null || grep -qE '^SESSION_SECRET=' "${envf}" 2>/dev/null); then
+            if grep -qE '^(GLOBAL_DB_PATH|DATABASE_PATH)=' "${envf}" 2>/dev/null && \
+               grep -qE '^SESSION_SECRET=' "${envf}" 2>/dev/null; then
                 cand="$(dirname "${envf}")"
                 _scan_add_candidate "${cand}"
             fi
