@@ -144,7 +144,7 @@ locate_by_process() {
     pid=$(pgrep -f "app-simlab" 2>/dev/null | head -1 || true)
     [ -n "${pid}" ] || return 1
     [ -d "/proc/${pid}" ] || return 1
-    cwd=$(readlink -e "/proc/${pid}/cwd" 2>/dev/null || true)
+    cwd=$(readlink -f "/proc/${pid}/cwd" 2>/dev/null || true)
     [ -n "${cwd}" ] || return 1
     base="$(dirname "$(dirname "$(dirname "${cwd}")")")"   # .../app/releases/<ts> → naik 3
     [ -n "${base}" ] || return 1
