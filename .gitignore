@@ -33,6 +33,7 @@ go.work
 *.sqlite
 *.sqlite3
 full_testing.db
+!scripts/production/assets/inventaris_lab_empty.db
 
 # Logs
 *.log
