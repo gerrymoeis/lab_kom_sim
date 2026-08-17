@@ -373,14 +373,37 @@ generate_session_secret() {
     echo "${secret}"
 }
 
-# ---------------------------------------------------------------- Service helpers
-service_stop() {
-    log "Menghentikan service ${SERVICE_NAME}..."
-    systemctl stop "${SERVICE_NAME}" 2>/dev/null || true
-    local i
+# ---------------------------------------------------------------- Lifecycle helpers (dual-mode: systemd ATAU proses)
+# Realita produksi (doc 020): server lama dijalankan MANUAL oleh admin (nohup binary
+# dari release dir), tanpa systemd & tanpa user service. Konsekuensi: seluruh
+# stop/start/status harus dual-mode — "systemd" bila unit service terdaftar,
+# "process" bila tidak (mirror cara admin menjalankan).
+RUN_MODE=""
+# detect_run_mode: tentukan mode lifecycle. Idempotent (hasil dicache di RUN_MODE).
+detect_run_mode() {
+    [ -n "${RUN_MODE}" ] && { echo "${RUN_MODE}"; return 0; }
+    if command -v systemctl >/dev/null 2>&1 && systemctl cat "${SERVICE_NAME}" >/dev/null 2>&1; then
+        RUN_MODE="systemd"
+    else
+        RUN_MODE="process"
+    fi
+    echo "${RUN_MODE}"
+}
+server_stop() {
+    local i mode
+    mode="$(detect_run_mode)"
+    if [ "${mode}" = "systemd" ]; then
+        log "Menghentikan service ${SERVICE_NAME} (systemd)..."
+        systemctl stop "${SERVICE_NAME}" 2>/dev/null || true
+    else
+        log "Menghentikan server (mode proses / manual-run)..."
+        pkill -TERM -x "${APP_NAME}" 2>/dev/null || true
+        pkill -TERM -f "app-simlab" 2>/dev/null || true
+    fi
     for i in $(seq 1 30); do
         if ! pgrep -x "${APP_NAME}" >/dev/null 2>&1 && ! pgrep -f "app-simlab" >/dev/null 2>&1; then
             log "Server berhenti setelah ${i}s"
+            [ "${mode}" = "process" ] && rm -f "${DATA_DIR}/app.pid"
             return 0
         fi
         sleep 1
@@ -388,14 +411,42 @@ service_stop() {
     warn "Server tidak berhenti setelah 30s — force kill..."
     pkill -9 -x "${APP_NAME}" 2>/dev/null || true
     pkill -9 -f "app-simlab" 2>/dev/null || true
+    [ "${mode}" = "process" ] && rm -f "${DATA_DIR}/app.pid"
     sleep 2
 }
-service_start() {
-    systemctl start "${SERVICE_NAME}"
-    log "Service ${SERVICE_NAME} dimulai"
+server_start() {
+    local mode run_dir
+    mode="$(detect_run_mode)"
+    if [ "${mode}" = "systemd" ]; then
+        systemctl start "${SERVICE_NAME}"
+        log "Service ${SERVICE_NAME} dimulai (systemd)"
+    else
+        # Jalankan release AKTIF (target symlink CURRENT_DIR) — pada deploy normal
+        # sudah menunjuk RELEASE_DIR; pada rollback menunjuk release lama yg di-restore.
+        run_dir="$(readlink -f "${CURRENT_DIR}" 2>/dev/null || true)"
+        [ -n "${run_dir}" ] || run_dir="${RELEASE_DIR:-${CURRENT_DIR}}"
+        [ -x "${run_dir}/app-simlab" ] || error "server_start: ${run_dir}/app-simlab tidak ada/tidak executable"
+        log "Menjalankan server (mode proses / manual-run) dari ${run_dir}..."
+        (
+            cd "${run_dir}"
+            set -a
+            [ -f .env ] && . ./.env
+            set +a
+            nohup ./app-simlab >> "${DATA_DIR}/app.log" 2>&1 &
+            echo $! > "${DATA_DIR}/app.pid"
+        )
+        sleep 2
+        log "Server diluncurkan (pid $(cat "${DATA_DIR}/app.pid" 2>/dev/null || echo '?')), log → ${DATA_DIR}/app.log"
+    fi
 }
-service_is_active() {
-    [ "$(systemctl is-active "${SERVICE_NAME}" 2>/dev/null || true)" = "active" ]
+server_is_running() {
+    local mode
+    mode="$(detect_run_mode)"
+    if [ "${mode}" = "systemd" ]; then
+        [ "$(systemctl is-active "${SERVICE_NAME}" 2>/dev/null || true)" = "active" ]
+    else
+        pgrep -f "app-simlab" >/dev/null 2>&1
+    fi
 }
 # tunggu_wal_closed: tunggu hingga tidak ada *.db-wal / *.db-shm di DATA_DIR.
 tunggu_wal_closed() {
@@ -556,8 +607,12 @@ check_cmds() {
         fi
     done
     command -v curl >/dev/null 2>&1 || error "curl tidak terinstall"
-    command -v systemctl >/dev/null 2>&1 || error "systemctl tidak ditemukan"
     command -v tar >/dev/null 2>&1 || error "tar tidak terinstall"
+    # systemctl hanya WAJIB saat run mode = systemd (ada unit service terdaftar);
+    # mode proses (manual-run) tidak membutuhkan systemd sama sekali (doc 020 R2).
+    if [ "$(detect_run_mode)" = "systemd" ] && ! command -v systemctl >/dev/null 2>&1; then
+        error "systemctl tidak ditemukan padahal unit ${SERVICE_NAME} terdaftar (mode systemd)"
+    fi
 }
 # check_disk: pastikan ada ruang disk minimal $1 MB di DATA_DIR.
 #   $1 opsional; default ${MIN_DISK_MB:-500} (dapat di-override via env).

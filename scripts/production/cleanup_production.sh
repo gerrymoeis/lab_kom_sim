@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # =============================================================================
 # SIMLABKOM — Production Cleanup (cleanup_production.sh) — komponen #8
 #
@@ -52,7 +52,7 @@ TMP_ZIPS=$(find /tmp -maxdepth 1 -name "${BUNDLE_NAME}.tar.gz" 2>/dev/null || tr
 # ---------------------------------------------------------------- 1. Safety check
 if [ "${FORCE}" = "false" ]; then
     log "Safety check: service active + /readyz OK + report terbaru PK=PASS"
-    if ! service_is_active; then
+    if ! server_is_running; then
         error "Safety check GAGAL: service ${SERVICE_NAME} tidak active. Jalankan dengan --force bila yakin."
     fi
     if ! readyz_check; then
@@ -114,7 +114,7 @@ if [ -d "${BUNDLE_DIR}" ]; then
     warn "folder extract masih ada: ${BUNDLE_DIR}"
     LEFT=1
 fi
-if ! service_is_active; then
+if ! server_is_running; then
     warn "service ${SERVICE_NAME} tidak active setelah cleanup"
     LEFT=1
 fi

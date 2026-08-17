@@ -168,7 +168,7 @@ etl_layout_for_url() {
 # ============================================================================
 rollback() {
     log "🔄 ROLLBACK dimulai..."
-    systemctl stop "${SERVICE_NAME}" 2>/dev/null || true
+    server_stop
 
     # 1) restore symlink release sebelumnya
     if [ -n "${SAVED_CURRENT}" ] && [ -d "${SAVED_CURRENT}" ]; then
@@ -201,7 +201,7 @@ rollback() {
     fi
 
     # 3) start + health
-    systemctl start "${SERVICE_NAME}" 2>/dev/null || true
+    server_start
     sleep 3
     if health_check; then
         ok "🔄 ROLLBACK BERHASIL — server kembali RUNNING"
@@ -215,7 +215,7 @@ rollback() {
 # P0 — VALIDASI PRASYARAT + BUNDLE
 # ============================================================================
 declare_phase "P0" "Validasi prasyarat & bundle"
-log "P0: lokasi install=${INSTALL_DIR} (deteksi=${DETECT_METHOD}, env_file=${ENV_FILE}, kandidat_scan=${DETECT_CANDIDATES})"
+log "P0: lokasi install=${INSTALL_DIR} (deteksi=${DETECT_METHOD}, env_file=${ENV_FILE}, kandidat_scan=${DETECT_CANDIDATES}, run_mode=$(detect_run_mode))"
 check_root
 check_cmds
 check_disk
@@ -346,8 +346,8 @@ phase_pass "P2"
 # ============================================================================
 # P3 — STOP SERVICE + TUNGGU WAL/SHM
 # ============================================================================
-declare_phase "P3" "Stop service & tunggu WAL/SHM tertutup"
-service_stop
+declare_phase "P3" "Stop server & tunggu WAL/SHM tertutup"
+server_stop
 if [ "${DB_BACKEND}" = "postgres" ]; then
     log "P3: backend PostgreSQL — tidak ada WAL/SHM SQLite, skip tunggu_wal_closed"
 else
@@ -575,17 +575,17 @@ fi
 # ============================================================================
 # P8 — START SERVICE
 # ============================================================================
-declare_phase "P8" "Start service ${SERVICE_NAME}"
-if ! service_start 2>&1 | tee "${BACKUP_DIR}/start.log"; then
-    phase_fail "P8" "systemctl start gagal"
+declare_phase "P8" "Start server (${RUN_MODE:-?})"
+if ! server_start 2>&1 | tee "${BACKUP_DIR}/start.log"; then
+    phase_fail "P8" "server_start gagal"
     rollback
 fi
 sleep 3
-if ! service_is_active; then
-    phase_fail "P8" "service tidak active setelah start"
+if ! server_is_running; then
+    phase_fail "P8" "server tidak running setelah start"
     rollback
 fi
-log "P8: service active"
+log "P8: server running (mode ${RUN_MODE})"
 phase_pass "P8"
 
 # ============================================================================
@@ -781,7 +781,8 @@ write_report() {
         echo "    \"log\": \"${TEST_RUN_DIR}\""
         echo "  },"
         echo "  \"server\": {"
-        echo "    \"service_active\": $(service_is_active && echo true || echo false),"
+        echo "    \"run_mode\": \"$(detect_run_mode)\","
+        echo "    \"service_active\": $(server_is_running && echo true || echo false),"
         echo "    \"readyz\": \"${READYZ_STATUS}\","
         echo "    \"url\": \"${SERVER_URL}\""
         echo "  }"
@@ -874,12 +875,12 @@ declare_phase "PK" "Auto-run server + verify final"
 # AKHIR setelah semua tahap. Jalur sukses: server RUNNING + /readyz OK +
 # report digenerate ulang agar memuat PK_autorun.
 PK_OK=1
-if ! service_is_active; then
-    warn "PK: service ${SERVICE_NAME} tidak active — butuh intervensi manual (journalctl -u ${SERVICE_NAME} -n 50)"
-    phase_warn "PK" "service tidak active"
+if ! server_is_running; then
+    warn "PK: server tidak running (mode ${RUN_MODE}) — butuh intervensi manual (journalctl -u ${SERVICE_NAME} -n 50 atau ${DATA_DIR}/app.log)"
+    phase_warn "PK" "server tidak running"
     PK_OK=0
 else
-    log "PK: service ${SERVICE_NAME} active"
+    log "PK: server running (mode ${RUN_MODE})"
 fi
 if ! readyz_check; then
     warn "PK: /readyz tidak OK — butuh intervensi manual"
@@ -903,8 +904,8 @@ phase_summary
 ok "==============================================="
 ok "✅ DEPLOY PRODUCTION SELESAI"
 ok "   Release: ${RELEASE_DIR}"
-ok "   Service: ${SERVICE_NAME}"
-ok "   Status : $(systemctl is-active "${SERVICE_NAME}" 2>/dev/null || echo unknown)"
+ok "   Run mode: ${RUN_MODE:-$(detect_run_mode)}"
+ok "   Status : $(server_is_running && echo running || echo stopped)"
 ok "   URL    : ${SERVER_URL}"
 ok "   Backup : ${BACKUP_DIR}"
 if [ -n "${REPORT_FILE}" ]; then
