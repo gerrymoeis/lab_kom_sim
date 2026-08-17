@@ -76,7 +76,9 @@ validate_install_dir() {
     if [ -f "${cand}/data/global.db" ] || [ -f "${cand}/data/inventaris_lab.db" ]; then
         return 0
     fi
-    if grep -qE '^DATABASE_URL=.+' "${cand}/.env" 2>/dev/null; then
+    # PostgreSQL backend aktif: nilai DATABASE_URL NON-kosong (harus diawali
+    # karakter non-spasi/non-komentar; baris `DATABASE_URL=  # komentar` bukan nilai).
+    if grep -qE '^DATABASE_URL=[^[:space:]#]' "${cand}/.env" 2>/dev/null; then
         return 0
     fi
     return 1
@@ -329,9 +331,14 @@ phase_json() {
 
 # ---------------------------------------------------------------- .env helpers
 # baca_env KEY: ambil nilai KEY dari ENV_FILE (baris pertama yang cocok).
+# Nilai dinormalisasi seperti godotenv (app): trim spasi + buang komentar inline
+# ('#' dianggap komentar HANYA bila didahului spasi/tab). Tanpa ini baris template
+# `DATABASE_URL=  # komentar` terbaca non-empty → salah deteksi backend PostgreSQL
+# (doc 019 T1 / doc 020 F1).
 baca_env() {
     local key="$1" val=""
-    val=$(grep -E "^${key}=" "${ENV_FILE}" 2>/dev/null | head -1 | cut -d= -f2- || true)
+    val=$(grep -E "^${key}=" "${ENV_FILE}" 2>/dev/null | head -1 | cut -d= -f2- \
+        | sed -E 's/[[:space:]]+#.*$//; s/^[[:space:]]+//; s/[[:space:]]+$//' || true)
     echo "$val"
 }
 # is_multi_lab_env: true bila .env memakai format multi-lab (GLOBAL_DB_PATH + LABS_1_ID).
