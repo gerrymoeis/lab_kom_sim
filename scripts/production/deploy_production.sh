@@ -233,12 +233,13 @@ for seed in mi-1 vokasi-1 default; do
     [ -d "${SCRIPT_DIR}/seeds/${seed}" ] || error "P0: seeds/${seed} hilang di bundle"
 done
 [ -d "${SCRIPT_DIR}/test-runner/test-bin" ] || warn "P0: test-runner/test-bin belum ada (Fase D)"
-# User service (dibuat install.sh). Bila belum ada → warning jelas: chown akan gagal.
-if id -u "${APP_NAME}" >/dev/null 2>&1; then
+# User service (dibuat install.sh). Bila tidak ada → warn saja (R3): deploy tetap
+# jalan, ownership dipertahankan milik user yang menjalankan deploy (manual-run).
+if app_user_exists; then
     log "P0: user ${APP_NAME} ada (uid $(id -u "${APP_NAME}"))"
 else
-    warn "P0: user '${APP_NAME}' tidak ditemukan — jalankan install.sh dulu (membuat user + service),"
-    warn "    atau buat manual: useradd -r -s /usr/sbin/nologin ${APP_NAME}. chown nanti akan gagal."
+    warn "P0: user service '${APP_NAME}' tidak ada — chown di-skip, ownership dipertahankan milik $(id -un)."
+    warn "    (manual-run tanpa install.sh; server dijalankan sebagai user ini — sama seperti admin.)"
 fi
 phase_pass "P0"
 
@@ -533,7 +534,7 @@ done < <(parse_env_labs)
 if find "${RELEASE_DIR}/seeds" -name ".seed_done" -print -quit | grep -q .; then
     { phase_fail "P5" "marker .seed_done terdeteksi di seeds — hapus manual"; rollback; }
 fi
-chown -R "${APP_NAME}:${APP_NAME}" "${RELEASE_DIR}"
+chown_optional "${RELEASE_DIR}"
 log "P5: release dir ${RELEASE_DIR} + seeds siap"
 phase_pass "P5"
 
@@ -551,7 +552,7 @@ if [ -L "${CURRENT_DIR}" ] && [ -d "$(readlink -f "${CURRENT_DIR}" 2>/dev/null)"
     log "P6: release sebelumnya: ${SAVED_CURRENT}"
 fi
 swap_symlink "${RELEASE_DIR}"
-chown -R "${APP_NAME}:${APP_NAME}" "${RELEASE_DIR}"
+chown_optional "${RELEASE_DIR}"
 log "P6: symlink ${CURRENT_DIR} → ${RELEASE_DIR}"
 phase_pass "P6"
 

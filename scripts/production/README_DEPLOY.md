@@ -14,8 +14,9 @@ Ikuti urutan di bawah. Semua perintah dijalankan sebagai `root` via SSH.
   "Membangun Bundle"). Cek arsitektur server: `uname -m`.
 - **User & service**: `install.sh` membuat user `simlab` + unit `simlab.service`
   (`EnvironmentFile=/opt/simlab/.env`, `ExecStart=/opt/simlab/app/current/app-simlab`,
-  `Restart=on-failure`). Deploy memakai user ini utk `chown`. Bila belum ada, P0 memberi
-  warning jelas (deploy tetap lanjut, chown akan gagal) — jalankan `install.sh` dulu.
+  `Restart=on-failure`). Deploy memakai user ini utk `chown` bila ada. Bila tidak ada
+  (manual-run tanpa install.sh), deploy tetap jalan — chown di-skip dan ownership
+  dipertahankan milik user yang menjalankan deploy (R3 doc 021).
 - **Dependensi** (dibutuhkan `install.sh`): `curl`, `procps`, `systemd`. Server harus online
   utk download release (jalur `update.sh`); bundle lokal tidak butuh internet saat deploy.
 - **Disk**: deploy cek ruang (`check_disk`, default 500 MB) — pastikan `/opt/simlab` punya

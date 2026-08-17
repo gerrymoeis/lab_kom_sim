@@ -576,7 +576,7 @@ restore_backup() {
             log "Restore release aktif → ${rel}"
         fi
     fi
-    chown -R "${APP_NAME}:${APP_NAME}" "${DATA_DIR}" 2>/dev/null || true
+    chown_optional "${DATA_DIR}"
     log "Restore backup selesai"
 }
 # cleanup_old_releases: hapus release lama kecuali keep terbaru (pola update.sh).
@@ -628,8 +628,31 @@ check_disk() {
         fi
     fi
 }
-# chown_data: pastikan ownership data dir ke service user.
+# app_user_exists: true bila user service ${APP_NAME} ada (hasil di-cache, R3).
+APP_USER_CACHE=""
+app_user_exists() {
+    if [ -z "${APP_USER_CACHE}" ]; then
+        if id -u "${APP_NAME}" >/dev/null 2>&1; then APP_USER_CACHE="yes"; else APP_USER_CACHE="no"; fi
+    fi
+    [ "${APP_USER_CACHE}" = "yes" ]
+}
+# chown_optional: pindahkan ownership target ke user service ${APP_NAME}.
+#   Bila user service tidak ada (manual-run tanpa install.sh) → warn dan pertahankan
+#   ownership pemakai yang menjalankan deploy (server dijalankan oleh user tsb —
+#   realita doc 020 R3); JANGAN crash. Kegagalan chown tetap non-fatal.
+chown_optional() {
+    local target="$1"
+    if app_user_exists; then
+        if chown -R "${APP_NAME}:${APP_NAME}" "${target}" 2>/dev/null; then
+            log "Ownership ${target} → ${APP_NAME}:${APP_NAME}"
+        else
+            warn "chown '${target}' → ${APP_NAME} gagal (lanjut, non-fatal)"
+        fi
+    else
+        warn "ownership '${target}' dipertahankan milik $(id -un) (user service ${APP_NAME} tidak ada)"
+    fi
+}
+# chown_data: pastikan ownership data dir ke service user (bila user ada, R3).
 chown_data() {
-    chown -R "${APP_NAME}:${APP_NAME}" "${DATA_DIR}" 2>/dev/null || true
-    log "Ownership ${DATA_DIR} → ${APP_NAME}:${APP_NAME}"
+    chown_optional "${DATA_DIR}"
 }
