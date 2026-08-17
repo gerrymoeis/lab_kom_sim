@@ -48,7 +48,8 @@ $SourceScripts = @(
     (Join-Path $PSScriptRoot "deploy_production.sh"),
     (Join-Path $PSScriptRoot "cleanup_production.sh"),
     (Join-Path $PSScriptRoot "README_DEPLOY.md"),
-    (Join-Path $PSScriptRoot "lib")
+    (Join-Path $PSScriptRoot "lib"),
+    (Join-Path $PSScriptRoot "seed_old_install.sh")
 )
 $TestPackages = @(
     "tests",
@@ -70,7 +71,9 @@ if (-not (Test-Path -LiteralPath $EnvConfigPath)) {
 }
 if (-not (Test-Path -LiteralPath (Join-Path $PocProto "seeds\mi-1"))) { throw "seeds/mi-1 tidak ada di $PocProto" }
 if (-not (Test-Path -LiteralPath (Join-Path $PocProto ".env.reference"))) { throw ".env.reference tidak ada di $PocProto" }
-Write-Host "    OK: go, poc_prototype, .env.config, seeds, .env.reference lengkap"
+$AssetSeedDb = Join-Path $PSScriptRoot "assets\inventaris_lab_empty.db"
+if (-not (Test-Path -LiteralPath $AssetSeedDb)) { throw "assets/inventaris_lab_empty.db tidak ada (Fase F seed DB)" }
+Write-Host "    OK: go, poc_prototype, .env.config, seeds, .env.reference, assets lengkap"
 
 # Head commit actual (pin). Bila berbeda dari $Commit, catat peringatan (bukan gagal).
 $headCommit = ""
@@ -191,6 +194,12 @@ foreach ($src in $SourceScripts) {
 $metaLines = @("commit=$headCommit", "bundle=$bundleName")
 Set-Content -LiteralPath (Join-Path $staging "bundle-meta.txt") -Value $metaLines -Encoding ascii
 Write-Host "    OK: bundle-meta.txt (commit=$headCommit)"
+
+# assets/ — seed DB kosong-valid utk skenario migrasi "versi lama" (Fase F, seed_old_install.sh).
+$assetsDir = Join-Path $staging "assets"
+New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null
+Copy-Item -Force $AssetSeedDb (Join-Path $assetsDir "inventaris_lab_empty.db")
+Write-Host "    OK: assets/inventaris_lab_empty.db (seed DB skenario Fase F)"
 
 # ---------------------------------------------------------------- 8. Verifikasi parse 1-to-1 (F10)
 Write-Host "==> Verifikasi parsing -test.v 1-to-1 dengan go test -json (F10)"
@@ -352,6 +361,7 @@ isi bundle:
   test-runner/ : go.mod, .env.reference, seeds/, test-bin/ (8 *.test)
   seeds/   : mi-1, vokasi-1, default
   deploy_production.sh (Fase E: P0–PK) + cleanup_production.sh (Fase E) + lib/
+  seed_old_install.sh (Fase F: tanam "versi lama" di lokasi random) + assets/inventaris_lab_empty.db
   README_DEPLOY.md (panduan deploy+cleanup) + bundle-meta.txt (commit & nama bundle utk report P13)
 
 next: verifikasi eksekusi test binary linux di VM:
