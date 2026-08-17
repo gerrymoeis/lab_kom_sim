@@ -76,13 +76,20 @@ dari `.env` (`LABS_<N>_*`, format V2 multi-lab), bukan hardcode:
 
 ## 2. Deploy
 
+**SATU file (pola E2E, self-locating):**
+
+```sh
+sudo bash run_deploy.sh
+# argumen sama dengan deploy_production.sh:
+sudo bash run_deploy.sh --skip-migrate
+sudo bash run_deploy.sh --skip-migrate --skip-test
+sudo bash run_deploy.sh --install-dir /srv/simlab
+sudo bash run_deploy.sh --allow-roots "/srv /home"
+```
+
+Setara: 
 ```sh
 sudo bash deploy_production.sh
-# atau skip migrasi / skip full test suite bila memang sudah pernah:
-sudo bash deploy_production.sh --skip-migrate
-sudo bash deploy_production.sh --skip-migrate --skip-test
-# lokasi install / root scan eksplisit (lihat Auto-discovery di bawah):
-sudo bash deploy_production.sh --install-dir /srv/simlab
 sudo bash deploy_production.sh --allow-roots "/srv /data"
 ```
 
