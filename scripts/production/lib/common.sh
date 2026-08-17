@@ -1,7 +1,8 @@
 #!/bin/bash
 # =============================================================================
 # SIMLABKOM — Production Tools — lib/common.sh
-# Helper bersama untuk deploy_production.sh / cleanup_production.sh.
+# Helper bersama untuk deploy_production.sh (SATU file deploy; P15 menangani
+# self-cleanup bundle — cleanup_production.sh standalone DIHAPUS di R6 doc 021).
 # Wajib di-source dari script yang sama-sama memakai pola:
 #   set -euo pipefail
 #   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,7 +33,7 @@ DETECT_CANDIDATES=0      # jumlah kandidat lokasi valid yang ditemukan saat scan
 # ---------------------------------------------------------------- Auto-discovery lokasi install (doc 017)
 # Temukan letak asli SIMLab di-deploy & dikonfigurasi ketika lokasi TIDAK diketahui
 # tools. Prioritas hierarkis: override → systemd → proses → bounded scan → default.
-# Dipanggil oleh deploy_production.sh / cleanup_production.sh SETELAH source common.sh.
+# Dipanggil oleh deploy_production.sh SETELAH source common.sh.
 DETECT_ENV_FILE=""       # hasil deteksi (EnvironmentFile/ENV_PATH) utk ENV_FILE bila valid
 SCAN_CANDIDATES=()       # daftar kandidat lokasi valid (dari bounded scan)
 # set_install_dir DIR METHOD: tetapkan INSTALL_DIR + seluruh turunan + DETECT_METHOD.

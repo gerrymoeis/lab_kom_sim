@@ -30,11 +30,15 @@ deploy_production_<ts>/
 ├── config/                       # etl-config.production.json + .env.config
 ├── test-runner/                  # full test suite (test binary linux, 8 package)
 ├── seeds/                        # mi-1, vokasi-1, default
-├── deploy_production.sh          # tools deploy (Fase E: tahap P0–PK)
-├── cleanup_production.sh         # tools hapus bundle+zip setelah aman (komponen #8)
-├── lib/common.sh                 # helper (konstanta, phase, log)
+├── deploy_production.sh          # tools deploy (alur P0–P15; P15 = self-cleanup bundle)
+├── run_deploy.sh                 # SATU file utk admin (self-locating, delegasi semua argumen)
+├── lib/common.sh                 # helper (konstanta, phase, log, lifecycle dual-mode)
+├── README_DEPLOY.md              # panduan ini
 └── bundle-meta.txt               # commit & nama bundle (dipakai report P13)
 ```
+
+> Helper uji VM (`seed_old_install.sh` + `assets/`) ikut disertakan oleh default untuk skenario
+> Fase F/doc 018; build dengan `-NoTestHelpers` menghasilkan bundle produksi lean tanpa keduanya.
 
 ## 1. Upload & Extract
 
@@ -46,14 +50,14 @@ cd deploy_production_<ts>
 ```
 
 > Catatan: folder `/opt/simlab/app` (symlink ke release), `/opt/simlab/data` (data+backup),
-> `data/backups/`, dan release TIDAK disentuh oleh cleanup.
+> `data/backups/`, dan release TIDAK disentuh oleh self-cleanup P15.
 
 ## Sekret & Keamanan
 
 - `config/.env.config` di bundle memuat **API key nyata** (GEMINI/OPENROUTER/PC_PHOTO_TOKEN).
   Setelah extract, kunci akses file tsb (tar dari Windows menyimpan perm 0644):
-  `chmod 600 config/.env.config`. `cleanup_production.sh` akan menghapus bundle setelah deploy
-  selesai.
+  `chmod 600 config/.env.config`. **P15 self-cleanup** akan menghapus bundle setelah deploy
+  selesai (bila semua fase PASS/SKIP + server running + `/readyz` OK).
 - `/opt/simlab/.env` (EnvironmentFile service) memuat `SESSION_SECRET`, API key, dan opsional
   `DATABASE_URL` (kredensial Postgres). Deploy set `chmod 600` saat meregenerate/restore —
   jangan ubah perm-nya. **Nilai `DATABASE_URL` tidak pernah di-log** oleh deploy tools.
@@ -94,7 +98,7 @@ sudo bash run_deploy.sh --keep-bundle  # P15 skip self-delete (bundle dipertahan
 + `/readyz` OK, deploy menghapus bundle `deploy_production_<ts>.tar.gz` (parent extract /
 `INSTALL_DIR` / `/tmp`) dan folder extract sendiri (guard nama `deploy_production_*`).
 Bila ada fase WARN/FAIL, server mati, atau `--keep-bundle` → bundle dipertahankan.
-`cleanup_production.sh` (bila dipakai) hanya utk kasus yang ingin hapus bundle manual.
+Konfirmasi Y/n sebelum hapus, kecuali `--force`.
 
 Setara: 
 ```sh
@@ -104,7 +108,7 @@ sudo bash deploy_production.sh --allow-roots "/srv /data"
 
 ## Auto-discovery Lokasi Install (doc 017)
 
-Deploy dan cleanup **menemukan sendiri letak asli SIMLab** di server — tidak perlu asumsi
+Deploy **menemukan sendiri letak asli SIMLab** di server — tidak perlu asumsi
 `/opt/simlab`. Urutan prioritas (berhenti di yang pertama valid):
 
 1. **Override eksplisit** — flag `--install-dir <path>` atau env `INSTALL_DIR=<path>`.
@@ -135,21 +139,23 @@ Aturan perilaku:
 > Catatan: `install.sh`/`update.sh` tetap memakai `/opt/simlab` (installer standar). Auto-discovery
 > melayani server yang sudah terpasang di lokasi non-standar/random.
 
-Tahap yang dijalankan (P0–PK):
+Tahap yang dijalankan (P0–P15):
 - **P0** validasi prasyarat + bundle lengkap (STOP bila gagal)
 - **P1** deteksi format `.env` (single/multi) + regenerate
 - **P2** backup penuh `data/` + `.env` + release aktif
-- **P3** stop service + tunggu WAL/SHM
+- **P3** stop service + tunggu WAL/SHM (dual-mode: systemd / proses manual-run)
 - **P4** deteksi migrasi; jalankan ETL bila perlu (ROLLBACK bila gagal)
 - **P5–P6** siapkan release + deploy binary + atomic symlink swap
 - **P7** generate public site (WARN bila gagal)
-- **P8–P9** start service + health check `/healthz`
+- **P8–P9** start server + health check `/healthz` (mode systemd / proses)
 - **P10** readiness check `/readyz` (deep)
-- **P11** verifikasi read-only `app-simlab -verify`
+- **P11** verifikasi read-only `app-simlab -verify` (fresh → super_admin=N/A)
 - **P12** full test suite (test binary linux) — FAIL/SKIP → ROLLBACK
 - **P13** report JSON `deploy_report_<ts>.json`
 - **P14** cleanup (release keep 3, single DB, uploads flat)
 - **PK** auto-run server + verify final — report digenerate ulang (memuat `PK_autorun`)
+- **P15** self-cleanup bundle (tar.gz + folder extract) — hanya bila semua fase PASS/SKIP
+  + server running + `/readyz` OK; `--force` tanpa konfirmasi; `--keep-bundle` skip
 
 Setiap kegagalan tahap dengan tindakan ROLLBACK akan: stop service, restore symlink + data
 dari backup, start, health check → server tetap RUNNING (release sebelumnya).
@@ -189,28 +195,29 @@ Bangun bundle dengan `prepare_production.ps1` (host Windows, butuh Go + `.env.co
 .\prepare_production.ps1                    # amd64 (default)
 .\prepare_production.ps1 -Arch arm64        # AArch64 (Raspberry Pi 4/arm64 server)
 .\prepare_production.ps1 -Arch arm          # ARM32
+.\prepare_production.ps1 -NoTestHelpers     # bundle produksi lean (tanpa seed_old_install.sh + assets/)
 ```
 
 - Verifikasi otomatis: parsing `-test.v` 1-to-1 dengan `go test -json` (F10) + magic byte ELF sesuai
   `-Arch` (amd64: ELF64/x86-64, arm64: ELF64/AArch64, arm: ELF32/ARM).
 - `-Deploy -SSH user@vm`: upload bundle + jalankan test binary linux di VM.
+- Helper uji VM (`seed_old_install.sh` + `assets/`) ikut oleh default; `-NoTestHelpers` untuk
+  bundle produksi lean (tanpa helper skenario Fase F).
 
-## 4. Cleanup (setelah semua aman & sesuai)
+## 4. Self-Cleanup (P15) — hapus bundle setelah semua aman
 
-Hapus artefak bundle (folder extract + zip + tar.gz sementara di `/tmp`):
+`cleanup_production.sh` standalone **tidak ada lagi** (R6 doc 021) — hapus bundle ditangani
+**P15 di akhir deploy**:
 
-```sh
-cd deploy_production_<ts>          # masih di folder extract
-sudo bash cleanup_production.sh
-```
+- Gate aman: hanya berjalan bila **SEMUA fase PASS/SKIP** (tidak ada WARN/FAIL) **dan**
+  server running **dan** `/readyz` OK. Bila tidak → bundle dipertahankan (SKIP).
+- Yang dihapus: `deploy_production_<ts>.tar.gz` (parent extract / `INSTALL_DIR` / `/tmp`,
+  guard nama) + folder extract sendiri (guard basename `deploy_production_*`).
+- Konfirmasi interaktif `[Y/n]` (default ya) sebelum hapus; `--force` = tanpa konfirmasi;
+  `--keep-bundle` = skip seluruh self-delete.
+- `app/`, `data/`, `data/backups/`, release **tidak pernah disentuh**.
 
-- Safety check otomatis: service `simlab` active DAN `/readyz` OK DAN report deploy terbaru
-  `PK_autorun: PASS`. Jika belum → berhenti (pesan jelas).
-- Konfirmasi interaktif `[y/N]` sebelum menghapus.
-- Bila ingin memaksa (mis. service sudah tidak ada): `sudo bash cleanup_production.sh --force`.
-
-Verifikasi pasca-cleanup: tidak ada sisa bundle di `/opt/simlab/`, service tetap RUNNING + `/readyz` OK.
-Log: `/opt/simlab/data/backups/cleanup_<ts>.log`.
+Ingin deploy ulang untuk diagnosis? Pakai `--keep-bundle` (bundle tetap utk investigasi).
 
 ## Test Manual di VM Linux (pola Fase E)
 
@@ -243,13 +250,15 @@ dari doc 014 — VirtualBox/VM dengan Debian/Ubuntu, forward port 8080). Jalur y
    magic-byte check harus lulus.
 2. Uji `swap_symlink` di distro busybox (Alpine): deploy + rollback tetap jalan tanpa `mv -T`.
 
-**E. Cleanup** (setiap selesai uji)
-1. `sudo bash cleanup_production.sh` — hanya jalan bila service active + `/readyz` OK +
-   report terbaru `PK_autorun: PASS`; konfirmasi `[y/N]`.
-2. Verifikasi: bundle/zip hilang, service tetap RUNNING.
+**E. Self-cleanup** (setiap selesai uji)
+1. Jalankan deploy hingga selesai → cek status P15: PASS = bundle+folder extract hilang,
+   server tetap RUNNING.
+2. Uji gate: ubah 1 fase jadi WARN (mis. P7 publish gagal) → P15 SKIP (bundle bertahan).
+3. Uji `--keep-bundle` (bundle bertahan) dan `--force` (tanpa konfirmasi, bundle hilang).
 
 ## Troubleshooting Singkat
 
-- Service tidak jalan: `journalctl -u simlab -n 50`
-- Ingin ulang deploy setelah gagal: bundle/zip masih ada (deploy tidak menghapusnya).
+- Service tidak jalan: `journalctl -u simlab -n 50` (mode systemd) atau `tail -n 50 /opt/simlab/data/app.log`
+- Ingin deploy ulang setelah gagal / untuk diagnosis: jalankan dengan `--keep-bundle`
+  (P15 tidak menghapus bundle) atau pakai folder extract yang masih ada.
 - Rollback otomatis sudah memastikan server RUNNING; lihat report & log untuk diagnosis.

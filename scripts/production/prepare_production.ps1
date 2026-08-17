@@ -1,15 +1,18 @@
-# =============================================================================
+﻿# =============================================================================
 # SIMLABKOM - Production Deploy - prepare_production.ps1 (host helper, Windows)
 #
 # Membangun bundle deploy_production_<ts>.tar.gz untuk production Linux server
 # (/opt/simlab). Isi bundle mengikuti struktur doc 014 (test_production):
-#   - deploy_production.sh / run_deploy.sh / cleanup_production.sh / lib/
+#   - deploy_production.sh / run_deploy.sh / lib/
 #     (Fase B/E - kosong bila belum dibuat, disalin otomatis jika sudah ada;
-#      run_deploy.sh = SATU file utk admin menjalankan seluruh deploy)
+#      run_deploy.sh = SATU file utk admin menjalankan seluruh deploy;
+#      P15 = self-cleanup bundle, cleanup_production.sh standalone DIHAPUS di R6)
 #   - config/  : etl-config.production.json + .env.config (dari build_linux_release)
 #   - bin/     : etl, app-simlab, app-simlab-publish (GOOS=linux CGO_ENABLED=0)
 #   - test-runner/ : go.mod + seeds/ + .env.reference + test-bin/*.test (8 pkg)
 #   - seeds/   : mi-1, vokasi-1, default (untuk app release dir)
+#   - seed_old_install.sh + assets/ : helper uji VM (Fase F, doc 018 S1-S10);
+#     TIDAK dimasukkan dengan -NoTestHelpers (bundle produksi lean)
 #
 # Verifikasi Fase A:
 #   - Parsing -test.v 1-to-1 dengan go test ./... -json (F10, 640/0/0): dibangun
@@ -23,11 +26,13 @@
 #   .\prepare_production.ps1                         # build + verifikasi parse saja (amd64)
 #   .\prepare_production.ps1 -Arch arm64             # build utk ARM64 (AArch64)
 #   .\prepare_production.ps1 -Arch arm               # build utk ARM32
+#   .\prepare_production.ps1 -NoTestHelpers          # bundle produksi lean (tanpa seed_old_install.sh + assets/)
 #   .\prepare_production.ps1 -SSH user@vm -Deploy    # + upload & extract di VM (opsional; admin run run_deploy.sh)
 # =============================================================================
 param(
     [string]$SSH = "",
     [switch]$Deploy,
+    [switch]$NoTestHelpers,
     [ValidateSet("amd64", "arm64", "arm")]
     [string]$Arch = "amd64",
     [string]$OutDir = "$PSScriptRoot\out",
@@ -48,11 +53,13 @@ $EnvConfigPath = [System.IO.Path]::GetFullPath($EnvConfigPath)
 $SourceScripts = @(
     (Join-Path $PSScriptRoot "deploy_production.sh"),
     (Join-Path $PSScriptRoot "run_deploy.sh"),
-    (Join-Path $PSScriptRoot "cleanup_production.sh"),
     (Join-Path $PSScriptRoot "README_DEPLOY.md"),
-    (Join-Path $PSScriptRoot "lib"),
-    (Join-Path $PSScriptRoot "seed_old_install.sh")
+    (Join-Path $PSScriptRoot "lib")
 )
+# Helper uji VM (Fase F, doc 018) — TIDAK disertakan di bundle produksi lean (-NoTestHelpers).
+if (-not $NoTestHelpers) {
+    $SourceScripts += (Join-Path $PSScriptRoot "seed_old_install.sh")
+}
 $TestPackages = @(
     "tests",
     "internal/config",
@@ -74,8 +81,12 @@ if (-not (Test-Path -LiteralPath $EnvConfigPath)) {
 if (-not (Test-Path -LiteralPath (Join-Path $PocProto "seeds\mi-1"))) { throw "seeds/mi-1 tidak ada di $PocProto" }
 if (-not (Test-Path -LiteralPath (Join-Path $PocProto ".env.reference"))) { throw ".env.reference tidak ada di $PocProto" }
 $AssetSeedDb = Join-Path $PSScriptRoot "assets\inventaris_lab_empty.db"
-if (-not (Test-Path -LiteralPath $AssetSeedDb)) { throw "assets/inventaris_lab_empty.db tidak ada (Fase F seed DB)" }
-Write-Host "    OK: go, poc_prototype, .env.config, seeds, .env.reference, assets lengkap"
+if ($NoTestHelpers) {
+    Write-Host "    -NoTestHelpers: seed_old_install.sh + assets/ TIDAK dimasukkan (bundle produksi lean)"
+} else {
+    if (-not (Test-Path -LiteralPath $AssetSeedDb)) { throw "assets/inventaris_lab_empty.db tidak ada (Fase F seed DB)" }
+}
+Write-Host "    OK: go, poc_prototype, .env.config, seeds, .env.reference lengkap"
 
 # Head commit actual (pin). Bila berbeda dari $Commit, catat peringatan (bukan gagal).
 $headCommit = ""
@@ -185,7 +196,7 @@ foreach ($key in @("GEMINI_API_KEY", "OPENROUTER_API_KEY", "PC_PHOTO_TOKEN")) {
 Write-Host "    OK: etl-config.production.json + .env.config (API key terisi, tidak ditampilkan)"
 
 # ---------------------------------------------------------------- 7. Salin script deploy (Fase B/E bila sudah ada)
-Write-Host "==> Salin script deploy/cleanup/lib (bila sudah ada)"
+Write-Host "==> Salin script deploy/run_deploy/lib (bila sudah ada)"
 foreach ($src in $SourceScripts) {
     if (Test-Path -LiteralPath $src) {
         Copy-Item -Recurse -Force $src $staging
@@ -198,10 +209,14 @@ Set-Content -LiteralPath (Join-Path $staging "bundle-meta.txt") -Value $metaLine
 Write-Host "    OK: bundle-meta.txt (commit=$headCommit)"
 
 # assets/ — seed DB kosong-valid utk skenario migrasi "versi lama" (Fase F, seed_old_install.sh).
-$assetsDir = Join-Path $staging "assets"
-New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null
-Copy-Item -Force $AssetSeedDb (Join-Path $assetsDir "inventaris_lab_empty.db")
-Write-Host "    OK: assets/inventaris_lab_empty.db (seed DB skenario Fase F)"
+if ($NoTestHelpers) {
+    Write-Host "    SKIP: assets/ (bundle lean — -NoTestHelpers)"
+} else {
+    $assetsDir = Join-Path $staging "assets"
+    New-Item -ItemType Directory -Path $assetsDir -Force | Out-Null
+    Copy-Item -Force $AssetSeedDb (Join-Path $assetsDir "inventaris_lab_empty.db")
+    Write-Host "    OK: assets/inventaris_lab_empty.db (seed DB skenario Fase F)"
+}
 
 # ---------------------------------------------------------------- 8. Verifikasi parse 1-to-1 (F10)
 Write-Host "==> Verifikasi parsing -test.v 1-to-1 dengan go test -json (F10)"
@@ -329,12 +344,14 @@ if ($Deploy -and $SSH -ne "") {
     Write-Host "==> Deploy ke $SSH"
     & scp $zipPath "${SSH}:/tmp/"
     if ($LASTEXITCODE -ne 0) { throw "scp gagal (exit $LASTEXITCODE)" }
+    $extraChmod = ""
+    if (-not $NoTestHelpers) { $extraChmod = " ~/prod_bundle/$bundleName/seed_old_install.sh" }
     $remote = "mkdir -p ~/prod_bundle && rm -rf ~/prod_bundle/$bundleName && " +
               "tar -xzf /tmp/$bundleName.tar.gz -C ~/prod_bundle && " +
               "chmod 600 ~/prod_bundle/$bundleName/config/.env.config && " +
               "chmod +x ~/prod_bundle/$bundleName/bin/* ~/prod_bundle/$bundleName/deploy_production.sh " +
-              "~/prod_bundle/$bundleName/run_deploy.sh ~/prod_bundle/$bundleName/cleanup_production.sh " +
-              "~/prod_bundle/$bundleName/seed_old_install.sh ~/prod_bundle/$bundleName/lib/*.sh; " +
+              "~/prod_bundle/$bundleName/run_deploy.sh$extraChmod " +
+              "~/prod_bundle/$bundleName/lib/*.sh; " +
               "cd ~/prod_bundle/$bundleName/test-runner && chmod +x test-bin/*.test; " +
               "for t in test-bin/*.test; do echo `"== `$t`"; `$t -test.v -test.count=1 -test.timeout=600s || true; done"
     Write-Host "==> SSH: extract bundle + run test binary linux (F10) di VM"
@@ -370,10 +387,10 @@ isi bundle:
   bin/     : etl, app-simlab, app-simlab-publish
   test-runner/ : go.mod, .env.reference, seeds/, test-bin/ (8 *.test)
   seeds/   : mi-1, vokasi-1, default
-  deploy_production.sh + run_deploy.sh (Fase E: P0–PK; run_deploy.sh = SATU file utk admin)
-  cleanup_production.sh (Fase E) + lib/
-  seed_old_install.sh (Fase F: tanam "versi lama" di lokasi random) + assets/inventaris_lab_empty.db
-  README_DEPLOY.md (panduan deploy+cleanup) + bundle-meta.txt (commit & nama bundle utk report P13)
+  deploy_production.sh + run_deploy.sh (alur P0-P15; run_deploy.sh = SATU file utk admin)
+  lib/ + README_DEPLOY.md + bundle-meta.txt (commit & nama bundle utk report P13)
+  test helpers (SKIP bila -NoTestHelpers): seed_old_install.sh + assets/inventaris_lab_empty.db
+  P15 self-cleanup: hapus tar.gz + folder extract setelah semua fase PASS/SKIP + server running + /readyz OK
 
 next: verifikasi eksekusi test binary linux di VM:
   scp $bundleName.tar.gz root@server:/opt/simlab/
