@@ -3,8 +3,9 @@
 #
 # Membangun bundle deploy_production_<ts>.tar.gz untuk production Linux server
 # (/opt/simlab). Isi bundle mengikuti struktur doc 014 (test_production):
-#   - deploy_production.sh / cleanup_production.sh / lib/  (Fase B/E - kosong
-#     bila belum dibuat, disalin otomatis jika sudah ada)
+#   - deploy_production.sh / run_deploy.sh / cleanup_production.sh / lib/
+#     (Fase B/E - kosong bila belum dibuat, disalin otomatis jika sudah ada;
+#      run_deploy.sh = SATU file utk admin menjalankan seluruh deploy)
 #   - config/  : etl-config.production.json + .env.config (dari build_linux_release)
 #   - bin/     : etl, app-simlab, app-simlab-publish (GOOS=linux CGO_ENABLED=0)
 #   - test-runner/ : go.mod + seeds/ + .env.reference + test-bin/*.test (8 pkg)
@@ -22,7 +23,7 @@
 #   .\prepare_production.ps1                         # build + verifikasi parse saja (amd64)
 #   .\prepare_production.ps1 -Arch arm64             # build utk ARM64 (AArch64)
 #   .\prepare_production.ps1 -Arch arm               # build utk ARM32
-#   .\prepare_production.ps1 -SSH user@vm -Deploy    # + upload & jalankan di VM
+#   .\prepare_production.ps1 -SSH user@vm -Deploy    # + upload & extract di VM (opsional; admin run run_deploy.sh)
 # =============================================================================
 param(
     [string]$SSH = "",
@@ -46,6 +47,7 @@ $Tools = [System.IO.Path]::GetFullPath($Tools)
 $EnvConfigPath = [System.IO.Path]::GetFullPath($EnvConfigPath)
 $SourceScripts = @(
     (Join-Path $PSScriptRoot "deploy_production.sh"),
+    (Join-Path $PSScriptRoot "run_deploy.sh"),
     (Join-Path $PSScriptRoot "cleanup_production.sh"),
     (Join-Path $PSScriptRoot "README_DEPLOY.md"),
     (Join-Path $PSScriptRoot "lib"),
@@ -319,18 +321,26 @@ try {
 } finally { Pop-Location }
 Write-Host "    OK: $zipPath"
 
-# ---------------------------------------------------------------- 11. (Opsional) Deploy + verifikasi di VM
+# ---------------------------------------------------------------- 11. (Opsional) Upload ke VM (pola E2E)
+# Alur utama TANPA SSH: build zip di Windows -> kirim manual ke VM -> ekstrak ->
+# `sudo bash run_deploy.sh` (SATU file). Opsi ini = build + upload + extract +
+# chmod + verifikasi test binary linux (F10) SEKALIGUS, lalu admin tinggal run.
 if ($Deploy -and $SSH -ne "") {
     Write-Host "==> Deploy ke $SSH"
     & scp $zipPath "${SSH}:/tmp/"
-    if ($LASTEXITCODE -ne 0) { throw "scp gagal" }
-    $remoteCmd = "mkdir -p ~/prod_bundle && tar -xzf /tmp/$bundleName.tar.gz -C ~/prod_bundle; " +
-                 "cd ~/prod_bundle/$bundleName/test-runner && " +
-                 "chmod +x test-bin/*.test; " +
-                 "for t in test-bin/*.test; do echo `"== `$t`"; `$t -test.v -test.count=1 -test.timeout=600s || true; done"
-    Write-Host "==> SSH run test binary linux di VM (lihat output PASS/FAIL/SKIP)"
-    & ssh $SSH $remoteCmd
-    if ($LASTEXITCODE -ne 0) { throw "ssh run gagal" }
+    if ($LASTEXITCODE -ne 0) { throw "scp gagal (exit $LASTEXITCODE)" }
+    $remote = "mkdir -p ~/prod_bundle && rm -rf ~/prod_bundle/$bundleName && " +
+              "tar -xzf /tmp/$bundleName.tar.gz -C ~/prod_bundle && " +
+              "chmod 600 ~/prod_bundle/$bundleName/config/.env.config && " +
+              "chmod +x ~/prod_bundle/$bundleName/bin/* ~/prod_bundle/$bundleName/deploy_production.sh " +
+              "~/prod_bundle/$bundleName/run_deploy.sh ~/prod_bundle/$bundleName/cleanup_production.sh " +
+              "~/prod_bundle/$bundleName/seed_old_install.sh ~/prod_bundle/$bundleName/lib/*.sh; " +
+              "cd ~/prod_bundle/$bundleName/test-runner && chmod +x test-bin/*.test; " +
+              "for t in test-bin/*.test; do echo `"== `$t`"; `$t -test.v -test.count=1 -test.timeout=600s || true; done"
+    Write-Host "==> SSH: extract bundle + run test binary linux (F10) di VM"
+    & ssh $SSH $remote
+    if ($LASTEXITCODE -ne 0) { throw "ssh gagal (exit $LASTEXITCODE)" }
+    Write-Host "    Di VM, admin tinggal: cd ~/prod_bundle/$bundleName && sudo bash run_deploy.sh"
 }
 
 # ---------------------------------------------------------------- 12. Report
@@ -360,7 +370,8 @@ isi bundle:
   bin/     : etl, app-simlab, app-simlab-publish
   test-runner/ : go.mod, .env.reference, seeds/, test-bin/ (8 *.test)
   seeds/   : mi-1, vokasi-1, default
-  deploy_production.sh (Fase E: P0–PK) + cleanup_production.sh (Fase E) + lib/
+  deploy_production.sh + run_deploy.sh (Fase E: P0–PK; run_deploy.sh = SATU file utk admin)
+  cleanup_production.sh (Fase E) + lib/
   seed_old_install.sh (Fase F: tanam "versi lama" di lokasi random) + assets/inventaris_lab_empty.db
   README_DEPLOY.md (panduan deploy+cleanup) + bundle-meta.txt (commit & nama bundle utk report P13)
 
