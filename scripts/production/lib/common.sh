@@ -294,6 +294,19 @@ phase_summary() {
     done
     log "============================================"
 }
+# phases_all_ok: true bila SEMUA fase berstatus PASS/SKIP (tidak ada FAIL/WARN/RUNNING).
+# Dipakai gate P15 self-cleanup (R5 doc 021 §5): bundle hanya dihapus bila seluruh
+# alur benar-benar sukses. SKIP dianggap OK (skip memang disengaja, mis. --skip-migrate).
+phases_all_ok() {
+    local i
+    for i in "${PHASE_STATUS[@]}"; do
+        case "${i}" in
+            PASS|SKIP) : ;;
+            *) return 1 ;;
+        esac
+    done
+    [ "${#PHASE_STATUS[@]}" -gt 0 ]
+}
 # phase_report_key: nama key JSON report utk fase (pola doc 014 komponen #4).
 phase_report_key() {
     case "$1" in

@@ -5,7 +5,9 @@
 # Orchestrator deploy tools production Linux (/opt/simlab). Dijalankan dari
 # folder hasil extract bundle:
 #   cd deploy_production_<ts>
-#   sudo bash deploy_production.sh [--skip-migrate] [--skip-test]
+#   sudo bash deploy_production.sh [--skip-migrate] [--skip-test] [--force] [--keep-bundle]
+#   --force       = P15 self-cleanup tanpa konfirmasi Y/n
+#   --keep-bundle = P15 skip self-delete (bundle tar.gz + folder extract dipertahankan)
 #
 # Tahap (Fase E: P0–PK lengkap; Fase P-B: N-Lab aware; Fase P-C: PostgreSQL aware):
 #   P0  Validasi prasyarat + bundle lengkap                  → STOP
@@ -38,6 +40,9 @@
 #        P-C: di Postgres file .db lokal TIDAK dihapus)
 #   PK  Auto-run server + verify final (report digenerate    → WARN
 #       ulang agar memuat PK_autorun)
+#   P15 Self-cleanup bundle (tar.gz + folder extract)        → SKIP
+#       (R5: gate aman = semua fase PASS/SKIP + server running + /readyz OK;
+#        --force tanpa konfirmasi; --keep-bundle skip; guard nama deploy_production_*)
 #
 # ROLLBACK: stop service, restore symlink + data dari backup, start, health.
 # Jalur sukses maupun rollback selalu berakhir dengan server RUNNING.
@@ -49,12 +54,16 @@ source "${SCRIPT_DIR}/lib/common.sh"
 
 SKIP_MIGRATE=false
 SKIP_TEST=false
+FORCE_CLEAN=false
+KEEP_BUNDLE=false
 args=("$@")
 i=0
 while [ "${i}" -lt "${#args[@]}" ]; do
     case "${args[${i}]}" in
         --skip-migrate) SKIP_MIGRATE=true ;;
         --skip-test)    SKIP_TEST=true ;;
+        --force)        FORCE_CLEAN=true ;;
+        --keep-bundle)  KEEP_BUNDLE=true ;;
         --install-dir)
             i=$((i + 1))
             [ "${i}" -lt "${#args[@]}" ] || error "--install-dir membutuhkan nilai (path lokasi install)"
@@ -916,6 +925,72 @@ if [ -n "${REPORT_FILE}" ]; then
 fi
 
 # ============================================================================
+# P15 — SELF-CLEANUP (R5): hapus bundle tar.gz + folder extract sendiri
+# ============================================================================
+declare_phase "P15" "Self-cleanup bundle (tar.gz + folder extract)"
+# Gate aman (R5 doc 021 §5): HANYA dijalankan bila SEMUA fase PASS/SKIP DAN server
+# running DAN /readyz OK. Bila tidak → bundle dipertahankan. Flag:
+#   --keep-bundle  = skip seluruh self-delete (bundle tetap)
+#   --force        = hapus tanpa konfirmasi Y/n
+P15_CLEAN=false
+if [ "${KEEP_BUNDLE}" = "true" ]; then
+    log "P15: --keep-bundle — artefak bundle dipertahankan"
+    phase_skip "P15" "--keep-bundle"
+elif ! phases_all_ok; then
+    warn "P15: ada fase tidak PASS/SKIP — bundle dipertahankan utk investigasi"
+    phase_skip "P15" "gate fase tidak terpenuhi"
+elif ! server_is_running; then
+    warn "P15: server tidak running — bundle dipertahankan"
+    phase_skip "P15" "server tidak running"
+elif ! readyz_check; then
+    warn "P15: /readyz tidak OK — bundle dipertahankan"
+    phase_skip "P15" "readyz tidak OK"
+else
+    P15_CLEAN=true
+fi
+
+if [ "${P15_CLEAN}" = "true" ] && [ "${FORCE_CLEAN}" != "true" ]; then
+    if ! read -r -p "Hapus bundle tar.gz + folder extract ini? [Y/n] " ans; then
+        warn "P15: input non-interaktif — bundle dipertahankan (pakai --force utk auto-clean)"
+        phase_skip "P15" "non-interaktif (pakai --force)"
+        P15_CLEAN=false
+    else
+        case "${ans}" in
+            Y|y|"") : ;;
+            *)
+                log "P15: dibatalkan oleh user — bundle dipertahankan"
+                phase_skip "P15" "dibatalkan user"
+                P15_CLEAN=false
+                ;;
+        esac
+    fi
+fi
+
+if [ "${P15_CLEAN}" = "true" ]; then
+    # 1) hapus tar.gz bundle dengan GUARD NAMA deploy_production_*.tar.gz
+    #    (lokasi: parent folder extract, INSTALL_DIR, /tmp).
+    for d in "$(dirname "${SCRIPT_DIR}")" "${INSTALL_DIR}" "${TMPDIR:-/tmp}"; do
+        for b in "${d}"/deploy_production_*.tar.gz; do
+            [ -e "${b}" ] || continue
+            rm -f "${b}"
+            log "P15: hapus bundle ${b}"
+        done
+    done
+    # 2) hapus folder extract sendiri (bash sudah membaca script penuh; aman).
+    #    Guard basename = deploy_production_* agar tidak menghapus folder lain.
+    case "$(basename "${SCRIPT_DIR}")" in
+        deploy_production_*)
+            rm -rf "${SCRIPT_DIR}"
+            log "P15: hapus folder extract ${SCRIPT_DIR}"
+            ;;
+        *)
+            warn "P15: basename '$(basename "${SCRIPT_DIR}")' ≠ deploy_production_* — folder extract tidak dihapus"
+            ;;
+    esac
+    phase_pass "P15"
+fi
+
+# ============================================================================
 # SELESAI — ringkasan
 # ============================================================================
 phase_summary
@@ -930,4 +1005,4 @@ if [ -n "${REPORT_FILE}" ]; then
     ok "   Report : ${REPORT_FILE}"
 fi
 ok "==============================================="
-log "Langkah berikutnya (Fase E): cleanup_production.sh utk hapus bundle+zip setelah semua aman"
+log "Fase P15 sudah menangani self-cleanup bundle (lihat status P15 di atas)."

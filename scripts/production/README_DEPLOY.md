@@ -86,7 +86,15 @@ sudo bash run_deploy.sh --skip-migrate
 sudo bash run_deploy.sh --skip-migrate --skip-test
 sudo bash run_deploy.sh --install-dir /srv/simlab
 sudo bash run_deploy.sh --allow-roots "/srv /home"
+sudo bash run_deploy.sh --force        # P15 self-cleanup tanpa konfirmasi Y/n
+sudo bash run_deploy.sh --keep-bundle  # P15 skip self-delete (bundle dipertahankan)
 ```
+
+**P15 self-cleanup (R5 doc 021):** di akhir alur, bila SEMUA fase PASS/SKIP + server running
++ `/readyz` OK, deploy menghapus bundle `deploy_production_<ts>.tar.gz` (parent extract /
+`INSTALL_DIR` / `/tmp`) dan folder extract sendiri (guard nama `deploy_production_*`).
+Bila ada fase WARN/FAIL, server mati, atau `--keep-bundle` → bundle dipertahankan.
+`cleanup_production.sh` (bila dipakai) hanya utk kasus yang ingin hapus bundle manual.
 
 Setara: 
 ```sh
