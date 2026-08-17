@@ -656,3 +656,16 @@ chown_optional() {
 chown_data() {
     chown_optional "${DATA_DIR}"
 }
+# verify_accept_fresh_superadmin: deploy P11 R4 — `app-simlab -verify` boleh dianggap
+#   LOLOS meski exit != 0 HANYA pada install FRESH (MIGRATION_RAN=0) bila SATU-SATUNYA
+#   kegagalan adalah "tidak ada super admin" (global_users kosong; dibuat nanti via
+#   panel admin). Error lain (integrity/orphan/uploads/marker) tetap FAIL.
+#   $1 = path log verify. Return 0 = terima; 1 = tolak.
+verify_accept_fresh_superadmin() {
+    local logf="$1" errs others
+    [ "${MIGRATION_RAN:-0}" -eq 0 ] || return 1
+    errs=$(grep -E '\[global\] ERROR:' "${logf}" 2>/dev/null || true)
+    [ -n "${errs}" ] || return 1
+    others=$(printf '%s\n' "${errs}" | grep -v 'tidak ada super admin' || true)
+    [ -z "${others}" ]
+}

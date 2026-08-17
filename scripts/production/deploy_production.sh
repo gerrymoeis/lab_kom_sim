@@ -507,7 +507,14 @@ elif should_migrate; then
     chown_data
     phase_pass "P4"
 else
-    phase_skip "P4" "sudah multi-DB / tidak ada source single-DB"
+    # R4: bedakan jelas fresh install (tanpa source single-DB) vs sudah multi-DB.
+    if [ -f "${DATA_DIR}/global.db" ]; then
+        phase_skip "P4" "sudah multi-DB (global.db ada) — tidak perlu migrasi"
+        MIG_STATUS="multi"
+    else
+        phase_skip "P4" "fresh install — tidak ada source single-DB (super_admin dibuat via panel admin)"
+        MIG_STATUS="fresh"
+    fi
 fi
 
 # ============================================================================
@@ -616,6 +623,9 @@ phase_pass "P10"
 # ============================================================================
 declare_phase "P11" "Verifikasi read-only app-simlab -verify"
 # -verify read-only: integrity, super_admin>=1, orphan FK, uploads subdir, marker .seed_done.
+# R4: super_admin>=1 hanya WAJIB saat MIGRATION_RAN=1 (produksi migrate). Bila install
+# FRESH (tanpa migrasi), kegagalan tunggal "tidak ada super admin" diterima → report
+# super_admin=N/A; integrity/orphan/uploads/marker tetap diverifikasi keras.
 # Dijalankan dari RELEASE_DIR (memuat .env yang benar via config.Load CWD).
 VERIFY_LOG="${BACKUP_DIR}/verify.log"
 if [ "${DB_BACKEND}" = "postgres" ]; then
@@ -626,6 +636,11 @@ if [ "${DB_BACKEND}" = "postgres" ]; then
 elif [ -x "${RELEASE_DIR}/app-simlab" ]; then
     if (cd "${RELEASE_DIR}" && ./app-simlab -verify) > "${VERIFY_LOG}" 2>&1; then
         log "P11: app-simlab -verify OK (exit 0) — lihat ${VERIFY_LOG}"
+        phase_pass "P11"
+    elif verify_accept_fresh_superadmin "${VERIFY_LOG}"; then
+        VERIFY_SUPER_ADMIN="N/A"
+        warn "P11: kegagalan tunggal = tidak ada super admin (install fresh, tanpa migrasi) — diterima;"
+        warn "    buat super admin via panel admin setelah server boot; super_admin dilaporkan N/A."
         phase_pass "P11"
     else
         phase_fail "P11" "app-simlab -verify exit != 0 — lihat ${VERIFY_LOG}"
@@ -638,8 +653,10 @@ fi
 # Parsing ringkasan verify (untuk P13 report)
 if [ -f "${VERIFY_LOG}" ]; then
     if grep -q "integrity_check ok" "${VERIFY_LOG}"; then VERIFY_INTEGRITY="ok"; fi
-    VERIFY_SUPER_ADMIN=$(grep -o 'super_admin=[0-9]*' "${VERIFY_LOG}" | head -1 | cut -d= -f2)
-    [ -n "${VERIFY_SUPER_ADMIN}" ] || VERIFY_SUPER_ADMIN=0
+    if [ "${VERIFY_SUPER_ADMIN}" != "N/A" ]; then
+        VERIFY_SUPER_ADMIN=$(grep -o 'super_admin=[0-9]*' "${VERIFY_LOG}" | head -1 | cut -d= -f2)
+        [ -n "${VERIFY_SUPER_ADMIN}" ] || VERIFY_SUPER_ADMIN=0
+    fi
     if grep -q "orphan FK=0 ok" "${VERIFY_LOG}"; then VERIFY_ORPHAN=0; fi
     if grep -q "pc/ ok" "${VERIFY_LOG}"; then VERIFY_UPLOADS=true; fi
     if grep -q "marker .seed_done=true" "${VERIFY_LOG}"; then VERIFY_SEED=true; fi
@@ -767,7 +784,7 @@ write_report() {
         echo "  },"
         echo "  \"verify\": {"
         echo "    \"integrity\": \"${VERIFY_INTEGRITY}\","
-        echo "    \"super_admin_count\": ${VERIFY_SUPER_ADMIN},"
+        echo "    \"super_admin_count\": $([ "${VERIFY_SUPER_ADMIN}" = "N/A" ] && echo null || echo "${VERIFY_SUPER_ADMIN}"),"
         echo "    \"orphan_fk\": ${VERIFY_ORPHAN},"
         echo "    \"uploads_ok\": ${VERIFY_UPLOADS},"
         echo "    \"seed_done\": ${VERIFY_SEED}"
