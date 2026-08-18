@@ -441,11 +441,11 @@ server_start() {
         [ -n "${run_dir}" ] || run_dir="${RELEASE_DIR:-${CURRENT_DIR}}"
         [ -x "${run_dir}/app-simlab" ] || error "server_start: ${run_dir}/app-simlab tidak ada/tidak executable"
         log "Menjalankan server (mode proses / manual-run) dari ${run_dir}..."
+        # App memuat .env sendiri via godotenv dari CWD (config.Load) — .env TIDAK
+        # di-source via bash: nilai ber-spasi / CRLF (bundle Windows) mematikan shell
+        # di bawah set -e (doc 023 BUG-1). .env di release dir = salinan ENV_FILE (P6).
         (
             cd "${run_dir}"
-            set -a
-            [ -f .env ] && . ./.env
-            set +a
             nohup ./app-simlab >> "${DATA_DIR}/app.log" 2>&1 &
             echo $! > "${DATA_DIR}/app.pid"
         )

@@ -181,10 +181,18 @@ Write-Host "==> Salin config"
 $cfgSrc = Join-Path $PSScriptRoot "config\etl-config.production.json"
 if (-not (Test-Path -LiteralPath $cfgSrc)) { throw "config template tidak ada: $cfgSrc" }
 Copy-Item -Force $cfgSrc (Join-Path $staging "config\etl-config.production.json")
-Copy-Item -Force $EnvConfigPath (Join-Path $staging "config\.env.config")
+$stagingEnvConfig = Join-Path $staging "config\.env.config"
+Copy-Item -Force $EnvConfigPath $stagingEnvConfig
+# Normalisasi .env.config utk bundle (doc 023 Fix-C): CRLF -> LF + buang komentar
+# inline baris DATABASE_URL (bentuk `DATABASE_URL=<spasi># komentar` membuat godotenv
+# membaca komentar sbg nilai -> false PostgreSQL). URL asli (tanpa spasi-#) tetap.
+$envContent = [System.IO.File]::ReadAllText($stagingEnvConfig, [System.Text.Encoding]::UTF8)
+$envContent = $envContent -replace "`r`n", "`n" -replace "`r", "`n"
+$envContent = [regex]::Replace($envContent, '(?m)^DATABASE_URL=[ \t]*#.*$', 'DATABASE_URL=')
+[System.IO.File]::WriteAllText($stagingEnvConfig, $envContent, (New-Object System.Text.UTF8Encoding($false)))
 # Validasi .env.config: key API wajib terisi (nilai asli), tanpa menampilkan nilainya.
 $cfg = @{}
-Get-Content -LiteralPath $EnvConfigPath | ForEach-Object {
+Get-Content -LiteralPath $stagingEnvConfig | ForEach-Object {
     $t = $_.Trim()
     if ($t -match '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$') { $cfg[$Matches[1]] = $Matches[2] }
 }
@@ -193,7 +201,7 @@ foreach ($key in @("GEMINI_API_KEY", "OPENROUTER_API_KEY", "PC_PHOTO_TOKEN")) {
         throw ".env.config kehilangan $key"
     }
 }
-Write-Host "    OK: etl-config.production.json + .env.config (API key terisi, tidak ditampilkan)"
+Write-Host "    OK: etl-config.production.json + .env.config (API key terisi, LF + DATABASE_URL bersih, tidak ditampilkan)"
 
 # ---------------------------------------------------------------- 7. Salin script deploy (Fase B/E bila sudah ada)
 Write-Host "==> Salin script deploy/run_deploy/lib (bila sudah ada)"
@@ -335,6 +343,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "tar bundle gagal (exit $LASTEXITCODE)" }
 } finally { Pop-Location }
 Write-Host "    OK: $zipPath"
+# Auto-cleanup staging dir (out/ hanya menyisakan tar.gz + report.txt).
+Remove-Item -LiteralPath $staging -Recurse -Force
+Write-Host "    OK: staging dibersihkan"
 
 # ---------------------------------------------------------------- 11. (Opsional) Upload ke VM (pola E2E)
 # Alur utama TANPA SSH: build zip di Windows -> kirim manual ke VM -> ekstrak ->

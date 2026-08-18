@@ -86,7 +86,11 @@ EOF
     sleep 1
     ;;
 --start)
-    ( cd "${LOC}/app/current" && set -a && . "${LOC}/.env" && set +a && nohup ./app-simlab >"${LOC}/data/app.log" 2>&1 & )
+    # App memuat .env sendiri via godotenv dari CWD (config.Load). Salin .env ke
+    # release dir (pola produksi deploy P6) dan JANGAN source via bash — nilai
+    # ber-spasi/CRLF mematikan shell (doc 023 BUG-1). ENV_PATH TIDAK di-load app.
+    cp -f "${LOC}/.env" "${LOC}/app/current/.env"
+    ( cd "${LOC}/app/current" && nohup ./app-simlab >"${LOC}/data/app.log" 2>&1 & )
     sleep 2
     ;;
 esac

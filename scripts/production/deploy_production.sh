@@ -260,6 +260,29 @@ BACKUP_DIR="$(backup_dir)"
 ENV_CONFIG_TEMPLATE="${SCRIPT_DIR}/config/.env.config"
 SECRET=""
 
+# normalize_env_file: normalisasi ENV_FILE (doc 023 BUG-1/BUG-2) agar aman utk app
+# (godotenv) dan konsisten dgn deteksi shell (baca_env):
+#   1) CRLF -> LF (template .env.config dari Windows ber-CRLF; source bash mematikan
+#      server di bawah set -e; .env LF juga konsisten utk seluruh tools).
+#   2) buang komentar inline baris DATABASE_URL (bentuk `DATABASE_URL=<spasi># komentar`
+#      membuat godotenv membaca komentar sbg nilai -> false PostgreSQL). URL asli
+#      `postgres://...` (tanpa spasi-#) TIDAK tersentuh.
+#   3) chmod 600 (sekret). Idempotent; dipanggil utk .env lama maupun hasil regenerate.
+normalize_env_file() {
+    [ -f "${ENV_FILE}" ] || return 0
+    local tmp="${ENV_FILE}.norm.tmp"
+    if tr -d '\r' < "${ENV_FILE}" \
+        | sed -E 's/^(DATABASE_URL=)[[:space:]]*#.*$/\1/' \
+        > "${tmp}"; then
+        mv "${tmp}" "${ENV_FILE}"
+        chmod 600 "${ENV_FILE}"
+        log "P1: .env dinormalisasi (LF + DATABASE_URL tanpa komentar inline)"
+    else
+        rm -f "${tmp}"
+        warn "normalize_env_file: gagal — ${ENV_FILE} tidak diubah"
+    fi
+}
+
 regenerate_env() {
     # $1 = secret yang akan dipakai; bila kosong → generate baru
     local secret="$1"
@@ -312,6 +335,10 @@ else
     log "P1: .env belum ada — generate dari template"
     regenerate_env ""
 fi
+
+# Normalisasi .env (doc 023): berlaku utk hasil regenerate MAUPUN .env lama
+# (skip regenerate) — memastikan LF + DATABASE_URL bersih utk app.
+normalize_env_file
 
 # Validasi key wajib ada (nilai tidak di-log). Daftar lab dibaca dari .env
 # (N-Lab aware): REQUIRED_KEYS dibangun dari LABS_<N>_* yang terdeteksi,
