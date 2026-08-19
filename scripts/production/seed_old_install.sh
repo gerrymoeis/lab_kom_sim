@@ -2,7 +2,7 @@
 # seed_old_install.sh — menanam "versi lama" SIMLab di sembarang lokasi (Fase F, doc 018).
 # Jalankan DARI folder bundle yang sudah ter-extract (memakai bin/ + assets/ milik bundle).
 #
-# usage: ./seed_old_install.sh <LOC> [v1|v2] [--service|--start] [--db <file>]
+# usage: ./seed_old_install.sh <LOC> [v1|v2] [--service|--start] [--replace] [--db <file>] [--bin <path>]
 #   <LOC>      direktori install (lokasi random utk studi kasus auto-discovery)
 #   v1         format single-lab legacy (DATABASE_PATH) — DEFAULT, kasus nyata
 #              "versi lama"; deploy TUNTAS di sini (migrasi single→multi)
@@ -10,21 +10,62 @@
 #              bila lokasi pernah di-deploy penuh (lihat -verify P11)
 #   --service  tulis + enable unit systemd simlab.service yang menunjuk <LOC>
 #   --start    jalankan app-simlab sbg proses latar (nohup)
+#   --replace  hentikan server berjalan + hapus <LOC>/app dan <LOC>/data dulu
+#              (mengganti install terbaru dgn app lama yg bersih; skenario EXISTING)
 #   --db FILE  gunakan FILE sbg source single-DB (v1) — default: assets/inventaris_lab_empty.db
+#   --bin PATH gunakan PATH sbg binary app (mis. app LAMA dari build_old_main.ps1);
+#              web/ di samping PATH ikut disalin bila ada (app lama baca web/ dari
+#              disk relatif CWD). Tanpa --bin: pakai bin/app-simlab milik bundle
+#              (jalankan dari folder bundle)
 set -euo pipefail
-LOC="${1:?usage: seed_old_install.sh <LOC> [v1|v2] [--service|--start] [--db FILE]}"
-FMT="${2:-v1}"
-MODE="${3:-}"
-DB_ARG="${4:-}"
+LOC=""
+FMT="v1"
+MODE=""
+DB_ARG=""
+BIN_ARG=""
+REPLACE=""
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --bin) BIN_ARG="${2:-}"; shift 2 ;;
+        --db) DB_ARG="${2:-}"; shift 2 ;;
+        --service|--start) MODE="$1"; shift ;;
+        --replace) REPLACE=1; shift ;;
+        v1|v2) FMT="$1"; shift ;;
+        *) LOC="${LOC:-$1}"; shift ;;
+    esac
+done
+LOC="${LOC:?usage: seed_old_install.sh <LOC> [v1|v2] [--service|--start] [--replace] [--db FILE] [--bin PATH]}"
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-[ -d "${SELF_DIR}/bin" ] || { echo "ERROR: jalankan dari folder bundle (bin/ tidak ada di ${SELF_DIR})" >&2; exit 1; }
+if [ -n "${BIN_ARG}" ]; then
+    [ -f "${BIN_ARG}" ] || { echo "ERROR: --bin tidak ditemukan: ${BIN_ARG}" >&2; exit 1; }
+else
+    [ -d "${SELF_DIR}/bin" ] || { echo "ERROR: jalankan dari folder bundle (bin/ tidak ada di ${SELF_DIR}) atau beri --bin <path>" >&2; exit 1; }
+fi
 
 REL="${LOC}/app/releases/old"
+
+if [ "${REPLACE}" = "1" ]; then
+    echo "SEED --replace: hentikan server + hapus ${LOC}/app dan ${LOC}/data"
+    if systemctl is-active --quiet simlab 2>/dev/null; then sudo systemctl stop simlab; fi
+    sudo pkill -x app-simlab 2>/dev/null || true
+    sleep 1
+    sudo rm -rf "${LOC}/app" "${LOC}/data"
+fi
+
 mkdir -p "${REL}" "${LOC}/data/uploads" "${LOC}/data/backups"
 ln -sfn "${REL}" "${LOC}/app/current"
-cp -f "${SELF_DIR}/bin/app-simlab" "${REL}/app-simlab"
+
+if [ -n "${BIN_ARG}" ]; then
+    cp -f "${BIN_ARG}" "${REL}/app-simlab"
+else
+    cp -f "${SELF_DIR}/bin/app-simlab" "${REL}/app-simlab"
+fi
 chmod +x "${REL}/app-simlab"
+
+if [ -n "${BIN_ARG}" ] && [ -d "$(dirname "${BIN_ARG}")/web" ]; then
+    cp -rf "$(dirname "${BIN_ARG}")/web" "${REL}/web"
+fi
 
 if [ "${FMT}" = "v1" ]; then
     if [ -n "${DB_ARG}" ]; then
