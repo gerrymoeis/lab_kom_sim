@@ -655,6 +655,40 @@ app_user_exists() {
     fi
     [ "${APP_USER_CACHE}" = "yes" ]
 }
+# is_prompt_available: true bila boleh prompt interaktif (root + stdin TTY + non-CI).
+is_prompt_available() {
+    [ "$(id -u)" -eq 0 ] && [ -t 0 ] && [ -z "${CI:-}" ]
+}
+# prompt_create_service_user: pastikan user service ${APP_NAME} ada. Bila belum ada:
+#   - is_prompt_available (root + TTY + non-CI) → tawarkan membuat user sistem
+#     (useradd --system) dgn izin admin Linux; jawaban y/Y/yes → buat + cache user ada.
+#   - non-interaktif/CI/ditolak → warn saja (R3): deploy tetap jalan, ownership
+#     dipertahankan milik user yang menjalankan deploy (manual-run).
+prompt_create_service_user() {
+    if app_user_exists; then
+        log "user ${APP_NAME} ada (uid $(id -u "${APP_NAME}"))"
+        return 0
+    fi
+    if is_prompt_available; then
+        printf "user service '${APP_NAME}' belum ada. Buat user sistem '${APP_NAME}' sekarang (useradd --system)? [y/N] " >&2
+        read -r answer || answer=""
+        case "${answer}" in
+            y|Y|yes)
+                if useradd --system --no-create-home --shell /usr/sbin/nologin "${APP_NAME}" 2>&1; then
+                    log "user sistem '${APP_NAME}' dibuat — ownership app/data dipindahkan ke user tsb"
+                    APP_USER_CACHE="yes"
+                else
+                    warn "gagal membuat user '${APP_NAME}' — lanjut dgn ownership pemakai deploy"
+                fi
+                ;;
+            *) warn "user service '${APP_NAME}' TIDAK dibuat — chown di-skip, ownership dipertahankan milik $(id -un)."
+               warn "    (manual-run tanpa install.sh; server dijalankan sebagai user ini — sama seperti admin.)" ;;
+        esac
+    else
+        warn "user service '${APP_NAME}' tidak ada — chown di-skip, ownership dipertahankan milik $(id -un)."
+        warn "    (manual-run tanpa install.sh; server dijalankan sebagai user ini — sama seperti admin.)"
+    fi
+}
 # chown_optional: pindahkan ownership target ke user service ${APP_NAME}.
 #   Bila user service tidak ada (manual-run tanpa install.sh) → warn dan pertahankan
 #   ownership pemakai yang menjalankan deploy (server dijalankan oleh user tsb —

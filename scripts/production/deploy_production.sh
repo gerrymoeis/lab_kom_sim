@@ -87,6 +87,7 @@ done
 resolve_install_dir
 log "Lokasi install terdeteksi: INSTALL_DIR=${INSTALL_DIR} (method=${DETECT_METHOD})"
 SOURCE_DB="${DATA_DIR}/inventaris_lab.db"
+RUN_MODE="$(detect_run_mode)"
 
 # ---------------------------------------------------------------- Variabel global
 BACKUP_DIR=""
@@ -244,14 +245,10 @@ for seed in mi-1 vokasi-1 default; do
     [ -d "${SCRIPT_DIR}/seeds/${seed}" ] || error "P0: seeds/${seed} hilang di bundle"
 done
 [ -d "${SCRIPT_DIR}/test-runner/test-bin" ] || warn "P0: test-runner/test-bin belum ada (Fase D)"
-# User service (dibuat install.sh). Bila tidak ada → warn saja (R3): deploy tetap
-# jalan, ownership dipertahankan milik user yang menjalankan deploy (manual-run).
-if app_user_exists; then
-    log "P0: user ${APP_NAME} ada (uid $(id -u "${APP_NAME}"))"
-else
-    warn "P0: user service '${APP_NAME}' tidak ada — chown di-skip, ownership dipertahankan milik $(id -un)."
-    warn "    (manual-run tanpa install.sh; server dijalankan sebagai user ini — sama seperti admin.)"
-fi
+# User service (dibuat install.sh). Bila tidak ada → tawarkan membuat user sistem
+# (dengan izin admin Linux, prompt interaktif); bila ditolak/non-interaktif → warn
+# saja (R3): deploy tetap jalan, ownership dipertahankan milik user deploy (manual-run).
+prompt_create_service_user
 phase_pass "P0"
 
 # ============================================================================
@@ -940,13 +937,20 @@ declare_phase "PK" "Auto-run server + verify final"
 # report digenerate ulang agar memuat PK_autorun.
 PK_OK=1
 if ! server_is_running; then
-    warn "PK: server tidak running (mode ${RUN_MODE}) — butuh intervensi manual (journalctl -u ${SERVICE_NAME} -n 50 atau ${DATA_DIR}/app.log)"
-    phase_warn "PK" "server tidak running"
-    PK_OK=0
+    warn "PK: server tidak running — mencoba start ulang otomatis..."
+    server_start 2>/dev/null || true
+    sleep 3
+    if server_is_running; then
+        log "PK: server auto-start berhasil (mode ${RUN_MODE})"
+    else
+        warn "PK: server tetap tidak running — butuh intervensi manual (journalctl -u ${SERVICE_NAME} -n 50 atau ${DATA_DIR}/app.log)"
+        phase_warn "PK" "server tidak running"
+        PK_OK=0
+    fi
 else
     log "PK: server running (mode ${RUN_MODE})"
 fi
-if ! readyz_check; then
+if [ "${PK_OK}" -eq 1 ] && ! readyz_check; then
     warn "PK: /readyz tidak OK — butuh intervensi manual"
     phase_warn "PK" "readyz gagal"
     PK_OK=0
@@ -1033,9 +1037,14 @@ ok "   Release: ${RELEASE_DIR}"
 ok "   Run mode: ${RUN_MODE:-$(detect_run_mode)}"
 ok "   Status : $(server_is_running && echo running || echo stopped)"
 ok "   URL    : ${SERVER_URL}"
+ok "   Buka   : ${SERVER_URL}/  (healthz: ${SERVER_URL}/healthz | readyz: ${SERVER_URL}/readyz)"
 ok "   Backup : ${BACKUP_DIR}"
 if [ -n "${REPORT_FILE}" ]; then
     ok "   Report : ${REPORT_FILE}"
 fi
+if [ "${MIGRATION_RAN:-1}" -eq 0 ]; then
+    ok "   Fresh install — buat akun super_admin via panel admin pada login pertama."
+fi
+ok "   Server BERJALAN — buka URL di atas utk review manual."
 ok "==============================================="
 log "Fase P15 sudah menangani self-cleanup bundle (lihat status P15 di atas)."
