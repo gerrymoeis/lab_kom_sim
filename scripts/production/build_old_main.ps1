@@ -89,11 +89,12 @@ try {
     Pop-Location
 }
 
-# -------------------------------------------------------- 6. Buat zip distribusi
+# -------------------------------------------------------- 6. Buat zip distribusi (mode-aware)
 function New-SimlabZip {
-    # Zip folder $SourceDir -> $ZipPath dengan root $RootName dan nama entry
-    # FORWARD SLASH (aman utk unzip di Linux). Compress-Archive PS5.1 memakai
-    # backslash di nama entry -> TIDAK aman lintas-platform, tidak dipakai.
+    # Zip folder $SourceDir -> $ZipPath dengan root $RootName, nama entry FORWARD
+    # SLASH (aman utk unzip di Linux; Compress-Archive PS5.1 memakai backslash,
+    # tidak dipakai) + external attribute Unix (0755 binary/*.sh, 0644 lainnya)
+    # agar unzip Linux menerapkan mode saat extract (tanpa chmod manual).
     param([string]$SourceDir, [string]$ZipPath, [string]$RootName)
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     if (Test-Path -LiteralPath $ZipPath) { Remove-Item -LiteralPath $ZipPath -Force }
@@ -101,7 +102,10 @@ function New-SimlabZip {
     try {
         Get-ChildItem -LiteralPath $SourceDir -Recurse -File | ForEach-Object {
             $rel = $_.FullName.Substring($SourceDir.Length).TrimStart('\', '/')
-            $entry = $zip.CreateEntry(("$RootName/$rel" -replace '\\', '/'), 'Optimal')
+            $arc = ("$RootName/$rel" -replace '\\', '/')
+            $entry = $zip.CreateEntry($arc, 'Optimal')
+            $isExec = ($arc -eq "$RootName/app-simlab") -or $arc.EndsWith('.sh')
+            $entry.ExternalAttributes = if ($isExec) { (0x81ED -shl 16) } else { (0x81A4 -shl 16) }
             $es = $entry.Open()
             try {
                 $fs = [System.IO.File]::OpenRead($_.FullName)
@@ -111,9 +115,34 @@ function New-SimlabZip {
     } finally { $zip.Dispose() }
 }
 
+function Set-ZipUnixHost {
+    # .NET menulis "version made by" host = 0 (DOS) -> unzip Linux mengabaikan
+    # mode unix. Patch byte host (central directory, offset+5) menjadi 3 (Unix)
+    # utk SEMUA entry agar unzip Linux menerapkan external attribute (0755/0644).
+    param([string]$ZipPath)
+    $bytes = [System.IO.File]::ReadAllBytes($ZipPath)
+    $eocd = -1
+    for ($i = $bytes.Length - 22; $i -ge 0; $i--) {
+        if ($bytes[$i] -eq 0x50 -and $bytes[$i + 1] -eq 0x4b -and $bytes[$i + 2] -eq 0x05 -and $bytes[$i + 3] -eq 0x06) { $eocd = $i; break }
+    }
+    if ($eocd -lt 0) { throw "EOCD tidak ditemukan: $ZipPath" }
+    $cdOffset = [BitConverter]::ToInt32($bytes, $eocd + 16)
+    $count = [BitConverter]::ToUInt16($bytes, $eocd + 10)
+    $p = $cdOffset
+    for ($n = 0; $n -lt $count; $n++) {
+        if ($bytes[$p] -ne 0x50 -or $bytes[$p + 1] -ne 0x4b -or $bytes[$p + 2] -ne 0x01 -or $bytes[$p + 3] -ne 0x02) {
+            throw "Central directory rusak di offset ${p}: $ZipPath"
+        }
+        $bytes[$p + 5] = 3
+        $p += 46 + [BitConverter]::ToUInt16($bytes, $p + 28) + [BitConverter]::ToUInt16($bytes, $p + 30) + [BitConverter]::ToUInt16($bytes, $p + 32)
+    }
+    [System.IO.File]::WriteAllBytes($ZipPath, $bytes)
+}
+
 $zip = Join-Path (Split-Path -Parent $OutDir) "old_main_$ts.zip"
-Write-Host "==> Buat zip distribusi: $zip"
+Write-Host "==> Buat zip distribusi (mode Unix 0755 binary / 0644 web): $zip"
 New-SimlabZip -SourceDir $OutDir -ZipPath $zip -RootName "old_main"
+Set-ZipUnixHost -ZipPath $zip
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zr = [System.IO.Compression.ZipFile]::OpenRead($zip)
 try {
@@ -121,11 +150,15 @@ try {
     $okBin = $entries -contains "old_main/app-simlab"
     $okTpl = @($entries | Where-Object { $_ -like "old_main/web/templates/*" }).Count -gt 0
     $okSta = @($entries | Where-Object { $_ -like "old_main/web/static/*" }).Count -gt 0
+    $binAttr = ($zr.Entries | Where-Object { $_.FullName -eq "old_main/app-simlab" }).ExternalAttributes
     if (-not ($okBin -and $okTpl -and $okSta)) {
         throw "isi zip tidak lengkap (butuh old_main/app-simlab + web/templates/* + web/static/*)"
     }
+    if ($binAttr -ne (0x81ED -shl 16)) {
+        throw "app-simlab di zip tidak bermode 0755 (attr=0x$($binAttr.ToString('X8')))"
+    }
 } finally { $zr.Dispose() }
-Write-Host "    OK: zip berisi old_main/app-simlab + web/templates + web/static (forward slash)"
+Write-Host "    OK: zip berisi old_main/app-simlab (0755) + web/templates + web/static (forward slash)"
 
 $binOut = Join-Path $OutDir "app-simlab"
 Write-Host ""
@@ -138,4 +171,5 @@ Write-Host "Langkah berikut (skenario EXISTING):"
 Write-Host "    1. scp/copy $zip ke VM (mis. ~/Unduhan/)"
 Write-Host "    2. extract di VM: cd ~/Unduhan && unzip -q old_main_$ts.zip"
 Write-Host "       (bila unzip belum ada: sudo apt-get install -y unzip)"
+Write-Host "       app-simlab SUDAH 0755 dari zip (tanpa chmod manual)"
 Write-Host "    3. ./seed_old_install.sh /opt/simlab v1 --service --replace --bin ~/Unduhan/old_main/app-simlab"

@@ -329,20 +329,14 @@ foreach ($t in Get-ChildItem $testBinDir -Filter *.test) {
 }
 Write-Host "    OK: 8 test binary linux (ELF ${Arch})"
 
-# ---------------------------------------------------------------- 10. Buat tar.gz
-Write-Host "==> Buat tar.gz"
+# ---------------------------------------------------------------- 10. Buat tar.gz (mode-aware)
+# pack_bundle_modes.ps1 meng-embed executable bit (script/bin 755, data 644,
+# config/.env.config 600) via GNU tar Git for Windows - hasil extract langsung
+# dipakai di Linux tanpa chmod manual (requirement user 19 Agu 2026).
+Write-Host "==> Buat tar.gz (mode-aware: script/bin 755, data 644, .env.config 600)"
 $zipPath = Join-Path $OutDir "$bundleName.tar.gz"
-Push-Location $OutDir
-try {
-    if (Get-Command tar -ErrorAction SilentlyContinue) {
-        & tar -czf $zipPath $bundleName
-    } else {
-        & 7z a -ttar $zipPath $bundleName
-        & 7z a -tgzip $zipPath
-    }
-    if ($LASTEXITCODE -ne 0) { throw "tar bundle gagal (exit $LASTEXITCODE)" }
-} finally { Pop-Location }
-Write-Host "    OK: $zipPath"
+& "$PSScriptRoot\pack_bundle_modes.ps1" -Staging $staging -OutTarGz $zipPath
+if ($LASTEXITCODE -ne 0) { throw "pack_bundle_modes gagal (exit $LASTEXITCODE)" }
 # Auto-cleanup staging dir (out/ hanya menyisakan tar.gz + report.txt).
 Remove-Item -LiteralPath $staging -Recurse -Force
 Write-Host "    OK: staging dibersihkan"
@@ -394,13 +388,14 @@ verifikasi parsing -test.v 1-to-1 (F10):
   hasil         : $(if ($parseOk) { 'PASS (1-to-1 identik)' } else { 'FAIL' })
 
 isi bundle:
-  config/  : etl-config.production.json + .env.config
-  bin/     : etl, app-simlab, app-simlab-publish
-  test-runner/ : go.mod, .env.reference, seeds/, test-bin/ (8 *.test)
+  config/  : etl-config.production.json + .env.config (mode 0600 di tar)
+  bin/     : etl, app-simlab, app-simlab-publish (mode 0755 di tar)
+  test-runner/ : go.mod, .env.reference, seeds/, test-bin/ (8 *.test, mode 0755)
   seeds/   : mi-1, vokasi-1, default
-  deploy_production.sh + run_deploy.sh (alur P0-P15; run_deploy.sh = SATU file utk admin)
-  lib/ + README_DEPLOY.md + bundle-meta.txt (commit & nama bundle utk report P13)
+  deploy_production.sh + run_deploy.sh + lib/*.sh (mode 0755; seed_old_install.sh bila helper)
+  README_DEPLOY.md + bundle-meta.txt (commit & nama bundle utk report P13)
   test helpers (SKIP bila -NoTestHelpers): seed_old_install.sh + assets/inventaris_lab_empty.db
+  mode-aware tar (pack_bundle_modes.ps1): script/bin 0755, data 0644, config/.env.config 0600 - extract langsung jalan tanpa chmod manual
   P15 self-cleanup: hapus tar.gz + folder extract setelah fase tidak FAIL (PASS/SKIP/WARN ok) + server running + /readyz OK
 
 next: verifikasi eksekusi test binary linux di VM:
