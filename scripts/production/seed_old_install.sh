@@ -3,6 +3,7 @@
 # Jalankan DARI folder bundle yang sudah ter-extract (memakai bin/ + assets/ milik bundle).
 #
 # usage: ./seed_old_install.sh <LOC> [v1|v2] [--service|--start] [--replace] [--db <file>] [--bin <path>]
+#   (otomatis sudo bila dijalankan bukan root)
 #   <LOC>      direktori install (lokasi random utk studi kasus auto-discovery)
 #   v1         format single-lab legacy (DATABASE_PATH) — DEFAULT, kasus nyata
 #              "versi lama"; deploy TUNTAS di sini (migrasi single→multi)
@@ -18,6 +19,20 @@
 #              disk relatif CWD). Tanpa --bin: pakai bin/app-simlab milik bundle
 #              (jalankan dari folder bundle)
 set -euo pipefail
+
+# Root dibutuhkan (mkdir/cp/systemctl di /opt, /etc). Bila bukan root, jalankan
+# ulang via sudo secara otomatis agar perintah guide (./seed_old_install.sh ...)
+# TIDAK pernah gagal "Ijin ditolak" (fix 19 Agu malam - run FRESH sukses karena
+# sudo bash run_deploy.sh; run EXISTING dijalankan tanpa root).
+if [ "$(id -u)" -ne 0 ]; then
+    if command -v sudo >/dev/null 2>&1; then
+        echo "seed_old_install.sh butuh root - jalankan ulang via sudo" >&2
+        exec sudo bash "$0" "$@"
+    fi
+    echo "ERROR: butuh root dan sudo tidak tersedia. Jalankan: sudo bash $0 $*" >&2
+    exit 1
+fi
+
 LOC=""
 FMT="v1"
 MODE=""
