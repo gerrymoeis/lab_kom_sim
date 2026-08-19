@@ -401,7 +401,7 @@ isi bundle:
   deploy_production.sh + run_deploy.sh (alur P0-P15; run_deploy.sh = SATU file utk admin)
   lib/ + README_DEPLOY.md + bundle-meta.txt (commit & nama bundle utk report P13)
   test helpers (SKIP bila -NoTestHelpers): seed_old_install.sh + assets/inventaris_lab_empty.db
-  P15 self-cleanup: hapus tar.gz + folder extract setelah semua fase PASS/SKIP + server running + /readyz OK
+  P15 self-cleanup: hapus tar.gz + folder extract setelah fase tidak FAIL (PASS/SKIP/WARN ok) + server running + /readyz OK
 
 next: verifikasi eksekusi test binary linux di VM:
   scp $bundleName.tar.gz root@server:/opt/simlab/
