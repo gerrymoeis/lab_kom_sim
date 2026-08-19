@@ -184,6 +184,7 @@ resolve_install_dir() {
             log "Deteksi lokasi install: systemd (${cand})"
             return 0
         fi
+        [ -n "${cand}" ] && warn "Deteksi systemd: '${cand}' ada tapi TIDAK valid (bukan struktur SIMLab lengkap) — lanjut deteksi berikutnya"
     fi
     # 3) proses berjalan
     if locate_by_process; then
@@ -193,6 +194,7 @@ resolve_install_dir() {
             log "Deteksi lokasi install: process (${cand})"
             return 0
         fi
+        [ -n "${cand}" ] && warn "Deteksi proses: '${cand}' ada tapi TIDAK valid (bukan struktur SIMLab lengkap) — lanjut deteksi berikutnya"
     fi
     # 4) bounded scan
     if scan_install_dir; then
@@ -203,6 +205,7 @@ resolve_install_dir() {
                 log "Deteksi lokasi install: scan (${cand})"
                 return 0
             fi
+            warn "Deteksi scan: kandidat '${cand}' ada tapi TIDAK valid (bukan struktur SIMLab lengkap) — lanjut default"
         else
             log "Ambigu: ${DETECT_CANDIDATES} kandidat lokasi SIMLab ditemukan:"
             for cand in "${SCAN_CANDIDATES[@]}"; do
@@ -295,14 +298,14 @@ phase_summary() {
     done
     log "============================================"
 }
-# phases_all_ok: true bila SEMUA fase berstatus PASS/SKIP (tidak ada FAIL/WARN/RUNNING).
-# Dipakai gate P15 self-cleanup (R5 doc 021 §5): bundle hanya dihapus bila seluruh
-# alur benar-benar sukses. SKIP dianggap OK (skip memang disengaja, mis. --skip-migrate).
-phases_all_ok() {
+# phases_no_fail: true bila TIDAK ada fase FAIL/RUNNING (PASS/SKIP/WARN dianggap OK).
+# doc 024 I3: WARN bersifat non-fatal (mis. P7 publish, P14 artifact, PK) dan tetap
+# berarti jalur fungsional sukses — bundle boleh dibersihkan. FAIL/ROLLBACK memblokir.
+phases_no_fail() {
     local i
     for i in "${PHASE_STATUS[@]}"; do
         case "${i}" in
-            PASS|SKIP) : ;;
+            PASS|SKIP|WARN) : ;;
             *) return 1 ;;
         esac
     done
@@ -313,8 +316,8 @@ phase_report_key() {
     case "$1" in
         P0)  echo "P0_validate" ;;
         P1)  echo "P1_env" ;;
-        P2)  echo "P2_backup" ;;
-        P3)  echo "P3_stop" ;;
+        P2)  echo "P2_stop" ;;
+        P3)  echo "P3_backup" ;;
         P4)  echo "P4_migrate" ;;
         P5)  echo "P5_seed" ;;
         P6)  echo "P6_deploy" ;;
@@ -466,6 +469,8 @@ server_is_running() {
 tunggu_wal_closed() {
     log "Menunggu SQLite WAL/SHM files ditutup..."
     local i wal_count wal_remaining db_file f
+    # Fresh install: DATA_DIR belum ada → tidak ada WAL utk ditunggu (hemat 30s).
+    [ -d "${DATA_DIR}" ] || { log "WAL/SHM skip (DATA_DIR belum ada — fresh install)"; return 0; }
     for i in $(seq 1 30); do
         wal_count=0
         while IFS= read -r -d '' f; do

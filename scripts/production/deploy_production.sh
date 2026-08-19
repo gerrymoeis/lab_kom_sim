@@ -6,7 +6,7 @@
 # folder hasil extract bundle:
 #   cd deploy_production_<ts>
 #   sudo bash deploy_production.sh [--skip-migrate] [--skip-test] [--force] [--keep-bundle]
-#   --force       = P15 self-cleanup tanpa konfirmasi Y/n
+#   --force       = dipertahankan utk kompatibilitas; P15 kini AUTO-CLEAN saat gate lolos
 #   --keep-bundle = P15 skip self-delete (bundle tar.gz + folder extract dipertahankan)
 #
 # Tahap (Fase E: P0–PK lengkap; Fase P-B: N-Lab aware; Fase P-C: PostgreSQL aware):
@@ -15,10 +15,11 @@
 #       (N-Lab: REQUIRED_KEYS dari LABS_<N>_* terdeteksi;
 #        P-C: DATABASE_URL terisi → backend PostgreSQL, DATABASE_URL lama
 #        dipertahankan saat regenerate dari template)
-#   P2  Backup penuh data/ + .env + release aktif            → STOP
-#       (P-C: di Postgres data DB ada di luar; backup lokal = uploads/.env/release)
-#   P3  Stop service + tunggu WAL/SHM                        → STOP
+#   P2  Stop service + tunggu WAL/SHM (SEBELUM backup)      → STOP
 #       (P-C: skip tunggu WAL/SHM — tidak ada SQLite di Postgres)
+#   P3  Backup penuh data/ + .env + release aktif            → STOP
+#       (setelah P2 server berhenti: DB terkunci, snapshot konsisten;
+#        P-C: di Postgres data DB ada di luar; backup lokal = uploads/.env/release)
 #   P4  Deteksi migrasi; jalankan ETL bila perlu             → ROLLBACK
 #       (N-Lab: config ETL digenerate dari .env; verifikasi lab source;
 #        P-C: ETL SQLite-only dilewati di Postgres — verifikasi via app/readyz)
@@ -40,9 +41,10 @@
 #        P-C: di Postgres file .db lokal TIDAK dihapus)
 #   PK  Auto-run server + verify final (report digenerate    → WARN
 #       ulang agar memuat PK_autorun)
-#   P15 Self-cleanup bundle (tar.gz + folder extract)        → SKIP
-#       (R5: gate aman = semua fase PASS/SKIP + server running + /readyz OK;
-#        --force tanpa konfirmasi; --keep-bundle skip; guard nama deploy_production_*)
+#   P15 Self-cleanup bundle (tar.gz + folder extract)        → PASS
+#       (doc 024 I3: AUTO-CLEAN saat gate lolos = fase tidak FAIL (PASS/SKIP/WARN
+#        via phases_no_fail) + server running + /readyz OK; --keep-bundle skip;
+#        --force kini no-op kompatibilitas; guard nama deploy_production_*)
 #
 # ROLLBACK: stop service, restore symlink + data dari backup, start, health.
 # Jalur sukses maupun rollback selalu berakhir dengan server RUNNING.
@@ -374,22 +376,23 @@ fi
 phase_pass "P1"
 
 # ============================================================================
-# P2 — BACKUP PENUH
+# P2 — STOP SERVICE + TUNGGU WAL/SHM (doc 024 I4: berhenti DULU agar backup
+# konsisten — tarball_backup mengecualikan WAL/SHM; jangan backup DB hidup).
 # ============================================================================
-declare_phase "P2" "Backup penuh (data/ + .env + release aktif)"
-tarball_backup "${BACKUP_DIR}"
-phase_pass "P2"
-
-# ============================================================================
-# P3 — STOP SERVICE + TUNGGU WAL/SHM
-# ============================================================================
-declare_phase "P3" "Stop server & tunggu WAL/SHM tertutup"
+declare_phase "P2" "Stop server & tunggu WAL/SHM tertutup"
 server_stop
 if [ "${DB_BACKEND}" = "postgres" ]; then
-    log "P3: backend PostgreSQL — tidak ada WAL/SHM SQLite, skip tunggu_wal_closed"
+    log "P2: backend PostgreSQL — tidak ada WAL/SHM SQLite, skip tunggu_wal_closed"
 else
     tunggu_wal_closed
 fi
+phase_pass "P2"
+
+# ============================================================================
+# P3 — BACKUP PENUH (setelah server berhenti: DB terkunci, snapshot konsisten)
+# ============================================================================
+declare_phase "P3" "Backup penuh (data/ + .env + release aktif)"
+tarball_backup "${BACKUP_DIR}"
 phase_pass "P3"
 
 # ============================================================================
@@ -733,9 +736,16 @@ else
         else
             rc=$?
         fi
-        pass=$(grep -c '^--- PASS:' "${logfile}" || true)
-        fail=$(grep -c '^--- FAIL:' "${logfile}" || true)
-        skip=$(grep -c '^--- SKIP:' "${logfile}" || true)
+        # doc 024 I1: hitung test level-atas MAUPUN subtest (baris -test.v
+        # ber-indent `--- PASS:`). rc test binary = penentu sahih: rc≠0 tanpa
+        # FAIL tercatat berarti ada subtest FAIL/panic → angkat jadi 1 FAIL agar
+        # tak pernah lolos 0-fail padahal binary gagal.
+        pass=$(grep -cE '^\s*--- PASS:' "${logfile}" || true)
+        fail=$(grep -cE '^\s*--- FAIL:' "${logfile}" || true)
+        skip=$(grep -cE '^\s*--- SKIP:' "${logfile}" || true)
+        if [ "${rc}" -ne 0 ] && [ "${fail}" -eq 0 ]; then
+            fail=1
+        fi
         TEST_PASS=$((TEST_PASS + pass))
         TEST_FAIL=$((TEST_FAIL + fail))
         TEST_SKIP=$((TEST_SKIP + skip))
@@ -749,11 +759,11 @@ else
     # 3) Verifikasi 0-skip 0-error (pola F10)
     if [ "${TEST_FAIL}" -gt 0 ]; then
         log "P12: daftar FAILED:"
-        grep -h '^--- FAIL:' "${TEST_RUN_DIR}"/P12_*.log || true
+        grep -hE '^\s*--- FAIL:' "${TEST_RUN_DIR}"/P12_*.log || true
     fi
     if [ "${TEST_SKIP}" -gt 0 ]; then
         log "P12: daftar SKIPPED:"
-        grep -h '^--- SKIP:' "${TEST_RUN_DIR}"/P12_*.log || true
+        grep -hE '^\s*--- SKIP:' "${TEST_RUN_DIR}"/P12_*.log || true
     fi
     if [ "${TEST_FAIL}" -eq 0 ] && [ "${TEST_SKIP}" -eq 0 ] && [ "${TEST_TOTAL}" -ge 1 ]; then
         TEST_STATUS="ran"
@@ -894,7 +904,7 @@ done
 
 # ---- Cleanup verifier (komponen #5) ----
 # P-C: di PostgreSQL tidak ada file DB lokal yang harus bersih; verifier DB
-# (single DB + WAL/SHM) dilewati — uploads flat & release tetap diperiksa.
+# (single DB spesifik) dilewati — uploads flat & release tetap diperiksa.
 if [ "${DB_BACKEND}" != "postgres" ]; then
     for f in "${MIG_SOURCE_STEM}.db" "${MIG_SOURCE_STEM}.db-shm" "${MIG_SOURCE_STEM}.db-wal"; do
         if find "${DATA_DIR}" -name "${f}" -not -path "${BACKUP_DIR}/*" 2>/dev/null | grep -q .; then
@@ -907,11 +917,11 @@ for sub in pc device_types device_installations logbook; do
 done
 REL_COUNT=$(ls -1t "${RELEASES_DIR}" 2>/dev/null | wc -l)
 [ "${REL_COUNT}" -le 3 ] || LEFTOVER=1
-if [ "${DB_BACKEND}" != "postgres" ]; then
-    if find "${DATA_DIR}" \( -name "*.db-wal" -o -name "*.db-shm" \) 2>/dev/null | grep -q .; then
-        LEFTOVER=1
-    fi
-fi
+# doc 024 I2: WAL/SHM *live* milik server yang berjalan SEJAK P8 TIDAK dihitung
+# sebagai leftover — normal di SQLite WAL mode. Penutupan WAL/SHM single-DB lama
+# sudah ditangani P2 (stop+tunggu) dan P14 #2 (hapus file single-DB + WAL/SHM-nya);
+# verifier di atas hanya mengecek stem single-DB spesifik, bukan semua *.db-wal.
+# P-C: di PostgreSQL tidak ada WAL/SHM SQLite sama sekali.
 
 if [ "${LEFTOVER}" -eq 0 ]; then
     log "P14: verifier bersih — tidak ada single DB/uploads flat/release berlebih"
@@ -952,19 +962,21 @@ if [ -n "${REPORT_FILE}" ]; then
 fi
 
 # ============================================================================
-# P15 — SELF-CLEANUP (R5): hapus bundle tar.gz + folder extract sendiri
+# P15 — SELF-CLEANUP (doc 024 I3): hapus bundle tar.gz + folder extract
 # ============================================================================
 declare_phase "P15" "Self-cleanup bundle (tar.gz + folder extract)"
-# Gate aman (R5 doc 021 §5): HANYA dijalankan bila SEMUA fase PASS/SKIP DAN server
-# running DAN /readyz OK. Bila tidak → bundle dipertahankan. Flag:
+# Gate aman (doc 024 I3): auto-clean TANPA prompt (sebelumnya [Y/n] yang bisa
+# membuat run non-interaktif P15 SKIP). HANYA dijalankan bila TIDAK ada fase
+# FAIL/RUNNING (PASS/SKIP/WARN ok via phases_no_fail) DAN server running DAN
+# /readyz OK. Bila tidak → bundle dipertahankan. Flag:
 #   --keep-bundle  = skip seluruh self-delete (bundle tetap)
-#   --force        = hapus tanpa konfirmasi Y/n
+#   --force        = dipertahankan utk kompatibilitas (kini auto-clean default)
 P15_CLEAN=false
 if [ "${KEEP_BUNDLE}" = "true" ]; then
     log "P15: --keep-bundle — artefak bundle dipertahankan"
     phase_skip "P15" "--keep-bundle"
-elif ! phases_all_ok; then
-    warn "P15: ada fase tidak PASS/SKIP — bundle dipertahankan utk investigasi"
+elif ! phases_no_fail; then
+    warn "P15: ada fase FAIL — bundle dipertahankan utk investigasi"
     phase_skip "P15" "gate fase tidak terpenuhi"
 elif ! server_is_running; then
     warn "P15: server tidak running — bundle dipertahankan"
@@ -976,23 +988,6 @@ else
     P15_CLEAN=true
 fi
 
-if [ "${P15_CLEAN}" = "true" ] && [ "${FORCE_CLEAN}" != "true" ]; then
-    if ! read -r -p "Hapus bundle tar.gz + folder extract ini? [Y/n] " ans; then
-        warn "P15: input non-interaktif — bundle dipertahankan (pakai --force utk auto-clean)"
-        phase_skip "P15" "non-interaktif (pakai --force)"
-        P15_CLEAN=false
-    else
-        case "${ans}" in
-            Y|y|"") : ;;
-            *)
-                log "P15: dibatalkan oleh user — bundle dipertahankan"
-                phase_skip "P15" "dibatalkan user"
-                P15_CLEAN=false
-                ;;
-        esac
-    fi
-fi
-
 if [ "${P15_CLEAN}" = "true" ]; then
     # 1) hapus tar.gz bundle dengan GUARD NAMA deploy_production_*.tar.gz
     #    (lokasi: parent folder extract, INSTALL_DIR, /tmp).
@@ -1001,6 +996,17 @@ if [ "${P15_CLEAN}" = "true" ]; then
             [ -e "${b}" ] || continue
             rm -f "${b}"
             log "P15: hapus bundle ${b}"
+        done
+    done
+    # 1b) hapus SEMUA folder extract deploy_production_* LAMA di parent &
+    #     INSTALL_DIR (termasuk sisa run bundle sebelumnya), kecuali SCRIPT_DIR
+    #     yang berjalan (ditangani #2). Guard nama deploy_production_*.
+    for base in "$(dirname "${SCRIPT_DIR}")" "${INSTALL_DIR}"; do
+        for x in "${base}"/deploy_production_*; do
+            [ -d "${x}" ] || continue
+            [ "${x}" = "${SCRIPT_DIR}" ] && continue
+            rm -rf "${x}"
+            log "P15: hapus folder extract lama ${x}"
         done
     done
     # 2) hapus folder extract sendiri (bash sudah membaca script penuh; aman).

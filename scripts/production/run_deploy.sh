@@ -9,7 +9,7 @@
 #   cd deploy_production_<ts>
 #   sudo bash run_deploy.sh [--skip-migrate] [--skip-test] [--install-dir X] [--allow-roots "a b"]
 #                         [--force] [--keep-bundle]
-#   --force       = P15 self-cleanup tanpa konfirmasi Y/n
+#   --force       = dipertahankan utk kompatibilitas; P15 kini AUTO-CLEAN saat gate lolos
 #   --keep-bundle = P15 skip self-delete (bundle dipertahankan)
 # =============================================================================
 set -euo pipefail
