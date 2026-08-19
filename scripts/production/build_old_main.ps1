@@ -3,10 +3,14 @@
 #
 # Membangun binary web app SIMLab LAMA (branch main) untuk "existing install"
 # pada re-test VM (doc 024 R9). Output (GOOS=linux GOARCH=amd64 CGO_ENABLED=0):
-#   out/old_main/app-simlab   binary server cmd/server (bukan bundle/refactoring)
-#   out/old_main/web/         templates + static — DIBACA DARI DISK oleh app lama
-#                             (internal/server/server.go LoadTemplates("web/templates"),
-#                             versioner.New("./web/static")), wajib di samping binary.
+#   out/old_main/app-simlab     binary server cmd/server (bukan bundle/refactoring)
+#   out/old_main/web/           templates + static — DIBACA DARI DISK oleh app lama
+#                               (internal/server/server.go LoadTemplates("web/templates"),
+#                               versioner.New("./web/static")), wajib di samping binary.
+#   out/old_main_<ts>.zip       distribusi ZIP berisi folder old_main/ (app-simlab + web/).
+#                               Nama entry FORWARD SLASH (ZipArchive .NET, BUKAN
+#                               Compress-Archive yang memakai backslash) — aman
+#                               diekstrak di Linux dengan `unzip`.
 #
 # Binary dipakai bersama seed_old_install.sh --bin <path> (skenario EXISTING).
 # Branch main diambil via git worktree agar tidak menyentuh tree kerja.
@@ -85,13 +89,53 @@ try {
     Pop-Location
 }
 
+# -------------------------------------------------------- 6. Buat zip distribusi
+function New-SimlabZip {
+    # Zip folder $SourceDir -> $ZipPath dengan root $RootName dan nama entry
+    # FORWARD SLASH (aman utk unzip di Linux). Compress-Archive PS5.1 memakai
+    # backslash di nama entry -> TIDAK aman lintas-platform, tidak dipakai.
+    param([string]$SourceDir, [string]$ZipPath, [string]$RootName)
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    if (Test-Path -LiteralPath $ZipPath) { Remove-Item -LiteralPath $ZipPath -Force }
+    $zip = [System.IO.Compression.ZipFile]::Open($ZipPath, 'Create')
+    try {
+        Get-ChildItem -LiteralPath $SourceDir -Recurse -File | ForEach-Object {
+            $rel = $_.FullName.Substring($SourceDir.Length).TrimStart('\', '/')
+            $entry = $zip.CreateEntry(("$RootName/$rel" -replace '\\', '/'), 'Optimal')
+            $es = $entry.Open()
+            try {
+                $fs = [System.IO.File]::OpenRead($_.FullName)
+                try { $fs.CopyTo($es) } finally { $fs.Dispose() }
+            } finally { $es.Dispose() }
+        }
+    } finally { $zip.Dispose() }
+}
+
+$zip = Join-Path (Split-Path -Parent $OutDir) "old_main_$ts.zip"
+Write-Host "==> Buat zip distribusi: $zip"
+New-SimlabZip -SourceDir $OutDir -ZipPath $zip -RootName "old_main"
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zr = [System.IO.Compression.ZipFile]::OpenRead($zip)
+try {
+    $entries = @($zr.Entries | ForEach-Object { $_.FullName })
+    $okBin = $entries -contains "old_main/app-simlab"
+    $okTpl = @($entries | Where-Object { $_ -like "old_main/web/templates/*" }).Count -gt 0
+    $okSta = @($entries | Where-Object { $_ -like "old_main/web/static/*" }).Count -gt 0
+    if (-not ($okBin -and $okTpl -and $okSta)) {
+        throw "isi zip tidak lengkap (butuh old_main/app-simlab + web/templates/* + web/static/*)"
+    }
+} finally { $zr.Dispose() }
+Write-Host "    OK: zip berisi old_main/app-simlab + web/templates + web/static (forward slash)"
+
 $binOut = Join-Path $OutDir "app-simlab"
 Write-Host ""
 Write-Host "OLD MAIN BUILD OK:"
 Write-Host "    binary : $binOut ($([math]::Round((Get-Item -LiteralPath $binOut).Length/1MB,1)) MB, ELF linux amd64)"
 Write-Host "    web/   : $(Join-Path $OutDir 'web')"
+Write-Host "    zip    : $zip"
 Write-Host ""
-Write-Host "Langkah berikut:"
-Write-Host "    1. scp/copy $binOut + $(Join-Path $OutDir 'web') ke VM"
-Write-Host "       (cukup satu folder berisi app-simlab + web/, mis. ~/Unduhan/old_main/)"
-Write-Host "    2. Skenario EXISTING: ./seed_old_install.sh /opt/simlab v1 --service --replace --bin ~/Unduhan/old_main/app-simlab"
+Write-Host "Langkah berikut (skenario EXISTING):"
+Write-Host "    1. scp/copy $zip ke VM (mis. ~/Unduhan/)"
+Write-Host "    2. extract di VM: cd ~/Unduhan && unzip -q old_main_$ts.zip"
+Write-Host "       (bila unzip belum ada: sudo apt-get install -y unzip)"
+Write-Host "    3. ./seed_old_install.sh /opt/simlab v1 --service --replace --bin ~/Unduhan/old_main/app-simlab"
