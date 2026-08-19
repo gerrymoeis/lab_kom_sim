@@ -57,7 +57,7 @@ cd deploy_production_<ts>
 - `config/.env.config` di bundle memuat **API key nyata** (GEMINI/OPENROUTER/PC_PHOTO_TOKEN).
   Setelah extract, kunci akses file tsb (tar dari Windows menyimpan perm 0644):
   `chmod 600 config/.env.config`. **P15 self-cleanup** akan menghapus bundle setelah deploy
-  selesai (bila semua fase PASS/SKIP + server running + `/readyz` OK).
+  selesai (bila fase tidak FAIL + server running + `/readyz` OK).
 - `/opt/simlab/.env` (EnvironmentFile service) memuat `SESSION_SECRET`, API key, dan opsional
   `DATABASE_URL` (kredensial Postgres). Deploy set `chmod 600` saat meregenerate/restore —
   jangan ubah perm-nya. **Nilai `DATABASE_URL` tidak pernah di-log** oleh deploy tools.
@@ -90,15 +90,16 @@ sudo bash run_deploy.sh --skip-migrate
 sudo bash run_deploy.sh --skip-migrate --skip-test
 sudo bash run_deploy.sh --install-dir /srv/simlab
 sudo bash run_deploy.sh --allow-roots "/srv /home"
-sudo bash run_deploy.sh --force        # P15 self-cleanup tanpa konfirmasi Y/n
+sudo bash run_deploy.sh --force        # no-op kompatibilitas (P15 AUTO-CLEAN default)
 sudo bash run_deploy.sh --keep-bundle  # P15 skip self-delete (bundle dipertahankan)
 ```
 
-**P15 self-cleanup (R5 doc 021):** di akhir alur, bila SEMUA fase PASS/SKIP + server running
-+ `/readyz` OK, deploy menghapus bundle `deploy_production_<ts>.tar.gz` (parent extract /
-`INSTALL_DIR` / `/tmp`) dan folder extract sendiri (guard nama `deploy_production_*`).
-Bila ada fase WARN/FAIL, server mati, atau `--keep-bundle` → bundle dipertahankan.
-Konfirmasi Y/n sebelum hapus, kecuali `--force`.
+**P15 self-cleanup (doc 024 I3):** di akhir alur, bila TIDAK ada fase FAIL (PASS/SKIP/WARN ok)
++ server running + `/readyz` OK, deploy **otomatis** menghapus bundle
+`deploy_production_<ts>.tar.gz` (parent extract / `INSTALL_DIR` / `/tmp`) dan SEMUA folder
+extract `deploy_production_*` lama di parent & `INSTALL_DIR` (guard nama `deploy_production_*`),
+plus folder extract sendiri. Tidak ada prompt konfirmasi. Bila ada fase FAIL, server mati,
+atau `--keep-bundle` → bundle dipertahankan. `--force` dipertahankan utk kompatibilitas (no-op).
 
 Setara: 
 ```sh
@@ -142,8 +143,8 @@ Aturan perilaku:
 Tahap yang dijalankan (P0–P15):
 - **P0** validasi prasyarat + bundle lengkap (STOP bila gagal)
 - **P1** deteksi format `.env` (single/multi) + regenerate
-- **P2** backup penuh `data/` + `.env` + release aktif
-- **P3** stop service + tunggu WAL/SHM (dual-mode: systemd / proses manual-run)
+- **P2** stop service + tunggu WAL/SHM (dual-mode: systemd / proses manual-run)
+- **P3** backup penuh `data/` + `.env` + release aktif (setelah P2 server berhenti: snapshot konsisten)
 - **P4** deteksi migrasi; jalankan ETL bila perlu (ROLLBACK bila gagal)
 - **P5–P6** siapkan release + deploy binary + atomic symlink swap
 - **P7** generate public site (WARN bila gagal)
@@ -154,8 +155,9 @@ Tahap yang dijalankan (P0–P15):
 - **P13** report JSON `deploy_report_<ts>.json`
 - **P14** cleanup (release keep 3, single DB, uploads flat)
 - **PK** auto-run server + verify final — report digenerate ulang (memuat `PK_autorun`)
-- **P15** self-cleanup bundle (tar.gz + folder extract) — hanya bila semua fase PASS/SKIP
-  + server running + `/readyz` OK; `--force` tanpa konfirmasi; `--keep-bundle` skip
+- **P15** self-cleanup bundle (tar.gz + folder extract) — AUTO-CLEAN saat tidak ada fase FAIL
+  (PASS/SKIP/WARN ok) + server running + `/readyz` OK; `--force` kini no-op (auto-clean default);
+  `--keep-bundle` skip
 
 Setiap kegagalan tahap dengan tindakan ROLLBACK akan: stop service, restore symlink + data
 dari backup, start, health check → server tetap RUNNING (release sebelumnya).
@@ -175,8 +177,7 @@ Bila kosong → backend SQLite (file `.db` di `/opt/simlab/data/`).
 Alur deploy menyesuaikan otomatis saat `DATABASE_URL` terisi (backend `postgres`):
 - **P1** log `backend PostgreSQL aktif`; `DATABASE_URL` lama **dipertahankan** bila `.env`
   diregenerate dari template.
-- **P3** tunggu WAL/SHM SQLite dilewati (PostgreSQL tidak memakai file WAL lokal).
-- **P4** ETL (SQLite-only) **dilewati** — migrasi data Postgres tidak dipakai jalur ini.
+- **P2** stop + tunggu WAL/SHM SQLite dilewati (PostgreSQL tidak memakai file WAL lokal).- **P4** ETL (SQLite-only) **dilewati** — migrasi data Postgres tidak dipakai jalur ini.
 - **P10** `/readyz` menjadi verifikasi DB utama (ping global + semua lab via app).
 - **P11** `app-simlab -verify` (SQLite-only) **dilewati**.
 - **P14** file `.db` lokal **tidak dihapus** di backend Postgres (data ada di server Postgres).
@@ -209,11 +210,12 @@ Bangun bundle dengan `prepare_production.ps1` (host Windows, butuh Go + `.env.co
 `cleanup_production.sh` standalone **tidak ada lagi** (R6 doc 021) — hapus bundle ditangani
 **P15 di akhir deploy**:
 
-- Gate aman: hanya berjalan bila **SEMUA fase PASS/SKIP** (tidak ada WARN/FAIL) **dan**
-  server running **dan** `/readyz` OK. Bila tidak → bundle dipertahankan (SKIP).
+- Gate aman: hanya berjalan bila TIDAK ada fase **FAIL** (PASS/SKIP/WARN ok — WARN non-fatal)
+  **dan** server running **dan** `/readyz` OK. Bila tidak → bundle dipertahankan (SKIP).
 - Yang dihapus: `deploy_production_<ts>.tar.gz` (parent extract / `INSTALL_DIR` / `/tmp`,
-  guard nama) + folder extract sendiri (guard basename `deploy_production_*`).
-- Konfirmasi interaktif `[Y/n]` (default ya) sebelum hapus; `--force` = tanpa konfirmasi;
+  guard nama) + SEMUA folder extract `deploy_production_*` lama di parent & `INSTALL_DIR` +
+  folder extract sendiri (guard basename `deploy_production_*`).
+- Auto-clean tanpa konfirmasi (doc 024 I3); `--force` kini no-op kompatibilitas;
   `--keep-bundle` = skip seluruh self-delete.
 - `app/`, `data/`, `data/backups/`, release **tidak pernah disentuh**.
 
@@ -253,8 +255,8 @@ dari doc 014 — VirtualBox/VM dengan Debian/Ubuntu, forward port 8080). Jalur y
 **E. Self-cleanup** (setiap selesai uji)
 1. Jalankan deploy hingga selesai → cek status P15: PASS = bundle+folder extract hilang,
    server tetap RUNNING.
-2. Uji gate: ubah 1 fase jadi WARN (mis. P7 publish gagal) → P15 SKIP (bundle bertahan).
-3. Uji `--keep-bundle` (bundle bertahan) dan `--force` (tanpa konfirmasi, bundle hilang).
+2. Uji gate: ubah 1 fase jadi FAIL (mis. simulasikan rollback) → P15 SKIP (bundle bertahan).
+3. Uji `--keep-bundle` (bundle bertahan) dan auto-clean default (bundle hilang tanpa prompt).
 
 ## Troubleshooting Singkat
 
